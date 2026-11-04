@@ -1,3 +1,5 @@
+> **Social HQ** — this is [yoddha-social](https://github.com/yoddha-social)'s fork of TryPost for internal use, with our features in a separate module. See [SOCIALHQ.md](SOCIALHQ.md). Everything below is upstream's README.
+
 <p align="center">
   <img src="public/images/trypost/logo-dark.png" alt="TryPost" width="190">
 </p>

@@ -1,0 +1,29 @@
+name: Diagnose timezone aliases
+on:
+  push:
+    branches: ['diag/**']
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, pdo_pgsql, pdo_mysql, bcmath, intl, gd, redis
+          coverage: none
+      - name: Versions and alias mapping
+        run: |
+          php -r '
+          echo "PHP ", PHP_VERSION, " | ICU ", INTL_ICU_VERSION, " | ICU data ", INTL_ICU_DATA_VERSION ?? "?", " | tzdb ", timezone_version_get(), "\n";
+          $canonical = DateTimeZone::listIdentifiers();
+          $all = DateTimeZone::listIdentifiers(DateTimeZone::ALL_WITH_BC);
+          foreach (["Asia/Calcutta","Europe/Kiev","Asia/Saigon"] as $z) {
+            $iana = IntlTimeZone::getIanaID($z);
+            echo str_pad($z, 15), " in canonical list: ", var_export(in_array($z,$canonical,true),true),
+              " | in BC list: ", var_export(in_array($z,$all,true),true),
+              " | getIanaID: ", var_export($iana,true),
+              " | getCanonicalID: ", var_export(IntlTimeZone::getCanonicalID($z),true),
+              " | target in canonical list: ", var_export(is_string($iana) && in_array($iana,$canonical,true),true), "\n";
+          }
+          foreach (["Asia/Kolkata","Europe/Kyiv","Asia/Ho_Chi_Minh"] as $z) { echo str_pad($z,17), " in canonical list: ", var_export(in_array($z,$canonical,true),true), "\n"; }'
+          echo "runner image: ${ImageOS:-?} ${ImageVersion:-?}"

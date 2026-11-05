@@ -97,8 +97,12 @@ return [
     |
     | Each workspace's brand profile and knowledge entries, read by the
     | caption assistant and the idea generator. prompt_characters caps what
-    | goes into one prompt (about 1,500 tokens): the profile plus the newest
-    | entries marked for AI that fit, small enough for free models' limits.
+    | goes into one prompt: the profile (at most half, shortened when longer),
+    | then the pinned and newest entries marked for AI that fit. It is counted
+    | by BrandKnowledge::size(), where characters outside Latin-1 (Devanagari,
+    | emoji) count double. 6000 is about 1,500 tokens of English; Nepali text
+    | costs more tokens per character, so the same budget holds less of it.
+    | A rough guard for free models' limits, not a token count.
     |
     */
 

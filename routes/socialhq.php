@@ -13,6 +13,8 @@ declare(strict_types=1);
 |
 */
 
+use App\Http\Middleware\App\EnsureAccountReady;
+use App\Http\Middleware\App\EnsureHasWorkspace;
 use App\SocialHq\Http\Controllers\AccessPendingController;
 use App\SocialHq\Http\Controllers\AccessRequestController;
 use App\SocialHq\Http\Controllers\AiGraphicController;
@@ -37,9 +39,12 @@ Route::middleware('auth')->prefix('socialhq')->name('socialhq.')->group(function
         ->middleware('throttle:media-imports')
         ->name('ai-graphics.attach');
 
-    Route::get('brand', [BrandKnowledgeController::class, 'index'])->name('brand.index');
-    Route::put('brand/profile', [BrandKnowledgeController::class, 'updateProfile'])->name('brand.profile.update');
-    Route::post('brand/entries', [BrandKnowledgeController::class, 'store'])->name('brand.entries.store');
-    Route::put('brand/entries/{entry}', [BrandKnowledgeController::class, 'update'])->whereNumber('entry')->name('brand.entries.update');
-    Route::delete('brand/entries/{entry}', [BrandKnowledgeController::class, 'destroy'])->whereNumber('entry')->name('brand.entries.destroy');
+    // Workspace pages: the same middleware as TryPost's (routes/app.php).
+    Route::middleware([EnsureAccountReady::class, EnsureHasWorkspace::class])->group(function () {
+        Route::get('brand', [BrandKnowledgeController::class, 'index'])->name('brand.index');
+        Route::put('brand/profile', [BrandKnowledgeController::class, 'updateProfile'])->name('brand.profile.update');
+        Route::post('brand/entries', [BrandKnowledgeController::class, 'store'])->name('brand.entries.store');
+        Route::put('brand/entries/{entry}', [BrandKnowledgeController::class, 'update'])->whereNumber('entry')->name('brand.entries.update');
+        Route::delete('brand/entries/{entry}', [BrandKnowledgeController::class, 'destroy'])->whereNumber('entry')->name('brand.entries.destroy');
+    });
 });

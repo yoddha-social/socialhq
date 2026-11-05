@@ -119,7 +119,7 @@ const createWorkspace = (): void => {
                         :key="workspace.id"
                         class="gap-2"
                         :data-testid="`socialhq-workspace-${workspace.id}`"
-                        @click="switchWorkspace(workspace.id)"
+                        @select="switchWorkspace(workspace.id)"
                     >
                         <Avatar
                             :src="workspace.logo_url"
@@ -164,7 +164,7 @@ const createWorkspace = (): void => {
                 <DropdownMenuItem
                     v-if="canCreateWorkspace"
                     data-testid="socialhq-workspace-create"
-                    @click="createWorkspace"
+                    @select="createWorkspace"
                 >
                     <IconPlus class="size-4" />
                     {{ $t('sidebar.create_workspace') }}

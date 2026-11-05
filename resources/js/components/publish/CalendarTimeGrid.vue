@@ -196,8 +196,10 @@ watch(
                 :data-testid="`calendar-column-${column.key}`"
             >
                 <span>{{ column.day.format(compact ? 'ddd' : 'dddd') }}</span>
-                <span>{{ column.day.format('D') }}</span>
-                <CalendarEventMarkers :day="column.key" :compact="compact" />
+                <span class="inline-flex max-w-full min-w-0 items-center gap-1">
+                    {{ column.day.format('D') }}
+                    <CalendarEventMarkers :day="column.key" :compact="compact" />
+                </span>
             </div>
         </div>
 

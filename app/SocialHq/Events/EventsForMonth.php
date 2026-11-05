@@ -6,6 +6,7 @@ namespace App\SocialHq\Events;
 
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -22,14 +23,7 @@ final class EventsForMonth
      */
     public static function forWorkspace(Workspace $workspace, CarbonImmutable $from, CarbonImmutable $to): Collection
     {
-        return CalendarEvent::query()
-            ->visibleTo($workspace)
-            ->overlapping($from->toDateString(), $to->toDateString())
-            ->with('verifier:id,name')
-            ->orderBy('starts_on')
-            ->orderBy('name')
-            ->orderBy('id')
-            ->get();
+        return self::query($workspace, $from, $to)->with('verifier:id,name')->get();
     }
 
     /**
@@ -45,7 +39,7 @@ final class EventsForMonth
         $last = CarbonImmutable::parse($to->toDateString());
         $days = [];
 
-        foreach (self::forWorkspace($workspace, $first, $last) as $event) {
+        foreach (self::query($workspace, $first, $last)->get(['id', 'name', 'category', 'starts_on', 'ends_on', 'verified_at']) as $event) {
             $day = $event->starts_on->max($first);
             $end = $event->ends_on->min($last);
 
@@ -60,5 +54,18 @@ final class EventsForMonth
         }
 
         return $days;
+    }
+
+    /**
+     * @return Builder<CalendarEvent>
+     */
+    private static function query(Workspace $workspace, CarbonImmutable $from, CarbonImmutable $to): Builder
+    {
+        return CalendarEvent::query()
+            ->visibleTo($workspace)
+            ->overlapping($from->toDateString(), $to->toDateString())
+            ->orderBy('starts_on')
+            ->orderBy('name')
+            ->orderBy('id');
     }
 }

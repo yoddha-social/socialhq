@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\SocialHq\Http\Controllers\Plan;
 
 use App\Http\Controllers\Controller;
+use App\Models\Account;
 use App\Models\Workspace;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Events\EventCategory;
@@ -16,9 +17,11 @@ use App\SocialHq\Http\Requests\Plan\UpdateCalendarEventRequest;
 use App\SocialHq\Plan\PlanAccess;
 use App\Support\Timezone;
 use Carbon\CarbonImmutable;
+use Closure;
 use DateTimeZone;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -58,16 +61,18 @@ class EventController extends Controller
         $brandOnly = $request->boolean('brand_only');
         $key = ImportOfficialEvents::keyFor($request->validated('name'));
 
-        self::ensureUnique($workspace, $brandOnly, $key, $request->validated('starts_on'));
+        self::whileLocked($workspace, function () use ($request, $workspace, $brandOnly, $key): void {
+            self::ensureUnique($workspace, $brandOnly, $key, $request->validated('starts_on'));
 
-        CalendarEvent::query()->create([
-            ...self::attributes($request->validated()),
-            'account_id' => $workspace->account_id,
-            'workspace_id' => $brandOnly ? $workspace->id : null,
-            'key' => $key,
-            'region' => self::region($brandOnly, EventCategory::from($request->validated('category')), null),
-            'created_by' => $request->user()->id,
-        ]);
+            CalendarEvent::query()->create([
+                ...self::attributes($request->validated()),
+                'account_id' => $workspace->account_id,
+                'workspace_id' => $brandOnly ? $workspace->id : null,
+                'key' => $key,
+                'region' => self::region($brandOnly, EventCategory::from($request->validated('category')), null),
+                'created_by' => $request->user()->id,
+            ]);
+        });
 
         return back();
     }
@@ -78,13 +83,15 @@ class EventController extends Controller
         $found = self::find($workspace, $event);
         $brandOnly = $request->boolean('brand_only');
 
-        self::ensureUnique($workspace, $brandOnly, $found->key, $request->validated('starts_on'), $found->id);
+        self::whileLocked($workspace, function () use ($request, $workspace, $found, $brandOnly): void {
+            self::ensureUnique($workspace, $brandOnly, $found->key, $request->validated('starts_on'), $found->id);
 
-        $found->update([
-            ...self::attributes($request->validated()),
-            'workspace_id' => $brandOnly ? $workspace->id : null,
-            'region' => self::region($brandOnly, EventCategory::from($request->validated('category')), $found->region),
-        ]);
+            $found->update([
+                ...self::attributes($request->validated()),
+                'workspace_id' => $brandOnly ? $workspace->id : null,
+                'region' => self::region($brandOnly, EventCategory::from($request->validated('category')), $found->region),
+            ]);
+        });
 
         return back();
     }
@@ -163,9 +170,24 @@ class EventController extends Controller
             return $current;
         }
 
+        // A shared date is never of the brand kind (the requests refuse it).
         return in_array($category, [EventCategory::InternationalDay, EventCategory::Commercial], true)
             ? EventRegion::International
             : EventRegion::Nepal;
+    }
+
+    /**
+     * Runs a duplicate check and its write with the account row locked, so two
+     * people adding the same date at once can't both pass the check (no unique
+     * index covers account-wide dates, whose workspace_id is null).
+     */
+    private static function whileLocked(Workspace $workspace, Closure $write): void
+    {
+        DB::transaction(function () use ($workspace, $write): void {
+            Account::query()->whereKey($workspace->account_id)->lockForUpdate()->first();
+
+            $write();
+        });
     }
 
     private static function ensureUnique(Workspace $workspace, bool $brandOnly, string $key, string $startsOn, ?int $except = null): void

@@ -87,7 +87,6 @@ return [
         'brand_only_hint' => 'The other brands of your account won\'t see it.',
         'cancel' => 'Cancel',
         'save' => 'Save date',
-        'add' => 'Add date',
     ],
 
     'delete' => [
@@ -102,6 +101,7 @@ return [
         'description_member' => 'To plan around festivals and holidays, a workspace admin needs to import the official dates.',
         'none' => 'No dates in this period',
         'none_hint' => 'Try another month, or the next 90 days.',
+        'none_hint_upcoming' => 'Pick Month to see other months.',
         'no_match' => 'No dates match this filter',
         'no_match_hint' => 'Try another filter, or show all dates.',
         'show_all' => 'Show all',
@@ -111,16 +111,17 @@ return [
         'ends_before_start' => 'The end date can\'t be before the start date.',
         'too_long' => 'An event can last up to 31 days.',
         'duplicate' => 'An event with this name is already on that day.',
+        'brand_kind_shared' => 'A brand date belongs to one brand. Switch on Only this brand, or pick another kind.',
     ],
 
     'import' => [
         'done' => 'Official dates imported: :created new, :updated updated, :skipped unchanged.',
+        'missing' => '{1} One date is no longer in the official list; it stays until you delete it.|[0,*] :count dates are no longer in the official list; they stay until you delete them.',
         'failed' => 'Couldn\'t import the official dates. Ask whoever runs Social HQ to check the server log.',
     ],
 
     'markers' => [
         'label' => 'Events on this day: :names',
         'needs_check' => ':name (needs check)',
-        'open' => 'Open events',
     ],
 ];

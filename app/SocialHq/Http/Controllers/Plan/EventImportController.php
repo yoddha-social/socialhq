@@ -31,11 +31,17 @@ class EventImportController extends Controller
             return back();
         }
 
-        session()->flash('flash.banner', __('socialhq_events.import.done', [
+        $message = __('socialhq_events.import.done', [
             'created' => $counts['created'],
             'updated' => $counts['updated'],
             'skipped' => $counts['skipped'],
-        ]));
+        ]);
+
+        if ($counts['missing'] > 0) {
+            $message .= ' '.trans_choice('socialhq_events.import.missing', $counts['missing'], ['count' => $counts['missing']]);
+        }
+
+        session()->flash('flash.banner', $message);
         session()->flash('flash.bannerStyle', 'success');
 
         return back();

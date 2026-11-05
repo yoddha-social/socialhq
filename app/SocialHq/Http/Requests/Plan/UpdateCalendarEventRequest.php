@@ -20,7 +20,8 @@ class UpdateCalendarEventRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:160'],
             'name_ne' => ['nullable', 'string', 'max:160'],
-            'category' => ['required', Rule::enum(EventCategory::class)],
+            // The brand kind is for one brand's own dates: a shared date can't be one.
+            'category' => ['required', Rule::enum(EventCategory::class), Rule::when(! $this->boolean('brand_only'), [Rule::notIn([EventCategory::Brand->value])])],
             'starts_on' => ['required', 'date_format:Y-m-d'],
             'ends_on' => ['required', 'date_format:Y-m-d', 'after_or_equal:starts_on', "before_or_equal:{$this->latestEnd()}"],
             'bs_date' => ['nullable', 'string', 'max:60'],
@@ -37,6 +38,7 @@ class UpdateCalendarEventRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'category.not_in' => __('socialhq_events.errors.brand_kind_shared'),
             'ends_on.after_or_equal' => __('socialhq_events.errors.ends_before_start'),
             'ends_on.before_or_equal' => __('socialhq_events.errors.too_long'),
         ];

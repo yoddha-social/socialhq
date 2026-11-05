@@ -72,7 +72,7 @@ test('the importer loads the shipped dataset once, and a second run changes noth
         ->and(CalendarEvent::query()->whereNotNull('verified_at')->exists())->toBeFalse()
         ->and(CalendarEvent::query()->whereNotNull('workspace_id')->exists())->toBeFalse();
 
-    expect(ImportOfficialEvents::handle($this->account))->toBe(['created' => 0, 'updated' => 0, 'skipped' => $first['created']]);
+    expect(ImportOfficialEvents::handle($this->account))->toBe(['created' => 0, 'updated' => 0, 'skipped' => $first['created'], 'missing' => 0]);
 });
 
 test('the importer maps the Nepal and international columns', function () {
@@ -87,7 +87,7 @@ test('the importer maps the Nepal and international columns', function () {
         ['date_ad' => $this->day->addDays(4)->toDateString(), 'name_en' => 'Christmas Day', 'category' => 'global_holiday', 'rule' => 'fixed 12-25', 'source_url' => '', 'notes' => ''],
     ], nepal: false);
 
-    expect(ImportOfficialEvents::handle($this->account, [$nepal, $international]))->toBe(['created' => 6, 'updated' => 0, 'skipped' => 0]);
+    expect(ImportOfficialEvents::handle($this->account, [$nepal, $international]))->toBe(['created' => 6, 'updated' => 0, 'skipped' => 0, 'missing' => 0]);
 
     $laxmi = CalendarEvent::query()->where('key', 'laxmi-puja-tihar')->firstOrFail();
     expect($laxmi->region)->toBe(EventRegion::Nepal)
@@ -148,7 +148,7 @@ test('re-importing keeps confirmations, updates changed rows and skips rows a pe
         nepalRow($this->day->addDays(2), ['name_en' => 'Chhath', 'notes' => 'Changed upstream.']),
     ])]);
 
-    expect($counts)->toBe(['created' => 0, 'updated' => 1, 'skipped' => 2])
+    expect($counts)->toBe(['created' => 0, 'updated' => 1, 'skipped' => 2, 'missing' => 0])
         ->and($laxmi->fresh()->isVerified())->toBeTrue()
         ->and(CalendarEvent::query()->where('key', 'bhai-tika')->value('description'))->toContain('Corrected note')
         ->and($edited->fresh()->description)->toBe('Our own note.');
@@ -156,7 +156,7 @@ test('re-importing keeps confirmations, updates changed rows and skips rows a pe
     // The row the importer updated is still the importer's: a later change in the file reaches it too.
     expect(ImportOfficialEvents::handle($this->account, [eventsCsv([
         nepalRow($this->day->addDay(), ['name_en' => 'Bhai Tika', 'notes' => 'Again.']),
-    ])]))->toBe(['created' => 0, 'updated' => 1, 'skipped' => 0]);
+    ])]))->toBe(['created' => 0, 'updated' => 1, 'skipped' => 0, 'missing' => 0]);
 });
 
 test('the import command loads the dataset into the only account', function () {
@@ -272,7 +272,7 @@ test('approvers add, edit, confirm and delete dates', function () {
         ->and($event->isVerified())->toBeTrue();
 
     $this->actingAs($this->owner)
-        ->put(route('socialhq.plan.events.update', $event->id), eventPayload($this->day->addDay(), ['brand_only' => false]))
+        ->put(route('socialhq.plan.events.update', $event->id), eventPayload($this->day->addDay(), ['brand_only' => false, 'category' => 'international_day']))
         ->assertRedirect();
     expect($event->fresh()->isVerified())->toBeFalse();
 
@@ -281,7 +281,8 @@ test('approvers add, edit, confirm and delete dates', function () {
     expect($event->fresh()->isVerified())->toBeFalse();
 
     $this->actingAs($this->owner)->delete(route('socialhq.plan.events.destroy', $event->id))->assertRedirect();
-    expect(CalendarEvent::query()->exists())->toBeFalse();
+    expect(CalendarEvent::query()->exists())->toBeFalse()
+        ->and(CalendarEvent::query()->withTrashed()->sole()->trashed())->toBeTrue();
 });
 
 test('adding a date checks the dates and refuses a duplicate', function () {
@@ -366,4 +367,104 @@ test('people see what a note says about the day, not the dataset\'s research not
 
     expect($event->source_name)->toBe('Hamro Patro, checked against nepalicalendar.rat32.com')
         ->and($event->description)->toBe('Chariot pulled through Patan. Only one calendar gives this date: check it before planning around it.');
+});
+
+test('the importer reads a CSV saved with a byte order mark and Windows line endings', function () {
+    $path = eventsCsv([nepalRow($this->day), nepalRow($this->day->addDay(), ['name_en' => 'Bhai Tika', 'notes' => 'Sisters mark their brothers.'])]);
+    file_put_contents($path, "\u{FEFF}".str_replace("\n", "\r\n", (string) file_get_contents($path)));
+
+    expect(ImportOfficialEvents::handle($this->account, [$path]))->toBe(['created' => 2, 'updated' => 0, 'skipped' => 0, 'missing' => 0]);
+
+    $tika = CalendarEvent::query()->where('key', 'bhai-tika')->firstOrFail();
+    expect($tika->starts_on->toDateString())->toBe($this->day->addDay()->toDateString())
+        ->and($tika->description)->toBe('Sisters mark their brothers.');
+});
+
+test('re-importing never brings back a date the team moved, narrowed to this brand or deleted', function () {
+    $file = eventsCsv([
+        nepalRow($this->day),
+        nepalRow($this->day, ['name_en' => 'Bhai Tika']),
+        nepalRow($this->day, ['name_en' => 'Chhath']),
+    ]);
+    ImportOfficialEvents::handle($this->account, [$file]);
+    $this->travel(1)->minutes();
+
+    $moved = CalendarEvent::query()->where('key', 'laxmi-puja-tihar')->firstOrFail();
+    $this->actingAs($this->owner)
+        ->put(route('socialhq.plan.events.update', $moved->id), eventPayload($this->day->addDays(2), ['name' => 'Laxmi Puja (Tihar)', 'category' => 'festival', 'brand_only' => false]))
+        ->assertSessionHasNoErrors();
+
+    $narrowed = CalendarEvent::query()->where('key', 'bhai-tika')->firstOrFail();
+    $this->actingAs($this->owner)
+        ->put(route('socialhq.plan.events.update', $narrowed->id), eventPayload($this->day, ['name' => 'Bhai Tika', 'category' => 'festival', 'brand_only' => true]))
+        ->assertSessionHasNoErrors();
+
+    $deleted = CalendarEvent::query()->where('key', 'chhath')->firstOrFail();
+    $this->actingAs($this->owner)->delete(route('socialhq.plan.events.destroy', $deleted->id))->assertRedirect();
+
+    expect(ImportOfficialEvents::handle($this->account, [$file]))->toBe(['created' => 0, 'updated' => 0, 'skipped' => 3, 'missing' => 0])
+        ->and(CalendarEvent::query()->count())->toBe(2)
+        ->and($moved->fresh()->starts_on->toDateString())->toBe($this->day->addDays(2)->toDateString())
+        ->and($narrowed->fresh()->workspace_id)->toBe($this->workspace->id);
+});
+
+test('an import of the official list counts the imported dates it no longer has', function () {
+    ImportOfficialEvents::handle($this->account);
+    CalendarEvent::factory()->create(['account_id' => $this->account->id, 'key' => 'dropped-day', 'import_key' => 'dropped-day', 'import_date' => $this->day, 'starts_on' => $this->day, 'ends_on' => $this->day]);
+    CalendarEvent::factory()->create(['account_id' => $this->account->id, 'starts_on' => $this->day, 'ends_on' => $this->day]);
+
+    expect(ImportOfficialEvents::handle($this->account)['missing'])->toBe(1);
+
+    $this->actingAs($this->owner)
+        ->post(route('socialhq.plan.events.import'))
+        ->assertSessionHas('flash.banner', fn (string $banner): bool => str_contains($banner, 'One date is no longer in the official list'));
+
+    expect(CalendarEvent::query()->where('key', 'dropped-day')->exists())->toBeTrue();
+});
+
+test('a deleted date can be added again, and stays off the page', function () {
+    $this->actingAs($this->owner)->post(route('socialhq.plan.events.store'), eventPayload($this->day))->assertSessionHasNoErrors();
+    $first = CalendarEvent::query()->sole();
+    $this->actingAs($this->owner)->delete(route('socialhq.plan.events.destroy', $first->id));
+
+    $this->actingAs($this->owner)
+        ->get(route('socialhq.plan.events.index', ['month' => $this->day->format('Y-m')]))
+        ->assertInertia(fn ($page) => $page->has('events', 0));
+
+    $this->actingAs($this->owner)->post(route('socialhq.plan.events.store'), eventPayload($this->day))->assertSessionHasNoErrors();
+    expect(CalendarEvent::query()->count())->toBe(1);
+});
+
+test('a shared date can\'t be of the brand kind', function () {
+    $this->actingAs($this->owner)
+        ->post(route('socialhq.plan.events.store'), eventPayload($this->day, ['brand_only' => false, 'category' => 'brand']))
+        ->assertSessionHasErrors('category');
+
+    expect(CalendarEvent::query()->exists())->toBeFalse();
+});
+
+test('names that make no slug get keys of their own', function () {
+    $this->actingAs($this->owner)->post(route('socialhq.plan.events.store'), eventPayload($this->day, ['name' => '🎉']))->assertSessionHasNoErrors();
+    $this->actingAs($this->owner)->post(route('socialhq.plan.events.store'), eventPayload($this->day, ['name' => '🪔']))->assertSessionHasNoErrors();
+
+    expect(CalendarEvent::query()->pluck('key')->unique())->toHaveCount(2)
+        ->and(CalendarEvent::query()->pluck('key')->every(fn (string $key): bool => str_starts_with($key, 'event-')))->toBeTrue();
+});
+
+test('the import command says when the account id is not one', function () {
+    $this->artisan('socialhq:events:import', ['--account' => 'not-a-uuid'])
+        ->expectsOutputToContain('No account with id not-a-uuid')
+        ->assertFailed();
+});
+
+test('the publish calendar leaves out another brand\'s own dates', function () {
+    $otherBrand = Workspace::factory()->create(['account_id' => $this->account->id, 'user_id' => $this->owner->id]);
+    CalendarEvent::factory()->create(['account_id' => $this->account->id, 'workspace_id' => $otherBrand->id, 'name' => 'Their launch', 'starts_on' => $this->day, 'ends_on' => $this->day]);
+    CalendarEvent::factory()->create(['account_id' => $this->account->id, 'workspace_id' => $this->workspace->id, 'name' => 'Our launch', 'starts_on' => $this->day, 'ends_on' => $this->day]);
+
+    $this->actingAs($this->owner)
+        ->get(route('app.calendar', ['view' => 'month', 'month' => $this->day->toDateString()]))
+        ->assertInertia(fn ($page) => $page->has('shqEvents', 1)
+            ->where("shqEvents.{$this->day->toDateString()}.0.name", 'Our launch')
+            ->has("shqEvents.{$this->day->toDateString()}", 1));
 });

@@ -19,8 +19,9 @@ import { index as eventsIndex } from '@/routes/socialhq/plan/events';
 /**
  * The festivals and holidays of one day of TryPost's publish calendar, read
  * from the page's `shqEvents` prop (BuildCalendarPageProps, PATCHES.md row 60).
- * One small chip with the first name and "+N"; the tooltip lists them all and
- * the chip opens that month on the events page. Unconfirmed dates are dashed.
+ * One small chip with the first name and "+N" (only a dot on phones, so the
+ * header keeps its height); the tooltip and the label list them all, and the
+ * chip opens that month on the events page. Unconfirmed dates are dashed.
  */
 const props = withDefaults(
     defineProps<{
@@ -46,10 +47,6 @@ const allConfirmed = computed(() =>
     events.value.every((event) => event.verified),
 );
 
-const names = computed(() =>
-    events.value.map((event) => event.name).join(', '),
-);
-
 const href = computed(() =>
     eventsIndex.url({ query: { month: props.day.slice(0, 7) } }),
 );
@@ -61,13 +58,27 @@ const href = computed(() =>
             <TooltipTrigger as-child>
                 <Link
                     :href="href"
-                    class="inline-flex h-5 max-w-full min-w-0 items-center gap-1 rounded-full px-1.5 text-[11px] leading-none font-medium transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
-                    :class="
+                    class="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full text-[11px] leading-none font-medium transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                    :class="[
+                        compact ? 'h-4 px-1' : 'h-5 px-1.5',
                         allConfirmed
                             ? categoryBadgeClass(first.category)
-                            : NEEDS_CHECK_CLASS
+                            : NEEDS_CHECK_CLASS,
+                    ]"
+                    :aria-label="
+                        $t('socialhq_events.markers.label', {
+                            names: events
+                                .map((event) =>
+                                    event.verified
+                                        ? event.name
+                                        : $t(
+                                              'socialhq_events.markers.needs_check',
+                                              { name: event.name },
+                                          ),
+                                )
+                                .join(', '),
+                        })
                     "
-                    :aria-label="$t('socialhq_events.markers.label', { names })"
                     :data-testid="`calendar-events-${day}`"
                 >
                     <span
@@ -78,7 +89,7 @@ const href = computed(() =>
                     <span v-if="!compact" class="truncate">{{
                         first.name
                     }}</span>
-                    <span v-if="events.length > 1" class="shrink-0"
+                    <span v-if="!compact && events.length > 1" class="shrink-0"
                         >+{{ events.length - 1 }}</span
                     >
                 </Link>

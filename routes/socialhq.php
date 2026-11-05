@@ -13,11 +13,19 @@ declare(strict_types=1);
 |
 */
 
+use App\SocialHq\Http\Controllers\AccessPendingController;
+use App\SocialHq\Http\Controllers\AccessRequestController;
 use App\SocialHq\Http\Controllers\AiGraphicController;
 use App\SocialHq\Http\Controllers\BrandKnowledgeController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth')->prefix('socialhq')->name('socialhq.')->group(function () {
+    Route::get('access', AccessPendingController::class)->name('access.pending');
+
+    Route::get('access-requests', [AccessRequestController::class, 'index'])->name('access-requests.index');
+    Route::post('access-requests/{accessRequest}/approve', [AccessRequestController::class, 'approve'])->name('access-requests.approve');
+    Route::post('access-requests/{accessRequest}/decline', [AccessRequestController::class, 'decline'])->name('access-requests.decline');
+
     Route::post('ai-graphics', [AiGraphicController::class, 'store'])
         ->middleware('throttle:socialhq-ai-graphics')
         ->name('ai-graphics.store');

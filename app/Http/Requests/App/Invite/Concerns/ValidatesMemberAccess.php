@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\App\Invite\Concerns;
 
+use App\SocialHq\Approval\ApprovalRules;
+
 trait ValidatesMemberAccess
 {
     /**
@@ -28,7 +30,7 @@ trait ValidatesMemberAccess
 
         return [
             'is_admin' => $isAdmin,
-            'requires_approval' => ! $isAdmin && $this->boolean('requires_approval'),
+            'requires_approval' => ! $isAdmin && ($this->boolean('requires_approval') || ApprovalRules::membersAlwaysReviewed()),
         ];
     }
 }

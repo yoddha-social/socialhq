@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models\Traits;
 
 use App\Models\Workspace;
+use App\SocialHq\Approval\ApprovalRules;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\Pivot;
@@ -107,7 +108,7 @@ trait HasWorkspace
         return [
             'is_owner' => $isOwner,
             'is_admin' => $isAdmin,
-            'requires_approval' => ! $isAdmin && (bool) $pivot?->requires_approval,
+            'requires_approval' => ApprovalRules::requiresApproval($this, $isOwner || $pivot !== null, $isAdmin, (bool) $pivot?->requires_approval),
         ];
     }
 
@@ -123,7 +124,7 @@ trait HasWorkspace
 
     public function canPublishDirectlyIn(Workspace $workspace): bool
     {
-        return $this->publishesDirectlyThrough($workspace, $this->workspacePivot($workspace));
+        return ! ApprovalRules::actsAsAgent($this) && $this->publishesDirectlyThrough($workspace, $this->workspacePivot($workspace));
     }
 
     /**
@@ -137,7 +138,7 @@ trait HasWorkspace
 
         return $pivot !== null
             && $workspace->account_id === $this->account_id
-            && ((bool) $pivot->is_admin || ! (bool) $pivot->requires_approval);
+            && ((bool) $pivot->is_admin || ApprovalRules::memberPublishesDirectly((bool) $pivot->requires_approval));
     }
 
     private function workspacePivot(Workspace $workspace): ?Pivot

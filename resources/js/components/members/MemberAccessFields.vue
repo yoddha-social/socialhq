@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { IconInfoCircle } from '@tabler/icons-vue';
 
+import { useMembersAlwaysReviewed } from '@/components/socialhq/approvals';
+import MembersReviewedNote from '@/components/socialhq/MembersReviewedNote.vue';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -21,6 +23,8 @@ const isAdmin = defineModel<boolean>('isAdmin', { required: true });
 const requiresApproval = defineModel<boolean>('requiresApproval', {
     required: true,
 });
+
+const membersAlwaysReviewed = useMembersAlwaysReviewed();
 
 const publishingOptions = [
     { value: 'direct', labelKey: 'settings.members.access.publishes_directly' },
@@ -59,8 +63,9 @@ const selectPublishing = (value: unknown): void => {
             />
         </div>
 
+        <MembersReviewedNote v-if="!isAdmin && membersAlwaysReviewed" />
         <div
-            v-if="!isAdmin"
+            v-else-if="!isAdmin"
             class="grid gap-2"
             data-testid="member-access-publishing"
         >
@@ -122,7 +127,11 @@ const selectPublishing = (value: unknown): void => {
         <input
             type="hidden"
             name="requires_approval"
-            :value="!isAdmin && requiresApproval ? '1' : '0'"
+            :value="
+                !isAdmin && (requiresApproval || membersAlwaysReviewed)
+                    ? '1'
+                    : '0'
+            "
         />
     </div>
 </template>

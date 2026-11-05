@@ -35,5 +35,8 @@
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="SOCIALHQ_AI_GATEWAY" value="direct"/>
         <env name="SOCIALHQ_AI_APPROVED_PROVIDERS" value="openai,anthropic,gemini"/>
+        <!-- Social HQ: upstream tests expect TryPost's own approval rules; ours switch them on. -->
+        <env name="SOCIALHQ_MEMBERS_ALWAYS_REVIEWED" value="false"/>
+        <env name="SOCIALHQ_AGENT_POSTS_REVIEWED" value="false"/>
     </php>
 </phpunit>

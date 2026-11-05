@@ -6,6 +6,7 @@ import { computed, ref } from 'vue';
 import LegalLinks from '@/components/auth/LegalLinks.vue';
 import SocialLogin from '@/components/auth/SocialLogin.vue';
 import InputError from '@/components/InputError.vue';
+import { useSignupOpen } from '@/components/socialhq/signup';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -41,6 +42,8 @@ const togglePasswordVisibility = (): void => {
 
 const page = usePage();
 const isSelfHosted = computed(() => Boolean(page.props.selfHosted));
+// Social HQ: company emails may sign up on a self-hosted install too.
+const signupOpen = useSignupOpen();
 const pageErrors = usePageErrors();
 </script>
 
@@ -169,7 +172,7 @@ const pageErrors = usePageErrors();
             </Form>
 
             <p
-                v-if="!isSelfHosted"
+                v-if="!isSelfHosted || signupOpen"
                 class="text-center text-sm text-muted-foreground"
             >
                 {{ $t('auth.login.no_account') }}

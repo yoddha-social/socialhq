@@ -1,0 +1,17 @@
+<x-main>
+  <x-message authenticated="true">
+    <x-heading>
+      @{{ __('socialhq.signup.mail.approved.heading') }}
+    </x-heading>
+
+    <p class="m-0 leading-6">
+      @{{ __('socialhq.signup.mail.approved.body', ['workspaces' => $workspaceNames]) }}
+    </p>
+
+    <x-spacer height="24px" />
+
+    <x-button href="@{{ $url }}">
+      @{{ __('socialhq.signup.mail.approved.button') }}
+    </x-button>
+  </x-message>
+</x-main>

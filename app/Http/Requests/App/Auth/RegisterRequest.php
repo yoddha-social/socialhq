@@ -9,6 +9,7 @@ use App\Enums\User\TimeFormat;
 use App\Enums\User\WeekStart;
 use App\Models\Invite;
 use App\Models\User;
+use App\SocialHq\Signup\SignupRules;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -58,6 +59,13 @@ class RegisterRequest extends FormRequest
                     'email',
                     __('settings.members.flash.wrong_email'),
                 );
+            }
+
+            // Social HQ: without an invite (posted or kept in the session), only listed emails sign up.
+            $hasInvite = $invite !== null || Invite::fromId((string) $this->session()->get('pending_invite_id')) !== null;
+
+            if (! $hasInvite && config('trypost.self_hosted') && ! SignupRules::allows($this->string('email')->toString())) {
+                $validator->errors()->add('email', __('socialhq.signup.not_allowed'));
             }
         });
     }

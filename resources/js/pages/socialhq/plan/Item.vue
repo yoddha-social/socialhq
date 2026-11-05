@@ -59,6 +59,7 @@ const useVersion = (version: CopyVersion): void => {
                         :item="item"
                         :latest="latest"
                         :abilities="abilities"
+                        :ai-available="aiAvailable"
                     />
                     <VersionHistory
                         :versions="versions"

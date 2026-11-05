@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { router, useForm, usePage } from '@inertiajs/vue3';
+import { router, useForm, useHttp, usePage } from '@inertiajs/vue3';
 import {
     IconCheck,
     IconLock,
     IconMessageReport,
     IconSend,
+    IconSparkles,
 } from '@tabler/icons-vue';
-import { computed, ref, watch } from 'vue';
+import { trans } from 'laravel-vue-i18n';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { toast } from 'vue-sonner';
 
 import ReviewDecisionDialog from '@/components/socialhq/plan/item/ReviewDecisionDialog.vue';
 import type {
@@ -19,10 +22,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { characterCount } from '@/lib/characters';
+import { extractErrorMessage } from '@/lib/httpError';
 import {
     approve as approveCopy,
     requestChanges as requestCopyChanges,
     submit as submitCopy,
+    ai as writeWithAi,
 } from '@/routes/socialhq/plan/items/copy';
 import { store as storeVersion } from '@/routes/socialhq/plan/items/versions';
 
@@ -30,6 +35,7 @@ const props = defineProps<{
     item: PlanItemDetail;
     latest: CopyVersion | null;
     abilities: PlanAbilities;
+    aiAvailable: boolean;
 }>();
 
 type CopyFields = {
@@ -116,6 +122,47 @@ const loadVersion = (version: CopyVersion): void => {
 
 defineExpose({ loadVersion });
 
+const aiHttp = useHttp<Record<string, never>, { number: number }>({});
+const aiError = ref('');
+
+/** AI writes from the saved copy, so it waits for unsaved edits to be saved or discarded. */
+const showAi = computed(
+    () => props.aiAvailable && props.abilities.canWork && !isLocked.value,
+);
+
+onBeforeUnmount(() => {
+    aiHttp.cancel();
+});
+
+const writeCopyWithAi = async (): Promise<void> => {
+    if (aiHttp.processing || form.isDirty) {
+        return;
+    }
+
+    aiError.value = '';
+
+    try {
+        const result = await aiHttp.post(writeWithAi.url(props.item.id));
+
+        if (!result) {
+            aiError.value = trans('socialhq_production.item.copy.ai_failed');
+
+            return;
+        }
+
+        router.reload({ only: ['item', 'versions', 'thread'] });
+        toast.success(
+            trans('socialhq_production.item.copy.ai_written', {
+                number: String(result.number),
+            }),
+        );
+    } catch (exception) {
+        aiError.value =
+            extractErrorMessage(exception) ??
+            trans('socialhq_production.item.copy.ai_failed');
+    }
+};
+
 const submitting = ref(false);
 
 const sendForReview = (): void => {
@@ -196,7 +243,27 @@ const confirmDecision = (note: string): void => {
             >
                 {{ $t('socialhq_production.item.copy.title') }}
             </h2>
-            <slot name="ai" :locked="isLocked" />
+            <Button
+                v-if="showAi"
+                variant="ghost"
+                class="min-w-36 bg-primary-subtle text-primary-text hover:bg-primary-subtle/80"
+                :loading="aiHttp.processing"
+                :disabled="form.isDirty"
+                :title="
+                    form.isDirty
+                        ? $t('socialhq_production.item.copy.ai_save_first')
+                        : undefined
+                "
+                data-testid="item-copy-ai"
+                @click="writeCopyWithAi"
+            >
+                <IconSparkles />
+                {{
+                    latest
+                        ? $t('socialhq_production.item.copy.rewrite_ai')
+                        : $t('socialhq_production.item.copy.write_ai')
+                }}
+            </Button>
         </header>
 
         <p
@@ -204,7 +271,11 @@ const confirmDecision = (note: string): void => {
             class="px-5 pt-2 text-sm text-muted-foreground"
             data-testid="item-copy-empty"
         >
-            {{ $t('socialhq_production.item.copy.empty') }}
+            {{
+                showAi
+                    ? $t('socialhq_production.item.copy.empty_ai')
+                    : $t('socialhq_production.item.copy.empty')
+            }}
         </p>
 
         <div
@@ -361,7 +432,15 @@ const confirmDecision = (note: string): void => {
             data-testid="item-copy-actions"
         >
             <p class="min-w-0 text-xs text-muted-foreground">
-                <span v-if="copyError" class="text-destructive-text">
+                <span
+                    v-if="aiError"
+                    class="text-destructive-text"
+                    role="alert"
+                    data-testid="item-copy-ai-error"
+                >
+                    {{ aiError }}
+                </span>
+                <span v-else-if="copyError" class="text-destructive-text">
                     {{ copyError }}
                 </span>
                 <span v-else-if="form.isDirty">

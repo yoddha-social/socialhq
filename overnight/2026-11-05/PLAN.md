@@ -21,14 +21,14 @@ Status: `todo` · `doing` · `review` · `done`
   that replace the old key, deploy check reads GEMINI_PAID_API_KEY
 
 ## 2. Features
-- doing (lane overnight/events, brief briefs/events.md) — Events calendar (verified-dates dataset, review in app, overlay on the calendar)
-- doing (lane overnight/plan) — Monthly content plan (AI planner, edit, approve, turn into ideas/posts)
-- doing (lane overnight/production) — Scripts & captions (versions, reviews)
-- todo (same lane) — Briefs + production board (graphic/video, revisions, final approval, attach to post)
-- todo — Performance feedback into the next plan (if time; else SUGGESTIONS.md)
+- done — Events calendar (verified-dates dataset, review in app, overlay on the calendar)
+- done — Monthly content plan (AI planner, edit, approve, turn into ideas/posts)
+- done — Scripts & captions (versions, reviews)
+- done — Briefs + production board (graphic/video, revisions, final approval, attach to post)
+- done — Performance feedback (planner context + "What worked lately" panel)
 
 ## 3. Polish & review passes
-- todo — independent review per feature, browser pass per page, full suite, final log
+- done — independent review per feature, cross-cutting review, second pass on fixes, copy review, browser passes, full suite, final log
 
 ## Foundation
 - done — tables/models/factories/PlanAccess/routes/tabs/sidebar item (commit 62e51b3f)

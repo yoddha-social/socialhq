@@ -3,6 +3,49 @@
 What changed, where, and how it was tested. Short on purpose; the details are in the
 commits on `socialhq/overnight-2026-11-05`.
 
+## Start here (2 minutes)
+
+**What you can try now** (local stack, http://localhost:8000, log in with the test
+admin from `trypost/local/test-account.env`):
+1. **Plan › Events:** 193 official and international dates, all "Needs check".
+   - Confirm a few. The AI plans only around confirmed dates.
+   - The publish calendar now shows them on each day.
+2. **Plan › Content plan:**
+   - Pick a month and use **Generate with AI**: the AI drafts the month in about 15 to
+     40 seconds.
+   - Accept or drop suggestions, use **Brand settings** (the sliders icon) for pillars
+     and posts per week, then **Send for review** and **Approve plan**.
+   - December 2026 already has a live AI draft in both test workspaces.
+3. **Open an item:**
+   - **Write with AI** writes the copy. Send it for review, then approve it.
+   - **Create brief**, then **Draft brief with AI**.
+   - Upload a file, send the creative for review, approve it, then **Create post**: it
+     opens the composer filled in.
+4. **Plan › Production:** the board of briefs.
+5. **Settings › Brand knowledge:** shows what reaches the AI, with "Always use" pins.
+
+**Needs you:**
+- **Merging:** PR [yoddha-social/socialhq#14](https://github.com/yoddha-social/socialhq/pull/14)
+  (draft, into the checkpoint branch) and `socialhq-deploy` PR #1 (LiteLLM). Nothing
+  went into `main`.
+- **Mistral:** your account allows 0 requests a minute. Check the plan and Limits at
+  console.mistral.ai, and switch off Admin › Privacy › "Anonymous improvement data".
+  See SUGGESTIONS.md.
+- **Deploy:** creative files live on the app's private storage, so keep
+  `storage/app/private` on a persistent volume and add it to backups.
+- **Translations:** new copy is English in all 16 locales.
+- Everything else I'd do next is in `SUGGESTIONS.md`.
+
+**Decisions I made for you** (change any of them):
+- Members can plan, write copy and upload. Approving (plans, copy, creatives, brand
+  dates) follows "who approves posts".
+- Dates shared by every brand are changed only by the account owner, or by someone who
+  approves in every brand.
+- Starting work on an AI suggestion accepts it, so a new draft never deletes work.
+- The AI may plan only around confirmed events; no dates in the past.
+- Mistral sits in the free chain after Groq and Cloudflare, priced at zero. If your key
+  is on a paid plan, move it to the paid groups.
+
 ## Branches
 - `socialhq/checkpoint-2026-11-05`: everything that existed (open PRs #3, #5–#13
   combined, merge conflicts resolved). Pushed. Module + unit tests: 2070 passed. Full

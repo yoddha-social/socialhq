@@ -32,7 +32,7 @@ const MAX_POLLS = 300;
 type Phase = 'idle' | 'checking' | 'generating';
 
 interface AiGraphicsProps {
-    aiGraphics?: { maxReferences?: number };
+    aiGraphics?: { maxReferences?: number; maxReferenceKilobytes?: number };
 }
 
 const open = defineModel<boolean>('open', { required: true });
@@ -46,6 +46,11 @@ const maxReferences = computed(
     () =>
         (page.props.socialhq as AiGraphicsProps | undefined)?.aiGraphics
             ?.maxReferences ?? 3,
+);
+const maxKilobytes = computed(
+    () =>
+        (page.props.socialhq as AiGraphicsProps | undefined)?.aiGraphics
+            ?.maxReferenceKilobytes ?? 10240,
 );
 
 const http = useHttp<
@@ -144,14 +149,23 @@ onBeforeUnmount(() => {
     clearPreviews();
 });
 
-const addReferences = (event: Event): void => {
-    const input = event.target as HTMLInputElement;
-    const picked = Array.from(input.files ?? []);
-    input.value = '';
+const addFiles = (picked: File[]): void => {
+    if (busy.value || picked.length === 0) {
+        return;
+    }
+
     message.value = null;
 
     if (picked.some((file) => !ACCEPTED_TYPES.includes(file.type))) {
         message.value = trans('socialhq.ai_graphics.errors.reference_type');
+
+        return;
+    }
+
+    if (picked.some((file) => file.size > maxKilobytes.value * 1024)) {
+        message.value = trans('socialhq.ai_graphics.errors.reference_size', {
+            size: String(Math.round(maxKilobytes.value / 1024)),
+        });
 
         return;
     }
@@ -170,6 +184,58 @@ const addReferences = (event: Event): void => {
         ...previews.value,
         ...picked.map((file) => URL.createObjectURL(file)),
     ];
+};
+
+const addReferences = (event: Event): void => {
+    const input = event.target as HTMLInputElement;
+    const picked = Array.from(input.files ?? []);
+    input.value = '';
+    addFiles(picked);
+};
+
+const canAddMore = computed(
+    () => !busy.value && http.references.length < maxReferences.value,
+);
+
+// Drag and drop: the counter keeps the highlight while the pointer moves
+// over the zone's children.
+const dragDepth = ref(0);
+const dragging = computed(() => dragDepth.value > 0);
+
+const onDragEnter = (): void => {
+    dragDepth.value++;
+};
+
+const onDragLeave = (): void => {
+    dragDepth.value = Math.max(0, dragDepth.value - 1);
+};
+
+const onDrop = (event: DragEvent): void => {
+    dragDepth.value = 0;
+
+    if (!canAddMore.value) {
+        return;
+    }
+
+    addFiles(Array.from(event.dataTransfer?.files ?? []));
+};
+
+const browse = (): void => {
+    if (canAddMore.value) {
+        fileInput.value?.click();
+    }
+};
+
+// Pasting an image anywhere in the dialog adds it too.
+const onPaste = (event: ClipboardEvent): void => {
+    const images = Array.from(event.clipboardData?.files ?? []).filter((file) =>
+        file.type.startsWith('image/'),
+    );
+
+    if (images.length > 0) {
+        event.preventDefault();
+        addFiles(images);
+    }
 };
 
 const removeReference = (index: number): void => {
@@ -270,7 +336,7 @@ const submit = async (): Promise<void> => {
                 </DialogDescription>
             </DialogHeader>
 
-            <form class="grid gap-4" @submit.prevent="submit">
+            <form class="grid gap-4" @submit.prevent="submit" @paste="onPaste">
                 <div class="grid gap-2">
                     <Label for="socialhq-ai-graphic-prompt">{{
                         $t('socialhq.ai_graphics.prompt_label')
@@ -299,7 +365,56 @@ const submit = async (): Promise<void> => {
                     <Label>{{
                         $t('socialhq.ai_graphics.references_label')
                     }}</Label>
-                    <div class="flex flex-wrap gap-2">
+                    <div
+                        role="button"
+                        :tabindex="canAddMore ? 0 : -1"
+                        :aria-disabled="!canAddMore"
+                        :class="[
+                            'flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed px-4 py-6 text-center transition-control',
+                            dragging && canAddMore
+                                ? 'border-primary bg-primary-subtle text-primary-text'
+                                : 'border-border text-muted-foreground',
+                            canAddMore
+                                ? 'cursor-pointer hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring'
+                                : 'cursor-not-allowed opacity-60',
+                        ]"
+                        data-testid="socialhq-ai-graphic-drop-zone"
+                        @click="browse"
+                        @keydown.enter.prevent="browse"
+                        @keydown.space.prevent="browse"
+                        @dragenter.prevent.stop="onDragEnter"
+                        @dragover.prevent.stop
+                        @dragleave.prevent.stop="onDragLeave"
+                        @drop.prevent.stop="onDrop"
+                    >
+                        <IconPhotoPlus class="size-6" />
+                        <span class="text-sm font-medium text-foreground">
+                            {{
+                                !canAddMore && !busy
+                                    ? $t('socialhq.ai_graphics.drop_full', {
+                                          count: String(maxReferences),
+                                      })
+                                    : dragging
+                                      ? $t('socialhq.ai_graphics.drop_active')
+                                      : $t('socialhq.ai_graphics.drop_title')
+                            }}
+                        </span>
+                        <span class="text-xs">
+                            {{
+                                $t('socialhq.ai_graphics.drop_hint', {
+                                    count: String(maxReferences),
+                                    size: String(
+                                        Math.round(maxKilobytes / 1024),
+                                    ),
+                                })
+                            }}
+                        </span>
+                    </div>
+                    <div
+                        v-if="previews.length > 0"
+                        class="flex flex-wrap gap-2"
+                        data-testid="socialhq-ai-graphic-references"
+                    >
                         <div
                             v-for="(preview, index) in previews"
                             :key="preview"
@@ -329,17 +444,6 @@ const submit = async (): Promise<void> => {
                                 <IconX class="size-3" />
                             </button>
                         </div>
-                        <button
-                            v-if="http.references.length < maxReferences"
-                            type="button"
-                            class="flex size-16 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border text-xs text-muted-foreground hover:bg-accent"
-                            :disabled="busy"
-                            data-testid="socialhq-ai-graphic-add-reference"
-                            @click="fileInput?.click()"
-                        >
-                            <IconPhotoPlus class="size-4" />
-                            {{ $t('socialhq.ai_graphics.add_reference') }}
-                        </button>
                     </div>
                     <input
                         ref="fileInput"

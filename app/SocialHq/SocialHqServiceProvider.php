@@ -39,6 +39,7 @@ class SocialHqServiceProvider extends ServiceProvider
                     return $user instanceof User && $user->currentWorkspace !== null && AiGraphics::canUse($user, $user->currentWorkspace);
                 })(),
                 'maxReferences' => (int) config('socialhq.ai_graphics.max_reference_images', 3),
+                'maxReferenceKilobytes' => (int) config('socialhq.ai_graphics.max_reference_kilobytes', 10240),
             ],
         ]);
     }

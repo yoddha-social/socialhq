@@ -101,6 +101,7 @@ return [
         'title' => 'You haven\'t added any dates yet',
         'description' => 'To plan around festivals and holidays, use Import official dates. You confirm each date before the AI uses it.',
         'description_member' => 'To plan around festivals and holidays, a workspace admin needs to add the dates.',
+        'description_brand' => 'To plan around festivals and holidays, the account owner imports the official dates. You can add this brand\'s own dates with Add a date.',
         'none' => 'No dates in this period',
         'none_hint' => 'Try another month, or the next 90 days.',
         'none_hint_upcoming' => 'Pick Month to see other months.',

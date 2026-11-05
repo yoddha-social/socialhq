@@ -348,9 +348,15 @@ const confirmDelete = (): void => {
                         v-if="!hasEvents"
                         :title="$t('socialhq_events.empty.title')"
                         :description="
-                            abilities.canApprove
+                            abilities.canManageSharedEvents
                                 ? $t('socialhq_events.empty.description')
-                                : $t('socialhq_events.empty.description_member')
+                                : abilities.canApprove
+                                  ? $t(
+                                        'socialhq_events.empty.description_brand',
+                                    )
+                                  : $t(
+                                        'socialhq_events.empty.description_member',
+                                    )
                         "
                         data-testid="socialhq-events-first-use"
                     >

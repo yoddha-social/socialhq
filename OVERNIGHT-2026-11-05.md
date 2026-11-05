@@ -61,3 +61,14 @@ commits on `socialhq/overnight-2026-11-05`.
     fixed;
   - members see a read-only page that says who can edit it.
   - Tested: 13 tests (7 new).
+- **Events** (Plan › Events, `/socialhq/plan/events`):
+  - every festival, holiday and day for the month or the next 90 days, with filters
+    (Nepal, International, This brand only, Needs check);
+  - "Import official dates" loads the 196 researched dates, all marked "Needs check";
+    an admin confirms each one ("Confirmed by …"), edits it, deletes it or adds a
+    brand-only date;
+  - the publish calendar shows event chips on each day (dashed when not confirmed).
+  - Tested: 17 tests.
+  - Browser: imported 193 rows (3 overlap between the two files), confirmed one, saw the
+    calendar chips. Research notes showed as descriptions, so the importer now shows
+    readable notes and short source names.

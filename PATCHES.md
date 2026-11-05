@@ -12,6 +12,7 @@ whenever you touch an upstream file; keep each edit as small as possible.
 | 3 | `README.md` | Short Social HQ note at the top | Says what this fork is and where our docs are |
 | 6 | `resources/js/types/command-palette.ts` | Adds the `workspaces` group (1 line) | Command palette entries to switch workspace |
 | 7 | `resources/js/components/command-palette/CommandPaletteContent.vue` | Adds `socialhq/workspaceCommandEntries.ts` entries to the palette, shown while searching (5 lines) | Same |
+| 13 | `resources/js/components/posts/composer/MediaSourceMenu.vue` | Adds `socialhq/AiGraphicMenuItem.vue` under "Upload from computer" and `socialhq/AiGraphicDialog.vue` after the menu (9 lines) | "Generate with AI" graphics in the media menu of ideas and posts (rows 8–12 are in the approval-gate branch) |
 
 Files we **added** (no merge risk) aren't listed here; they're under the
 module paths in SOCIALHQ.md, plus `config/socialhq.php`,

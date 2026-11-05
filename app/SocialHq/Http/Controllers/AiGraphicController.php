@@ -1,0 +1,89 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\SocialHq\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\SocialHq\AiGraphics\AiGraphic;
+use App\SocialHq\AiGraphics\AiGraphics;
+use App\SocialHq\AiGraphics\GenerateAiGraphic;
+use App\SocialHq\AiGraphics\GraphicFormat;
+use App\SocialHq\AiGraphics\VisionCheck;
+use App\SocialHq\Http\Requests\StoreAiGraphicRequest;
+use App\Support\MediaImportStatus;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Laravel\Ai\Files\Image;
+use Symfony\Component\HttpFoundation\Response;
+
+/**
+ * "Generate with AI" in the media menu. The request is vision-checked while
+ * the person waits; the graphic is generated (and checked again) in the
+ * background as a media import, which the composer attaches when done.
+ */
+class AiGraphicController extends Controller
+{
+    public function store(StoreAiGraphicRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        $workspace = $user->currentWorkspace;
+
+        abort_unless($workspace !== null && AiGraphics::canUse($user, $workspace), Response::HTTP_FORBIDDEN);
+
+        if (! AiGraphics::workspaceHasQuota($workspace)) {
+            throw ValidationException::withMessages(['prompt' => __('socialhq.ai_graphics.errors.daily_limit')]);
+        }
+
+        $prompt = trim((string) $request->validated('prompt'));
+        /** @var list<UploadedFile> $files */
+        $files = array_values($request->file('references', []));
+
+        $blocked = VisionCheck::review($prompt, array_map(fn (UploadedFile $file): Image => Image::fromUpload($file), $files));
+
+        $graphic = AiGraphic::query()->create([
+            'workspace_id' => $workspace->id,
+            'user_id' => $user->id,
+            'import_id' => (string) Str::uuid(),
+            'prompt' => $prompt,
+            'format' => GraphicFormat::from((string) $request->validated('format')),
+            'reference_count' => count($files),
+            'provider' => AiGraphics::provider(),
+            'model' => AiGraphics::model(),
+            'status' => $blocked === null ? AiGraphic::PENDING : AiGraphic::BLOCKED,
+            'reason' => $blocked,
+        ]);
+
+        if ($blocked !== null) {
+            throw ValidationException::withMessages(['prompt' => $blocked]);
+        }
+
+        $paths = array_map(fn (UploadedFile $file): string => $file->store('socialhq/ai-graphics', 'local'), $files);
+
+        MediaImportStatus::pending($graphic->import_id, $user->id, $workspace->id);
+        GenerateAiGraphic::dispatch($graphic->id, $paths);
+
+        return response()->json(['import_id' => $graphic->import_id], Response::HTTP_ACCEPTED);
+    }
+
+    public function show(Request $request, string $import): JsonResponse
+    {
+        $user = $request->user();
+
+        $graphic = AiGraphic::query()
+            ->where('import_id', $import)
+            ->where('user_id', $user->id)
+            ->where('workspace_id', $user->current_workspace_id)
+            ->first();
+
+        abort_if($graphic === null, Response::HTTP_NOT_FOUND);
+
+        return response()->json([
+            'status' => $graphic->status,
+            'reason' => $graphic->reason,
+        ]);
+    }
+}

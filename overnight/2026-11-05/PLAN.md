@@ -44,3 +44,8 @@ Status: `todo` · `doing` · `review` · `done`
   check its wording once the planner fix lands.
 - AI copy said "Click the shop link now!" with no link in the brand data: CopyWriter must
   not invent links/CTAs that need a URL it wasn't given.
+- Plan tabs on mobile: the grid/list toggle sits over the tabs ("Events" cut off); move
+  the toggle into the month toolbar row on small screens.
+- Item page review thread: the "About" select is too narrow ("The item" clipped).
+- Item page "Create post" when blocked: make the disabled state obvious (muted, not
+  primary-tinted) next to its reason.

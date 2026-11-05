@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Ai\Agents;
 
 use App\Enums\User\Locale;
+use App\SocialHq\Ai\AiTask;
+use App\SocialHq\Ai\UsesAiTask;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Contracts\Agent;
@@ -15,6 +17,7 @@ use Laravel\Ai\Promptable;
 class IdeaGenerator implements Agent, HasStructuredOutput
 {
     use Promptable;
+    use UsesAiTask;
 
     public function __construct(
         public Locale $locale,
@@ -22,6 +25,14 @@ class IdeaGenerator implements Agent, HasStructuredOutput
         public string $audience,
         public ?string $notes = null,
     ) {}
+
+    /**
+     * Social HQ: where AiRouter sends this agent's calls.
+     */
+    public function aiTask(): AiTask
+    {
+        return AiTask::Structured;
+    }
 
     public function instructions(): string
     {

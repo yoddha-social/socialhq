@@ -15,7 +15,6 @@ the worked example.
    the result is data). One agent per job, inside the feature's folder.
 2. **Prompts live in Blade** in a `socialhq/` folder under `resources/views/prompts/`; `instructions()`
    returns `view(...)->render()`. No `<<<PROMPT` heredocs or long strings in PHP.
-   (`GraphicSafetyReviewer` still has a heredoc: move it when you next touch it.)
 3. **Language**: new text is written in `Locale::promptLanguage()` of the user the call
    runs for; rewrites keep the text's own language.
 4. **Web only.** No REST endpoint or MCP tool calls an AI agent (AGENTS.md).
@@ -40,15 +39,17 @@ the worked example.
 
 Text, vision, image and embedding calls go through the LiteLLM gateway as an
 OpenAI-compatible provider, by task model group: `shq-write`, `shq-structured`,
-`shq-vision`, `shq-image`, `shq-embed`. LiteLLM tries free providers first (Cerebras,
-Groq with zero data retention, Cloudflare Workers AI; OpenRouter `:free` only with
-privacy filters) and falls back to paid Gemini, capped at $25 a month.
+`shq-vision`, `shq-image`, `shq-embed`. LiteLLM tries free providers first (Groq
+with zero data retention, then Cloudflare Workers AI; OpenRouter `:free` only with
+privacy filters; not Cerebras, whose free tier became a card-gated trial) and falls back to paid Gemini, capped at $25 a month.
 
 - **Never** a provider that trains on or human-reviews prompts: no Gemini free tier, no
   Mistral free. Every provider in the chain is approved for company data, so there is
   no public/confidential split (the Rails reference had one; it is historical).
 - Free image generation calls Cloudflare Workers AI directly (LiteLLM cannot route it).
 
-**As built today:** check `config/ai.php` and `config/socialhq.php`. AI graphics call
-the configured provider directly (`SOCIALHQ_AI_GRAPHICS_PROVIDER`, default `gemini`).
-If the LiteLLM provider is not wired yet, say so instead of assuming it.
+**As built:** `app/SocialHq/Ai/`. An agent uses the `UsesAiTask` trait and returns its
+`AiTask` from `aiTask()`; never pass `provider:` or `model:` to `prompt()`. Image and
+embedding calls pass `AiRouter::route(AiTask::Image)` (or `Embed`) to `generate()`. A
+new kind of job is a new `AiTask` case plus a LiteLLM group `shq-<task>`. Free images
+through Cloudflare are not built yet: `shq-image` is paid Gemini only.

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\SocialHq;
 
 use App\Models\User;
+use App\SocialHq\Ai\AiRouter;
+use App\SocialHq\Ai\AiRoutesCommand;
 use App\SocialHq\AiGraphics\AiGraphics;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -22,9 +24,18 @@ use Inertia\Inertia;
  */
 class SocialHqServiceProvider extends ServiceProvider
 {
+    public function register(): void
+    {
+        AiRouter::registerGateway();
+    }
+
     public function boot(): void
     {
         $this->loadMigrationsFrom(database_path('migrations/socialhq'));
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([AiRoutesCommand::class]);
+        }
 
         Route::middleware('web')->group(base_path('routes/socialhq.php'));
 

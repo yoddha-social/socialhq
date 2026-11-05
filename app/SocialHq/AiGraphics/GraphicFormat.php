@@ -15,9 +15,13 @@ enum GraphicFormat: string
     case Story = 'story';
     case Landscape = 'landscape';
 
-    public function aspectRatio(string $provider): string
+    /**
+     * Gemini takes social media ratios; the OpenAI-style drivers (LiteLLM's
+     * images endpoint too) take only square, 2:3 and 3:2.
+     */
+    public function aspectRatio(?string $driver): string
     {
-        $gemini = $provider === 'gemini';
+        $gemini = $driver === 'gemini';
 
         return match ($this) {
             self::Square => '1:1',

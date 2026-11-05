@@ -11,7 +11,8 @@ adds the planning and AI layer:
 - AI monthly calendar drafts from brand profiles, verified events and past
   posts, checked before anything is saved;
 - ideas, scripts and creative briefs, with review and approval;
-- AI through a LiteLLM gateway, failing closed for confidential data.
+- AI through a LiteLLM gateway: free providers first, paid Gemini last, only
+  providers that don't train on prompts.
 
 ## Where our code lives
 
@@ -34,20 +35,47 @@ which also logs the monthly security intake (we take TryPost's security fixes,
 not its feature releases). Follow the conventions in [AGENTS.md](AGENTS.md)
 (Laravel Boost, Pest, Pint, Inertia v3, Wayfinder).
 
+## AI routing
+
+Every AI call names a task (`App\SocialHq\Ai\AiTask`): `write` (captions,
+rewrites, shortening), `structured` (ideas), `vision` (alt text, the graphics
+safety check), `image` and `embed`. `AiRouter` turns the task into the
+providers the SDK tries in order. Agents get it from the `UsesAiTask` trait;
+TryPost's four agents carry it too (PATCHES.md row 15). Code:
+`app/SocialHq/Ai/`, settings in `config/socialhq.php` ("ai").
+
+- **Gateway** (`SOCIALHQ_AI_GATEWAY=litellm`, production): each task goes to
+  its LiteLLM model group (`shq-write`, `shq-structured`, `shq-vision`,
+  `shq-image`, `shq-embed`) with the app's virtual key (`LITELLM_API_KEY`).
+  LiteLLM tries Groq and Cloudflare Workers AI first and falls back
+  to paid Gemini; the key's budget ($25 every 30 days) caps paid spending.
+  The groups live in `socialhq-deploy/litellm/config.yaml`.
+- **Direct** (the default; tests and development): the SDK calls providers
+  from `config/ai.php` with their own keys. `SOCIALHQ_AI_ROUTE_<TASK>` sets a
+  route ("provider:model,provider", tried in order on rate limits and
+  overload); without one, a task uses the SDK's default provider (images:
+  Gemini).
+- **Approved providers only** (`SOCIALHQ_AI_APPROVED_PROVIDERS`, default the
+  two LiteLLM entries). Any other target is dropped, so a key for a provider
+  that trains on prompts (the Gemini or Mistral free tier) is never called.
+- `php artisan socialhq:ai-routes` shows each task's targets and why one is
+  unused; `--live` sends a small request through each (`--images` adds one
+  image).
+- Per-call records are LiteLLM's spend logs (its admin UI on port 4000), not
+  a table in the app: AGENTS.md keeps TryPost free of AI usage recording.
+
 ## AI graphics
 
 "Generate with AI" in the media menu of ideas and posts makes a still graphic
-(no video) from a prompt and up to 3 reference images, with an image model
-(`SOCIALHQ_AI_GRAPHICS_PROVIDER`, default `gemini`; needs `GEMINI_API_KEY`).
-The finished graphic arrives through TryPost's media import, like an
+(no video) from a prompt and up to 3 reference images, through the `image`
+task. The finished graphic arrives through TryPost's media import, like an
 Unsplash pick. Code: `app/SocialHq/AiGraphics/`.
 
 The vision gate, which fails closed:
 
 1. Reference images must be real JPEG, PNG or WebP bitmaps, checked by
    content (SVG is refused), 64 to 8192 px, up to 10 MB, at most 3.
-2. A vision model (the default text provider, or
-   `SOCIALHQ_AI_GRAPHICS_VISION_PROVIDER`) reviews the prompt and the
+2. A vision model (the `vision` task) reviews the prompt and the
    reference images before anything is generated, and the generated
    graphic before it is stored. It blocks misleading use of real people,
    other brands' logos, fake documents, sexual or violent content and the

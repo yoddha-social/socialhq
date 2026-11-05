@@ -19,9 +19,11 @@ beforeEach(function () {
     Storage::fake('local');
     config([
         'socialhq.ai_graphics.enabled' => true,
-        'socialhq.ai_graphics.provider' => 'gemini',
+        'socialhq.ai.gateway' => 'direct',
+        'socialhq.ai.approved_providers' => ['gemini', 'anthropic'],
+        'socialhq.ai.routes.image' => 'gemini',
+        'socialhq.ai.routes.vision' => 'anthropic',
         'socialhq.ai_graphics.vision_check' => true,
-        'socialhq.ai_graphics.vision_provider' => 'anthropic',
         'socialhq.ai_graphics.per_workspace_per_day' => 100,
         'ai.providers.gemini.key' => 'test-gemini-key',
         'ai.providers.anthropic.key' => 'test-anthropic-key',

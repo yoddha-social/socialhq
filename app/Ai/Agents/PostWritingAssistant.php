@@ -7,6 +7,8 @@ namespace App\Ai\Agents;
 use App\Enums\Ai\PostAssistantMode;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
+use App\SocialHq\Ai\AiTask;
+use App\SocialHq\Ai\UsesAiTask;
 use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Promptable;
@@ -15,6 +17,7 @@ use Laravel\Ai\Promptable;
 class PostWritingAssistant implements Agent
 {
     use Promptable;
+    use UsesAiTask;
 
     public function __construct(
         public PostAssistantMode $mode,
@@ -24,6 +27,14 @@ class PostWritingAssistant implements Agent
         public ?string $previousContent = null,
         public ?int $hardMaxChars = null,
     ) {}
+
+    /**
+     * Social HQ: where AiRouter sends this agent's calls.
+     */
+    public function aiTask(): AiTask
+    {
+        return AiTask::Write;
+    }
 
     public function instructions(): string
     {

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Ai\Agents;
 
+use App\SocialHq\Ai\AiTask;
+use App\SocialHq\Ai\UsesAiTask;
 use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Promptable;
@@ -12,11 +14,20 @@ use Laravel\Ai\Promptable;
 class PostContentShortener implements Agent
 {
     use Promptable;
+    use UsesAiTask;
 
     public function __construct(
         public string $platformLabel,
         public int $limit,
     ) {}
+
+    /**
+     * Social HQ: where AiRouter sends this agent's calls.
+     */
+    public function aiTask(): AiTask
+    {
+        return AiTask::Write;
+    }
 
     public function instructions(): string
     {

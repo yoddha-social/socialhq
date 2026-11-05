@@ -6,35 +6,25 @@ namespace App\SocialHq\AiGraphics;
 
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Ai\AiRouter;
+use App\SocialHq\Ai\AiTask;
 
 /**
  * Whether "Generate with AI" is offered, and how much it may be used.
  */
 final class AiGraphics
 {
-    public static function provider(): string
-    {
-        return (string) config('socialhq.ai_graphics.provider', 'gemini');
-    }
-
-    public static function model(): ?string
-    {
-        return config('socialhq.ai_graphics.model') ?: null;
-    }
-
     /**
-     * On, with an image-capable provider that has a key. When the vision
-     * check is on, the text provider that runs it needs a key too.
+     * On, with an approved image provider that has credentials. When the
+     * vision check is on, the vision task needs one too.
      */
     public static function isAvailable(): bool
     {
-        if (! config('socialhq.ai_graphics.enabled')
-            || ! in_array(self::provider(), ['gemini', 'openai', 'xai'], true)
-            || blank(config('ai.providers.'.self::provider().'.key'))) {
+        if (! config('socialhq.ai_graphics.enabled') || ! AiRouter::isAvailable(AiTask::Image)) {
             return false;
         }
 
-        return ! self::visionCheckEnabled() || filled(config('ai.providers.'.self::visionProvider().'.key'));
+        return ! self::visionCheckEnabled() || AiRouter::isAvailable(AiTask::Vision);
     }
 
     public static function timeoutSeconds(): int
@@ -54,16 +44,6 @@ final class AiGraphics
     public static function visionCheckEnabled(): bool
     {
         return (bool) config('socialhq.ai_graphics.vision_check', true);
-    }
-
-    public static function visionProvider(): string
-    {
-        return (string) (config('socialhq.ai_graphics.vision_provider') ?: config('ai.default'));
-    }
-
-    public static function visionModel(): ?string
-    {
-        return config('socialhq.ai_graphics.vision_model') ?: null;
     }
 
     /**

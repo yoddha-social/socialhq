@@ -8,6 +8,8 @@ use App\Jobs\Media\ImportRemoteMedia;
 use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Ai\AiRouter;
+use App\SocialHq\Ai\AiTask;
 use App\Support\MediaImportStatus;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -57,12 +59,18 @@ class GenerateAiGraphic implements ShouldQueue
 
             $references = array_map(fn (string $path): Image => Image::fromStorage($path, 'local'), $this->referencePaths);
 
-            $image = ImageGeneration::of(self::fullPrompt($graphic))
+            $response = ImageGeneration::of(self::fullPrompt($graphic))
                 ->attachments($references)
-                ->size($graphic->format->aspectRatio($graphic->provider))
+                ->size($graphic->format->aspectRatio(AiRouter::leadingDriver(AiTask::Image)))
                 ->timeout(AiGraphics::timeoutSeconds())
-                ->generate($graphic->provider, $graphic->model)
-                ->firstImage();
+                ->generate(AiRouter::route(AiTask::Image));
+            $image = $response->firstImage();
+
+            // The route may have failed over: record what actually made it.
+            $graphic->update([
+                'provider' => $response->meta->provider ?? $graphic->provider,
+                'model' => $response->meta->model ?? $graphic->model,
+            ]);
 
             $blocked = VisionCheck::review($graphic->prompt, [Image::fromBase64($image->image, $image->mime())], reviewsResult: true);
 

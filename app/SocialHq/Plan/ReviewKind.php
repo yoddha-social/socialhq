@@ -10,6 +10,9 @@ namespace App\SocialHq\Plan;
 enum ReviewKind: string
 {
     case Comment = 'comment';
+    case Submitted = 'submitted';
     case ChangesRequested = 'changes_requested';
     case Approved = 'approved';
+    // A new version of approved copy: the copy needs review again.
+    case Reopened = 'reopened';
 }

@@ -1,9 +1,10 @@
-# Edits to upstream TryPost files
+# Changes to TryPost files
 
-Social HQ code lives in its own module (see [SOCIALHQ.md](SOCIALHQ.md)). This
-file lists **every** change to a file that came from upstream TryPost, so
-merging an upstream release stays a short, predictable job. Add a row
-whenever you touch an upstream file; keep each edit as small as possible.
+Social HQ code lives in its own module (see [SOCIALHQ.md](SOCIALHQ.md)). We
+don't merge TryPost's feature releases; we take its security fixes one by one
+(see "Security intake" below). This file lists **every** change to a file that
+came with TryPost, so we know where one of its fixes may conflict with ours.
+Change a TryPost file when that is the right place, and add a row.
 
 | # | File | Change | Why |
 |---|---|---|---|
@@ -13,19 +14,19 @@ whenever you touch an upstream file; keep each edit as small as possible.
 | 6 | `resources/js/types/command-palette.ts` | Adds the `workspaces` group (1 line) | Command palette entries to switch workspace |
 | 7 | `resources/js/components/command-palette/CommandPaletteContent.vue` | Adds `socialhq/workspaceCommandEntries.ts` entries to the palette, shown while searching (5 lines) | Same |
 | 13 | `resources/js/components/posts/composer/MediaSourceMenu.vue` | Adds `socialhq/AiGraphicMenuItem.vue` under "Upload from computer" and `socialhq/AiGraphicDialog.vue` after the menu (9 lines) | "Generate with AI" graphics in the media menu of ideas and posts (rows 8–12 are in the approval-gate branch) |
+| 14 | `composer.json` | Removes `boost:update` from `post-update-cmd` (1 line) | It rewrote AGENTS.md and the Boost skills on every `composer update`, undoing our edits. Run it by hand and review the diff |
 
-Files we **added** (no merge risk) aren't listed here; they're under the
-module paths in SOCIALHQ.md, plus `config/socialhq.php`,
-`routes/socialhq.php` and `.github/workflows/socialhq-image.yml`.
+Files we **added** aren't listed here; they're under the module paths in
+SOCIALHQ.md, plus `config/socialhq.php`, `routes/socialhq.php`, `CLAUDE.md`,
+`.claude/hooks/`, `.claude/rules/`, `.claude/settings.json`,
+`.ai/skills/socialhq-*`, `bin/socialhq-*` and `.github/workflows/socialhq-*.yml`.
 
-## Merging an upstream release
+## Security intake
 
-```bash
-git fetch upstream --tags
-git switch -c upstream/v2.1.0 main
-git merge v2.1.0               # resolve conflicts; only the files above can conflict on our side
-# push the branch, open a PR into our main, let CI (upstream's tests plus ours) pass, merge
-```
+Monthly, with the `socialhq-security-intake` skill: dependency advisories
+(`composer audit`, `npm audit`, the PHP base image), then TryPost's security
+commits since the last intake, cherry-picked with `git cherry-pick -x` (or the
+security part ported by hand from a feature commit). One row per intake.
 
-Merge **release tags**, not upstream `main`. Read the release notes first:
-TryPost has shipped breaking changes in patch releases.
+| Date | TryPost reviewed up to | Picked | Dependency upgrades |
+|---|---|---|---|

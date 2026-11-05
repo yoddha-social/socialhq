@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "attribution": { "commit": "", "pr": "" },
+  "disabledMcpjsonServers": ["herd", "nightwatch"],
+  "permissions": {
+    "allow": [
+      "mcp__laravel-boost__search-docs",
+      "mcp__laravel-boost__database-schema",
+      "mcp__laravel-boost__database-query",
+      "mcp__laravel-boost__application-info",
+      "mcp__laravel-boost__last-error",
+      "mcp__laravel-boost__read-log-entries",
+      "mcp__laravel-boost__browser-logs",
+      "mcp__laravel-boost__get-absolute-url",
+      "Bash(npx --no-install eslint *)",
+      "Bash(npx --no-install prettier *)",
+      "Bash(npx --no-install vue-tsc --noEmit)",
+      "Bash(npm run lint)",
+      "Bash(npm run format:check)",
+      "Bash(./vendor/bin/pest *)",
+      "Bash(./vendor/bin/pint *)",
+      "Bash(docker compose exec -T app ./vendor/bin/pest *)",
+      "Bash(docker compose exec -T app ./vendor/bin/pint *)",
+      "Bash(docker compose exec -T app php artisan route:list *)",
+      "Bash(bin/socialhq-sync-lang)",
+      "Bash(bin/socialhq-lint-skills)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.production)",
+      "Read(./.env.backup)",
+      "Edit(./.env)",
+      "Edit(./.env.production)",
+      "mcp__laravel-boost__record-rule"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-context.sh", "timeout": 15 }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-paths.sh", "timeout": 10 }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-bash.sh", "timeout": 10 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format-on-edit.sh",
+            "timeout": 60,
+            "statusMessage": "Formatting and linting the edited file..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/checks-on-stop.sh",
+            "timeout": 900,
+            "async": true,
+            "asyncRewake": true,
+            "rewakeSummary": "Social HQ checks failed",
+            "statusMessage": "vue-tsc, pint and affected Pest tests running in the background..."
+          }
+        ]
+      }
+    ]
+  }
+}

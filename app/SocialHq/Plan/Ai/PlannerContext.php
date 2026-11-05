@@ -4,20 +4,19 @@ declare(strict_types=1);
 
 namespace App\SocialHq\Plan\Ai;
 
-use App\Actions\Analytics\QueryLatestPublicationSnapshots;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\SocialAccount;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\ItemStatus;
+use App\SocialHq\Plan\PastPerformance;
 use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Plan\PlanMonth;
 use App\SocialHq\Plan\PlanOptions;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 
 /**
  * Everything the AI planner is told about a month, as one JSON-ready array:
@@ -28,12 +27,12 @@ use Illuminate\Support\Str;
 final class PlannerContext
 {
     /** How far back the past posts go. */
-    public const PAST_DAYS = 90;
+    public const PAST_DAYS = PastPerformance::DAYS;
 
     /** At most this many past posts: the best and the worst first. */
     public const PAST_POSTS = 60;
 
-    public const EXCERPT_LENGTH = 140;
+    public const EXCERPT_LENGTH = PastPerformance::EXCERPT_LENGTH;
 
     /**
      * @return array{
@@ -108,16 +107,7 @@ final class PlannerContext
      */
     public static function pastPosts(string $workspaceId): array
     {
-        $rows = app(QueryLatestPublicationSnapshots::class)
-            ->execute($workspaceId, null, CarbonImmutable::now()->subDays(self::PAST_DAYS), CarbonImmutable::now())
-            ->leftJoin('posts as post', 'post.id', '=', 'publication.post_id')
-            ->select([
-                'publication.provider_published_at', 'publication.platform', 'publication.content_type', 'publication.excerpt',
-                'post.content as post_content', 'metric.engagement_count', 'metric.reach_count', 'metric.views_count',
-            ])
-            ->orderByDesc('publication.provider_published_at')
-            ->limit(500)
-            ->get();
+        $rows = PastPerformance::rows($workspaceId);
 
         /** @var Collection<int, object> $measured */
         $measured = $rows->filter(fn (object $row): bool => $row->engagement_count !== null)
@@ -137,26 +127,12 @@ final class PlannerContext
                 'date' => CarbonImmutable::parse($row->provider_published_at, 'UTC')->toDateString(),
                 'platform' => $row->platform,
                 'content_type' => $row->content_type,
-                'excerpt' => self::excerpt($row->excerpt ?? $row->post_content),
-                'engagement' => self::number($row->engagement_count),
-                'reach' => self::number($row->reach_count),
-                'views' => self::number($row->views_count),
+                'excerpt' => PastPerformance::excerpt($row->excerpt ?? $row->post_content),
+                'engagement' => PastPerformance::number($row->engagement_count),
+                'reach' => PastPerformance::number($row->reach_count),
+                'views' => PastPerformance::number($row->views_count),
             ], fn (mixed $value): bool => $value !== null && $value !== ''))
             ->values()
             ->all();
-    }
-
-    private static function excerpt(?string $text): ?string
-    {
-        if (blank($text)) {
-            return null;
-        }
-
-        return Str::of($text)->stripTags()->squish()->limit(self::EXCERPT_LENGTH - 1, '…')->toString();
-    }
-
-    private static function number(mixed $value): ?int
-    {
-        return is_numeric($value) ? (int) $value : null;
     }
 }

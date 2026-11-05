@@ -15,6 +15,7 @@ use App\SocialHq\Http\Controllers\Plan\PlanGenerationController;
 use App\Support\Timezone;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Gate;
+use Inertia\Inertia;
 
 /**
  * The props of the month page: the plan, its items, the month's events and
@@ -59,6 +60,8 @@ final class PlanPage
             'creatives' => array_map(fn (CreativeKind $kind): string => $kind->value, CreativeKind::cases()),
             'abilities' => [...$abilities, 'canGenerate' => $abilities['canWork'] && $aiAvailable],
             'ai' => ['available' => $aiAvailable, 'hourlyLimit' => PlanGenerationController::HOURLY_LIMIT],
+            // Asked for by a partial reload when the "What worked lately" panel opens.
+            'whatWorked' => Inertia::optional(fn (): array => PastPerformance::lately($workspace->id)),
         ];
     }
 

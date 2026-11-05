@@ -8,6 +8,7 @@ use App\Models\Post;
 use App\Models\User;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiRoutesCommand;
+use App\SocialHq\Ai\ApprovedProvidersGuard;
 use App\SocialHq\AiGraphics\AiGraphics;
 use App\SocialHq\Approval\ApprovalRules;
 use App\SocialHq\Approval\RecordApprovalEvents;
@@ -45,6 +46,9 @@ class SocialHqServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMigrationsFrom(database_path('migrations/socialhq'));
+
+        // No SDK request reaches a provider outside SOCIALHQ_AI_APPROVED_PROVIDERS, whoever makes it.
+        Event::listen(ApprovedProvidersGuard::EVENTS, [ApprovedProvidersGuard::class, 'handle']);
 
         if ($this->app->runningInConsole()) {
             $this->commands([AiRoutesCommand::class]);

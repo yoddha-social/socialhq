@@ -13,6 +13,8 @@ declare(strict_types=1);
 |
 */
 
+use App\Http\Middleware\App\EnsureAccountReady;
+use App\Http\Middleware\App\EnsureHasWorkspace;
 use App\SocialHq\Http\Controllers\AccessPendingController;
 use App\SocialHq\Http\Controllers\AccessRequestController;
 use App\SocialHq\Http\Controllers\AiGraphicController;
@@ -43,3 +45,14 @@ Route::middleware('auth')->prefix('socialhq')->name('socialhq.')->group(function
     Route::put('brand/entries/{entry}', [BrandKnowledgeController::class, 'update'])->whereNumber('entry')->name('brand.entries.update');
     Route::delete('brand/entries/{entry}', [BrandKnowledgeController::class, 'destroy'])->whereNumber('entry')->name('brand.entries.destroy');
 });
+
+// The planning layer (content plan, production board, events): one file per area,
+// all under /socialhq/plan with route names socialhq.plan.*.
+Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class])
+    ->prefix('socialhq/plan')
+    ->name('socialhq.plan.')
+    ->group(function () {
+        require __DIR__.'/socialhq/events.php';
+        require __DIR__.'/socialhq/production.php';
+        require __DIR__.'/socialhq/plan.php';
+    });

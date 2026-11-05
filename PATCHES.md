@@ -48,6 +48,7 @@ Change a TryPost file when that is the right place, and add a row.
 | 38 | `app/Mcp/Servers/TryPostServer.php`, `app/Mcp/Tools/**` descriptions, `app/Http/Middleware/Mcp/ChallengeChatGptToolCalls.php`, `app/Services/Http/SafeHttpFetcher.php`, `app/Http/Controllers/App/InsightsController.php` | The MCP server is named "Social HQ" with our icon; tool descriptions, the sign-in message, the fetch user agent and the insights file name say Social HQ | Same. Class names, config keys (`trypost.*`) and the `/mcp/trypost` URL stay, so upstream fixes still apply |
 | 39 | `README.md` | Upstream's logo loads from TryPost's repository | The file moved out of `public/images/trypost/` |
 | 40 | `tests/Unit/TryPostServerTest.php`, `tests/Feature/Analytics/InsightsExportTest.php`, `tests/Feature/Mail/MailRenderingTest.php`, `MailLocalizationTest.php`, `tests/Feature/Mcp/ChatGptSignInTest.php`, `tests/Unit/Settings/DeleteAccountCopyTest.php`, `tests/fixtures/single-line-copy.php` (four budgets +2, the length difference of the name), `tests/Browser/AuthTitlesTest.php`, `tests/Browser/AuthReviewsTest.php` (now `AuthPanelTest.php`) | Expect the new icon, file name, titles and panel | Rows 29 to 38 |
+| 53 | `resources/js/components/AppSidebar.vue` | A "Plan" item after Publish for people who can create posts (10 lines + 2 imports) | The planning layer (content plan, production, events) under `/socialhq/plan` |
 
 Files we **added** aren't listed here; they're under the module paths in
 SOCIALHQ.md, plus `config/socialhq.php`, `routes/socialhq.php`, `CLAUDE.md`,

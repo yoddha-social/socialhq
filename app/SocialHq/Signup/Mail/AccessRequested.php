@@ -22,7 +22,7 @@ class AccessRequested extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: __('socialhq.signup.mail.requested.subject', ['name' => $this->accessRequest()->name]));
+        return new Envelope(subject: __('mail.socialhq_access_requested.subject', ['name' => $this->accessRequest()->name, 'app' => config('app.name')]));
     }
 
     public function content(): Content
@@ -30,8 +30,8 @@ class AccessRequested extends Mailable
         $request = $this->accessRequest();
 
         return new Content(view: 'mail.socialhq-access-requested', with: [
-            'title' => __('socialhq.signup.mail.requested.title'),
-            'previewText' => __('socialhq.signup.mail.requested.preview', ['name' => $request->name]),
+            'title' => __('mail.socialhq_access_requested.title'),
+            'previewText' => __('mail.socialhq_access_requested.preview', ['name' => $request->name]),
             'requesterName' => $request->name,
             'requesterEmail' => $request->email,
             'url' => route('socialhq.access-requests.index'),

@@ -12,6 +12,7 @@ use App\Http\Controllers\Auth\Concerns\PreservesSignupPreferences;
 use App\Http\Controllers\Controller;
 use App\Models\Invite;
 use App\Models\User;
+use App\SocialHq\Signup\OAuthSignIn;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -53,7 +54,7 @@ class GitHubController extends Controller
             ->first();
 
         if ($user) {
-            return $this->loginExistingUser($user, (string) $githubUser->getId());
+            return $this->loginExistingUser($user, (string) $githubUser->getId(), $githubUser->getEmail());
         }
 
         if (! $githubUser->getEmail()) {
@@ -84,15 +85,14 @@ class GitHubController extends Controller
             ->with('flash.success', __('settings.profile.providers.flash_connected', ['provider' => 'GitHub']));
     }
 
-    private function loginExistingUser(User $user, string $githubId): RedirectResponse
+    private function loginExistingUser(User $user, string $githubId, ?string $verifiedEmail): RedirectResponse
     {
         if (! $user->github_id) {
             $user->update(['github_id' => $githubId]);
         }
 
-        if (! $user->hasVerifiedEmail()) {
-            $user->markEmailAsVerified();
-        }
+        // Social HQ: GitHub's proof of the email (its verified primary address) wins over an unconfirmed password sign-up (PATCHES.md row 41).
+        OAuthSignIn::claimUnverified($user, $verifiedEmail, request());
 
         Auth::login($user, remember: true);
 

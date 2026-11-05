@@ -158,4 +158,23 @@ return [
         'expiry' => 'Приглашение действует 7 дней.',
     ],
 
+    'socialhq_access_requested' => [
+        'subject' => ':name wants to join :app',
+        'title' => 'New access request',
+        'preview' => ':name signed up and is waiting for access.',
+        'heading' => 'Someone is waiting for access',
+        'body' => ':name (:email) signed up with a company email. Let them into a workspace, or decline.',
+        'button' => 'Review the request',
+        'note' => 'Only the account owner and workspace admins get this email.',
+    ],
+
+    'socialhq_access_approved' => [
+        'subject' => "You're in: :app is ready",
+        'title' => 'Access approved',
+        'preview' => 'An admin let you into :app.',
+        'heading' => "You're in",
+        'body' => 'An admin added you to: :workspaces.',
+        'button' => 'Open :app',
+    ],
+
 ];

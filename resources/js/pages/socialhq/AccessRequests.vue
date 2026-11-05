@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Head, router, useForm } from '@inertiajs/vue3';
-import { IconUserPlus } from '@tabler/icons-vue';
-import { ref } from 'vue';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { IconBuildingStore, IconUserPlus } from '@tabler/icons-vue';
+import { computed, ref } from 'vue';
 
 import EmptyState from '@/components/EmptyState.vue';
 import SettingsListRow from '@/components/settings/SettingsListRow.vue';
@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import date from '@/date';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
+import { create as createWorkspaceRoute } from '@/routes/app/workspaces';
 import {
     approve as approveRequest,
     decline as declineRequest,
@@ -51,6 +52,24 @@ const form = useForm<{ workspaces: string[]; is_admin: boolean }>({
     workspaces: [],
     is_admin: false,
 });
+
+/**
+ * The server keys a refused workspace by its position (`workspaces.0`), and
+ * a missing pick by `workspaces`: show whichever came back under the list.
+ */
+const workspacesError = computed((): string | undefined => {
+    const errors = form.errors as Record<string, string | undefined>;
+
+    return (
+        errors.workspaces ??
+        Object.entries(errors).find(([key]) =>
+            key.startsWith('workspaces.'),
+        )?.[1]
+    );
+});
+
+const personLabel = (request: AccessRequestRow): string =>
+    request.name || request.email;
 
 const openApprove = (request: AccessRequestRow): void => {
     approving.value = request;
@@ -130,6 +149,27 @@ const submitDecline = (): void => {
             data-testid="socialhq-access-requests-empty"
         />
 
+        <EmptyState
+            v-else-if="workspaces.length === 0"
+            :icon="IconBuildingStore"
+            :title="$t('socialhq.signup.requests.no_workspaces_title')"
+            :description="
+                $t('socialhq.signup.requests.no_workspaces_description')
+            "
+            data-testid="socialhq-access-requests-no-workspaces"
+        >
+            <template #action>
+                <Button as-child>
+                    <Link
+                        :href="createWorkspaceRoute()"
+                        data-testid="socialhq-access-requests-create-workspace"
+                    >
+                        {{ $t('socialhq.signup.requests.create_workspace') }}
+                    </Link>
+                </Button>
+            </template>
+        </EmptyState>
+
         <ul
             v-else
             class="divide-y divide-border rounded-lg border border-border"
@@ -164,12 +204,22 @@ const submitDecline = (): void => {
                     <div class="flex shrink-0 gap-2">
                         <Button
                             variant="ghost"
+                            :aria-label="
+                                $t('socialhq.signup.requests.decline_label', {
+                                    name: personLabel(request),
+                                })
+                            "
                             :data-testid="`socialhq-access-decline-${request.id}`"
                             @click="openDecline(request)"
                         >
                             {{ $t('socialhq.signup.requests.decline') }}
                         </Button>
                         <Button
+                            :aria-label="
+                                $t('socialhq.signup.requests.approve_label', {
+                                    name: personLabel(request),
+                                })
+                            "
                             :data-testid="`socialhq-access-approve-${request.id}`"
                             @click="openApprove(request)"
                         >
@@ -223,10 +273,11 @@ const submitDecline = (): void => {
                         <span class="truncate">{{ workspace.name }}</span>
                     </label>
                     <p
-                        v-if="form.errors.workspaces"
+                        v-if="workspacesError"
                         class="text-sm text-destructive"
+                        data-testid="socialhq-access-workspaces-error"
                     >
-                        {{ form.errors.workspaces }}
+                        {{ workspacesError }}
                     </p>
                 </fieldset>
 
@@ -247,6 +298,13 @@ const submitDecline = (): void => {
                         @update:model-value="setAdmin(Boolean($event))"
                     />
                 </div>
+                <p
+                    v-if="form.errors.is_admin"
+                    class="-mt-3 text-sm text-destructive"
+                    data-testid="socialhq-access-admin-error"
+                >
+                    {{ form.errors.is_admin }}
+                </p>
 
                 <DialogFooter>
                     <Button type="button" variant="ghost" @click="closeApprove">

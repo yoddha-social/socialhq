@@ -35,7 +35,8 @@ class RegisterRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            // Social HQ: the sign-up allow list runs before `unique` and stops there (bail), so an email that may not sign up never learns whether it has an account.
+            'email' => ['bail', 'required', 'string', 'lowercase', 'email', 'max:255', SignupRules::allowListRule(fn (): bool => $this->invite() !== null), 'unique:'.User::class],
             'password' => ['required', Rules\Password::defaults()],
             'locale' => ['required', Rule::enum(Locale::class)],
             'timezone' => ['nullable', 'string'],
@@ -59,13 +60,6 @@ class RegisterRequest extends FormRequest
                     'email',
                     __('settings.members.flash.wrong_email'),
                 );
-            }
-
-            // Social HQ: without an invite (posted or kept in the session), only listed emails sign up.
-            $hasInvite = $invite !== null || Invite::fromId((string) $this->session()->get('pending_invite_id')) !== null;
-
-            if (! $hasInvite && config('trypost.self_hosted') && ! SignupRules::allows($this->string('email')->toString())) {
-                $validator->errors()->add('email', __('socialhq.signup.not_allowed'));
             }
         });
     }

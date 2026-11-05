@@ -9,6 +9,7 @@ use App\Actions\User\SettleStrandedMember;
 use App\Actions\User\StrandedSettlement;
 use App\Models\Account;
 use App\Models\User;
+use App\SocialHq\Signup\AccessRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -35,7 +36,8 @@ class SettleAfterInvite
             ->where('workspaces.account_id', $user->account_id)
             ->exists();
 
-        if (! $hasSameAccountWorkspace && ! $user->isAccountOwner() && $user->account) {
+        // Social HQ: someone waiting for access who declines an invite keeps waiting, not deleted.
+        if (! $hasSameAccountWorkspace && ! $user->isAccountOwner() && $user->account && AccessRequests::pendingFor($user) === null) {
             $userId = $user->id;
             $leavingAccount = $user->account;
             $banner = session('flash.banner');

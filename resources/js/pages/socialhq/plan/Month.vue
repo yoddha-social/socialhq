@@ -66,7 +66,7 @@ const props = defineProps<{
     plan: PlanData | null;
     items: PlanItem[];
     events: PlanEvent[];
-    channels: PlanChannel[];
+    planChannels: PlanChannel[];
     owners: PlanOwner[];
     pillars: string[];
     cadence: Record<string, number | null>;
@@ -110,7 +110,7 @@ const monthLabel = computed(() =>
 
 const lookups = computed<PlanLookups>(() => ({
     channels: Object.fromEntries(
-        props.channels.map((channel) => [channel.id, channel]),
+        props.planChannels.map((channel) => [channel.id, channel]),
     ),
     owners: Object.fromEntries(props.owners.map((owner) => [owner.id, owner])),
     events: Object.fromEntries(props.events.map((event) => [event.id, event])),
@@ -123,7 +123,7 @@ const suggestions = computed(() =>
 const plannedCount = computed(
     () => props.items.filter((item) => item.status === 'planned').length,
 );
-const hasChannels = computed(() => props.channels.length > 0);
+const hasChannels = computed(() => props.planChannels.length > 0);
 const isEmpty = computed(
     () => props.items.filter((item) => item.status !== 'dropped').length === 0,
 );
@@ -608,7 +608,7 @@ const openBrandSettings = (): void => {
                     :month="month"
                     :items="items"
                     :events="events"
-                    :channels="channels"
+                    :channels="planChannels"
                     :pillars="pillars"
                     :cadence="cadence"
                 />
@@ -658,7 +658,7 @@ const openBrandSettings = (): void => {
         :item="sheetItem"
         :default-day="sheetDay"
         :month="month"
-        :channels="channels"
+        :channels="planChannels"
         :events="events"
         :owners="owners"
         :pillars="pillars"
@@ -680,6 +680,6 @@ const openBrandSettings = (): void => {
         v-model:open="brandSettingsOpen"
         :pillars="pillars"
         :cadence="cadence"
-        :channels="channels"
+        :channels="planChannels"
     />
 </template>

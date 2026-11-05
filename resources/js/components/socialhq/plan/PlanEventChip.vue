@@ -35,11 +35,5 @@ defineProps<{
             aria-hidden="true"
         />
         <span class="min-w-0 truncate">{{ event.name }}</span>
-        <span
-            v-if="!event.confirmed"
-            class="ms-auto shrink-0 text-[10px] font-medium text-muted-foreground"
-        >
-            {{ $t('socialhq_plan.event.needs_check') }}
-        </span>
     </div>
 </template>

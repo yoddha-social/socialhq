@@ -46,7 +46,8 @@ final class PlanPage
             'events' => PlanOptions::events($workspace, $month, PlanMonth::end($month))
                 ->map(fn (CalendarEvent $event): array => self::event($event))
                 ->all(),
-            'channels' => $channels->map(fn (SocialAccount $channel): array => self::channel($channel))->all(),
+            // Not 'channels': that name is the sidebar's shared prop.
+            'planChannels' => $channels->map(fn (SocialAccount $channel): array => self::channel($channel))->all(),
             'owners' => PlanOptions::owners($workspace)->map(fn (User $person): array => [
                 'id' => $person->id,
                 'name' => $person->name,

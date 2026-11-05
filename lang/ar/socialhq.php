@@ -13,4 +13,7 @@ return [
         'settings' => 'Workspace settings',
         'switch_to' => 'Switch workspace',
     ],
+    'approvals' => [
+        'members_note' => 'Needs approval. In Social HQ every member who is not an admin sends posts for approval.',
+    ],
 ];

@@ -32,6 +32,20 @@ Edits to upstream files are kept to a minimum and listed in
 Follow the upstream conventions in [AGENTS.md](AGENTS.md) (Laravel Boost,
 Pest, Pint, Inertia v3, Wayfinder).
 
+## Approvals
+
+Stricter than TryPost (`app/SocialHq/Approval/ApprovalRules.php`):
+
+| Who | Schedules or publishes | Approves |
+|---|---|---|
+| Owner and admins, in the app | Directly | Yes |
+| Members who are not admins | Always sent for approval (`SOCIALHQ_MEMBERS_ALWAYS_REVIEWED`, default on) | No |
+| Anyone through an API key or MCP grant, admins included | Always sent for approval (`SOCIALHQ_AGENT_POSTS_REVIEWED`, default on) | No |
+
+Every request, approval, rejection and withdrawal is recorded in
+`shq_approval_events` (who, when, from the app, an agent or the system).
+TryPost keeps only the latest approver and nothing about rejections.
+
 ## Interface copy
 
 Our screens use the `socialhq.*` keys in `lang/en/socialhq.php`, in English

@@ -49,6 +49,7 @@ Change a TryPost file when that is the right place, and add a row.
 | 39 | `README.md` | Upstream's logo loads from TryPost's repository | The file moved out of `public/images/trypost/` |
 | 40 | `tests/Unit/TryPostServerTest.php`, `tests/Feature/Analytics/InsightsExportTest.php`, `tests/Feature/Mail/MailRenderingTest.php`, `MailLocalizationTest.php`, `tests/Feature/Mcp/ChatGptSignInTest.php`, `tests/Unit/Settings/DeleteAccountCopyTest.php`, `tests/fixtures/single-line-copy.php` (four budgets +2, the length difference of the name), `tests/Browser/AuthTitlesTest.php`, `tests/Browser/AuthReviewsTest.php` (now `AuthPanelTest.php`) | Expect the new icon, file name, titles and panel | Rows 29 to 38 |
 | 53 | `resources/js/components/AppSidebar.vue` | A "Plan" item after Publish for people who can create posts (10 lines + 2 imports) | The planning layer (content plan, production, events) under `/socialhq/plan` |
+| 60 | `app/Actions/Post/BuildCalendarPageProps.php` | A `shqEvents` prop (closure, so partial reloads skip it unless asked): the shown days' events from `EventsForMonth::markersByDay()` (2 lines + 1 import) | Festival and holiday markers on the publish calendar |
 
 Files we **added** aren't listed here; they're under the module paths in
 SOCIALHQ.md, plus `config/socialhq.php`, `routes/socialhq.php`, `CLAUDE.md`,

@@ -12,6 +12,7 @@ use App\SocialHq\Ai\ApprovedProvidersGuard;
 use App\SocialHq\AiGraphics\AiGraphics;
 use App\SocialHq\Approval\ApprovalRules;
 use App\SocialHq\Approval\RecordApprovalEvents;
+use App\SocialHq\Events\ImportEventsCommand;
 use App\SocialHq\Http\Middleware\RedirectWhileAwaitingAccess;
 use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Signup\AccessRequest;
@@ -51,7 +52,7 @@ class SocialHqServiceProvider extends ServiceProvider
         Event::listen(ApprovedProvidersGuard::EVENTS, [ApprovedProvidersGuard::class, 'handle']);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiRoutesCommand::class]);
+            $this->commands([AiRoutesCommand::class, ImportEventsCommand::class]);
         }
 
         Route::middleware('web')->group(base_path('routes/socialhq.php'));

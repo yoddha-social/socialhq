@@ -55,6 +55,7 @@ const props = defineProps<{
         canWork: boolean;
         canApprove: boolean;
         canManageBrand: boolean;
+        canManageSharedEvents: boolean;
     };
 }>();
 
@@ -280,6 +281,7 @@ const confirmDelete = (): void => {
         <template v-if="abilities.canApprove && hasEvents" #header-actions>
             <div class="flex items-center gap-2">
                 <Button
+                    v-if="abilities.canManageSharedEvents"
                     variant="outline"
                     class="max-sm:w-8 max-sm:px-0"
                     :loading="isImporting"
@@ -358,6 +360,7 @@ const confirmDelete = (): void => {
                                     {{ $t('socialhq_events.actions.add') }}
                                 </Button>
                                 <Button
+                                    v-if="abilities.canManageSharedEvents"
                                     :loading="isImporting"
                                     data-testid="socialhq-events-import-first"
                                     @click="importOfficialDates"
@@ -581,7 +584,11 @@ const confirmDelete = (): void => {
                                         v-for="event in group.events"
                                         :key="event.id"
                                         :event="event"
-                                        :can-approve="abilities.canApprove"
+                                        :can-approve="
+                                            abilities.canApprove &&
+                                            (event.brand_only ||
+                                                abilities.canManageSharedEvents)
+                                        "
                                         :busy="busyEventId === event.id"
                                         :until="
                                             event.ends_on > event.starts_on
@@ -612,6 +619,7 @@ const confirmDelete = (): void => {
         :event="editingEvent"
         :categories="categories"
         :default-day="defaultDay"
+        :can-share="abilities.canManageSharedEvents"
     />
 
     <Dialog v-if="abilities.canApprove" v-model:open="isDeleteOpen">

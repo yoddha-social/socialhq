@@ -21,7 +21,9 @@ class EventVerificationController extends Controller
 {
     public function store(Request $request, int $event): RedirectResponse
     {
-        $found = EventController::find(PlanAccess::workspace($request, approve: true), $event);
+        $workspace = PlanAccess::workspace($request, approve: true);
+        $found = EventController::find($workspace, $event);
+        EventController::ensureMayChange($request, $workspace, shared: $found->workspace_id === null);
 
         if (! $found->isVerified()) {
             self::saveQuietly($found, ['verified_at' => now(), 'verified_by' => $request->user()->id]);
@@ -32,7 +34,9 @@ class EventVerificationController extends Controller
 
     public function destroy(Request $request, int $event): RedirectResponse
     {
-        $found = EventController::find(PlanAccess::workspace($request, approve: true), $event);
+        $workspace = PlanAccess::workspace($request, approve: true);
+        $found = EventController::find($workspace, $event);
+        EventController::ensureMayChange($request, $workspace, shared: $found->workspace_id === null);
 
         self::saveQuietly($found, ['verified_at' => null, 'verified_by' => null]);
 

@@ -7,6 +7,7 @@ use App\Models\Workspace;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\CopyStatus;
 use App\SocialHq\Plan\ItemReview;
+use App\SocialHq\Plan\ItemStatus;
 use App\SocialHq\Plan\ItemVersion;
 use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Plan\ReviewKind;
@@ -149,4 +150,12 @@ test('comments are linked to the copy version they are about', function () {
     expect($comment->kind)->toBe(ReviewKind::Comment)
         ->and($comment->version->number)->toBe(1)
         ->and($comment->user_id)->toBe($member->id);
+});
+
+test('writing copy on an AI suggestion accepts it', function () {
+    $this->item->update(['status' => ItemStatus::Suggested]);
+
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.versions.store', $this->item->id), copyPayload())->assertSessionHasNoErrors();
+
+    expect($this->item->fresh()->status)->toBe(ItemStatus::Planned);
 });

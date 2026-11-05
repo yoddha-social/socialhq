@@ -71,7 +71,14 @@ trait ResolvesPlanContext
     {
         $month = $this->planMonth();
 
-        return PlanOptions::events($this->planWorkspace(), $month, PlanMonth::end($month))->pluck('id')->all();
+        $ids = PlanOptions::events($this->planWorkspace(), $month, PlanMonth::end($month))->pluck('id')->all();
+
+        // The item's current event stays allowed (deleted, moved or made another brand's since), so it doesn't block other edits.
+        if ($this->route('item') !== null && $this->planItem()->event_id !== null) {
+            $ids[] = $this->planItem()->event_id;
+        }
+
+        return $ids;
     }
 
     /**
@@ -79,7 +86,14 @@ trait ResolvesPlanContext
      */
     protected function ownerIds(): array
     {
-        return PlanOptions::owners($this->planWorkspace())->pluck('id')->all();
+        $ids = PlanOptions::owners($this->planWorkspace())->pluck('id')->all();
+
+        // An owner who has left the workspace stays allowed on the item they own, until someone changes it.
+        if ($this->route('item') !== null && $this->planItem()->owner_id !== null) {
+            $ids[] = $this->planItem()->owner_id;
+        }
+
+        return $ids;
     }
 
     /**

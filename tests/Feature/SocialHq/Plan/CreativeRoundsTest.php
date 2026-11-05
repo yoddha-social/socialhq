@@ -13,6 +13,7 @@ use App\SocialHq\Production\BriefFile;
 use App\SocialHq\Production\BriefStage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
@@ -33,7 +34,7 @@ beforeEach(function () {
     $this->designer = workspaceMember($this->workspace, 'approval');
 });
 
-function uploadCreative(object $test, User $user, ?UploadedFile $file = null, ?string $note = null): Illuminate\Testing\TestResponse
+function uploadCreative(object $test, User $user, ?UploadedFile $file = null, ?string $note = null): TestResponse
 {
     return $test->actingAs($user)->post(route('socialhq.plan.items.brief.files.store', $test->item->id), [
         'file' => $file ?? UploadedFile::fake()->image('draft.png', 200, 250),
@@ -184,4 +185,15 @@ test('deleting an item removes its brief files from storage', function () {
 
     Storage::disk('local')->assertMissing($path);
     expect(Brief::query()->count())->toBe(0);
+});
+
+test('deleting a brand deletes its creative files', function () {
+    $path = 'socialhq/briefs/test/final.png';
+    Storage::disk('local')->put($path, 'png');
+    $brief = Brief::factory()->create();
+    BriefFile::query()->create(['brief_id' => $brief->id, 'round' => 1, 'path' => $path, 'original_name' => 'final.png', 'mime_type' => 'image/png', 'size' => 3]);
+
+    $brief->workspace->delete();
+
+    Storage::disk('local')->assertMissing($path);
 });

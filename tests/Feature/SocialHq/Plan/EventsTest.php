@@ -468,3 +468,25 @@ test('the publish calendar leaves out another brand\'s own dates', function () {
             ->where("shqEvents.{$this->day->toDateString()}.0.name", 'Our launch')
             ->has("shqEvents.{$this->day->toDateString()}", 1));
 });
+
+test('an approver of one brand manages that brand\'s dates but not the dates every brand shares', function () {
+    $other = Workspace::factory()->create(['account_id' => $this->account->id, 'user_id' => $this->owner->id]);
+    $approver = workspaceMember($this->workspace, 'admin');
+    $shared = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'starts_on' => $this->day, 'ends_on' => $this->day]);
+    $own = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'workspace_id' => $this->workspace->id, 'category' => 'brand', 'region' => 'brand', 'starts_on' => $this->day, 'ends_on' => $this->day]);
+
+    $this->actingAs($approver)->post(route('socialhq.plan.events.verify', $shared->id))->assertForbidden();
+    $this->actingAs($approver)->delete(route('socialhq.plan.events.destroy', $shared->id))->assertForbidden();
+    $this->actingAs($approver)->post(route('socialhq.plan.events.import'))->assertForbidden();
+    $this->actingAs($approver)->post(route('socialhq.plan.events.verify', $own->id))->assertRedirect();
+
+    $this->actingAs($approver)->get(route('socialhq.plan.events.index'))
+        ->assertInertia(fn ($page) => $page->where('abilities.canApprove', true)->where('abilities.canManageSharedEvents', false));
+
+    // Approving in every brand is enough.
+    $other->members()->attach($approver->id, membershipPivot('admin'));
+    $this->actingAs($approver->fresh())->post(route('socialhq.plan.events.verify', $shared->id))->assertRedirect();
+
+    expect($shared->fresh()->isVerified())->toBeTrue()
+        ->and($own->fresh()->isVerified())->toBeTrue();
+});

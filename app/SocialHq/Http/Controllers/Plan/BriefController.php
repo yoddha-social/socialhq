@@ -10,9 +10,9 @@ use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Production\Brief;
 use App\SocialHq\Production\BriefStage;
 use App\SocialHq\Production\FormatNotes;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -43,6 +43,8 @@ class BriefController extends Controller
         } catch (UniqueConstraintViolationException) {
             // A second click raced the first: the brief exists, which is what was asked for.
         }
+
+        $planItem->acceptForWork();
 
         return back();
     }

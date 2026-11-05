@@ -106,9 +106,9 @@ the user's current workspace; their controllers authorize that workspace. New
 features (calendar drafts, scripts, briefs) call `forPrompt()` with the
 workspace they work for and pass the text to their own prompt view.
 
+The planner, the copy writer and the brief writer read it too (see Planning).
 Not yet: picking the entries that match the request (embeddings through the
-`embed` task; `forPrompt()` already takes the request as `$focus`), and
-feeding it to calendar drafts and scripts.
+`embed` task; `forPrompt()` already takes the request as `$focus`).
 
 ## Planning (Plan in the sidebar)
 

@@ -35,6 +35,8 @@ const props = defineProps<{
     categories: EventCategory[];
     /** The day a new date starts on (YYYY-MM-DD). */
     defaultDay: string;
+    /** Whether the user may add or change dates every brand shares (account owner or approver in every brand). */
+    canShare: boolean;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -353,13 +355,22 @@ const submit = (): void => {
                             {{ $t('socialhq_events.dialog.brand_only') }}
                         </Label>
                         <p class="text-sm text-muted-foreground">
-                            {{ $t('socialhq_events.dialog.brand_only_hint') }}
+                            {{
+                                canShare
+                                    ? $t(
+                                          'socialhq_events.dialog.brand_only_hint',
+                                      )
+                                    : $t(
+                                          'socialhq_events.dialog.brand_only_locked',
+                                      )
+                            }}
                         </p>
                     </div>
                     <Switch
                         id="socialhq-event-brand-only"
                         class="shrink-0"
                         :model-value="form.brand_only"
+                        :disabled="!canShare"
                         data-testid="socialhq-event-brand-only"
                         @update:model-value="setBrandOnly(Boolean($event))"
                     />

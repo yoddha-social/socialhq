@@ -17,6 +17,7 @@ use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\GenerationStatus;
 use App\SocialHq\Plan\ItemSource;
 use App\SocialHq\Plan\ItemStatus;
+use App\SocialHq\Plan\ItemVersion;
 use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Plan\PlanStatus;
 use Carbon\CarbonImmutable;
@@ -367,4 +368,16 @@ test('an answer without items is logged with who answered and how it stopped', f
 
     expect($this->plan->fresh()->generation_error)->toBe('invalid_output');
     Exceptions::assertReported(fn (RuntimeException $exception): bool => str_contains($exception->getMessage(), 'Content plan draft without items: provider'));
+});
+
+test('a new draft keeps a suggestion someone already started work on', function () {
+    $started = PlanItem::factory()->for($this->plan, 'plan')->suggested()->create(['title' => 'Started']);
+    ItemVersion::factory()->for($started, 'item')->create();
+    $untouched = PlanItem::factory()->for($this->plan, 'plan')->suggested()->create(['title' => 'Untouched']);
+    ContentPlanner::fake([['summary' => 'Again.', 'items' => [($this->suggestion)()]]]);
+
+    $this->actingAs($this->owner)->post(route('socialhq.plan.generate', $this->monthKey))->assertSessionHasNoErrors();
+
+    expect(PlanItem::query()->whereKey($started->id)->exists())->toBeTrue()
+        ->and(PlanItem::query()->whereKey($untouched->id)->exists())->toBeFalse();
 });

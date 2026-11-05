@@ -116,3 +116,14 @@ commits on `socialhq/overnight-2026-11-05`.
     file's content. **Deploy note:** that storage folder must be on a persistent volume.
   - Browser: wrote copy with AI (it used the brand's price and delivery facts), approved
     it, created and AI-drafted the brief, saw it on the board.
+- **Cross-cutting review** (whole night's diff, with fresh eyes):
+  - a new AI draft no longer deletes copy, briefs or uploads already started on a
+    suggestion, because starting work accepts it;
+  - deleting a brand deletes its creative files;
+  - an item stays editable after its event is deleted or its owner leaves;
+  - dates every brand shares can only be changed by the account owner or someone who
+    approves in every brand;
+  - brief uploads are rate-limited.
+  - Checked and fine: migrations on PostgreSQL and MySQL, route order and middleware,
+    shared-prop cost, job timeouts against Horizon, and that the AI guard breaks no
+    TryPost feature.

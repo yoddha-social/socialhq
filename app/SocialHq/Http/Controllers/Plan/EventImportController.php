@@ -20,6 +20,8 @@ class EventImportController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $workspace = PlanAccess::workspace($request, approve: true);
+        // The official dates are shared by every brand of the account.
+        EventController::ensureMayChange($request, $workspace, shared: true);
 
         try {
             $counts = ImportOfficialEvents::handle($workspace->account);

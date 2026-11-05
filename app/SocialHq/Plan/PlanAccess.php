@@ -28,6 +28,23 @@ final class PlanAccess
         return Gate::forUser($user)->allows('approvePosts', $workspace);
     }
 
+    /**
+     * Dates shared by every brand of the account (festivals, holidays, the
+     * official list) change for all brands at once, so only the account owner
+     * or someone who approves in every brand may add, edit, confirm or delete
+     * them. Brand-only dates follow canApprove.
+     */
+    public static function canManageSharedEvents(User $user, Workspace $workspace): bool
+    {
+        if ($user->ownsAccountOf($workspace)) {
+            return true;
+        }
+
+        $workspaces = Workspace::query()->where('account_id', $workspace->account_id)->get();
+
+        return $workspaces->isNotEmpty() && $workspaces->every(fn (Workspace $brand): bool => self::canApprove($user, $brand));
+    }
+
     public static function canManageBrand(User $user, Workspace $workspace): bool
     {
         return Gate::forUser($user)->allows('update', $workspace);
@@ -65,14 +82,17 @@ final class PlanAccess
     /**
      * What the pages need to show or hide actions.
      *
-     * @return array{canWork: bool, canApprove: bool, canManageBrand: bool}
+     * @return array{canWork: bool, canApprove: bool, canManageBrand: bool, canManageSharedEvents: bool}
      */
     public static function abilities(User $user, Workspace $workspace): array
     {
+        $canApprove = self::canApprove($user, $workspace);
+
         return [
             'canWork' => self::canWork($user, $workspace),
-            'canApprove' => self::canApprove($user, $workspace),
+            'canApprove' => $canApprove,
             'canManageBrand' => self::canManageBrand($user, $workspace),
+            'canManageSharedEvents' => $canApprove && self::canManageSharedEvents($user, $workspace),
         ];
     }
 }

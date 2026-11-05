@@ -22,7 +22,7 @@ Route::put('items/{item}/brief', [BriefController::class, 'update'])->whereNumbe
 Route::post('items/{item}/brief/ai', BriefAiController::class)->whereNumber('item')->middleware('throttle:socialhq-plan-ai')->name('items.brief.ai');
 
 // Creative rounds: uploads and their review.
-Route::post('items/{item}/brief/files', [BriefFileController::class, 'store'])->whereNumber('item')->name('items.brief.files.store');
+Route::post('items/{item}/brief/files', [BriefFileController::class, 'store'])->whereNumber('item')->middleware('throttle:media-imports')->name('items.brief.files.store');
 Route::get('items/{item}/brief/files/{file}', [BriefFileController::class, 'show'])->whereNumber(['item', 'file'])->name('items.brief.files.show');
 Route::post('items/{item}/brief/submit', [BriefReviewController::class, 'submit'])->whereNumber('item')->name('items.brief.submit');
 Route::post('items/{item}/brief/approve', [BriefReviewController::class, 'approve'])->whereNumber('item')->name('items.brief.approve');

@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 /**
  * The events page: dated festivals, holidays and days, confirmed by a person.
@@ -59,6 +60,7 @@ class EventController extends Controller
     {
         $workspace = PlanAccess::workspace($request, approve: true);
         $brandOnly = $request->boolean('brand_only');
+        self::ensureMayChange($request, $workspace, shared: ! $brandOnly);
         $key = ImportOfficialEvents::keyFor($request->validated('name'));
 
         self::whileLocked($workspace, function () use ($request, $workspace, $brandOnly, $key): void {
@@ -82,6 +84,7 @@ class EventController extends Controller
         $workspace = PlanAccess::workspace($request, approve: true);
         $found = self::find($workspace, $event);
         $brandOnly = $request->boolean('brand_only');
+        self::ensureMayChange($request, $workspace, shared: $found->workspace_id === null || ! $brandOnly);
 
         self::whileLocked($workspace, function () use ($request, $workspace, $found, $brandOnly): void {
             self::ensureUnique($workspace, $brandOnly, $found->key, $request->validated('starts_on'), $found->id);
@@ -98,9 +101,21 @@ class EventController extends Controller
 
     public function destroy(Request $request, int $event): RedirectResponse
     {
-        self::find(PlanAccess::workspace($request, approve: true), $event)->delete();
+        $workspace = PlanAccess::workspace($request, approve: true);
+        $found = self::find($workspace, $event);
+        self::ensureMayChange($request, $workspace, shared: $found->workspace_id === null);
+        $found->delete();
 
         return back();
+    }
+
+    /**
+     * A date shared by every brand changes for all of them: only the account
+     * owner or someone who approves in every brand may change one.
+     */
+    public static function ensureMayChange(Request $request, Workspace $workspace, bool $shared): void
+    {
+        abort_if($shared && ! PlanAccess::canManageSharedEvents($request->user(), $workspace), HttpResponse::HTTP_FORBIDDEN);
     }
 
     /**

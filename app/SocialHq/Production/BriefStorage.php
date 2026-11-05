@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\SocialHq\Production;
 
+use App\Models\Workspace;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\PlanItem;
-use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Mime\MimeTypes;
@@ -65,5 +66,7 @@ final class BriefStorage
         Brief::deleting(fn (Brief $brief) => self::forget(Brief::query()->whereKey($brief->id)));
         PlanItem::deleting(fn (PlanItem $item) => self::forget(Brief::query()->where('item_id', $item->id)));
         ContentPlan::deleting(fn (ContentPlan $plan) => self::forget(Brief::query()->whereIn('item_id', PlanItem::query()->where('plan_id', $plan->id)->select('id'))));
+        // A deleted brand's rows cascade in the database, which fires no model events.
+        Workspace::deleting(fn (Workspace $workspace) => self::forget(Brief::query()->where('workspace_id', $workspace->id)));
     }
 }

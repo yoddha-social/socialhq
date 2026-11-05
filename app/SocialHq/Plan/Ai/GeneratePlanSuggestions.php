@@ -108,7 +108,9 @@ class GeneratePlanSuggestions implements ShouldQueue
 
             [$accepted, $rejections] = $this->check($plan, array_slice(array_values($items), 0, ContentPlanner::MAX_ITEMS), $today);
 
-            $plan->items()->where('status', ItemStatus::Suggested)->delete();
+            // Only untouched suggestions are replaced; one with copy or a brief keeps its work
+            // (starting work accepts it, but older rows may predate that).
+            $plan->items()->where('status', ItemStatus::Suggested)->whereDoesntHave('versions')->whereDoesntHave('brief')->delete();
 
             $positions = [];
 

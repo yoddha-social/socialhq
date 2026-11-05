@@ -39,6 +39,7 @@ final class ItemCopy
             ]);
 
             $locked->update(['copy_status' => CopyStatus::Draft]);
+            $locked->acceptForWork();
 
             if ($wasApproved) {
                 self::note($locked, $user, ReviewKind::Reopened, $version);

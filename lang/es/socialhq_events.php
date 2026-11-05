@@ -85,6 +85,7 @@ return [
         'source_url_placeholder' => 'https://',
         'brand_only' => 'Only this brand',
         'brand_only_hint' => 'The other brands of your account won\'t see it.',
+        'brand_only_locked' => 'Dates for every brand are added and changed by the account owner.',
         'cancel' => 'Cancel',
         'save' => 'Save date',
     ],

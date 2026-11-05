@@ -42,6 +42,20 @@ class PlanItem extends Model
     }
 
     /**
+     * Starting work on an AI suggestion (its copy or brief) accepts it, so a
+     * new AI draft, which replaces open suggestions, never deletes that work.
+     */
+    public function acceptForWork(): void
+    {
+        if ($this->status !== ItemStatus::Suggested) {
+            return;
+        }
+
+        $this->update(['status' => ItemStatus::Planned]);
+        $this->plan?->reopen();
+    }
+
+    /**
      * @return BelongsTo<ContentPlan, $this>
      */
     public function plan(): BelongsTo

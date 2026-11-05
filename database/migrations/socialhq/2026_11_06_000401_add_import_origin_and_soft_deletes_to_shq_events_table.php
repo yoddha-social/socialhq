@@ -48,7 +48,9 @@ return new class extends Migration
         Schema::table('shq_events', function (Blueprint $table) {
             $table->dropIndex(['account_id', 'import_key', 'import_date']);
             $table->dropColumn(['import_key', 'import_date', 'deleted_at']);
-            $table->unique(['account_id', 'workspace_id', 'key', 'starts_on']);
+            // The old unique index is not restored: rows written since (soft-deleted dates,
+            // an import beside a manual date) may break it. A plain index keeps lookups fast.
+            $table->index(['account_id', 'workspace_id', 'key', 'starts_on']);
         });
     }
 };

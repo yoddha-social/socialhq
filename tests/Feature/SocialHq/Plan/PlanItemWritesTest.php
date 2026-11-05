@@ -203,3 +203,22 @@ test('another workspace\'s item is not found and an outsider is refused', functi
     $this->actingAs($outsider)->post(route('socialhq.plan.suggestions.accept', $this->month->format('Y-m')))->assertForbidden();
     expect($item->fresh())->not->toBeNull();
 });
+
+test('an item whose event was deleted or whose owner left can still be edited', function () {
+    $event = CalendarEvent::factory()->verified()->create(['account_id' => $this->workspace->account_id, 'starts_on' => $this->month->addDays(4), 'ends_on' => $this->month->addDays(4)]);
+    $leaver = workspaceMember($this->workspace, 'member');
+    $item = PlanItem::factory()->create([
+        'plan_id' => ContentPlan::factory()->create(['workspace_id' => $this->workspace->id, 'month' => $this->month->toDateString()])->id,
+        'social_account_id' => $this->instagram->id,
+        'event_id' => $event->id,
+        'owner_id' => $leaver->id,
+    ]);
+    $event->delete();
+    $this->workspace->members()->detach($leaver->id);
+
+    $this->actingAs($this->owner)
+        ->put(route('socialhq.plan.items.update', $item->id), ($this->itemPayload)(['title' => 'Still editable', 'event_id' => $event->id, 'owner_id' => $leaver->id]))
+        ->assertSessionHasNoErrors();
+
+    expect($item->fresh()->title)->toBe('Still editable');
+});

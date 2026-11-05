@@ -14,6 +14,7 @@ use App\SocialHq\Plan\PlanPage;
 use App\SocialHq\Plan\PlanStatus;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -60,28 +61,38 @@ class PlanController extends Controller
     }
 
     /**
-     * Approvers only, and only once every AI suggestion was accepted or dropped.
+     * Approvers only, once every AI suggestion was accepted or dropped and no
+     * AI draft is running (it would add suggestions to the approved plan).
+     * The plan row is locked, so a run finishing at the same moment waits.
      */
     public function approve(Request $request, string $month): RedirectResponse
     {
         $workspace = PlanAccess::workspace($request, approve: true);
-        $plan = PlanMonth::find($workspace, PlanMonth::parse($month, $request->user()));
+        $found = PlanMonth::find($workspace, PlanMonth::parse($month, $request->user()));
 
-        $this->ensureHasPlannedItems($plan);
+        DB::transaction(function () use ($found, $request): void {
+            $plan = $found === null ? null : ContentPlan::query()->lockForUpdate()->find($found->id);
 
-        if ($plan->hasOpenSuggestions()) {
-            throw ValidationException::withMessages(['plan' => __('socialhq_plan.errors.open_suggestions')]);
-        }
+            $this->ensureHasPlannedItems($plan);
 
-        if ($plan->status !== PlanStatus::Approved) {
-            $plan->forceFill([
-                'status' => PlanStatus::Approved,
-                'approved_at' => now(),
-                'approved_by' => $request->user()->id,
-                'submitted_at' => $plan->submitted_at ?? now(),
-                'submitted_by' => $plan->submitted_by ?? $request->user()->id,
-            ])->save();
-        }
+            if ($plan->isGenerating()) {
+                throw ValidationException::withMessages(['plan' => __('socialhq_plan.errors.generating')]);
+            }
+
+            if ($plan->hasOpenSuggestions()) {
+                throw ValidationException::withMessages(['plan' => __('socialhq_plan.errors.open_suggestions')]);
+            }
+
+            if ($plan->status !== PlanStatus::Approved) {
+                $plan->forceFill([
+                    'status' => PlanStatus::Approved,
+                    'approved_at' => now(),
+                    'approved_by' => $request->user()->id,
+                    'submitted_at' => $plan->submitted_at ?? now(),
+                    'submitted_by' => $plan->submitted_by ?? $request->user()->id,
+                ])->save();
+            }
+        });
 
         return back();
     }

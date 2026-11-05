@@ -16,6 +16,7 @@ use App\SocialHq\Plan\PlanMonth;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -25,6 +26,9 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class PlanGenerationController extends Controller
 {
+    /** AI drafts one person may start per hour (the socialhq-plan-generate limiter). */
+    public const HOURLY_LIMIT = 5;
+
     public function store(GeneratePlanRequest $request, string $month): RedirectResponse
     {
         $workspace = PlanAccess::workspace($request);
@@ -42,7 +46,9 @@ class PlanGenerationController extends Controller
 
         $plan = PlanMonth::findOrCreate($workspace, PlanMonth::parse($month, $user), $user);
 
-        $started = DB::transaction(function () use ($plan, $request, $user): bool {
+        $runId = (string) Str::uuid7();
+
+        $started = DB::transaction(function () use ($plan, $request, $user, $runId): bool {
             $locked = ContentPlan::query()->lockForUpdate()->findOrFail($plan->id);
 
             if ($locked->isGenerating()) {
@@ -55,6 +61,7 @@ class PlanGenerationController extends Controller
                 'generation_error' => null,
                 'generation_started_at' => now(),
                 'generation_requested_by' => $user->id,
+                'generation_run_id' => $runId,
             ])->save();
 
             return true;
@@ -62,7 +69,7 @@ class PlanGenerationController extends Controller
 
         abort_unless($started, Response::HTTP_CONFLICT, __('socialhq_plan.generation.errors.already_running'));
 
-        GeneratePlanSuggestions::dispatch($plan->id);
+        GeneratePlanSuggestions::dispatch($plan->id, $runId);
 
         return back();
     }

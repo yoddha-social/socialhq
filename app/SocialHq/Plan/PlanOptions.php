@@ -72,14 +72,16 @@ final class PlanOptions
     }
 
     /**
+     * The brand's pillars, at most MAX_PILLARS (the settings form enforces it; this keeps the prompt bounded too).
+     *
      * @return list<string>
      */
     public static function pillars(?BrandProfile $profile): array
     {
-        return array_values(array_filter(
+        return array_slice(array_values(array_filter(
             array_map(fn (mixed $pillar): string => trim((string) $pillar), (array) ($profile?->pillars ?? [])),
-            fn (string $pillar): bool => $pillar !== '',
-        ));
+            fn (string $pillar): bool => $pillar !== '' && mb_strlen($pillar) <= self::MAX_PILLAR_LENGTH,
+        )), 0, self::MAX_PILLARS);
     }
 
     /**
@@ -113,6 +115,23 @@ final class PlanOptions
     public static function fitsChannel(ContentType $contentType, Platform $platform): bool
     {
         return in_array($contentType, ContentType::forPlatform($platform), true);
+    }
+
+    /**
+     * Whether what has to be made can go out in this format: a video needs a
+     * format that takes video, an image or a carousel one that takes images
+     * (a carousel several), a document one that takes documents, and "none"
+     * a format that publishes without media.
+     */
+    public static function creativeFits(CreativeKind $creative, ContentType $contentType): bool
+    {
+        return match ($creative) {
+            CreativeKind::Video => $contentType->supportsVideo(),
+            CreativeKind::Image => $contentType->supportsImage(),
+            CreativeKind::Carousel => $contentType->supportsImage() && $contentType->maxMediaCount() > 1,
+            CreativeKind::Document => $contentType->supportsDocument(),
+            CreativeKind::None => ! $contentType->requiresMedia(),
+        };
     }
 
     /**

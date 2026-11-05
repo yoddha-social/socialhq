@@ -41,6 +41,7 @@ return [
         'approved_by' => 'Approved by :name',
         'waiting' => 'Waiting for an admin to approve',
         'approve_blocked' => 'Accept or drop every AI suggestion first.',
+        'approve_generating' => 'Wait for the AI draft to finish, then review its suggestions.',
     ],
     'ai_off' => 'AI drafts are off: no AI provider is set up on this server.',
     'read_only' => 'You can see this plan. To change it, ask a workspace admin to let you create posts here.',
@@ -77,6 +78,7 @@ return [
         'pillar' => 'Pillar',
         'owner' => 'Owner',
         'copy' => 'Copy',
+        'open_row' => 'Edit ":title"',
     ],
     'item_status' => [
         'suggested' => 'AI suggestion',
@@ -85,7 +87,9 @@ return [
     ],
     'item' => [
         'accept' => 'Accept',
+        'accept_named' => 'Accept ":title"',
         'drop' => 'Drop',
+        'drop_named' => 'Drop ":title"',
         'restore' => 'Restore',
         'delete' => 'Delete',
     ],
@@ -158,7 +162,7 @@ return [
         'goals_placeholder' => 'For example: launch the winter menu, more reels, nothing on Saturdays.',
         'replaces' => 'This replaces the AI suggestions you haven\'t accepted yet. Planned items stay.',
         'start' => 'Generate',
-        'too_many' => 'You\'ve started 5 AI drafts this hour. Try again later.',
+        'too_many' => 'You\'ve started :limit AI drafts this hour. Try again later.',
     ],
     'validation' => [
         'date_in_month' => 'Pick a day in this plan\'s month.',
@@ -176,6 +180,7 @@ return [
     'errors' => [
         'empty_plan' => 'Add at least one item to the plan first.',
         'open_suggestions' => 'Accept or drop every AI suggestion before approving the plan.',
+        'generating' => 'An AI draft of this month is still running. Approve the plan once it has finished and you\'ve reviewed its suggestions.',
         'item_changed' => 'This item changed in the meantime. Reload the page and try again.',
         'request_failed' => 'Couldn\'t save that change. Try again.',
     ],
@@ -190,6 +195,11 @@ return [
         'reasons' => [
             'missing_title' => 'No title',
             'date_outside_month' => 'Day outside the month',
+            'date_in_past' => 'Day already passed',
+            'channel_paused' => 'Channel set to 0 posts a week',
+            'creative_mismatch' => 'What to make doesn\'t fit the format',
+            'event_date_mismatch' => 'Too far from the event\'s date',
+            'duplicate_title' => 'Title already in this month\'s plan',
             'unknown_channel' => 'Not one of your channels',
             'content_type_not_for_channel' => 'Format not offered by the channel',
             'unknown_event' => 'Event not in your calendar',

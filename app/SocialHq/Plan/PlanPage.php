@@ -11,6 +11,7 @@ use App\Models\Workspace;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiTask;
 use App\SocialHq\Events\CalendarEvent;
+use App\SocialHq\Http\Controllers\Plan\PlanGenerationController;
 use App\Support\Timezone;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Gate;
@@ -57,7 +58,7 @@ final class PlanPage
             'cadence' => PlanOptions::cadence($profile, $channels),
             'creatives' => array_map(fn (CreativeKind $kind): string => $kind->value, CreativeKind::cases()),
             'abilities' => [...$abilities, 'canGenerate' => $abilities['canWork'] && $aiAvailable],
-            'ai' => ['available' => $aiAvailable],
+            'ai' => ['available' => $aiAvailable, 'hourlyLimit' => PlanGenerationController::HOURLY_LIMIT],
         ];
     }
 

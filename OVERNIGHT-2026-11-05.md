@@ -8,7 +8,7 @@ commits on `socialhq/overnight-2026-11-05`.
   combined, merge conflicts resolved). Pushed. Module + unit tests: 2070 passed. Full
   feature suite: 8736 passed, 1 failed: a TryPost billing test that expects pt-BR
   currency formatting the PHP image's ICU data doesn't give (`US$ 18,00` vs `$18.00`).
-  Not ours; it fails the same way on the base.
+  Not touched by our changes; probably the ICU data in the image (not checked on main).
 - `socialhq/overnight-2026-11-05`: tonight's work, on top of the checkpoint.
 
 ## Log

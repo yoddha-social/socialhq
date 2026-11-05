@@ -135,6 +135,9 @@ const dropItem = (): void => emit('drop', props.item);
                 type="button"
                 class="inline-flex h-6 flex-1 items-center justify-center gap-1 rounded-md text-[11px] font-medium text-primary-text transition-control hover:bg-primary-subtle focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50"
                 :disabled="busy"
+                :aria-label="
+                    $t('socialhq_plan.item.accept_named', { title: item.title })
+                "
                 :data-testid="`plan-item-accept-${item.id}`"
                 @click="acceptItem"
             >
@@ -145,6 +148,9 @@ const dropItem = (): void => emit('drop', props.item);
                 type="button"
                 class="inline-flex h-6 flex-1 items-center justify-center gap-1 rounded-md text-[11px] font-medium text-muted-foreground transition-control hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50"
                 :disabled="busy"
+                :aria-label="
+                    $t('socialhq_plan.item.drop_named', { title: item.title })
+                "
                 :data-testid="`plan-item-drop-${item.id}`"
                 @click="dropItem"
             >

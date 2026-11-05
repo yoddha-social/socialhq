@@ -4,6 +4,10 @@ import { IconArrowBackUp, IconExternalLink, IconX } from '@tabler/icons-vue';
 import { computed, ref, watch } from 'vue';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
+import {
+    toastFirstError,
+    toastRequestFailed,
+} from '@/components/socialhq/plan/planRequests';
 import type {
     PlanChannel,
     PlanEvent,
@@ -199,6 +203,8 @@ const toggleDropped = (): void => {
                 statusProcessing.value = false;
             },
             onSuccess: close,
+            onError: toastFirstError,
+            onHttpException: toastRequestFailed,
         },
     );
 };
@@ -380,6 +386,12 @@ const askDelete = (): void => {
                                         }}
                                     </NativeSelectOption>
                                 </NativeSelect>
+                                <p
+                                    v-if="form.errors.creative"
+                                    class="text-sm text-destructive"
+                                >
+                                    {{ form.errors.creative }}
+                                </p>
                             </div>
 
                             <div class="flex flex-col gap-2">

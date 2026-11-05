@@ -55,12 +55,14 @@ final class PlanMonth
      */
     public static function findOrCreate(Workspace $workspace, CarbonImmutable $month, User $user): ContentPlan
     {
-        return self::find($workspace, $month) ?? ContentPlan::query()->create([
-            'workspace_id' => $workspace->id,
-            'month' => $month->toDateString(),
-            'status' => PlanStatus::Draft,
-            'generation_status' => GenerationStatus::Idle,
-            'created_by' => $user->id,
-        ]);
+        // createOrFirst: two first writes at once both end on the one row the unique index allows.
+        return self::find($workspace, $month) ?? ContentPlan::query()->createOrFirst(
+            ['workspace_id' => $workspace->id, 'month' => $month->toDateString()],
+            [
+                'status' => PlanStatus::Draft,
+                'generation_status' => GenerationStatus::Idle,
+                'created_by' => $user->id,
+            ],
+        );
     }
 }

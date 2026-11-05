@@ -18,7 +18,11 @@ use App\SocialHq\Plan\ItemSource;
 use App\SocialHq\Plan\ItemStatus;
 use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Plan\PlanStatus;
+use App\Enums\User\Locale;
 use Carbon\CarbonImmutable;
+use Illuminate\JsonSchema\JsonSchemaTypeFactory;
+use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Str;
 use Laravel\Ai\Exceptions\AiException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -210,9 +214,11 @@ test('the planner context holds the month, brand, channels, events, planned item
     AnalyticsPublication::factory()->create(['workspace_id' => $this->workspace->id, 'provider_published_at' => now()->subDays(120)]);
     AnalyticsPublication::factory()->create(['provider_published_at' => now()->subDay()]);
 
-    $context = PlannerContext::build($this->plan->fresh());
+    $today = CarbonImmutable::now('UTC')->startOfDay();
+    $context = PlannerContext::build($this->plan->fresh(), $today);
 
     expect($context['month'])->toBe($this->monthKey)
+        ->and($context['today'])->toBe($today->toDateString())
         ->and($context['days'])->toHaveCount($this->month->daysInMonth)
         ->and($context['days'][0])->toBe($this->month->format('Y-m-d D'))
         ->and($context['goals'])->toBe('More reels.')
@@ -228,4 +234,137 @@ test('the planner context holds the month, brand, channels, events, planned item
         ->and($context['past_posts'][0]['engagement'])->toBe(640)
         ->and($context['past_posts'][30]['engagement'])->toBe(10)
         ->and(mb_strlen($context['past_posts'][0]['excerpt']))->toBeLessThanOrEqual(PlannerContext::EXCERPT_LENGTH);
+});
+
+test('a run that ends after the plan was approved sends it back for review', function () {
+    PlanItem::factory()->for($this->plan, 'plan')->create(['social_account_id' => $this->instagram->id, 'scheduled_on' => ($this->day)(1)]);
+    ContentPlanner::fake(function () {
+        // The plan is approved while the AI works.
+        $this->plan->fresh()->forceFill(['status' => PlanStatus::Approved, 'approved_at' => now(), 'approved_by' => $this->owner->id])->save();
+
+        return ['summary' => 'Late.', 'items' => [($this->suggestion)()]];
+    });
+
+    $this->actingAs($this->member)->post(route('socialhq.plan.generate', $this->monthKey))->assertSessionHasNoErrors();
+
+    expect($this->plan->fresh()->status)->toBe(PlanStatus::InReview)
+        ->and($this->plan->fresh()->approved_at)->toBeNull()
+        ->and($this->plan->items()->where('status', ItemStatus::Suggested)->count())->toBe(1);
+});
+
+test('approving is refused while an AI draft is running', function () {
+    PlanItem::factory()->for($this->plan, 'plan')->create();
+    $this->plan->update(['generation_status' => GenerationStatus::Running, 'generation_started_at' => now(), 'generation_run_id' => (string) Str::uuid7()]);
+
+    $this->actingAs($this->owner)->post(route('socialhq.plan.approve', $this->monthKey))->assertSessionHasErrors('plan');
+
+    expect($this->plan->fresh()->status)->toBe(PlanStatus::Draft);
+});
+
+test('a job whose run was replaced by a newer one writes nothing', function () {
+    $newerRun = (string) Str::uuid7();
+    ContentPlanner::fake(function () use ($newerRun) {
+        $this->plan->fresh()->forceFill(['generation_run_id' => $newerRun, 'generation_started_at' => now()])->save();
+
+        return ['summary' => 'Old run.', 'items' => [($this->suggestion)()]];
+    });
+
+    $this->actingAs($this->member)->post(route('socialhq.plan.generate', $this->monthKey))->assertSessionHasNoErrors();
+
+    $plan = $this->plan->fresh();
+
+    expect($plan->items()->count())->toBe(0)
+        ->and($plan->generation_status)->toBe(GenerationStatus::Running)
+        ->and($plan->generation_run_id)->toBe($newerRun)
+        ->and($plan->generation_summary)->toBeNull();
+});
+
+test('an item planned while the AI worked still blocks its channel\'s day', function () {
+    ContentPlanner::fake(function () {
+        PlanItem::factory()->for($this->plan, 'plan')->create(['social_account_id' => $this->instagram->id, 'scheduled_on' => ($this->day)(6), 'title' => 'Added meanwhile']);
+
+        return ['summary' => 'x', 'items' => [($this->suggestion)()]];
+    });
+
+    $this->actingAs($this->member)->post(route('socialhq.plan.generate', $this->monthKey))->assertSessionHasNoErrors();
+
+    expect($this->plan->items()->where('status', ItemStatus::Suggested)->count())->toBe(0)
+        ->and(collect($this->plan->fresh()->generation_rejections)->pluck('reason')->all())->toBe(['duplicate_day']);
+});
+
+test('in the current month the AI is told today and days before it are refused', function () {
+    $this->travelTo(CarbonImmutable::now('UTC')->startOfMonth()->addDays(14)->setTime(12, 0));
+    $month = CarbonImmutable::now('UTC')->startOfMonth();
+    $today = CarbonImmutable::now('UTC')->toDateString();
+    $this->member->update(['timezone' => 'UTC']);
+    ContentPlan::factory()->create(['workspace_id' => $this->workspace->id, 'month' => $month->toDateString()]);
+    ContentPlanner::fake([['summary' => 'Now.', 'items' => [
+        ($this->suggestion)(['date' => $month->addDays(13)->toDateString(), 'title' => 'Yesterday']),
+        ($this->suggestion)(['date' => $today, 'title' => 'Today']),
+    ]]]);
+
+    $this->actingAs($this->member)->post(route('socialhq.plan.generate', $month->format('Y-m')))->assertSessionHasNoErrors();
+
+    $plan = ContentPlan::query()->where('workspace_id', $this->workspace->id)->whereDate('month', $month->toDateString())->sole();
+
+    expect($plan->items()->pluck('title')->all())->toBe(['Today'])
+        ->and(collect($plan->generation_rejections)->pluck('reason', 'title')->all())->toBe(['Yesterday' => 'date_in_past']);
+
+    ContentPlanner::assertPrompted(fn ($prompt) => $prompt->contains("\"today\":\"{$today}\""));
+});
+
+test('the job holds the AI to the cadence, the formats, the event dates and the titles already used', function () {
+    BrandProfile::query()->where('workspace_id', $this->workspace->id)->update(['cadence' => [$this->instagram->id => 3, $this->linkedin->id => 0]]);
+    PlanItem::factory()->for($this->plan, 'plan')->create(['social_account_id' => $this->instagram->id, 'scheduled_on' => ($this->day)(1), 'title' => 'Momo Monday']);
+    CalendarEvent::factory()->verified()->create(['account_id' => $this->workspace->account_id, 'key' => 'dashain', 'starts_on' => $this->month->addDays(12), 'ends_on' => $this->month->addDays(16)]);
+
+    ContentPlanner::fake([['summary' => 'Checked.', 'items' => [
+        ($this->suggestion)(['channel' => $this->linkedin->id, 'content_type' => ContentType::LinkedInPost->value, 'creative' => 'image', 'title' => 'Paused channel']),
+        ($this->suggestion)(['date' => ($this->day)(3), 'creative' => 'image', 'title' => 'Image as a reel']),
+        ($this->suggestion)(['date' => ($this->day)(4), 'content_type' => ContentType::InstagramFeed->value, 'creative' => 'none', 'title' => 'No media on the feed']),
+        ($this->suggestion)(['date' => ($this->day)(5), 'event_key' => 'dashain', 'title' => 'Dashain too early']),
+        ($this->suggestion)(['date' => ($this->day)(17), 'event_key' => 'dashain', 'title' => 'Dashain too late']),
+        ($this->suggestion)(['date' => ($this->day)(9), 'event_key' => 'dashain', 'title' => 'Dashain countdown']),
+        ($this->suggestion)(['date' => ($this->day)(20), 'title' => ' momo MONDAY ']),
+        ($this->suggestion)(['date' => ($this->day)(21), 'title' => 'Dashain Countdown']),
+        // A model may leave out what isn't required (pillar, event_key, objective, angle).
+        ['date' => ($this->day)(23), 'channel' => $this->instagram->id, 'content_type' => ContentType::InstagramFeed->value, 'creative' => 'carousel', 'title' => 'Only the required fields'],
+    ]]]);
+
+    $this->actingAs($this->member)->post(route('socialhq.plan.generate', $this->monthKey))->assertSessionHasNoErrors();
+
+    $plan = $this->plan->fresh();
+    $minimal = $plan->items()->where('title', 'Only the required fields')->sole();
+
+    expect($plan->items()->where('status', ItemStatus::Suggested)->orderBy('scheduled_on')->pluck('title')->all())->toBe(['Dashain countdown', 'Only the required fields'])
+        ->and($minimal->pillar)->toBeNull()
+        ->and($minimal->event_id)->toBeNull()
+        ->and($minimal->objective)->toBeNull()
+        ->and($minimal->angle)->toBeNull()
+        ->and(collect($plan->generation_rejections)->pluck('reason', 'title')->all())->toBe([
+            'Paused channel' => 'channel_paused',
+            'Image as a reel' => 'creative_mismatch',
+            'No media on the feed' => 'creative_mismatch',
+            'Dashain too early' => 'event_date_mismatch',
+            'Dashain too late' => 'event_date_mismatch',
+            'momo MONDAY' => 'duplicate_title',
+            'Dashain Countdown' => 'duplicate_title',
+        ]);
+});
+
+test('the planner schema requires only what an item cannot do without', function () {
+    $schema = (new ContentPlanner(Locale::DEFAULT))->schema(new JsonSchemaTypeFactory);
+    $item = data_get($schema['items']->toArray(), 'items');
+
+    expect($item['required'])->toEqualCanonicalizing(['date', 'channel', 'content_type', 'creative', 'title']);
+});
+
+test('an answer without items is logged with who answered and how it stopped', function () {
+    Exceptions::fake();
+    ContentPlanner::fake([['summary' => 'Cut short.']]);
+
+    $this->actingAs($this->member)->post(route('socialhq.plan.generate', $this->monthKey))->assertSessionHasNoErrors();
+
+    expect($this->plan->fresh()->generation_error)->toBe('invalid_output');
+    Exceptions::assertReported(fn (RuntimeException $exception): bool => str_contains($exception->getMessage(), 'Content plan draft without items: provider'));
 });

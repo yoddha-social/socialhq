@@ -13,6 +13,7 @@ use App\SocialHq\AiGraphics\AiGraphics;
 use App\SocialHq\Approval\ApprovalRules;
 use App\SocialHq\Approval\RecordApprovalEvents;
 use App\SocialHq\Events\ImportEventsCommand;
+use App\SocialHq\Http\Controllers\Plan\PlanGenerationController;
 use App\SocialHq\Http\Middleware\RedirectWhileAwaitingAccess;
 use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Signup\AccessRequests;
@@ -98,7 +99,7 @@ class SocialHqServiceProvider extends ServiceProvider
 
         RateLimiter::for('socialhq-ai-graphics', fn (Request $request): Limit => Limit::perHour(AiGraphics::userHourlyLimit())
             ->by((string) $request->user()?->id));
-        RateLimiter::for('socialhq-plan-generate', fn (Request $request): Limit => Limit::perHour(5)->by((string) $request->user()?->id));
+        RateLimiter::for('socialhq-plan-generate', fn (Request $request): Limit => Limit::perHour(PlanGenerationController::HOURLY_LIMIT)->by((string) $request->user()?->id));
 
         // AI copy and briefs on plan items: 20 an hour per person.
         RateLimiter::for('socialhq-plan-ai', fn (Request $request): Limit => Limit::perHour(20)

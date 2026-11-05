@@ -23,6 +23,7 @@ const props = defineProps<{
     monthLabel: string;
     goals: string | null;
     hasSuggestions: boolean;
+    hourlyLimit: number;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -46,15 +47,22 @@ const close = (): void => {
 };
 
 const refused = (response: { status: number }): false => {
-    toast.error(
-        trans(
-            response.status === 429
-                ? 'socialhq_plan.generate.too_many'
-                : response.status === 409
-                  ? 'socialhq_plan.generation.errors.already_running'
-                  : 'socialhq_plan.errors.request_failed',
-        ),
-    );
+    if (response.status === 429) {
+        toast.error(
+            trans('socialhq_plan.generate.too_many', {
+                limit: String(props.hourlyLimit),
+            }),
+        );
+    } else {
+        toast.error(
+            trans(
+                response.status === 409
+                    ? 'socialhq_plan.generation.errors.already_running'
+                    : 'socialhq_plan.errors.request_failed',
+            ),
+        );
+    }
+
     close();
 
     return false;

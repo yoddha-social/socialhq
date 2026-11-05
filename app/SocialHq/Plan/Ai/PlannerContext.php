@@ -38,6 +38,7 @@ final class PlannerContext
     /**
      * @return array{
      *     month: string,
+     *     today: string,
      *     days: list<string>,
      *     goals: string|null,
      *     brand: string,
@@ -48,7 +49,7 @@ final class PlannerContext
      *     past_posts: list<array<string, mixed>>,
      * }
      */
-    public static function build(ContentPlan $plan): array
+    public static function build(ContentPlan $plan, CarbonImmutable $today): array
     {
         $workspace = $plan->workspace;
         $month = CarbonImmutable::createFromFormat('!Y-m-d', $plan->month->toDateString(), 'UTC');
@@ -59,6 +60,7 @@ final class PlannerContext
 
         return [
             'month' => PlanMonth::key($month),
+            'today' => $today->toDateString(),
             'days' => collect(CarbonPeriod::create($month, $end))
                 ->map(fn ($day): string => $day->format('Y-m-d D'))
                 ->values()

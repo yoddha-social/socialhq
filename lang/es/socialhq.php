@@ -68,15 +68,15 @@ return [
         'read_only' => 'Only workspace admins can change this.',
         'start' => [
             'title' => "The AI doesn't know this brand yet",
-            'description' => 'To get captions and ideas in your brand\'s voice and with the right facts, fill in the brand profile and add what the AI should know.',
-            'description_member' => 'To get captions and ideas in your brand\'s voice and with the right facts, a workspace admin needs to fill in the brand profile and add what the AI should know.',
+            'description' => 'To get captions and ideas in your brand\'s voice and with the right facts, fill in your brand profile.',
+            'description_member' => 'To get captions and ideas in your brand\'s voice and with the right facts, a workspace admin needs to fill in the brand profile.',
             'action' => 'Fill in brand profile',
         ],
         'usage' => [
-            'label' => 'Space used in AI prompts',
+            'label' => 'Space used for AI writing',
             'value' => ':used of :budget characters',
             'hint' => 'Nepali text takes about twice the space of English.',
-            'profile_trimmed' => 'Your profile takes more than half of the space, so the AI gets a shortened version of each field.',
+            'profile_trimmed' => 'Your brand profile uses more than half of the space, so the AI reads a shortened version of each field. Shorten the profile so the AI reads all of it.',
         ],
         'profile' => [
             'title' => 'Brand profile',
@@ -92,7 +92,7 @@ return [
         ],
         'entries' => [
             'title' => 'Knowledge',
-            'description' => 'Products, projects, past campaigns and facts. Pinned ones go into AI prompts first, then the newest.',
+            'description' => 'Products, projects, past campaigns and facts. The AI reads pinned entries first, then the newest.',
             'add' => 'Add knowledge',
             'empty' => 'No knowledge yet. Add your products, projects and key facts so the AI gets them right.',
             'empty_member' => 'No knowledge yet. Workspace admins add products, projects and key facts here for the AI.',
@@ -103,13 +103,13 @@ return [
             'pinned' => 'Pinned',
             'not_in_ai' => 'Not used by AI',
             'fit' => [
-                'included' => 'In AI prompts',
-                'no_room' => "Doesn't fit",
-                'too_long' => 'Too long for AI prompts',
+                'included' => 'Used by AI',
+                'no_room' => 'No room for AI',
+                'too_long' => 'Too long for AI',
             ],
             'fit_hint' => [
-                'no_room' => 'To include it, pin it or shorten other entries.',
-                'too_long' => 'To include it, shorten it or the brand profile.',
+                'no_room' => 'To have the AI use it, pin it or shorten other entries.',
+                'too_long' => 'To have the AI use it, shorten it or the brand profile.',
             ],
             'kinds' => [
                 'product' => 'Product or service',
@@ -128,8 +128,8 @@ return [
                 'body_placeholder' => 'Prices, dates, features, what to say and what not to say.',
                 'use_in_ai' => 'Use in AI writing',
                 'use_in_ai_hint' => 'Turn off to keep it here without sending it to the AI.',
-                'pinned' => 'Always include in AI writing',
-                'pinned_hint' => 'Goes into AI prompts before other entries, as long as it fits.',
+                'pinned' => 'Always use in AI writing',
+                'pinned_hint' => 'The AI reads it before other entries, as long as it fits.',
                 'cancel' => 'Cancel',
                 'save' => 'Save',
             ],

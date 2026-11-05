@@ -90,7 +90,7 @@ emoji) count double.
 1. The profile takes at most half. When longer, each field is shortened
    fairly (short fields stay whole) and ends with "…".
 2. Entries marked "Use in AI writing" fill the rest: pinned ones ("Always
-   include in AI writing") first, then newest by creation date, so editing
+   use in AI writing") first, then newest by creation date, so editing
    an entry never pushes others out. One that doesn't fit is skipped.
 3. Runs of `"""` in the text are broken up, so nothing can close the quoted
    block. The prompt tells the model it is reference data, not instructions.

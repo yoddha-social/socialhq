@@ -34,3 +34,27 @@ commits on `socialhq/overnight-2026-11-05`.
 - **Planning layer foundation:** tables, models, factories, access rules, the sidebar
   "Plan" item and tabs; the official BS 2083 holiday list (91 dates) and 105
   international days as CSV with a source per row.
+- **Sign-up fixes** (review of #11), all 11 findings:
+  - a Google/GitHub sign-in takes an unconfirmed registration away from whoever set its
+    password (password replaced, their sessions ended);
+  - approve/decline can't race;
+  - the register form no longer reveals which emails have accounts, and it is
+    rate-limited;
+  - the team account is found without the env setting;
+  - waiting people can accept invites;
+  - declined people's files are deleted;
+  - Members shows a banner for waiting requests;
+  - the emails are rebuilt with the Social HQ header.
+  - **A second review found three more gaps, now closed:** a password reset ends the
+    other sessions and confirms the email; Google/GitHub emails are matched whatever
+    their capitals; already-accepted invites don't skip approval.
+  - Tested: sign-up 33 tests + TryPost auth tests, 172 passed.
+- **Knowledge base fixes** (review of #12), all 12 findings:
+  - the profile can use at most half of the AI prompt space, so entries always get in;
+  - each entry shows whether it reaches AI prompts, and a meter shows the space used;
+  - "Always include" pins an entry;
+  - Nepali text counts double, because it uses more of the AI's budget;
+  - errors show next to their fields, with accessible labels, and the list style is
+    fixed;
+  - members see a read-only page that says who can edit it.
+  - Tested: 13 tests (7 new).

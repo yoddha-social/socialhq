@@ -55,9 +55,10 @@ class BriefWriter implements Agent, HasStructuredOutput
     public function schema(JsonSchema $schema): array
     {
         return [
-            'on_screen_text' => $schema->string(),
+            // Every key is required (strict providers refuse a schema that leaves one out); "" means none.
+            'on_screen_text' => $schema->string()->description('The words on the creative, one line each, or "".')->required(),
             'direction' => $schema->string()->required(),
-            'references' => $schema->string(),
+            'references' => $schema->string()->description('Reference ideas, one per line, or "".')->required(),
         ];
     }
 

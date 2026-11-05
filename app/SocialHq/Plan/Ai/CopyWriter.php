@@ -61,10 +61,12 @@ class CopyWriter implements Agent, HasStructuredOutput
     public function schema(JsonSchema $schema): array
     {
         return [
+            // Every key is required (strict providers such as Groq refuse a schema that leaves
+            // one out, and models drop optional keys); "" means none.
             'caption' => $schema->string()->required(),
-            'hashtags' => $schema->string(),
-            'script' => $schema->string(),
-            'notes' => $schema->string(),
+            'hashtags' => $schema->string()->description('Space-separated hashtags, or "".')->required(),
+            'script' => $schema->string()->description('The video script, or "" when the creative is not a video.')->required(),
+            'notes' => $schema->string()->description('Notes for the reviewer, or "".')->required(),
         ];
     }
 

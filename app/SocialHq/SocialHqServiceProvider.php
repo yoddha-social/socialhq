@@ -83,6 +83,7 @@ class SocialHqServiceProvider extends ServiceProvider
 
         RateLimiter::for('socialhq-ai-graphics', fn (Request $request): Limit => Limit::perHour(AiGraphics::userHourlyLimit())
             ->by((string) $request->user()?->id));
+        RateLimiter::for('socialhq-plan-generate', fn (Request $request): Limit => Limit::perHour(5)->by((string) $request->user()?->id));
 
         // One share for the whole module: a second Inertia::share('socialhq') would replace this one.
         Inertia::share('socialhq', fn (): array => [

@@ -21,7 +21,11 @@ Vue 3 + TS, Tailwind 4, Pest). The overseer session merges your branch; you neve
 - Copy `.env` and `storage/oauth-*.key` from the main checkout
   (`/home/_sandeep_/Org projects/social-hq/socialhq`) into your worktree first.
 - Run only the tests you touched or that cover the files you changed. Never run the
-  whole suite (the overseer does). Never run two PHP containers at once. No Browser tests.
+  whole suite (the overseer does). No Browser tests.
+- At most 2 PHP containers may run on the machine at once (all lanes together). Before
+  each PHP command, wait for a free slot:
+  `until [ "$(docker ps -q --filter ancestor=ghcr.io/trypostit/trypost:2.0.1 | wc -l)" -lt 3 ]; do sleep 15; done`
+  (the long-running `trypost-trial-app` container counts as one).
 - Pint: `$SHQ "$PWD" vendor/bin/pint --dirty --format agent`.
 - Wayfinder after route changes: `$SHQ "$PWD" php artisan wayfinder:generate --with-form`
   (check `vite.config.ts` for the flags it uses).

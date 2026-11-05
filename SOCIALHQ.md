@@ -23,13 +23,21 @@ adds the planning and AI layer:
 | Routes | `routes/socialhq.php` (under `/socialhq/*`) |
 | Configuration | `config/socialhq.php` |
 | Inertia pages and components | `resources/js/pages/socialhq/`, `resources/js/components/socialhq/` |
-| Tests (Pest) | `tests/Feature/SocialHq/` |
+| Tests (Pest) | `tests/Feature/SocialHq/`, `tests/Unit/SocialHq/`, `tests/Browser/SocialHq/` |
+| Interface copy | `lang/en/socialhq.php` (see below) |
 | Image build | `.github/workflows/socialhq-image.yml` (tags `shq-v*`) |
 
 Edits to upstream files are kept to a minimum and listed in
 [PATCHES.md](PATCHES.md), which also explains how to merge an upstream release.
 Follow the upstream conventions in [AGENTS.md](AGENTS.md) (Laravel Boost,
 Pest, Pint, Inertia v3, Wayfinder).
+
+## Interface copy
+
+Our screens use the `socialhq.*` keys in `lang/en/socialhq.php`, in English
+only. Upstream's parity test wants every locale to have the same keys, so
+after changing that file run `bin/socialhq-sync-lang`, which copies it to the
+other 15 locales.
 
 ## Branding
 

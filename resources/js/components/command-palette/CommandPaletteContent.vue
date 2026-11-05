@@ -19,6 +19,7 @@ import { injectListboxRootContext } from 'reka-ui';
 import { computed, onMounted } from 'vue';
 
 import CommandPaletteItem from '@/components/command-palette/CommandPaletteItem.vue';
+import { useWorkspaceCommandEntries } from '@/components/socialhq/workspaceCommandEntries';
 import {
     CommandEmpty,
     CommandGroup,
@@ -266,6 +267,8 @@ const insightEntries = computed<CommandPaletteEntry[]>(() =>
     })),
 );
 
+const workspaceEntries = useWorkspaceCommandEntries();
+
 const allEntries = computed<CommandPaletteEntry[]>(() => [
     ...quickActions.value,
     ...navigation.value,
@@ -273,6 +276,7 @@ const allEntries = computed<CommandPaletteEntry[]>(() => [
     ...connectEntries.value,
     ...settingsEntries.value,
     ...insightEntries.value,
+    ...workspaceEntries.value,
 ]);
 
 const recentEntries = computed<CommandPaletteEntry[]>(() =>
@@ -297,6 +301,7 @@ const groups = computed<
             ? [
                   { key: 'settings' as const, heading: 'command_palette.groups.settings', entries: settingsEntries.value },
                   { key: 'insights' as const, heading: 'command_palette.groups.insights', entries: insightEntries.value },
+                  { key: 'workspaces' as const, heading: 'sidebar.workspaces', entries: workspaceEntries.value },
               ]
             : []),
     ].filter((group) => group.entries.length > 0),

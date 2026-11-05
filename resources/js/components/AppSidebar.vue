@@ -21,6 +21,7 @@ import NavChannels from '@/components/NavChannels.vue';
 import NavMain from '@/components/NavMain.vue';
 import SidebarUserMenu from '@/components/SidebarUserMenu.vue';
 import SourceLink from '@/components/socialhq/SourceLink.vue';
+import WorkspaceSwitcher from '@/components/socialhq/WorkspaceSwitcher.vue';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -128,6 +129,7 @@ const mainNavItems = computed<NavItem[]>(() => [
         </SidebarHeader>
 
         <SidebarContent class="gap-0">
+            <WorkspaceSwitcher />
             <div
                 v-if="currentWorkspace && canCreatePost"
                 class="px-4 pt-4 pb-3 group-data-[collapsible=icon]:px-2.5"

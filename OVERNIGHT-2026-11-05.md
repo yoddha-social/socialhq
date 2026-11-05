@@ -72,3 +72,47 @@ commits on `socialhq/overnight-2026-11-05`.
   - Browser: imported 193 rows (3 overlap between the two files), confirmed one, saw the
     calendar chips. Research notes showed as descriptions, so the importer now shows
     readable notes and short source names.
+- **Monthly content plan** (Plan › Content plan, `/socialhq/plan/2026-12`):
+  - **Month view:** a month grid (or a list) with the brand's events on each day.
+  - **Items:** each is a date, channel, format, pillar, owner, event and angle. Add, edit,
+    drop or restore them in a side sheet.
+  - **Generate with AI:** drafts the month from confirmed events, the brand profile and
+    knowledge, pillars and cadence, the last 90 days of posts with their metrics, and the
+    team's focus for the month. Suggestions show dashed with Accept/Drop.
+  - **Review and approval:** "Send for review" and "Approve plan" (admins only, blocked
+    while suggestions are open). Any change sends an approved plan back to review.
+  - **Brand settings:** pillars and posts per week per channel.
+  - **Safety rules in code:**
+    - no dates outside the month or already past;
+    - events only if confirmed, and only around their dates;
+    - no posts on paused channels, and the format must fit the channel;
+    - no duplicate titles;
+    - one AI run at a time;
+    - a late run never overwrites a newer one or an approval.
+  - **Live test through LiteLLM (Groq):** 14 suggestions plus a summary; 1 refused with
+    its reason.
+  - **Three provider problems found live and fixed:**
+    - Groq refuses structured answers whose schema leaves keys optional, so every key is
+      now required, with "" meaning none.
+    - Cloudflare stops at 256 tokens unless asked for more, so it now gets 8192.
+    - 15 s per provider was too short for a month plan, so that group now gets 75 s.
+  - **Also fixed:** the plan page had broken the sidebar's channel list.
+- **Item page and production board** (`/socialhq/plan/items/{id}`, Plan › Production):
+  - **Copy:** caption, hashtags, script and notes, saved as numbered versions (never
+    overwritten), with history and a word-by-word compare. "Write with AI" and "Rewrite
+    with AI" use the brand knowledge and open change requests.
+  - **Review:** send for review → approve or request changes (a note is required) →
+    approved copy is locked.
+  - **Brief:** format prefilled from the channel's content type; on-screen text,
+    direction and references; "Draft brief with AI" fills only empty fields.
+  - **Creative rounds:** upload, send for review, approve or request changes; each new
+    upload starts a new round.
+  - **Create post:** opens TryPost's composer with the approved copy, the final files,
+    the date and the channel. Posting still goes through TryPost's approvals.
+  - **Production board:** five columns with drag and drop and a keyboard "Move to" menu.
+    Only admins move cards into or out of Approved or Changes requested.
+  - **Security fix from review:** creative files now go to private storage, never the
+    public media bucket, and are served only to members, with the type taken from the
+    file's content. **Deploy note:** that storage folder must be on a persistent volume.
+  - Browser: wrote copy with AI (it used the brand's price and delivery facts), approved
+    it, created and AI-drafted the brief, saw it on the board.

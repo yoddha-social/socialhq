@@ -30,7 +30,9 @@ test('the sidebar switcher shows the current workspace and switches to another',
         ->assertVisible('@socialhq-workspace-settings')
         ->click("@socialhq-workspace-{$second->id}");
 
-    $page->wait(1)->assertSeeIn('@socialhq-workspace-switcher-name', 'Brand Two')
+    waitForDatabase($page, fn (): bool => $user->fresh()->current_workspace_id === $second->id);
+    waitForState($page, '@socialhq-workspace-switcher-name', "element.textContent.includes('Brand Two')");
+    $page->assertSeeIn('@socialhq-workspace-switcher-name', 'Brand Two')
         ->assertNoJavaScriptErrors();
 
     expect($user->fresh()->current_workspace_id)->toBe($second->id);

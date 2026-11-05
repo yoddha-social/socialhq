@@ -127,21 +127,42 @@ Public mail domains (gmail.com and the like) are ignored, and with both lists
 empty sign-up stays invites only. Code: `app/SocialHq/Signup/`.
 
 1. The login page shows "Sign up". Email, Google and GitHub sign-ups follow
-   the same list.
-2. The person joins the team's account (`SOCIALHQ_SIGNUP_ACCOUNT_OWNER`, or
-   the only account) with no workspace and waits on one page until let in.
+   the same list. An email that may not sign up only ever hears "can't sign
+   up here", never whether it has an account. The register form allows 5
+   tries a minute and 20 an hour per IP.
+2. The person joins the team's account (`SOCIALHQ_SIGNUP_ACCOUNT_OWNER`,
+   matched without regard to case, or else the oldest account that owns a
+   workspace) with no workspace and waits on one page until let in. If the
+   lists are set but no account is found, sign-up stays closed and the log
+   says why. Only an invite that still exists counts as an invite.
 3. Once their email is confirmed, the account owner and every workspace admin
-   get an email, and "Access requests" with a count appears in the workspace
-   menu.
+   get an email (at most once an hour per address, so someone declined who
+   signs up again doesn't flood them), "Access requests" with a count
+   appears in the workspace menu, and a banner on Settings › Members links
+   to it.
 4. An admin picks the workspaces they manage and whether the person is an
    admin; a member who is not an admin always sends posts for approval. The
-   person gets an email. Declining deletes their user and keeps the request
-   in `shq_access_requests`.
+   person gets an email. Declining deletes their user (and their avatar
+   files) and keeps the request in `shq_access_requests`. When two admins
+   decide at once, the first wins and the second is told so.
+5. While waiting, the person can open and accept an invite: once they have a
+   workspace their request closes by itself (`note` `joined_by_invite`).
+   Declining an invite leaves them waiting.
+
+Google or GitHub sign-in to an account whose email isn't confirmed yet
+(someone registered the address with a password and never confirmed it)
+takes the account over for the address's owner: the password is replaced,
+remember-me and other sessions end, and the email counts as confirmed
+(`OAuthSignIn`). An address Google says it hasn't verified signs in to
+nothing and creates nothing.
 
 ## Interface copy
 
 Our screens use the `socialhq.*` keys in `lang/en/socialhq.php`, in English
-only. Upstream's parity test wants every locale to have the same keys, so
+only. Email copy follows AGENTS.md instead: one `mail.<slug>` block per
+template in every `lang/*/mail.php` (the sign-up emails are
+`socialhq_access_requested` and `socialhq_access_approved`, English in every
+locale for now). Upstream's parity test wants every locale to have the same keys, so
 after changing that file run `bin/socialhq-sync-lang`, which copies it to the
 other 15 locales.
 

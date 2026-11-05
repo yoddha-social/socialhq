@@ -22,7 +22,7 @@ class AccessApproved extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: __('socialhq.signup.mail.approved.subject', ['app' => config('app.name')]));
+        return new Envelope(subject: __('mail.socialhq_access_approved.subject', ['app' => config('app.name')]));
     }
 
     public function content(): Content
@@ -31,8 +31,8 @@ class AccessApproved extends Mailable
         $workspaceNames = $user?->workspaces()->orderBy('name')->pluck('name')->join(', ') ?? '';
 
         return new Content(view: 'mail.socialhq-access-approved', with: [
-            'title' => __('socialhq.signup.mail.approved.title'),
-            'previewText' => __('socialhq.signup.mail.approved.preview', ['app' => config('app.name')]),
+            'title' => __('mail.socialhq_access_approved.title'),
+            'previewText' => __('mail.socialhq_access_approved.preview', ['app' => config('app.name')]),
             'workspaceNames' => $workspaceNames,
             'url' => route('app.home'),
         ]);

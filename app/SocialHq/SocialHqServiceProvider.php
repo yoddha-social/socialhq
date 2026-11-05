@@ -13,7 +13,6 @@ use App\SocialHq\Approval\ApprovalRules;
 use App\SocialHq\Approval\RecordApprovalEvents;
 use App\SocialHq\Http\Middleware\RedirectWhileAwaitingAccess;
 use App\SocialHq\Knowledge\BrandKnowledge;
-use App\SocialHq\Signup\AccessRequest;
 use App\SocialHq\Signup\AccessRequests;
 use App\SocialHq\Signup\SignupRules;
 use Illuminate\Auth\Events\Registered;
@@ -60,6 +59,15 @@ class SocialHqServiceProvider extends ServiceProvider
         Event::listen(Registered::class, fn (Registered $event) => $event->user instanceof User ? AccessRequests::notifyAdmins($event->user) : null);
         Event::listen(Verified::class, fn (Verified $event) => $event->user instanceof User ? AccessRequests::notifyAdmins($event->user) : null);
 
+        // Someone waiting for access who gets a workspace another way (an invite) is let in.
+        User::updated(fn (User $user) => $user->wasChanged('current_workspace_id') ? AccessRequests::closeOnceJoined($user) : null);
+
+        // Sign-up by email: 5 tries a minute and 20 an hour per address. Each limit needs its own key.
+        RateLimiter::for('socialhq-register', fn (Request $request): array => [
+            Limit::perMinute(5)->by("minute:{$request->ip()}"),
+            Limit::perHour(20)->by("hour:{$request->ip()}"),
+        ]);
+
         Post::created(RecordApprovalEvents::created(...));
         Post::updated(RecordApprovalEvents::updated(...));
 
@@ -86,13 +94,8 @@ class SocialHqServiceProvider extends ServiceProvider
             ],
             'signup' => [
                 'open' => SignupRules::isOpen(),
-                'pendingRequests' => (function (): int {
-                    $user = auth()->user();
-
-                    return $user instanceof User && AccessRequests::canDecide($user)
-                        ? AccessRequest::query()->where('account_id', $user->account_id)->awaitingDecision()->count()
-                        : 0;
-                })(),
+                // One query, 0 for anyone who can't decide (the workspace menu and the Members banner read it).
+                'pendingRequests' => auth()->user() instanceof User ? AccessRequests::pendingCountFor(auth()->user()) : 0,
             ],
         ]);
     }

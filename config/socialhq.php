@@ -141,8 +141,12 @@ return [
     | Self-hosted TryPost only registers people with an invite. Social HQ also
     | lets people sign up whose email is listed here, either exactly or by
     | domain (comma separated; public mail domains such as gmail.com are
-    | ignored). They join the account of account_owner (the only account when
-    | blank) without any workspace, and wait until an admin approves them.
+    | ignored). They join the account of account_owner (matched by email,
+    | whatever its case) without any workspace, and wait until an admin
+    | approves them. Blank: the oldest account that owns a workspace (every
+    | invited person holds an empty account of their own until they accept,
+    | so there is rarely just one). When the lists are set but no account is
+    | found, sign-up stays closed and a warning is logged (once an hour).
     | Both lists empty: invites only, as upstream.
     |
     */

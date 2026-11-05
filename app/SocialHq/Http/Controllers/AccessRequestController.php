@@ -9,6 +9,7 @@ use App\Models\Workspace;
 use App\SocialHq\Http\Requests\ApproveAccessRequest;
 use App\SocialHq\Signup\AccessRequest;
 use App\SocialHq\Signup\AccessRequests;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -47,7 +48,9 @@ class AccessRequestController extends Controller
     {
         $found = $this->find($request, $accessRequest);
 
-        AccessRequests::approve($found, $request->user(), $request->validated('workspaces'), $request->boolean('is_admin'));
+        if (! AccessRequests::approve($found, $request->user(), $request->validated('workspaces'), $request->boolean('is_admin'))) {
+            return $this->alreadyDecided();
+        }
 
         session()->flash('flash.banner', __('socialhq.signup.requests.approved', ['name' => $found->name]));
         session()->flash('flash.bannerStyle', 'success');
@@ -59,7 +62,9 @@ class AccessRequestController extends Controller
     {
         $found = $this->find($request, $accessRequest);
 
-        AccessRequests::decline($found, $request->user());
+        if (! AccessRequests::decline($found, $request->user())) {
+            return $this->alreadyDecided();
+        }
 
         session()->flash('flash.banner', __('socialhq.signup.requests.declined', ['name' => $found->name]));
         session()->flash('flash.bannerStyle', 'success');
@@ -68,15 +73,26 @@ class AccessRequestController extends Controller
     }
 
     /**
-     * A request of the decider's own account still waiting for a decision;
-     * anything else is not found.
+     * A request of the decider's own account, either waiting for a decision
+     * or already decided (another admin was faster); a request whose email
+     * is not confirmed yet, or of another account, is not found.
      */
     private function find(Request $request, int $id): AccessRequest
     {
         $user = $request->user();
         abort_unless(AccessRequests::canDecide($user), 403);
 
-        return AccessRequest::query()->where('account_id', $user->account_id)->awaitingDecision()->find($id)
+        return AccessRequest::query()
+            ->where('account_id', $user->account_id)
+            ->where(fn (Builder $query) => $query
+                ->where('status', '!=', AccessRequest::PENDING)
+                ->orWhere(fn (Builder $pending) => $pending->awaitingDecision()))
+            ->find($id)
             ?? throw new NotFoundHttpException;
+    }
+
+    private function alreadyDecided(): RedirectResponse
+    {
+        return back()->with('flash.error', __('socialhq.signup.requests.already_decided'));
     }
 }

@@ -12,6 +12,7 @@ use App\Http\Controllers\Auth\Concerns\PreservesSignupPreferences;
 use App\Http\Controllers\Controller;
 use App\Models\Invite;
 use App\Models\User;
+use App\SocialHq\Signup\OAuthSignIn;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -50,8 +51,15 @@ class GoogleController extends Controller
             ->orWhere('email', $googleUser->getEmail())
             ->first();
 
+        // Social HQ: an address Google hasn't verified proves nothing (PATCHES.md row 41).
+        $emailVerified = OAuthSignIn::googleVerifiedEmail($googleUser);
+
+        if (! $emailVerified && $user?->google_id !== $googleUser->getId()) {
+            return OAuthSignIn::unverifiedEmailRedirect();
+        }
+
         if ($user) {
-            return $this->loginExistingUser($user, $googleUser->getId());
+            return $this->loginExistingUser($user, $googleUser->getId(), $emailVerified ? $googleUser->getEmail() : null);
         }
 
         return $this->registerNewUser($googleUser);
@@ -76,15 +84,14 @@ class GoogleController extends Controller
             ->with('flash.success', __('settings.profile.providers.flash_connected', ['provider' => 'Google']));
     }
 
-    private function loginExistingUser(User $user, string $googleId): RedirectResponse
+    private function loginExistingUser(User $user, string $googleId, ?string $verifiedEmail): RedirectResponse
     {
         if (! $user->google_id) {
             $user->update(['google_id' => $googleId]);
         }
 
-        if (! $user->hasVerifiedEmail()) {
-            $user->markEmailAsVerified();
-        }
+        // Social HQ: Google's proof of the email wins over an unconfirmed password sign-up.
+        OAuthSignIn::claimUnverified($user, $verifiedEmail, request());
 
         Auth::login($user, remember: true);
 

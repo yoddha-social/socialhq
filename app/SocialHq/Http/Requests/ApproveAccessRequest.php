@@ -22,4 +22,18 @@ class ApproveAccessRequest extends FormRequest
             'is_admin' => ['required', 'boolean'],
         ];
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'workspaces' => __('socialhq.signup.requests.pick_workspace'),
+            // Rule-specific: a bare `workspaces.*` would also match `workspaces.required`.
+            'workspaces.*.string' => __('socialhq.signup.requests.workspace_not_managed'),
+            'workspaces.*.in' => __('socialhq.signup.requests.workspace_not_managed'),
+            'is_admin' => __('socialhq.signup.requests.admin_invalid'),
+        ];
+    }
 }

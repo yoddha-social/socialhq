@@ -1,17 +1,17 @@
 <x-main>
   <x-message authenticated="true">
     <x-heading>
-      @{{ __('socialhq.signup.mail.approved.heading') }}
+      @{{ __('mail.socialhq_access_approved.heading') }}
     </x-heading>
 
     <p class="m-0 leading-6">
-      @{{ __('socialhq.signup.mail.approved.body', ['workspaces' => $workspaceNames]) }}
+      @{{ __('mail.socialhq_access_approved.body', ['workspaces' => $workspaceNames]) }}
     </p>
 
     <x-spacer height="24px" />
 
     <x-button href="@{{ $url }}">
-      @{{ __('socialhq.signup.mail.approved.button') }}
+      @{{ __('mail.socialhq_access_approved.button', ['app' => config('app.name')]) }}
     </x-button>
   </x-message>
 </x-main>

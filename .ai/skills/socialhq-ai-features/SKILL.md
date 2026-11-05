@@ -40,11 +40,16 @@ the worked example.
 Text, vision, image and embedding calls go through the LiteLLM gateway as an
 OpenAI-compatible provider, by task model group: `shq-write`, `shq-structured`,
 `shq-vision`, `shq-image`, `shq-embed`. LiteLLM tries free providers first (Groq
-with zero data retention, then Cloudflare Workers AI; OpenRouter `:free` only with
-privacy filters; not Cerebras, whose free tier became a card-gated trial) and falls back to paid Gemini, capped at $25 a month.
+with zero data retention, then Cloudflare Workers AI, then Mistral with "Anonymous
+improvement data" off; OpenRouter `:free` only with privacy filters; not Cerebras, whose
+free tier became a card-gated trial) and falls back to paid Gemini, capped at $25 a month.
+Free and paid deployments live in separate groups (`shq-write` falls back to
+`shq-write-paid`): LiteLLM prices a group at its dearest deployment, so one paid
+deployment in a free group would let a spent budget block the free providers too.
 
-- **Never** a provider that trains on or human-reviews prompts: no Gemini free tier, no
-  Mistral free. Every provider in the chain is approved for company data, so there is
+- **Never** a provider that trains on or human-reviews prompts: no Gemini free tier,
+  Mistral only with its training opt-out on. `ApprovedProvidersGuard` refuses any SDK
+  request to a provider outside `SOCIALHQ_AI_APPROVED_PROVIDERS`. Every provider in the chain is approved for company data, so there is
   no public/confidential split (the Rails reference had one; it is historical).
 - Free image generation calls Cloudflare Workers AI directly (LiteLLM cannot route it).
 

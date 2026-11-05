@@ -35,10 +35,15 @@ return [
     | targets, comma separated, tried in order on rate limits and overload.
     | Without a model the provider's default model is used.
     |
-    | approved_providers: the only provider entries ever called. None of them
-    | may train on prompts or let people read them (no Gemini or Mistral free
-    | tier), so a key for one can sit in .env without being used. LiteLLM's
-    | own providers are approved in its config.yaml, reviewed in git.
+    | approved_providers: the only provider entries ever called; any other SDK
+    | request is refused before it is sent (ApprovedProvidersGuard). None of
+    | them may train on prompts or let people read them (never the Gemini free
+    | tier; Mistral only with "Anonymous improvement data" off in its console),
+    | so a key for one can sit in .env without being used. LiteLLM's own
+    | providers are approved in its config.yaml, reviewed in git.
+    |
+    | litellm.tasks (SOCIALHQ_AI_GATEWAY_TASKS): the tasks the gateway serves.
+    | image and embed have only paid Gemini there; list them once its key is set.
     |
     | models_without_temperature: models that reject the `temperature`
     | parameter, as regular expressions. The agents send their preferred
@@ -56,6 +61,12 @@ return [
             'key' => env('LITELLM_API_KEY'),
             // Unset: the embedding model's native size. Fixed once the knowledge base stores vectors.
             'embedding_dimensions' => env('LITELLM_EMBEDDING_DIMENSIONS'),
+            // Tasks the gateway serves. image and embed have only paid Gemini in
+            // LiteLLM: add them once GEMINI_PAID_API_KEY is set there.
+            'tasks' => array_values(array_filter(array_map(
+                trim(...),
+                explode(',', (string) env('SOCIALHQ_AI_GATEWAY_TASKS', 'write,structured,vision')),
+            ))),
         ],
         'approved_providers' => array_values(array_filter(array_map(
             trim(...),

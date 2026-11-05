@@ -17,7 +17,9 @@ enum GraphicFormat: string
 
     /**
      * Gemini takes social media ratios; the OpenAI-style drivers (LiteLLM's
-     * images endpoint too) take only square, 2:3 and 3:2.
+     * images endpoint too) take only square, 2:3 and 3:2. A null driver (a
+     * route that mixes drivers) gets the shapes every driver accepts, so a
+     * failover never sends a ratio the next provider rejects.
      */
     public function aspectRatio(?string $driver): string
     {

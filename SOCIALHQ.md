@@ -47,8 +47,10 @@ TryPost's four agents carry it too (PATCHES.md row 15). Code:
 - **Gateway** (`SOCIALHQ_AI_GATEWAY=litellm`, production): each task goes to
   its LiteLLM model group (`shq-write`, `shq-structured`, `shq-vision`,
   `shq-image`, `shq-embed`) with the app's virtual key (`LITELLM_API_KEY`).
-  LiteLLM tries Groq and Cloudflare Workers AI first and falls back
-  to paid Gemini; the key's budget ($25 every 30 days) caps paid spending.
+  LiteLLM tries Groq, Cloudflare Workers AI and Mistral first (a free group
+  per task) and falls back to the task's paid group (Gemini); the key's
+  budget ($25 every 30 days) caps paid spending and never blocks the free
+  groups.
   The groups live in `socialhq-deploy/litellm/config.yaml`.
 - **Direct** (the default; tests and development): the SDK calls providers
   from `config/ai.php` with their own keys. `SOCIALHQ_AI_ROUTE_<TASK>` sets a
@@ -56,8 +58,15 @@ TryPost's four agents carry it too (PATCHES.md row 15). Code:
   overload); without one, a task uses the SDK's default provider (images:
   Gemini).
 - **Approved providers only** (`SOCIALHQ_AI_APPROVED_PROVIDERS`, default the
-  two LiteLLM entries). Any other target is dropped, so a key for a provider
-  that trains on prompts (the Gemini or Mistral free tier) is never called.
+  two LiteLLM entries). Any other target is dropped, and
+  `ApprovedProvidersGuard` refuses any SDK request to another provider before
+  it is sent, even from code that skips `AiRouter`. A key for a provider that
+  trains on prompts (the Gemini free tier) is never called. Mistral is in the
+  LiteLLM chain only with "Anonymous improvement data" off in its console.
+- **Gateway tasks** (`SOCIALHQ_AI_GATEWAY_TASKS`, default
+  `write,structured,vision`): the gateway serves only these. `image` and
+  `embed` have only paid Gemini in LiteLLM, so they stay off (and "Generate
+  with AI" stays hidden) until its key is set and they are listed.
 - `php artisan socialhq:ai-routes` shows each task's targets and why one is
   unused; `--live` sends a small request through each (`--images` adds one
   image).

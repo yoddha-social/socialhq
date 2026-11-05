@@ -61,7 +61,7 @@ class GenerateAiGraphic implements ShouldQueue
 
             $response = ImageGeneration::of(self::fullPrompt($graphic))
                 ->attachments($references)
-                ->size($graphic->format->aspectRatio(AiRouter::leadingDriver(AiTask::Image)))
+                ->size($graphic->format->aspectRatio(AiRouter::sharedDriver(AiTask::Image)))
                 ->timeout(AiGraphics::timeoutSeconds())
                 ->generate(AiRouter::route(AiTask::Image));
             $image = $response->firstImage();

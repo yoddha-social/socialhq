@@ -32,3 +32,15 @@ Status: `todo` · `doing` · `review` · `done`
 
 ## Foundation
 - done — tables/models/factories/PlanAccess/routes/tabs/sidebar item (commit 62e51b3f)
+
+## Browser-pass polish list (to do after the round-2 fixes merge)
+- Production board: 5 columns don't fit at 1440px (horizontal scroll hides Approved);
+  make columns share the width (min ~220px) and stretch to the page height; filter
+  selects clip their labels ("All kinds", "All months").
+- Brief due date uses the browser's native date input; use TryPost's `DatePicker`.
+- Publish calendar: event chips truncate to one letter in narrow day cells; show a dot +
+  count when there's no room (tooltip keeps the names).
+- Plan month page after a failed AI run keeps the red banner until dismissed: fine, but
+  check its wording once the planner fix lands.
+- AI copy said "Click the shop link now!" with no link in the brand data: CopyWriter must
+  not invent links/CTAs that need a URL it wasn't given.

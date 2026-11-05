@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * One thing the team wants the AI to know about a brand: a product, a
- * project, a past campaign, a fact.
+ * project, a past campaign, a fact. Pinned entries go into prompts first.
  */
 class KnowledgeEntry extends Model
 {
@@ -24,6 +24,7 @@ class KnowledgeEntry extends Model
         return [
             'kind' => KnowledgeKind::class,
             'use_in_ai' => 'boolean',
+            'pinned' => 'boolean',
         ];
     }
 
@@ -41,5 +42,16 @@ class KnowledgeEntry extends Model
     public function scopeUsedInAi(Builder $query): void
     {
         $query->where('use_in_ai', true);
+    }
+
+    /**
+     * The order entries reach the prompt: pinned first, then newest. Not by
+     * updated_at, so fixing a typo never pushes other entries out.
+     *
+     * @param  Builder<KnowledgeEntry>  $query
+     */
+    public function scopeInPromptOrder(Builder $query): void
+    {
+        $query->orderByDesc('pinned')->latest('created_at')->latest('id');
     }
 }

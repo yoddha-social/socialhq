@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, router, useForm } from '@inertiajs/vue3';
-import { IconBook, IconPlus } from '@tabler/icons-vue';
-import { ref } from 'vue';
+import { IconBook, IconPin, IconPlus, IconSparkles } from '@tabler/icons-vue';
+import { computed, ref } from 'vue';
 
 import EmptyState from '@/components/EmptyState.vue';
 import SettingsListRow from '@/components/settings/SettingsListRow.vue';
@@ -19,8 +19,10 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
+import { formatFullNumber } from '@/lib/utils';
 import { destroy as destroyEntry } from '@/routes/socialhq/brand/entries';
 import { update as updateProfile } from '@/routes/socialhq/brand/profile';
 
@@ -34,6 +36,7 @@ type ProfileField =
 const props = defineProps<{
     profile: Record<ProfileField, string>;
     entries: KnowledgeEntryRow[];
+    usage: { used: number; budget: number; profileTrimmed: boolean };
     kinds: string[];
     canEdit: boolean;
 }>();
@@ -48,8 +51,39 @@ const profileFields: { field: ProfileField; rows: number; hint: boolean }[] = [
 
 const profileForm = useForm({ ...props.profile });
 
+/** Nothing written yet: no profile field and no entry. */
+const isEmpty = computed(
+    () =>
+        props.entries.length === 0 &&
+        Object.values(props.profile).every((value) => value.trim() === ''),
+);
+
+const usagePercent = computed(() =>
+    Math.min(100, Math.round((props.usage.used / props.usage.budget) * 100)),
+);
+
+const profileErrorId = (field: ProfileField): string =>
+    `socialhq-brand-${field}-error`;
+
+/** aria-invalid and aria-describedby for a profile field, only while it has an error. */
+const profileErrorAttributes = (
+    field: ProfileField,
+): Record<string, string | boolean | undefined> =>
+    profileForm.errors[field]
+        ? { 'aria-invalid': true, 'aria-describedby': profileErrorId(field) }
+        : {};
+
 const saveProfile = (): void => {
-    profileForm.put(updateProfile.url(), { preserveScroll: true });
+    profileForm.put(updateProfile.url(), {
+        preserveScroll: true,
+        onSuccess: () => {
+            profileForm.defaults();
+        },
+    });
+};
+
+const startProfile = (): void => {
+    document.getElementById('socialhq-brand-about')?.focus();
 };
 
 const isEntryDialogOpen = ref(false);
@@ -103,144 +137,276 @@ const confirmDelete = (): void => {
         :description="$t('socialhq.brand.description')"
     >
         <div class="flex flex-col gap-10" data-testid="socialhq-brand">
-            <p v-if="!canEdit" class="text-sm text-muted-foreground">
-                {{ $t('socialhq.brand.read_only') }}
-            </p>
-
-            <section class="flex flex-col gap-4">
-                <h2 class="text-base font-semibold text-foreground">
-                    {{ $t('socialhq.brand.profile.title') }}
-                </h2>
-
-                <form class="flex flex-col gap-4" @submit.prevent="saveProfile">
-                    <div
-                        v-for="item in profileFields"
-                        :key="item.field"
-                        class="flex flex-col gap-2"
-                    >
-                        <Label :for="`socialhq-brand-${item.field}`">
-                            {{ $t(`socialhq.brand.profile.${item.field}`) }}
-                        </Label>
-                        <Textarea
-                            :id="`socialhq-brand-${item.field}`"
-                            v-model="profileForm[item.field]"
-                            :rows="item.rows"
-                            :disabled="!canEdit"
-                            :placeholder="
-                                item.hint
-                                    ? $t(
-                                          `socialhq.brand.profile.${item.field}_placeholder`,
-                                      )
-                                    : undefined
-                            "
-                            :data-testid="`socialhq-brand-${item.field}`"
-                        />
-                        <p
-                            v-if="profileForm.errors[item.field]"
-                            class="text-sm text-destructive"
-                        >
-                            {{ profileForm.errors[item.field] }}
-                        </p>
-                    </div>
-
-                    <div v-if="canEdit">
-                        <Button
-                            type="submit"
-                            :loading="profileForm.processing"
-                            data-testid="socialhq-brand-save"
-                        >
-                            {{ $t('socialhq.brand.profile.save') }}
-                        </Button>
-                    </div>
-                </form>
-            </section>
-
-            <section class="flex flex-col gap-4">
-                <div class="flex items-start justify-between gap-4">
-                    <div class="flex flex-col gap-1">
-                        <h2 class="text-base font-semibold text-foreground">
-                            {{ $t('socialhq.brand.entries.title') }}
-                        </h2>
-                        <p class="text-sm text-muted-foreground">
-                            {{ $t('socialhq.brand.entries.description') }}
-                        </p>
-                    </div>
+            <EmptyState
+                v-if="isEmpty"
+                :icon="IconSparkles"
+                :title="$t('socialhq.brand.start.title')"
+                :description="
+                    canEdit
+                        ? $t('socialhq.brand.start.description')
+                        : $t('socialhq.brand.start.description_member')
+                "
+                data-testid="socialhq-brand-start"
+            >
+                <template v-if="canEdit" #action>
                     <Button
-                        v-if="canEdit"
-                        class="shrink-0"
-                        data-testid="socialhq-knowledge-add"
-                        @click="openAddEntry"
+                        data-testid="socialhq-brand-start-action"
+                        @click="startProfile"
                     >
-                        <IconPlus class="size-4" />
-                        {{ $t('socialhq.brand.entries.add') }}
+                        {{ $t('socialhq.brand.start.action') }}
                     </Button>
-                </div>
+                </template>
+            </EmptyState>
 
-                <EmptyState
-                    v-if="entries.length === 0"
-                    :title="$t('socialhq.brand.entries.empty')"
-                    data-testid="socialhq-knowledge-empty"
-                />
+            <template v-if="!isEmpty || canEdit">
+                <p v-if="!canEdit" class="text-sm text-muted-foreground">
+                    {{ $t('socialhq.brand.read_only') }}
+                </p>
 
-                <ul
-                    v-else
-                    class="divide-y divide-border rounded-lg border border-border"
+                <section
+                    v-if="!isEmpty"
+                    class="flex flex-col gap-2"
+                    data-testid="socialhq-brand-usage"
                 >
-                    <SettingsListRow
-                        v-for="entry in entries"
-                        :key="entry.id"
-                        :icon="IconBook"
-                        :data-testid="`socialhq-knowledge-${entry.id}`"
+                    <div
+                        class="flex flex-wrap items-baseline justify-between gap-2"
                     >
-                        <div class="flex min-w-0 flex-col gap-1">
-                            <div class="flex flex-wrap items-center gap-2">
-                                <p
-                                    class="truncate text-sm font-medium text-foreground"
-                                >
-                                    {{ entry.title }}
-                                </p>
-                                <Badge variant="secondary">
-                                    {{
-                                        $t(
-                                            `socialhq.brand.entries.kinds.${entry.kind}`,
-                                        )
-                                    }}
-                                </Badge>
-                                <Badge
-                                    v-if="!entry.use_in_ai"
-                                    variant="outline"
-                                >
-                                    {{ $t('socialhq.brand.entries.not_in_ai') }}
-                                </Badge>
-                            </div>
+                        <p
+                            id="socialhq-brand-usage-label"
+                            class="text-sm font-medium text-foreground"
+                        >
+                            {{ $t('socialhq.brand.usage.label') }}
+                        </p>
+                        <p class="text-sm text-muted-foreground tabular-nums">
+                            {{
+                                $t('socialhq.brand.usage.value', {
+                                    used: formatFullNumber(usage.used),
+                                    budget: formatFullNumber(usage.budget),
+                                })
+                            }}
+                        </p>
+                    </div>
+                    <Progress
+                        :model-value="usagePercent"
+                        aria-labelledby="socialhq-brand-usage-label"
+                    />
+                    <p class="text-sm text-muted-foreground">
+                        {{ $t('socialhq.brand.usage.hint') }}
+                    </p>
+                    <p
+                        v-if="usage.profileTrimmed"
+                        class="text-sm text-muted-foreground"
+                        data-testid="socialhq-brand-profile-trimmed"
+                    >
+                        {{ $t('socialhq.brand.usage.profile_trimmed') }}
+                    </p>
+                </section>
+
+                <section class="flex flex-col gap-4">
+                    <h2 class="text-base font-semibold text-foreground">
+                        {{ $t('socialhq.brand.profile.title') }}
+                    </h2>
+
+                    <form
+                        class="flex flex-col gap-4"
+                        @submit.prevent="saveProfile"
+                    >
+                        <div
+                            v-for="item in profileFields"
+                            :key="item.field"
+                            class="flex flex-col gap-2"
+                        >
+                            <Label :for="`socialhq-brand-${item.field}`">
+                                {{ $t(`socialhq.brand.profile.${item.field}`) }}
+                            </Label>
+                            <Textarea
+                                :id="`socialhq-brand-${item.field}`"
+                                v-model="profileForm[item.field]"
+                                v-bind="profileErrorAttributes(item.field)"
+                                :rows="item.rows"
+                                :disabled="!canEdit"
+                                :placeholder="
+                                    item.hint
+                                        ? $t(
+                                              `socialhq.brand.profile.${item.field}_placeholder`,
+                                          )
+                                        : undefined
+                                "
+                                :data-testid="`socialhq-brand-${item.field}`"
+                            />
                             <p
-                                class="line-clamp-2 text-sm whitespace-pre-line text-muted-foreground"
+                                v-if="profileForm.errors[item.field]"
+                                :id="profileErrorId(item.field)"
+                                class="text-sm text-destructive-text"
                             >
-                                {{ entry.body }}
+                                {{ profileForm.errors[item.field] }}
                             </p>
                         </div>
 
-                        <template v-if="canEdit" #actions>
-                            <div class="flex shrink-0 gap-2">
-                                <Button
-                                    variant="ghost"
-                                    :data-testid="`socialhq-knowledge-edit-${entry.id}`"
-                                    @click="openEditEntry(entry)"
+                        <div v-if="canEdit">
+                            <Button
+                                type="submit"
+                                :disabled="!profileForm.isDirty"
+                                :loading="profileForm.processing"
+                                data-testid="socialhq-brand-save"
+                            >
+                                {{ $t('socialhq.brand.profile.save') }}
+                            </Button>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="flex flex-col gap-4">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex flex-col gap-1">
+                            <h2 class="text-base font-semibold text-foreground">
+                                {{ $t('socialhq.brand.entries.title') }}
+                            </h2>
+                            <p class="text-sm text-muted-foreground">
+                                {{ $t('socialhq.brand.entries.description') }}
+                            </p>
+                        </div>
+                        <Button
+                            v-if="canEdit"
+                            class="shrink-0"
+                            data-testid="socialhq-knowledge-add"
+                            @click="openAddEntry"
+                        >
+                            <IconPlus class="size-4" />
+                            {{ $t('socialhq.brand.entries.add') }}
+                        </Button>
+                    </div>
+
+                    <EmptyState
+                        v-if="entries.length === 0"
+                        :title="
+                            canEdit
+                                ? $t('socialhq.brand.entries.empty')
+                                : $t('socialhq.brand.entries.empty_member')
+                        "
+                        data-testid="socialhq-knowledge-empty"
+                    />
+
+                    <ul v-else class="flex flex-col gap-2">
+                        <SettingsListRow
+                            v-for="entry in entries"
+                            :key="entry.id"
+                            :icon="IconBook"
+                            :data-testid="`socialhq-knowledge-${entry.id}`"
+                        >
+                            <div class="flex min-w-0 flex-col gap-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <IconPin
+                                        v-if="entry.pinned"
+                                        class="size-4 shrink-0 text-muted-foreground"
+                                        :aria-label="
+                                            $t('socialhq.brand.entries.pinned')
+                                        "
+                                        role="img"
+                                        :data-testid="`socialhq-knowledge-pinned-${entry.id}`"
+                                    />
+                                    <p
+                                        class="truncate text-sm font-medium text-foreground"
+                                    >
+                                        {{ entry.title }}
+                                    </p>
+                                    <Badge variant="secondary">
+                                        {{
+                                            $t(
+                                                `socialhq.brand.entries.kinds.${entry.kind}`,
+                                            )
+                                        }}
+                                    </Badge>
+                                    <Badge
+                                        v-if="entry.fit === 'off'"
+                                        variant="outline"
+                                    >
+                                        {{
+                                            $t(
+                                                'socialhq.brand.entries.not_in_ai',
+                                            )
+                                        }}
+                                    </Badge>
+                                    <Badge
+                                        v-else-if="entry.fit === 'included'"
+                                        variant="success"
+                                        :data-testid="`socialhq-knowledge-fit-${entry.id}`"
+                                    >
+                                        {{
+                                            $t(
+                                                'socialhq.brand.entries.fit.included',
+                                            )
+                                        }}
+                                    </Badge>
+                                    <Badge
+                                        v-else
+                                        variant="warning"
+                                        :data-testid="`socialhq-knowledge-fit-${entry.id}`"
+                                    >
+                                        {{
+                                            $t(
+                                                `socialhq.brand.entries.fit.${entry.fit}`,
+                                            )
+                                        }}
+                                    </Badge>
+                                </div>
+                                <p
+                                    class="line-clamp-2 text-sm whitespace-pre-line text-muted-foreground"
                                 >
-                                    {{ $t('socialhq.brand.entries.edit') }}
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    :data-testid="`socialhq-knowledge-delete-${entry.id}`"
-                                    @click="openDeleteEntry(entry)"
+                                    {{ entry.body }}
+                                </p>
+                                <p
+                                    v-if="
+                                        canEdit &&
+                                        (entry.fit === 'no_room' ||
+                                            entry.fit === 'too_long')
+                                    "
+                                    class="text-sm text-muted-foreground"
                                 >
-                                    {{ $t('socialhq.brand.entries.delete') }}
-                                </Button>
+                                    {{
+                                        $t(
+                                            `socialhq.brand.entries.fit_hint.${entry.fit}`,
+                                        )
+                                    }}
+                                </p>
                             </div>
-                        </template>
-                    </SettingsListRow>
-                </ul>
-            </section>
+
+                            <template v-if="canEdit" #actions>
+                                <div class="flex shrink-0 gap-2">
+                                    <Button
+                                        variant="ghost"
+                                        :aria-label="
+                                            $t(
+                                                'socialhq.brand.entries.edit_label',
+                                                { title: entry.title },
+                                            )
+                                        "
+                                        :data-testid="`socialhq-knowledge-edit-${entry.id}`"
+                                        @click="openEditEntry(entry)"
+                                    >
+                                        {{ $t('socialhq.brand.entries.edit') }}
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        :aria-label="
+                                            $t(
+                                                'socialhq.brand.entries.delete_label',
+                                                { title: entry.title },
+                                            )
+                                        "
+                                        :data-testid="`socialhq-knowledge-delete-${entry.id}`"
+                                        @click="openDeleteEntry(entry)"
+                                    >
+                                        {{
+                                            $t('socialhq.brand.entries.delete')
+                                        }}
+                                    </Button>
+                                </div>
+                            </template>
+                        </SettingsListRow>
+                    </ul>
+                </section>
+            </template>
         </div>
     </SettingsLayout>
 

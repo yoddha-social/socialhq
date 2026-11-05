@@ -75,11 +75,22 @@ class SocialHqServiceProvider extends ServiceProvider
         Post::created(RecordApprovalEvents::created(...));
         Post::updated(RecordApprovalEvents::updated(...));
 
-        // Brand knowledge in the caption and idea prompts, for the workspace the call runs in.
-        View::composer('prompts.socialhq.brand_knowledge', fn ($view) => $view->with(
-            'brand_knowledge',
-            BrandKnowledge::forPrompt(auth()->user() instanceof User ? auth()->user()->currentWorkspace : null),
-        ));
+        /*
+         * Brand knowledge in TryPost's caption and idea prompts, which include this
+         * view without passing a workspace. Reading the user's current workspace is
+         * safe only there: their controllers authorize that same workspace. New
+         * features must not rely on this: call BrandKnowledge::forPrompt() with the
+         * workspace they work for and pass the text to their own prompt view.
+         */
+        View::composer('prompts.socialhq.brand_knowledge', function ($view): void {
+            if ($view->offsetExists('brand_knowledge')) {
+                return;
+            }
+
+            $workspace = auth()->user() instanceof User ? auth()->user()->currentWorkspace : null;
+
+            $view->with('brand_knowledge', $workspace === null ? '' : BrandKnowledge::forPrompt($workspace));
+        });
 
         RateLimiter::for('socialhq-ai-graphics', fn (Request $request): Limit => Limit::perHour(AiGraphics::userHourlyLimit())
             ->by((string) $request->user()?->id));

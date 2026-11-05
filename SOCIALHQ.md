@@ -81,15 +81,34 @@ projects, past campaigns, facts), under Settings › Content › Brand knowledge
 Members who can post read it; workspace admins change it. Code:
 `app/SocialHq/Knowledge/`.
 
-The caption assistant and the idea generator get it in their prompts
-(`prompts/socialhq/brand_knowledge.blade.php`, filled by a view composer for
-the user's current workspace): the profile, then the newest entries marked
-"Use in AI writing" until `SOCIALHQ_KNOWLEDGE_PROMPT_CHARACTERS` (6000) is
-spent. The prompt tells the model it is reference data, not instructions.
-Up to `SOCIALHQ_KNOWLEDGE_MAX_ENTRIES` (300) entries per workspace.
+`BrandKnowledge::forPrompt($workspace)` builds the block every AI feature
+gets; `assemble()` also says which entries made it in and the space used.
+Budget: `SOCIALHQ_KNOWLEDGE_PROMPT_CHARACTERS` (6000), counted by
+`BrandKnowledge::size()`, where characters outside Latin-1 (Devanagari,
+emoji) count double.
+
+1. The profile takes at most half. When longer, each field is shortened
+   fairly (short fields stay whole) and ends with "…".
+2. Entries marked "Use in AI writing" fill the rest: pinned ones ("Always
+   include in AI writing") first, then newest by creation date, so editing
+   an entry never pushes others out. One that doesn't fit is skipped.
+3. Runs of `"""` in the text are broken up, so nothing can close the quoted
+   block. The prompt tells the model it is reference data, not instructions.
+
+The page shows the space used and, per entry, whether it is in AI prompts,
+doesn't fit (pin it or shorten others) or is too long on its own. Up to
+`SOCIALHQ_KNOWLEDGE_MAX_ENTRIES` (300) entries per workspace (counted before
+creating, so two admins adding at once may pass it by one; accepted).
+
+The caption assistant and the idea generator get it through
+`prompts/socialhq/brand_knowledge.blade.php`, filled by a view composer for
+the user's current workspace; their controllers authorize that workspace. New
+features (calendar drafts, scripts, briefs) call `forPrompt()` with the
+workspace they work for and pass the text to their own prompt view.
 
 Not yet: picking the entries that match the request (embeddings through the
-`embed` task), and feeding it to calendar drafts and scripts.
+`embed` task; `forPrompt()` already takes the request as `$focus`), and
+feeding it to calendar drafts and scripts.
 
 ## AI graphics
 

@@ -16,6 +16,7 @@ use App\SocialHq\Events\ImportEventsCommand;
 use App\SocialHq\Http\Controllers\Plan\PlanGenerationController;
 use App\SocialHq\Http\Middleware\RedirectWhileAwaitingAccess;
 use App\SocialHq\Knowledge\BrandKnowledge;
+use App\SocialHq\Production\BriefStorage;
 use App\SocialHq\Signup\AccessRequests;
 use App\SocialHq\Signup\PasswordResetProof;
 use App\SocialHq\Signup\SignupRules;
@@ -104,6 +105,9 @@ class SocialHqServiceProvider extends ServiceProvider
         // AI copy and briefs on plan items: 20 an hour per person.
         RateLimiter::for('socialhq-plan-ai', fn (Request $request): Limit => Limit::perHour(20)
             ->by((string) $request->user()?->id));
+
+        // Brief files go with the brief, its item or its plan (rows cascade, files don't).
+        BriefStorage::registerCleanup();
 
         // One share for the whole module: a second Inertia::share('socialhq') would replace this one.
         Inertia::share('socialhq', fn (): array => [

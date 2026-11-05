@@ -8,6 +8,7 @@ use App\SocialHq\Ai\AiTask;
 use App\SocialHq\Ai\UsesAiTask;
 use App\SocialHq\Ai\UsesModelSafeTemperature;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\HasStructuredOutput;
 use Laravel\Ai\Promptable;
@@ -16,6 +17,7 @@ use Laravel\Ai\Promptable;
  * Drafts a creative brief from an item's copy and format: the text on the
  * graphic or video, the art direction and ideas for references.
  */
+#[MaxTokens(2000)]
 class BriefWriter implements Agent, HasStructuredOutput
 {
     use Promptable;
@@ -53,9 +55,9 @@ class BriefWriter implements Agent, HasStructuredOutput
     public function schema(JsonSchema $schema): array
     {
         return [
-            'on_screen_text' => $schema->string()->required(),
+            'on_screen_text' => $schema->string(),
             'direction' => $schema->string()->required(),
-            'references' => $schema->string()->required(),
+            'references' => $schema->string(),
         ];
     }
 

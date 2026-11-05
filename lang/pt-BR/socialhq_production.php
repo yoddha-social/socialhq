@@ -53,6 +53,7 @@ return [
             'discard' => 'Discard changes',
             'write_ai' => 'Write with AI',
             'rewrite_ai' => 'Rewrite with AI',
+            'ai_trimmed' => 'AI wrote more than this channel takes, so the copy was shortened to fit. Check the ending.',
             'ai_save_first' => 'Save or discard your changes first: AI works from the saved copy.',
             'ai_failed' => 'AI couldn\'t write the copy. Try again in a moment.',
             'ai_written' => 'AI wrote version :number.',
@@ -205,7 +206,8 @@ return [
         'moved' => 'Moved to :stage.',
         'move_failed' => 'Couldn\'t move the card. Try again.',
         'errors' => [
-            'approvers_only' => 'Only approvers can move a creative into or out of Approved: :names.',
+            'approvers_only' => 'Only approvers can approve a creative or ask for changes, so only they move cards into or out of Approved and Changes requested: :names.',
+            'review_needs_files' => 'To send this creative for review, upload the files for a new round first.',
         ],
     ],
 
@@ -233,6 +235,7 @@ return [
             'changes_requested' => 'requested changes',
             'approved' => 'approved',
             'reopened' => 'started a new version after approval',
+            'reopened_creative' => 'reopened the approved creative',
         ],
         'about_version' => 'Copy, version :number',
         'about_round' => 'Creative, round :round',

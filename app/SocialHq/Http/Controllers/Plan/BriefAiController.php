@@ -15,6 +15,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Laravel\Ai\Exceptions\AiException;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 /**
  * "Draft brief with AI": returns a draft for the page to fill in; saving
@@ -31,6 +32,10 @@ class BriefAiController extends Controller
         try {
             $draft = DraftBrief::execute($brief, $request->user());
         } catch (AiException|RequestException|ConnectionException) {
+            $draft = null;
+        } catch (Throwable $exception) {
+            // A reply the SDK can't parse (or any other failure of the call) is a failed draft, not a 500.
+            report($exception);
             $draft = null;
         }
 

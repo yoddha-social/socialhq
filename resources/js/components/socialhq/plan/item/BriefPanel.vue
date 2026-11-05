@@ -10,6 +10,7 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
+import DatePicker from '@/components/DatePicker.vue';
 import type {
     BriefDetail,
     BriefStage,
@@ -18,7 +19,6 @@ import type {
 } from '@/components/socialhq/plan/item/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     NativeSelect,
@@ -124,6 +124,10 @@ const createBrief = (): void => {
             },
         },
     );
+};
+
+const setDueOn = (value: string | null): void => {
+    form.due_on = value ?? '';
 };
 
 const save = (): void => {
@@ -367,12 +371,13 @@ const replaceWithDraft = (): void => {
                     <Label for="socialhq-brief-due">
                         {{ $t('socialhq_production.brief.due_on') }}
                     </Label>
-                    <Input
-                        id="socialhq-brief-due"
-                        v-model="form.due_on"
-                        type="date"
-                        :aria-invalid="form.errors.due_on ? true : undefined"
+                    <DatePicker
+                        name="socialhq-brief-due"
+                        :model-value="form.due_on"
+                        :show-time="false"
+                        align="start"
                         data-testid="item-brief-due"
+                        @update:model-value="setDueOn"
                     />
                     <p
                         v-if="form.errors.due_on"

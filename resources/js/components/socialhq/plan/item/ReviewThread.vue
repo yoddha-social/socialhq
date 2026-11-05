@@ -41,6 +41,12 @@ const icons = {
     reopened: IconPencil,
 } as const;
 
+/** The lang key of what happened; reopening a creative is worded apart from a new copy version. */
+const kindLabel = (entry: ReviewEntry): string =>
+    entry.kind === 'reopened' && entry.about === 'creative'
+        ? 'socialhq_production.review.kinds.reopened_creative'
+        : `socialhq_production.review.kinds.${entry.kind}`;
+
 const entryClass = (entry: ReviewEntry): string => {
     switch (entry.kind) {
         case 'changes_requested':
@@ -112,11 +118,7 @@ const addComment = (): void => {
                                 <component
                                     :is="icons[entry.kind]"
                                     class="mx-1 inline size-3.5 align-[-2px]"
-                                />{{
-                                    $t(
-                                        `socialhq_production.review.kinds.${entry.kind}`,
-                                    )
-                                }}</span
+                                />{{ $t(kindLabel(entry)) }}</span
                             >
                         </p>
                         <p class="text-xs text-muted-foreground">

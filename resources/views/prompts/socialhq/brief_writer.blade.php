@@ -20,6 +20,7 @@ Rules:
 - references: three to five ideas for reference material to look for (a style, a kind of shot, a past post in the brand knowledge), one per line. No links unless a link is in the context.
 - Stay inside the format given (size, ratio, length).
 - Never invent facts, prices, dates, offers or claims that are not in the copy or the brand knowledge.
+- Never put a link, URL, website, "link in bio", shop, phone number or discount code on screen unless it appears in the copy or the brand knowledge.
 - Plain text, no markdown.
 
 Return JSON matching the schema.

@@ -9,9 +9,9 @@ use App\SocialHq\Plan\ItemReview;
 use App\SocialHq\Plan\ReviewKind;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * The creative work on a brief, in review rounds: uploads go into the
@@ -44,49 +44,80 @@ final class BriefRounds
 
     public static function upload(Brief $brief, User $user, UploadedFile $file, string $mimeType, ?string $note): BriefFile
     {
-        return DB::transaction(function () use ($brief, $user, $file, $mimeType, $note): BriefFile {
-            $locked = Brief::query()->lockForUpdate()->findOrFail($brief->id);
+        if (! self::acceptsUploads($brief)) {
+            throw ValidationException::withMessages(['file' => __('socialhq_production.creative.errors.not_accepting')]);
+        }
 
-            if (! self::acceptsUploads($locked)) {
-                throw ValidationException::withMessages(['file' => __('socialhq_production.creative.errors.not_accepting')]);
-            }
+        // The file is written before the row lock is taken (a slow upload never holds it) and removed if the row isn't saved.
+        $path = BriefStorage::disk()->putFileAs(
+            BriefStorage::directory($brief),
+            $file,
+            Str::uuid()->toString().'.'.BriefStorage::extensionFor($mimeType),
+        );
 
-            $extension = Str::lower($file->getClientOriginalExtension() ?: ($file->guessExtension() ?? 'bin'));
-            $path = Storage::putFileAs("socialhq/briefs/{$locked->id}", $file, Str::uuid()->toString().".{$extension}");
+        if ($path === false) {
+            throw ValidationException::withMessages(['file' => __('socialhq_production.creative.upload_failed', ['name' => $file->getClientOriginalName()])]);
+        }
 
-            $stored = BriefFile::query()->create([
-                'brief_id' => $locked->id,
-                'round' => self::uploadRound($locked),
-                'path' => $path,
-                'original_name' => Str::limit($file->getClientOriginalName(), 250, ''),
-                'mime_type' => $mimeType,
-                'size' => (int) $file->getSize(),
-                'uploaded_by' => $user->id,
-                'note' => filled($note) ? $note : null,
-            ]);
+        try {
+            return DB::transaction(function () use ($brief, $user, $file, $mimeType, $note, $path): BriefFile {
+                $locked = Brief::query()->lockForUpdate()->findOrFail($brief->id);
 
-            if (in_array($locked->stage, [BriefStage::Todo, BriefStage::ChangesRequested], true)) {
-                self::moveTo($locked, BriefStage::InProgress);
-            }
+                if (! self::acceptsUploads($locked)) {
+                    throw ValidationException::withMessages(['file' => __('socialhq_production.creative.errors.not_accepting')]);
+                }
 
-            $brief->setRawAttributes($locked->getAttributes(), true);
+                $stored = BriefFile::query()->create([
+                    'brief_id' => $locked->id,
+                    'round' => self::uploadRound($locked),
+                    'path' => $path,
+                    'original_name' => Str::limit($file->getClientOriginalName(), 250, ''),
+                    'mime_type' => $mimeType,
+                    'size' => (int) $file->getSize(),
+                    'uploaded_by' => $user->id,
+                    'note' => filled($note) ? $note : null,
+                ]);
 
-            return $stored;
-        });
+                if (in_array($locked->stage, [BriefStage::Todo, BriefStage::ChangesRequested], true)) {
+                    self::moveTo($locked, BriefStage::InProgress);
+                }
+
+                $brief->setRawAttributes($locked->getAttributes(), true);
+
+                return $stored;
+            });
+        } catch (Throwable $exception) {
+            BriefStorage::disk()->delete($path);
+
+            throw $exception;
+        }
+    }
+
+    /**
+     * Why the current round can't go to review, or null when it can: it
+     * needs files, and a round that already got change requests is done.
+     */
+    public static function submitBlocker(Brief $brief): ?string
+    {
+        $round = $brief->currentRound();
+
+        if ($round === 0 || self::changesRequestedOn($brief, $round)) {
+            return __('socialhq_production.creative.errors.cannot_submit');
+        }
+
+        return null;
     }
 
     public static function submit(Brief $brief, User $user): void
     {
         DB::transaction(function () use ($brief, $user): void {
             $locked = Brief::query()->lockForUpdate()->findOrFail($brief->id);
-            $round = $locked->currentRound();
-
-            if ($round === 0 || ! self::acceptsUploads($locked) || self::changesRequestedOn($locked, $round)) {
+            if (! self::acceptsUploads($locked) || self::submitBlocker($locked) !== null) {
                 throw ValidationException::withMessages(['creative' => __('socialhq_production.creative.errors.cannot_submit')]);
             }
 
             self::moveTo($locked, BriefStage::InReview);
-            self::note($locked, $user, ReviewKind::Submitted, $round);
+            self::note($locked, $user, ReviewKind::Submitted, $locked->currentRound());
             $brief->setRawAttributes($locked->getAttributes(), true);
         });
     }
@@ -140,7 +171,8 @@ final class BriefRounds
         DB::transaction(function () use ($brief, $user, $to, $kind, $note, $error): void {
             $locked = Brief::query()->lockForUpdate()->findOrFail($brief->id);
 
-            if ($locked->stage !== BriefStage::InReview) {
+            // Only a round that is in review, has files and hasn't been decided yet.
+            if ($locked->stage !== BriefStage::InReview || self::submitBlocker($locked) !== null) {
                 throw ValidationException::withMessages(['creative' => __("socialhq_production.creative.errors.{$error}")]);
             }
 
@@ -150,7 +182,7 @@ final class BriefRounds
         });
     }
 
-    private static function changesRequestedOn(Brief $brief, int $round): bool
+    public static function changesRequestedOn(Brief $brief, int $round): bool
     {
         return ItemReview::query()
             ->where('brief_id', $brief->id)

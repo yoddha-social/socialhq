@@ -12,7 +12,7 @@ use App\SocialHq\Production\BriefStage;
 use App\SocialHq\Production\FormatNotes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -31,13 +31,8 @@ class BriefController extends Controller
             throw ValidationException::withMessages(['brief' => __('socialhq_production.brief.errors.not_needed')]);
         }
 
-        DB::transaction(function () use ($planItem, $kind, $request): void {
-            if (Brief::query()->where('item_id', $planItem->id)->lockForUpdate()->exists()) {
-                return;
-            }
-
-            Brief::query()->create([
-                'item_id' => $planItem->id,
+        try {
+            Brief::query()->firstOrCreate(['item_id' => $planItem->id], [
                 'workspace_id' => $planItem->workspace_id,
                 'kind' => $kind,
                 'stage' => BriefStage::Todo,
@@ -45,7 +40,9 @@ class BriefController extends Controller
                 'position' => (int) Brief::query()->where('workspace_id', $planItem->workspace_id)->where('stage', BriefStage::Todo)->max('position') + 1,
                 'created_by' => $request->user()->id,
             ]);
-        });
+        } catch (UniqueConstraintViolationException) {
+            // A second click raced the first: the brief exists, which is what was asked for.
+        }
 
         return back();
     }

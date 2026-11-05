@@ -19,7 +19,9 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
-    Storage::fake();
+    config(['filesystems.default' => 'public']);
+    Storage::fake('public');
+    Storage::fake('local');
 
     $this->owner = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['account_id' => $this->owner->account_id, 'user_id' => $this->owner->id]);
@@ -37,7 +39,7 @@ beforeEach(function () {
 function storedBriefFile(Brief $brief, int $round, string $name = 'final.png'): BriefFile
 {
     $upload = UploadedFile::fake()->image($name, 120, 150);
-    $path = Storage::putFileAs("socialhq/briefs/{$brief->id}", $upload, "{$round}-{$name}");
+    $path = Storage::disk('local')->putFileAs("socialhq/briefs/{$brief->id}", $upload, "{$round}-{$name}");
 
     return BriefFile::query()->create([
         'brief_id' => $brief->id,
@@ -75,6 +77,18 @@ test('create post imports the approved round into the workspace uploads and retu
 
     expect($status['status'])->toBe(MediaImportStatus::DONE)
         ->and($status['media_id'])->toBe($media->id);
+});
+
+test('a second create post reuses the upload made from the same file', function () {
+    $this->item->update(['copy_status' => CopyStatus::Approved]);
+    $brief = Brief::factory()->for($this->item, 'item')->create(['stage' => BriefStage::Approved]);
+    storedBriefFile($brief, 1);
+
+    $first = $this->actingAs($this->member)->postJson(route('socialhq.plan.items.post.store', $this->item->id))->assertOk()->json('media.0.id');
+    $second = $this->actingAs($this->member)->postJson(route('socialhq.plan.items.post.store', $this->item->id))->assertOk()->json('media.0.id');
+
+    expect($second)->toBe($first)
+        ->and(Media::query()->count())->toBe(1);
 });
 
 test('an item without a creative needs only approved copy', function () {

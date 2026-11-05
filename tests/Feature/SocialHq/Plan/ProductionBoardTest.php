@@ -9,6 +9,7 @@ use App\SocialHq\Plan\ItemReview;
 use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Plan\ReviewKind;
 use App\SocialHq\Production\Brief;
+use App\SocialHq\Production\BriefFile;
 use App\SocialHq\Production\BriefKind;
 use App\SocialHq\Production\BriefStage;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -105,6 +106,41 @@ test('only approvers move a card into or out of Approved', function () {
     $this->actingAs($this->owner)->putJson(route('socialhq.plan.board.move', $brief->id), ['stage' => 'in_progress', 'ordered_ids' => [$brief->id]])->assertOk();
     expect($brief->fresh()->stage)->toBe(BriefStage::InProgress)
         ->and($brief->fresh()->approved_at)->toBeNull();
+});
+
+test('only approvers move a card into or out of Changes requested', function () {
+    $brief = boardBrief($this->plan, ['stage' => BriefStage::InReview]);
+    BriefFile::query()->create(['brief_id' => $brief->id, 'round' => 1, 'path' => 'a.png', 'original_name' => 'a.png', 'mime_type' => 'image/png', 'size' => 1]);
+
+    $this->actingAs($this->designer)->putJson(route('socialhq.plan.board.move', $brief->id), ['stage' => 'changes_requested', 'ordered_ids' => [$brief->id]])->assertForbidden();
+    expect($brief->fresh()->stage)->toBe(BriefStage::InReview);
+
+    $this->actingAs($this->owner)->putJson(route('socialhq.plan.board.move', $brief->id), ['stage' => 'changes_requested', 'ordered_ids' => [$brief->id]])->assertOk();
+    expect(ItemReview::query()->where('brief_id', $brief->id)->sole()->kind)->toBe(ReviewKind::ChangesRequested);
+
+    $this->actingAs($this->designer)->putJson(route('socialhq.plan.board.move', $brief->id), ['stage' => 'in_progress', 'ordered_ids' => [$brief->id]])->assertForbidden();
+    expect($brief->fresh()->stage)->toBe(BriefStage::ChangesRequested);
+});
+
+test('a card goes to In review on the board only with a round that may be reviewed', function () {
+    $brief = boardBrief($this->plan, ['stage' => BriefStage::InProgress]);
+
+    // No files yet.
+    $this->actingAs($this->designer)->putJson(route('socialhq.plan.board.move', $brief->id), ['stage' => 'in_review', 'ordered_ids' => [$brief->id]])
+        ->assertConflict()
+        ->assertJsonPath('message', __('socialhq_production.board.errors.review_needs_files'));
+
+    // A round that already got change requests.
+    BriefFile::query()->create(['brief_id' => $brief->id, 'round' => 1, 'path' => 'a.png', 'original_name' => 'a.png', 'mime_type' => 'image/png', 'size' => 1]);
+    $review = ItemReview::query()->create(['item_id' => $brief->item_id, 'brief_id' => $brief->id, 'round' => 1, 'user_id' => $this->owner->id, 'kind' => ReviewKind::ChangesRequested, 'body' => 'Again']);
+    $this->actingAs($this->designer)->putJson(route('socialhq.plan.board.move', $brief->id), ['stage' => 'in_review', 'ordered_ids' => [$brief->id]])->assertConflict();
+    expect($brief->fresh()->stage)->toBe(BriefStage::InProgress);
+
+    $review->delete();
+    $this->actingAs($this->designer)->putJson(route('socialhq.plan.board.move', $brief->id), ['stage' => 'in_review', 'ordered_ids' => [$brief->id]])->assertOk();
+
+    expect($brief->fresh()->stage)->toBe(BriefStage::InReview)
+        ->and(ItemReview::query()->where('brief_id', $brief->id)->sole()->kind)->toBe(ReviewKind::Submitted);
 });
 
 test('cards of another workspace cannot be moved and outsiders see no board', function () {

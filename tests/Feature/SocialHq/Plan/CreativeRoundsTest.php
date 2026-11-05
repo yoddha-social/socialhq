@@ -16,7 +16,10 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
-    Storage::fake();
+    // Production's default disk is a public bucket: brief files must never land there.
+    config(['filesystems.default' => 'public']);
+    Storage::fake('public');
+    Storage::fake('local');
 
     $this->owner = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['account_id' => $this->owner->account_id, 'user_id' => $this->owner->id]);
@@ -50,7 +53,9 @@ test('an upload is stored privately under the brief and starts work on it', func
         ->and($file->uploaded_by)->toBe($this->designer->id)
         ->and($this->brief->fresh()->stage)->toBe(BriefStage::InProgress);
 
-    Storage::assertExists($file->path);
+    // On the private disk, never the default (public) one.
+    Storage::disk('local')->assertExists($file->path);
+    Storage::disk('public')->assertMissing($file->path);
 
     $this->actingAs($this->designer)->get(route('socialhq.plan.items.show', $this->item->id))
         ->assertInertia(fn (Assert $page) => $page
@@ -141,4 +146,42 @@ test('uploads and reviews never reach another workspace\'s brief', function () {
     $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.approve', $other->item_id))->assertNotFound();
 
     expect(BriefFile::query()->count())->toBe(0);
+});
+
+test('a file\'s stored name and served type come from its content, not its name', function () {
+    // A real upload (not a fake, whose type follows its name), so the type is sniffed from the bytes.
+    $path = tempnam(sys_get_temp_dir(), 'shq-test-');
+    file_put_contents($path, UploadedFile::fake()->image('page.png', 120, 120)->getContent());
+    $disguised = new UploadedFile($path, 'page.html', 'text/html', null, true);
+
+    uploadCreative($this, $this->designer, $disguised)->assertSessionHasNoErrors();
+
+    $file = BriefFile::query()->sole();
+
+    expect($file->path)->toEndWith('.png')
+        ->and($file->mime_type)->toBe('image/png')
+        ->and($file->original_name)->toBe('page.html');
+
+    $this->actingAs($this->designer)->get(route('socialhq.plan.items.brief.files.show', ['item' => $this->item->id, 'file' => $file->id]))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'image/png')
+        ->assertHeader('X-Content-Type-Options', 'nosniff');
+});
+
+test('a round can\'t be decided unless it is in review with files', function () {
+    $this->brief->update(['stage' => BriefStage::InReview]);
+
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.approve', $this->item->id))->assertSessionHasErrors('creative');
+
+    expect($this->brief->fresh()->stage)->toBe(BriefStage::InReview);
+});
+
+test('deleting an item removes its brief files from storage', function () {
+    uploadCreative($this, $this->designer);
+    $path = BriefFile::query()->sole()->path;
+
+    $this->item->delete();
+
+    Storage::disk('local')->assertMissing($path);
+    expect(Brief::query()->count())->toBe(0);
 });

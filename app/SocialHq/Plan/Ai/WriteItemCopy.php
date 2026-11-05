@@ -40,7 +40,7 @@ final class WriteItemCopy
             brandKnowledge: BrandKnowledge::forPrompt($item->workspace, $item->title),
             isVideo: $isVideo,
             isRewrite: $latest !== null,
-            maxLength: $maxLength,
+            maxLength: $maxLength === null ? null : self::captionBudget($maxLength, $maxHashtags, $latest?->hashtags),
             maxHashtags: $maxHashtags,
         ))->prompt($latest === null ? 'Write the copy for this post.' : 'Rewrite the copy for this post.');
 
@@ -50,12 +50,65 @@ final class WriteItemCopy
             return null;
         }
 
+        [$caption, $hashtags, $trimmed] = self::fit(
+            Str::substr($caption, 0, Post::CONTENT_MAX_LENGTH),
+            self::hashtags((string) data_get($response, 'hashtags'), $maxHashtags),
+            $maxLength,
+        );
+
+        $notes = trim((string) data_get($response, 'notes'));
+
+        if ($trimmed) {
+            $notes = trim("{$notes}\n\n".__('socialhq_production.item.copy.ai_trimmed', [], $user->locale->value));
+        }
+
         return ItemCopy::saveVersion($item, $user, [
-            'caption' => Str::substr($caption, 0, Post::CONTENT_MAX_LENGTH),
-            'hashtags' => self::hashtags((string) data_get($response, 'hashtags'), $maxHashtags),
+            'caption' => $caption,
+            'hashtags' => $hashtags,
             'script' => $isVideo ? Str::substr(trim((string) data_get($response, 'script')), 0, 20000) : null,
-            'notes' => Str::substr(trim((string) data_get($response, 'notes')), 0, 5000),
+            'notes' => Str::substr($notes, 0, 5000),
         ], ItemSource::Ai);
+    }
+
+    /**
+     * How long the caption may be so it fits the channel with its hashtags
+     * (and the blank line between): the latest hashtags' length when there
+     * are some, else room for the most hashtags allowed.
+     */
+    public static function captionBudget(int $maxLength, int $maxHashtags, ?string $currentHashtags): int
+    {
+        $reserve = filled($currentHashtags) ? mb_strlen($currentHashtags) : $maxHashtags * 16;
+
+        return max((int) floor($maxLength / 2), $maxLength - min($reserve, (int) floor($maxLength / 3)) - 2);
+    }
+
+    /**
+     * Make caption + blank line + hashtags fit the channel: hashtags go first
+     * (from the end), then the caption is cut with an ellipsis.
+     *
+     * @return array{0: string, 1: ?string, 2: bool}
+     */
+    public static function fit(string $caption, ?string $hashtags, ?int $maxLength): array
+    {
+        $length = fn (string $caption, ?string $hashtags): int => mb_strlen($caption) + (filled($hashtags) ? mb_strlen((string) $hashtags) + 2 : 0);
+
+        if ($maxLength === null || $length($caption, $hashtags) <= $maxLength) {
+            return [$caption, $hashtags, false];
+        }
+
+        $tags = filled($hashtags) ? explode(' ', (string) $hashtags) : [];
+
+        while ($tags !== [] && $length($caption, implode(' ', $tags)) > $maxLength) {
+            array_pop($tags);
+        }
+
+        $hashtags = $tags === [] ? null : implode(' ', $tags);
+
+        if ($length($caption, $hashtags) > $maxLength) {
+            $caption = rtrim(mb_substr($caption, 0, max(0, $maxLength - 1))).'…';
+        }
+
+        return [$caption, $hashtags, true];
     }
 
     /**

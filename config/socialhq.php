@@ -34,4 +34,24 @@ return [
         'agent_posts_reviewed' => (bool) env('SOCIALHQ_AGENT_POSTS_REVIEWED', true),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Sign-up
+    |--------------------------------------------------------------------------
+    |
+    | Self-hosted TryPost only registers people with an invite. Social HQ also
+    | lets people sign up whose email is listed here, either exactly or by
+    | domain (comma separated; public mail domains such as gmail.com are
+    | ignored). They join the account of account_owner (the only account when
+    | blank) without any workspace, and wait until an admin approves them.
+    | Both lists empty: invites only, as upstream.
+    |
+    */
+
+    'signup' => [
+        'domains' => array_values(array_filter(array_map('trim', explode(',', (string) env('SOCIALHQ_SIGNUP_DOMAINS', ''))))),
+        'emails' => array_values(array_filter(array_map('trim', explode(',', (string) env('SOCIALHQ_SIGNUP_EMAILS', ''))))),
+        'account_owner' => env('SOCIALHQ_SIGNUP_ACCOUNT_OWNER'),
+    ],
+
 ];

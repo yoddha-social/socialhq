@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth\Concerns;
 
 use App\Models\Invite;
+use App\SocialHq\Signup\SignupRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -33,7 +34,7 @@ trait PreservesInvite
     {
         $invite = Invite::fromId($this->retrieveInvite());
 
-        if ((bool) config('trypost.self_hosted') && ! $invite) {
+        if ((bool) config('trypost.self_hosted') && ! $invite && ! SignupRules::isOpen()) {
             throw new NotFoundHttpException;
         }
 
@@ -46,6 +47,10 @@ trait PreservesInvite
             return redirect()->route('login')->withErrors([
                 'email' => __('settings.members.flash.wrong_email'),
             ]);
+        }
+
+        if (! $invite && (bool) config('trypost.self_hosted') && ! SignupRules::allows($oauthEmail)) {
+            return redirect()->route('login')->withErrors(['email' => __('socialhq.signup.not_allowed')]);
         }
 
         return null;

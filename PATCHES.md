@@ -17,6 +17,11 @@ whenever you touch an upstream file; keep each edit as small as possible.
 | 10 | `app/Actions/Post/Approval/NotifyApprovalRequested.php` | Emails the requester too when an agent made the request (1 line + import) | An admin's own agent posts reach the admin's inbox |
 | 11 | `resources/js/components/members/MemberAccessFields.vue` | Shows `socialhq/MembersReviewedNote.vue` instead of the publishing choice when members are always reviewed (about 8 lines) | The choice no longer applies |
 | 12 | `phpunit.xml` | Turns our approval rules off for the test run (2 lines) | Upstream's tests expect TryPost's rules; ours switch them on |
+| 20 | `app/Actions/User/CreateUser.php` | A sign-up allowed by `SignupRules` joins the team's account with no workspace and opens an access request, instead of getting an account of its own (about 12 lines) | Self sign-up with company emails, let in by an admin (rows 13 to 19 are in the AI branches) |
+| 21 | `app/Http/Requests/App/Auth/RegisterRequest.php` | Without an invite (posted or in the session), refuses emails `SignupRules` doesn't allow (5 lines) | Same |
+| 22 | `app/Http/Middleware/App/EnsureRegistrationEnabled.php` | Lets registration through on a self-hosted install when sign-up is open (1 line) | Same |
+| 23 | `app/Http/Controllers/Auth/Concerns/PreservesInvite.php` | Google and GitHub sign-ups follow the same allow list (6 lines) | Same |
+| 24 | `resources/js/pages/auth/Login.vue` | Shows the sign-up link when sign-up is open (4 lines) | Same |
 
 Files we **added** (no merge risk) aren't listed here; they're under the
 module paths in SOCIALHQ.md, plus `config/socialhq.php`,

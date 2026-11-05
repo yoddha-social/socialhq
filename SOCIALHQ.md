@@ -46,6 +46,26 @@ Every request, approval, rejection and withdrawal is recorded in
 `shq_approval_events` (who, when, from the app, an agent or the system).
 TryPost keeps only the latest approver and nothing about rejections.
 
+## Sign-up
+
+Self-hosted TryPost only registers people with an invite. Social HQ also lets
+people sign up with a company email (`SOCIALHQ_SIGNUP_DOMAINS`, comma
+separated, e.g. `acme.com`) or a listed address (`SOCIALHQ_SIGNUP_EMAILS`).
+Public mail domains (gmail.com and the like) are ignored, and with both lists
+empty sign-up stays invites only. Code: `app/SocialHq/Signup/`.
+
+1. The login page shows "Sign up". Email, Google and GitHub sign-ups follow
+   the same list.
+2. The person joins the team's account (`SOCIALHQ_SIGNUP_ACCOUNT_OWNER`, or
+   the only account) with no workspace and waits on one page until let in.
+3. Once their email is confirmed, the account owner and every workspace admin
+   get an email, and "Access requests" with a count appears in the workspace
+   menu.
+4. An admin picks the workspaces they manage and whether the person is an
+   admin; a member who is not an admin always sends posts for approval. The
+   person gets an email. Declining deletes their user and keeps the request
+   in `shq_access_requests`.
+
 ## Interface copy
 
 Our screens use the `socialhq.*` keys in `lang/en/socialhq.php`, in English

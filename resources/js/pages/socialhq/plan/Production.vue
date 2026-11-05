@@ -64,8 +64,11 @@ onBeforeUnmount(() => {
     moveHttp.cancel();
 });
 
+/** Stages only approvers move cards into or out of: they hold a review decision. */
+const DECIDED: BriefStage[] = ['approved', 'changes_requested'];
+
 const needsApprover = (from: BriefStage, to: BriefStage): boolean =>
-    from !== to && (from === 'approved' || to === 'approved');
+    from !== to && (DECIDED.includes(from) || DECIDED.includes(to));
 
 const applyMove = async (
     briefId: number,

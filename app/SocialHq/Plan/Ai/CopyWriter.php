@@ -8,6 +8,7 @@ use App\SocialHq\Ai\AiTask;
 use App\SocialHq\Ai\UsesAiTask;
 use App\SocialHq\Ai\UsesModelSafeTemperature;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\HasStructuredOutput;
 use Laravel\Ai\Promptable;
@@ -16,6 +17,7 @@ use Laravel\Ai\Promptable;
  * Writes or rewrites the copy of a plan item: caption, hashtags, a script
  * for video, and notes for the team.
  */
+#[MaxTokens(3000)]
 class CopyWriter implements Agent, HasStructuredOutput
 {
     use Promptable;
@@ -60,9 +62,9 @@ class CopyWriter implements Agent, HasStructuredOutput
     {
         return [
             'caption' => $schema->string()->required(),
-            'hashtags' => $schema->string()->required(),
-            'script' => $schema->string()->required(),
-            'notes' => $schema->string()->required(),
+            'hashtags' => $schema->string(),
+            'script' => $schema->string(),
+            'notes' => $schema->string(),
         ];
     }
 

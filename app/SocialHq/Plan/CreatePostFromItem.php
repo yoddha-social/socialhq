@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Production\BriefFile;
 use App\SocialHq\Production\BriefStage;
+use App\SocialHq\Production\BriefStorage;
 use App\Support\MediaImportStatus;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -101,7 +102,41 @@ final class CreatePostFromItem
      */
     private static function import(BriefFile $file, User $user, Workspace $workspace): ?array
     {
-        $stream = Storage::readStream($file->path);
+        $media = self::earlierImport($file, $workspace) ?? self::copyIntoUploads($file, $workspace);
+
+        if ($media === null) {
+            return null;
+        }
+
+        $importId = (string) Str::uuid();
+        MediaImportStatus::pending($importId, $user->id, $workspace->id);
+        MediaImportStatus::complete($importId, $media);
+
+        return [$importId, $media];
+    }
+
+    /**
+     * The upload an earlier "Create post" made of this file, while it is still
+     * a loose workspace upload (not yet taken by a post or idea) with its file.
+     */
+    private static function earlierImport(BriefFile $file, Workspace $workspace): ?Media
+    {
+        $media = $workspace->media()
+            ->where('collection', Media::COLLECTION_UPLOADS)
+            ->whereNull('post_id')
+            ->whereNull('idea_id')
+            ->whereNotNull('upload_token')
+            ->where('meta->source', 'socialhq_brief')
+            ->where('meta->brief_file_id', (string) $file->id)
+            ->latest('id')
+            ->first();
+
+        return $media !== null && Storage::exists($media->path) ? $media : null;
+    }
+
+    private static function copyIntoUploads(BriefFile $file, Workspace $workspace): ?Media
+    {
+        $stream = BriefStorage::disk()->readStream($file->path);
 
         if ($stream === null) {
             return null;
@@ -130,10 +165,6 @@ final class CreatePostFromItem
             @unlink($path);
         }
 
-        $importId = (string) Str::uuid();
-        MediaImportStatus::pending($importId, $user->id, $workspace->id);
-        MediaImportStatus::complete($importId, $media);
-
-        return [$importId, $media];
+        return $media;
     }
 }

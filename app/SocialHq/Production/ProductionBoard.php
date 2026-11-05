@@ -84,24 +84,24 @@ final class ProductionBoard
      */
     public static function move(Brief $brief, User $user, BriefStage $stage, array $orderedIds): void
     {
-        $touchesApproved = $brief->stage !== $stage && ($stage === BriefStage::Approved || $brief->stage === BriefStage::Approved);
-
-        if ($touchesApproved && ! PlanAccess::canApprove($user, $brief->workspace)) {
-            throw new HttpException(Response::HTTP_FORBIDDEN, __('socialhq_production.board.errors.approvers_only', [
-                'names' => implode(', ', self::approverNames($brief->workspace)),
-            ]));
-        }
-
         DB::transaction(function () use ($brief, $user, $stage, $orderedIds): void {
             $locked = Brief::query()->lockForUpdate()->findOrFail($brief->id);
             $from = $locked->stage;
+            $round = $locked->currentRound() ?: null;
+
+            if ($from !== $stage) {
+                self::assertMayMove($locked, $user, $from, $stage);
+            }
 
             BriefRounds::moveTo($locked, $stage, $user, 0);
 
-            if ($from !== $stage && $stage === BriefStage::Approved) {
-                BriefRounds::note($locked, $user, ReviewKind::Approved, $locked->currentRound() ?: null);
-            } elseif ($from === BriefStage::Approved && $stage !== BriefStage::Approved) {
-                BriefRounds::note($locked, $user, ReviewKind::Reopened, $locked->currentRound() ?: null);
+            if ($from !== $stage) {
+                match ($stage) {
+                    BriefStage::Approved => BriefRounds::note($locked, $user, ReviewKind::Approved, $round),
+                    BriefStage::InReview => BriefRounds::note($locked, $user, ReviewKind::Submitted, $round),
+                    BriefStage::ChangesRequested => BriefRounds::note($locked, $user, ReviewKind::ChangesRequested, $round),
+                    default => $from === BriefStage::Approved ? BriefRounds::note($locked, $user, ReviewKind::Reopened, $round) : null,
+                };
             }
 
             $column = Brief::query()
@@ -122,6 +122,27 @@ final class ProductionBoard
 
             $order->each(fn (int $id, int $position) => Brief::query()->whereKey($id)->update(['position' => $position]));
         });
+    }
+
+    /**
+     * The review steps the board can't skip: only approvers decide (move a
+     * card into or out of Approved or Changes requested), and a card goes to
+     * In review only with a round that may be reviewed (it has files and
+     * hasn't had change requests yet).
+     */
+    private static function assertMayMove(Brief $brief, User $user, BriefStage $from, BriefStage $to): void
+    {
+        $decided = [BriefStage::Approved, BriefStage::ChangesRequested];
+
+        if ((in_array($from, $decided, true) || in_array($to, $decided, true)) && ! PlanAccess::canApprove($user, $brief->workspace)) {
+            throw new HttpException(Response::HTTP_FORBIDDEN, __('socialhq_production.board.errors.approvers_only', [
+                'names' => implode(', ', self::approverNames($brief->workspace)),
+            ]));
+        }
+
+        if ($to === BriefStage::InReview && BriefRounds::submitBlocker($brief) !== null) {
+            throw new HttpException(Response::HTTP_CONFLICT, __('socialhq_production.board.errors.review_needs_files'));
+        }
     }
 
     /**

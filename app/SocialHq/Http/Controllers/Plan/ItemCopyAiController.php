@@ -15,6 +15,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Laravel\Ai\Exceptions\AiException;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 /**
  * "Write with AI" / "Rewrite with AI": the copy comes back as a new version.
@@ -30,6 +31,10 @@ class ItemCopyAiController extends Controller
         try {
             $version = WriteItemCopy::execute($planItem, $request->user());
         } catch (AiException|RequestException|ConnectionException) {
+            $version = null;
+        } catch (Throwable $exception) {
+            // A reply the SDK can't parse (or any other failure of the call) is a failed draft, not a 500.
+            report($exception);
             $version = null;
         }
 

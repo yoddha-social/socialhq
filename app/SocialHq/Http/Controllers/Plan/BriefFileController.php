@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\SocialHq\Http\Controllers\Plan;
 
+use App\Enums\Media\Type as MediaType;
 use App\Http\Controllers\Controller;
 use App\SocialHq\Http\Requests\Plan\StoreBriefFileRequest;
 use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Production\BriefFile;
 use App\SocialHq\Production\BriefRounds;
+use App\SocialHq\Production\BriefStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -35,12 +36,15 @@ class BriefFileController extends Controller
         $brief = PlanAccess::item($request, $item)->brief ?? abort(Response::HTTP_NOT_FOUND);
         $stored = BriefFile::query()->where('brief_id', $brief->id)->findOrFail($file);
 
-        abort_unless(Storage::exists($stored->path), Response::HTTP_NOT_FOUND);
+        abort_unless(BriefStorage::disk()->exists($stored->path), Response::HTTP_NOT_FOUND);
 
-        return Storage::response($stored->path, $stored->original_name, [
+        // Shown in the page only when it is an image, a video or a PDF (by its sniffed type); anything else downloads.
+        $inline = MediaType::fromMime($stored->mime_type) !== null && ! $request->boolean('download');
+
+        return BriefStorage::disk()->response($stored->path, $stored->original_name, [
             'Content-Type' => $stored->mime_type,
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, max-age=3600',
-        ], $request->boolean('download') ? 'attachment' : 'inline');
+        ], $inline ? 'inline' : 'attachment');
     }
 }

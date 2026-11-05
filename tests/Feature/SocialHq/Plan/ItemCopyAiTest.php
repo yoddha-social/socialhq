@@ -101,7 +101,34 @@ test('a failed or empty answer saves nothing and says so', function (Closure $fa
 })->with([
     'empty caption' => [fn () => CopyWriter::fake([copyWriterAnswer(['caption' => '  '])])],
     'provider error' => [fn () => CopyWriter::fake(fn () => throw new AiException('down'))],
+    'unreadable reply' => [fn () => CopyWriter::fake(fn () => throw new RuntimeException('Syntax error in JSON'))],
 ]);
+
+test('copy longer than the channel takes is fitted: hashtags first, then the caption, and the note says so', function () {
+    // Instagram: 2200 characters for caption + blank line + hashtags.
+    CopyWriter::fake([
+        copyWriterAnswer(['caption' => str_repeat('a', 2185), 'hashtags' => '#one #two #three', 'notes' => '']),
+        copyWriterAnswer(['caption' => str_repeat('b', 2300), 'hashtags' => '#one', 'notes' => 'Aimed warm.']),
+    ]);
+
+    $this->actingAs($this->owner)->postJson(route('socialhq.plan.items.copy.ai', $this->item->id))->assertCreated();
+    $this->actingAs($this->owner)->postJson(route('socialhq.plan.items.copy.ai', $this->item->id))->assertCreated();
+
+    [$first, $second] = ItemVersion::query()->orderBy('number')->get()->all();
+
+    expect(mb_strlen($first->caption) + mb_strlen((string) $first->hashtags) + 2)->toBeLessThanOrEqual(2200)
+        ->and($first->caption)->toBe(str_repeat('a', 2185))
+        ->and($first->hashtags)->toBe('#one #two')
+        ->and($first->notes)->toBe(__('socialhq_production.item.copy.ai_trimmed'))
+        ->and($second->hashtags)->toBeNull()
+        ->and(mb_strlen($second->caption))->toBe(2200)
+        ->and($second->caption)->toEndWith('…')
+        ->and($second->notes)->toStartWith('Aimed warm.');
+
+    // The writer is told to leave room for the hashtags, and not to invent links or shops.
+    CopyWriter::assertPrompted(fn (AgentPrompt $prompt): bool => $prompt->agent->maxLength < 2200
+        && str_contains($prompt->agent->instructions(), 'link in bio'));
+});
 
 test('AI copy is unavailable without a write provider, and never across workspaces', function () {
     CopyWriter::fake([copyWriterAnswer()]);

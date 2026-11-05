@@ -81,16 +81,14 @@ const openItem = (item: PlanItem): void => emit('open', item);
                 <TableRow
                     v-for="item in items"
                     :key="item.id"
-                    class="cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                    class="cursor-pointer"
                     :class="{
                         'bg-primary-subtle/30': item.status === 'suggested',
                         'opacity-60': item.status === 'dropped',
                     }"
-                    tabindex="0"
                     :data-status="item.status"
                     :data-testid="`plan-row-${item.id}`"
                     @click="openItem(item)"
-                    @keydown.enter="openItem(item)"
                 >
                     <TableCell
                         class="text-xs font-medium whitespace-nowrap text-muted-foreground capitalize"
@@ -115,13 +113,23 @@ const openItem = (item: PlanItem): void => emit('open', item);
                     </TableCell>
                     <TableCell>
                         <span class="flex min-w-0 items-center gap-2">
-                            <span
-                                class="truncate text-sm font-medium"
+                            <!-- The row opens on click; this button is how a keyboard or screen reader opens it. -->
+                            <button
+                                type="button"
+                                class="truncate rounded-sm text-start text-sm font-medium hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                                 :class="{
                                     'line-through': item.status === 'dropped',
                                 }"
-                                >{{ item.title }}</span
+                                :aria-label="
+                                    $t('socialhq_plan.list.open_row', {
+                                        title: item.title,
+                                    })
+                                "
+                                :data-testid="`plan-row-open-${item.id}`"
+                                @click.stop="openItem(item)"
                             >
+                                {{ item.title }}
+                            </button>
                             <Badge
                                 v-if="item.status === 'suggested'"
                                 variant="info"

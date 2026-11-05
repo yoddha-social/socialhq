@@ -12,9 +12,7 @@ import {
     IconSend,
     IconSparkles,
 } from '@tabler/icons-vue';
-import { trans } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
-import { toast } from 'vue-sonner';
 
 import EmptyState from '@/components/EmptyState.vue';
 import PlanBrandSettingsDialog from '@/components/socialhq/plan/PlanBrandSettingsDialog.vue';
@@ -27,6 +25,10 @@ import PlanMonthGrid from '@/components/socialhq/plan/PlanMonthGrid.vue';
 import PlanMonthSwitcher from '@/components/socialhq/plan/PlanMonthSwitcher.vue';
 import PlanSummaryStrip from '@/components/socialhq/plan/PlanSummaryStrip.vue';
 import PlanTabs from '@/components/socialhq/plan/PlanTabs.vue';
+import {
+    toastFirstError,
+    toastRequestFailed,
+} from '@/components/socialhq/plan/planRequests';
 import type {
     PlanAbilities,
     PlanChannel,
@@ -72,7 +74,7 @@ const props = defineProps<{
     cadence: Record<string, number | null>;
     creatives: string[];
     abilities: PlanAbilities;
-    ai: { available: boolean };
+    ai: { available: boolean; hourlyLimit: number };
 }>();
 
 const VIEW_STORAGE_KEY = 'socialhq.plan.view';
@@ -150,7 +152,17 @@ const canShowApprove = computed(
         status.value !== 'approved' &&
         plannedCount.value > 0,
 );
-const approveBlocked = computed(() => suggestions.value.length > 0);
+/** Why Approve is disabled, as a lang key resolved in the template; null when it isn't. */
+const approveBlockedKey = computed<string | null>(() => {
+    if (isGenerating.value) {
+        return 'socialhq_plan.review.approve_generating';
+    }
+
+    return suggestions.value.length > 0
+        ? 'socialhq_plan.review.approve_blocked'
+        : null;
+});
+const approveBlocked = computed(() => approveBlockedKey.value !== null);
 
 /* Polling while the AI drafts the month. */
 const { start: startPolling, stop: stopPolling } = usePoll(
@@ -175,20 +187,6 @@ watch(
 const busyItemId = ref<number | null>(null);
 const reviewProcessing = ref(false);
 const acceptAllProcessing = ref(false);
-
-const toastFirstError = (errors: Record<string, string>): void => {
-    const message = Object.values(errors)[0];
-
-    if (message) {
-        toast.error(message);
-    }
-};
-
-const toastRequestFailed = (): false => {
-    toast.error(trans('socialhq_plan.errors.request_failed'));
-
-    return false;
-};
 
 const writeOptions = {
     preserveScroll: true,
@@ -475,15 +473,16 @@ const openBrandSettings = (): void => {
                                 </Button>
                             </span>
                         </TooltipTrigger>
-                        <TooltipContent v-if="approveBlocked">
-                            {{ $t('socialhq_plan.review.approve_blocked') }}
+                        <TooltipContent v-if="approveBlockedKey">
+                            {{ $t(approveBlockedKey) }}
                         </TooltipContent>
                     </Tooltip>
                     <span
-                        v-if="canShowApprove && approveBlocked"
+                        v-if="canShowApprove && approveBlockedKey"
                         id="plan-approve-blocked"
                         class="sr-only"
-                        >{{ $t('socialhq_plan.review.approve_blocked') }}</span
+                        data-testid="plan-approve-blocked"
+                        >{{ $t(approveBlockedKey) }}</span
                     >
                 </div>
             </div>
@@ -673,6 +672,7 @@ const openBrandSettings = (): void => {
         :month-label="monthLabel"
         :goals="plan?.goals ?? null"
         :has-suggestions="suggestions.length > 0"
+        :hourly-limit="ai.hourlyLimit"
     />
 
     <PlanBrandSettingsDialog

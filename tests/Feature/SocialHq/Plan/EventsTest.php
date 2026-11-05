@@ -97,7 +97,7 @@ test('the importer maps the Nepal and international columns', function () {
         ->and($laxmi->name_ne)->toBe('लक्ष्मी पूजा')
         ->and($laxmi->starts_on->toDateString())->toBe($this->day->toDateString())
         ->and($laxmi->ends_on->toDateString())->toBe($this->day->toDateString())
-        ->and($laxmi->source_name)->toBe('MOHA public holiday notice')
+        ->and($laxmi->source_name)->toBe('Ministry of Home Affairs holiday notice')
         ->and($laxmi->isVerified())->toBeFalse();
 
     $sirua = CalendarEvent::query()->where('key', 'sirua-pawani')->firstOrFail();
@@ -113,7 +113,7 @@ test('the importer maps the Nepal and international columns', function () {
     expect($kindness->region)->toBe(EventRegion::International)
         ->and($kindness->category)->toBe(EventCategory::InternationalDay)
         ->and($kindness->source_name)->toBe('un.org')
-        ->and($kindness->description)->toContain('fixed');
+        ->and($kindness->description)->toBe('UN day.');
 
     expect(CalendarEvent::query()->where('key', 'black-friday')->first()->category)->toBe(EventCategory::Commercial)
         ->and(CalendarEvent::query()->where('key', 'christmas-day')->first()->category)->toBe(EventCategory::Observance);
@@ -352,4 +352,18 @@ test('the publish calendar marks the days of the shown month that have events', 
             ->has('shqEvents', 2)
             ->where("shqEvents.{$this->day->toDateString()}", [['name' => 'Laxmi Puja', 'verified' => true, 'category' => $verified->category->value]])
             ->has("shqEvents.{$this->day->addDay()->toDateString()}", 1));
+});
+
+test('people see what a note says about the day, not the dataset\'s research notes', function () {
+    ImportOfficialEvents::handle($this->account, [eventsCsv([
+        nepalRow($this->day, [
+            'source_name' => 'Hamro Patro (calendar site); cross-checked https://nepalicalendar.rat32.com/index.php?year=2083&month=07',
+            'notes' => '[calendar site (single source)] Notice §2.2(घ) gives the holiday on the day. Date from rat32 only; chariot pulled through Patan.',
+        ]),
+    ])]);
+
+    $event = CalendarEvent::query()->firstOrFail();
+
+    expect($event->source_name)->toBe('Hamro Patro, checked against nepalicalendar.rat32.com')
+        ->and($event->description)->toBe('Chariot pulled through Patan. Only one calendar gives this date: check it before planning around it.');
 });

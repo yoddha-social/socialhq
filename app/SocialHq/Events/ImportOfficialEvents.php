@@ -192,7 +192,7 @@ final class ImportOfficialEvents
         $where = trim((string) data_get($record, 'region_or_community'));
         $description = collect([
             $where === '' ? null : ($holiday === 'partial' ? "Holiday only for: {$where}." : "Observed in or by: {$where}."),
-            self::clean(data_get($record, 'notes')),
+            self::readableNotes(data_get($record, 'notes')),
         ])->filter()->implode(' ');
 
         return [
@@ -202,7 +202,7 @@ final class ImportOfficialEvents
             'name_ne' => self::clean(data_get($record, 'name_ne'), 160),
             'public_holiday' => $holiday !== 'no',
             'description' => self::clean($description, 1000),
-            'source_name' => self::clean(data_get($record, 'source_name'), 160),
+            'source_name' => self::clean(self::sourceLabel((string) data_get($record, 'source_name')), 160),
         ];
     }
 
@@ -224,7 +224,10 @@ final class ImportOfficialEvents
             'bs_date' => null,
             'name_ne' => null,
             'public_holiday' => false,
-            'description' => self::clean(collect([$rule === null ? null : "Rule: {$rule}.", $notes])->filter()->implode(' '), 400),
+            'description' => self::clean(collect([
+                $rule === null || Str::startsWith($rule, 'fixed') ? null : "Every year: {$rule}.",
+                self::readableNotes($notes),
+            ])->filter()->implode(' '), 400),
             'source_name' => $host === null ? null : Str::limit(Str::chopStart($host, 'www.'), 160, ''),
         ];
     }
@@ -252,6 +255,51 @@ final class ImportOfficialEvents
             'ends_on' => $date,
             'source_url' => self::host($url) === null ? null : $url,
         ];
+    }
+
+    /**
+     * The dataset's notes are research notes ("[official] Notice §2.1(क). AD
+     * date per ..."). People see only what tells them about the day, plus a
+     * warning when one calendar alone gives the date or it is tentative.
+     */
+    private static function readableNotes(?string $notes): ?string
+    {
+        $notes = trim((string) $notes);
+
+        if ($notes === '') {
+            return null;
+        }
+
+        $singleSource = Str::contains($notes, '(single source)');
+        $tentative = Str::contains(Str::lower($notes), ['tentative', 'probably']);
+        $text = trim((string) preg_replace('/^\[[^\]]*\]\s*/', '', $notes));
+
+        $kept = collect(preg_split('/(?<=[.;])\s+/', $text) ?: [])
+            ->map(fn (string $part): string => trim(rtrim(trim($part), ';.')))
+            ->reject(fn (string $part): bool => $part === '' || preg_match('/agree|pradhan|weekday|notice|§|rat32|hamro patro|cross-?check|date from|listed on|https?:\/\/|source/i', $part) === 1)
+            ->map(fn (string $part): string => Str::ucfirst($part).'.');
+
+        return collect([
+            $kept->implode(' '),
+            $tentative ? 'The date is tentative: check it before planning around it.' : null,
+            $singleSource && ! $tentative ? 'Only one calendar gives this date: check it before planning around it.' : null,
+        ])->filter()->implode(' ') ?: null;
+    }
+
+    /**
+     * A short name for where the date comes from, without the dataset's
+     * research detail (gazette numbers, cross-check links).
+     */
+    private static function sourceLabel(string $source): string
+    {
+        $source = trim($source);
+
+        return match (true) {
+            Str::startsWith($source, 'MOHA') => 'Ministry of Home Affairs holiday notice',
+            Str::contains($source, 'myRepublica') => 'myRepublica, citing the Ministry of Home Affairs',
+            Str::startsWith($source, 'Hamro Patro') && Str::contains($source, 'cross-checked') => 'Hamro Patro, checked against nepalicalendar.rat32.com',
+            default => trim((string) preg_replace('/\s*\([^)]*\)\s*$/', '', $source)),
+        };
     }
 
     /**

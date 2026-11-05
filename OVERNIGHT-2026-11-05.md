@@ -52,7 +52,11 @@ admin from `trypost/local/test-account.env`):
   feature suite: 8736 passed, 1 failed: a TryPost billing test that expects pt-BR
   currency formatting the PHP image's ICU data doesn't give (`US$ 18,00` vs `$18.00`).
   Not touched by our changes; probably the ICU data in the image (not checked on main).
-- `socialhq/overnight-2026-11-05`: tonight's work, on top of the checkpoint.
+- `socialhq/overnight-2026-11-05`: tonight's work, on top of the checkpoint. Final
+  full suite (Feature + Unit, PostgreSQL) on the last code commit 38d3e064: **10918
+  passed**, 14 skipped, 1 failed: the same billing currency test that fails on the
+  checkpoint. One earlier run also hit a timing flake in `PruneWebhookLogsTest`, which
+  passes when rerun alone. The build, `vue-tsc` and ESLint on the module are clean.
 
 ## Log
 - **Checkpoint.** Merged sign-up (#11) into the AI/rebrand stack (#13 → #6), then the

@@ -181,6 +181,34 @@ return [
         ],
     ],
 
+    'board' => [
+        'label' => 'Production board',
+        'filters' => [
+            'mine' => 'Assigned to me',
+            'kind' => 'Kind',
+            'all_kinds' => 'All kinds',
+            'month' => 'Month',
+            'all_months' => 'All months',
+        ],
+        'empty_title' => 'No briefs yet',
+        'empty_description' => 'Briefs start from items in a content plan: open an item that needs a graphic or a video and create its brief. It shows up here to track until the creative is approved.',
+        'open_plan' => 'Open the content plan',
+        'no_results' => 'No briefs match these filters.',
+        'column_empty' => 'Nothing here',
+        'count' => ':count',
+        'due' => 'Due :date',
+        'overdue' => 'Overdue · :date',
+        'rounds' => '{0} No uploads|{1} 1 round|[2,*] :count rounds',
+        'unassigned' => 'Unassigned',
+        'move_to' => 'Move to',
+        'move_card' => 'Move :title',
+        'moved' => 'Moved to :stage.',
+        'move_failed' => 'Couldn\'t move the card. Try again.',
+        'errors' => [
+            'approvers_only' => 'Only approvers can move a creative into or out of Approved: :names.',
+        ],
+    ],
+
     'review' => [
         'title' => 'Review',
         'empty' => 'Comments, change requests and approvals show here.',

@@ -140,14 +140,6 @@ const save = (): void => {
     });
 };
 
-const setAssignee = (value: unknown): void => {
-    form.assignee_id = typeof value === 'string' ? value : '';
-};
-
-const setKind = (value: unknown): void => {
-    form.kind = value === 'video' ? 'video' : 'graphic';
-};
-
 const aiHttp = useHttp<Record<string, never>, Record<DraftField, string>>({});
 const aiError = ref('');
 const pending = ref<Partial<Record<DraftField, string>>>({});
@@ -328,10 +320,9 @@ const replaceWithDraft = (): void => {
                     </Label>
                     <NativeSelect
                         id="socialhq-brief-kind"
-                        :model-value="form.kind"
+                        v-model="form.kind"
                         class="w-full"
                         data-testid="item-brief-kind"
-                        @update:model-value="setKind"
                     >
                         <NativeSelectOption value="graphic">
                             {{ $t('socialhq_production.brief.kinds.graphic') }}
@@ -347,13 +338,12 @@ const replaceWithDraft = (): void => {
                     </Label>
                     <NativeSelect
                         id="socialhq-brief-assignee"
-                        :model-value="form.assignee_id"
+                        v-model="form.assignee_id"
                         class="w-full"
                         :aria-invalid="
                             form.errors.assignee_id ? true : undefined
                         "
                         data-testid="item-brief-assignee"
-                        @update:model-value="setAssignee"
                     >
                         <NativeSelectOption value="">
                             {{ $t('socialhq_production.brief.unassigned') }}

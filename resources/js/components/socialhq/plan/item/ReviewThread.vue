@@ -52,10 +52,6 @@ const entryClass = (entry: ReviewEntry): string => {
     }
 };
 
-const setAbout = (value: unknown): void => {
-    form.about = typeof value === 'string' ? value : '';
-};
-
 const addComment = (): void => {
     form.transform((data) => ({
         body: data.body,
@@ -213,10 +209,9 @@ const addComment = (): void => {
                     </Label>
                     <NativeSelect
                         id="socialhq-review-about"
-                        :model-value="form.about"
+                        v-model="form.about"
                         class="h-7 text-xs"
                         data-testid="item-review-about"
-                        @update:model-value="setAbout"
                     >
                         <NativeSelectOption value="">
                             {{ $t('socialhq_production.review.about_general') }}

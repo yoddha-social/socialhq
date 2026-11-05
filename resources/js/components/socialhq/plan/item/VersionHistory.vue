@@ -96,9 +96,17 @@ const close = (): void => {
     open.value = false;
 };
 
-const setCompareWith = (value: unknown): void => {
-    compareWith.value = value === '' || value === null ? null : Number(value);
-};
+/** The compare select's value: a version number, or '' for none. */
+const compareModel = computed({
+    get: (): string =>
+        compareWith.value === null ? '' : String(compareWith.value),
+    set: (value: unknown): void => {
+        compareWith.value =
+            value === '' || value === null || value === undefined
+                ? null
+                : Number(value);
+    },
+});
 
 const useVersion = (): void => {
     if (viewing.value) {
@@ -234,9 +242,8 @@ const useVersion = (): void => {
                     </Label>
                     <NativeSelect
                         id="socialhq-version-compare"
-                        :model-value="compareWith ?? ''"
+                        v-model="compareModel"
                         data-testid="item-version-compare-select"
-                        @update:model-value="setCompareWith"
                     >
                         <NativeSelectOption value="">—</NativeSelectOption>
                         <NativeSelectOption

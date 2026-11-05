@@ -14,6 +14,7 @@ use App\SocialHq\Http\Controllers\Plan\ProductionBoardController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('production', [ProductionBoardController::class, 'index'])->name('production');
+Route::put('production/briefs/{brief}/move', [ProductionBoardController::class, 'move'])->whereNumber('brief')->name('board.move');
 
 // The brief of a plan item (one per item).
 Route::post('items/{item}/brief', [BriefController::class, 'store'])->whereNumber('item')->name('items.brief.store');

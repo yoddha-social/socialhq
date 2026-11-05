@@ -8,10 +8,12 @@ use App\Models\User;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiRoutesCommand;
 use App\SocialHq\AiGraphics\AiGraphics;
+use App\SocialHq\Knowledge\BrandKnowledge;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
 
@@ -38,6 +40,12 @@ class SocialHqServiceProvider extends ServiceProvider
         }
 
         Route::middleware('web')->group(base_path('routes/socialhq.php'));
+
+        // Brand knowledge in the caption and idea prompts, for the workspace the call runs in.
+        View::composer('prompts.socialhq.brand_knowledge', fn ($view) => $view->with(
+            'brand_knowledge',
+            BrandKnowledge::forPrompt(auth()->user() instanceof User ? auth()->user()->currentWorkspace : null),
+        ));
 
         RateLimiter::for('socialhq-ai-graphics', fn (Request $request): Limit => Limit::perHour(AiGraphics::userHourlyLimit())
             ->by((string) $request->user()?->id));

@@ -20,6 +20,9 @@ Change a TryPost file when that is the right place, and add a row.
 | 17 | `tests/Unit/Ai/Agents/AgentProviderResolutionTest.php` | Asserts every agent routes through an AI task (it asserted that none overrides `provider()`) | The rule changed with row 15 |
 | 18 | `phpunit.xml` | `SOCIALHQ_AI_GATEWAY=direct` and `SOCIALHQ_AI_APPROVED_PROVIDERS` for the test providers (2 lines) | Tests call the SDK's fakes and `Http::fake()`, never LiteLLM |
 | 19 | `.env.example` | "Social HQ AI routing" block under the AI settings | Documents the gateway, the approved list and the routes |
+| 25 | `resources/views/prompts/post_content/assistant.blade.php` | `@include('prompts.socialhq.brand_knowledge')` before the closing rules (2 lines) | The caption assistant writes from the workspace's brand profile and knowledge (rows 20 to 24 are in the sign-up branch) |
+| 26 | `resources/views/prompts/ideas/generator.blade.php` | Same include before the rules (2 lines) | The idea generator does too |
+| 27 | `resources/js/composables/useSettingsNavigation.ts` | "Brand knowledge" in the Content group of the settings sidebar (13 lines) | Where people look for workspace content settings |
 
 Files we **added** aren't listed here; they're under the module paths in
 SOCIALHQ.md, plus `config/socialhq.php`, `routes/socialhq.php`, `CLAUDE.md`,

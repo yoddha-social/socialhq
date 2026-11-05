@@ -64,6 +64,24 @@ TryPost's four agents carry it too (PATCHES.md row 15). Code:
 - Per-call records are LiteLLM's spend logs (its admin UI on port 4000), not
   a table in the app: AGENTS.md keeps TryPost free of AI usage recording.
 
+## Brand knowledge
+
+Each workspace (one brand) has a brand profile (what the brand is, audience,
+voice and tone, words to use and to avoid) and knowledge entries (products,
+projects, past campaigns, facts), under Settings › Content › Brand knowledge.
+Members who can post read it; workspace admins change it. Code:
+`app/SocialHq/Knowledge/`.
+
+The caption assistant and the idea generator get it in their prompts
+(`prompts/socialhq/brand_knowledge.blade.php`, filled by a view composer for
+the user's current workspace): the profile, then the newest entries marked
+"Use in AI writing" until `SOCIALHQ_KNOWLEDGE_PROMPT_CHARACTERS` (6000) is
+spent. The prompt tells the model it is reference data, not instructions.
+Up to `SOCIALHQ_KNOWLEDGE_MAX_ENTRIES` (300) entries per workspace.
+
+Not yet: picking the entries that match the request (embeddings through the
+`embed` task), and feeding it to calendar drafts and scripts.
+
 ## AI graphics
 
 "Generate with AI" in the media menu of ideas and posts makes a still graphic

@@ -8,6 +8,7 @@ import {
     IconMcp,
     IconBuilding,
     IconAdjustmentsHorizontal,
+    IconBook,
     IconTag,
     IconUser,
     IconUsers,
@@ -28,6 +29,7 @@ import { preferences } from '@/routes/app/settings';
 import { index as signatures } from '@/routes/app/signatures';
 import { index as webhooks } from '@/routes/app/webhooks';
 import { channels, settings as workspaceSettings } from '@/routes/app/workspace';
+import { index as brandKnowledge } from '@/routes/socialhq/brand';
 import type { NavItem } from '@/types';
 
 export interface SettingsNavGroup {
@@ -142,6 +144,17 @@ export const useSettingsNavigation = () => {
                         IconTag,
                         workspace && canCreatePost.value,
                     ),
+                    // Social HQ: the brand profile and knowledge the AI writes from.
+                    ...(workspace && canCreatePost.value
+                        ? [
+                              {
+                                  name: 'socialhq_brand',
+                                  title: trans('socialhq.brand.nav'),
+                                  href: brandKnowledge.url(),
+                                  icon: IconBook,
+                              },
+                          ]
+                        : []),
                 ],
             },
             {

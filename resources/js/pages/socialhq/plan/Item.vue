@@ -4,6 +4,7 @@ import { computed, ref } from 'vue';
 
 import BriefPanel from '@/components/socialhq/plan/item/BriefPanel.vue';
 import CopyEditor from '@/components/socialhq/plan/item/CopyEditor.vue';
+import CreatePostCard from '@/components/socialhq/plan/item/CreatePostCard.vue';
 import CreativeRounds from '@/components/socialhq/plan/item/CreativeRounds.vue';
 import ItemSummary from '@/components/socialhq/plan/item/ItemSummary.vue';
 import ReviewThread from '@/components/socialhq/plan/item/ReviewThread.vue';
@@ -27,6 +28,7 @@ const props = defineProps<{
     brief: BriefDetail | null;
     briefKind: 'graphic' | 'video' | null;
     team: PlanPerson[];
+    postReady: boolean;
     abilities: PlanAbilities;
     aiAvailable: boolean;
 }>();
@@ -89,7 +91,12 @@ const useVersion = (version: CopyVersion): void => {
                         :abilities="abilities"
                     />
                 </div>
-                <div class="min-w-0 lg:sticky lg:top-4">
+                <div class="grid min-w-0 gap-6">
+                    <CreatePostCard
+                        :item="item"
+                        :ready="postReady"
+                        :abilities="abilities"
+                    />
                     <ReviewThread
                         :item-id="item.id"
                         :entries="thread"

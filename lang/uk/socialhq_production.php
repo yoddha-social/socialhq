@@ -169,6 +169,18 @@ return [
         ],
     ],
 
+    'post' => [
+        'create' => 'Create post',
+        'created' => 'Post created :time',
+        'ready' => 'Copy and creative are approved. Create the post to schedule it in the composer.',
+        'waiting_copy' => 'To create the post, the copy needs approval first.',
+        'waiting_creative' => 'To create the post, the creative needs approval first.',
+        'failed' => 'Couldn\'t prepare the post. Try again.',
+        'errors' => [
+            'not_ready' => 'This item isn\'t ready for a post yet: its copy, and its creative when it has one, need approval first.',
+        ],
+    ],
+
     'review' => [
         'title' => 'Review',
         'empty' => 'Comments, change requests and approvals show here.',

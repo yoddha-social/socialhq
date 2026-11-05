@@ -34,6 +34,7 @@ final class ItemPage
             'brief' => $item->brief === null ? null : self::brief($item->brief),
             'briefKind' => $item->creative->briefKind()?->value,
             'team' => BriefTeam::members($workspace)->map(fn (User $member): ?array => self::person($member))->values()->all(),
+            'postReady' => CreatePostFromItem::isReady($item),
             'abilities' => PlanAccess::abilities($user, $workspace),
             'aiAvailable' => AiRouter::isAvailable(AiTask::Write),
         ];

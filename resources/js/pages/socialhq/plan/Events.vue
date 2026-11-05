@@ -332,6 +332,16 @@ const confirmDelete = (): void => {
                             <IconLock class="mt-0.5 size-4 shrink-0" />
                             <span>{{ $t('socialhq_events.read_only') }}</span>
                         </p>
+                        <p
+                            v-else-if="!abilities.canManageSharedEvents"
+                            class="flex items-start gap-2 text-sm text-muted-foreground"
+                            data-testid="socialhq-events-shared-read-only"
+                        >
+                            <IconLock class="mt-0.5 size-4 shrink-0" />
+                            <span>{{
+                                $t('socialhq_events.shared_read_only')
+                            }}</span>
+                        </p>
                     </div>
 
                     <EmptyState

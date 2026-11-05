@@ -8,6 +8,7 @@ return [
     'title' => 'Events',
     'description' => 'Festivals, holidays and days your brands can post about. Dates come from official lists, and someone on your team confirms each one. The AI plans only around confirmed dates.',
     'read_only' => 'Workspace admins confirm, add and change dates. Ask one if a date looks wrong.',
+    'shared_read_only' => 'You can add and change this brand\'s own dates. Dates for every brand are confirmed and changed by the account owner.',
 
     'view' => [
         'label' => 'Period',

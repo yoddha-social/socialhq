@@ -51,7 +51,8 @@ test('a member whose posts need approval works on every plan page but approves a
             ->component($component)
             ->where('abilities.canWork', true)
             ->where('abilities.canApprove', false)
-            ->where('abilities.canManageBrand', false));
+            ->where('abilities.canManageBrand', false)
+            ->where('abilities.canManageSharedEvents', false));
 })->with('plan pages');
 
 test('an admin works, approves and manages the brand on every plan page', function (string $component) {
@@ -62,7 +63,8 @@ test('an admin works, approves and manages the brand on every plan page', functi
             ->component($component)
             ->where('abilities.canWork', true)
             ->where('abilities.canApprove', true)
-            ->where('abilities.canManageBrand', true));
+            ->where('abilities.canManageBrand', true)
+            ->where('abilities.canManageSharedEvents', true));
 })->with('plan pages');
 
 test('the production board names who may move cards into or out of the decided stages', function () {
@@ -74,4 +76,17 @@ test('the production board names who may move cards into or out of the decided s
         ->assertInertia(fn (Assert $page) => $page
             ->component('socialhq/plan/Production')
             ->where('approverNames', [$this->owner->name]));
+});
+
+test('an admin of one brand approves its dates but not the dates every brand shares', function () {
+    $admin = workspaceMember($this->workspace, 'admin');
+    Workspace::factory()->create(['account_id' => $this->owner->account_id, 'user_id' => $this->owner->id]);
+
+    $this->actingAs($admin)
+        ->get(route('socialhq.plan.events.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('socialhq/plan/Events')
+            ->where('abilities.canApprove', true)
+            ->where('abilities.canManageSharedEvents', false));
 });

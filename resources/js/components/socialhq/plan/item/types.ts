@@ -70,6 +70,46 @@ export interface ReviewEntry {
     created_at: string | null;
 }
 
+export type BriefStage =
+    | 'todo'
+    | 'in_progress'
+    | 'in_review'
+    | 'changes_requested'
+    | 'approved';
+
+export interface BriefFileRow {
+    id: number;
+    name: string;
+    mime_type: string;
+    type: 'image' | 'video' | 'document' | null;
+    size: number;
+    note: string | null;
+    url: string;
+    uploader: PlanPerson | null;
+    created_at: string | null;
+}
+
+export interface BriefRound {
+    round: number;
+    files: BriefFileRow[];
+}
+
+export interface BriefDetail {
+    id: number;
+    kind: 'graphic' | 'video';
+    stage: BriefStage;
+    assignee: PlanPerson | null;
+    due_on: string | null;
+    format_notes: string | null;
+    on_screen_text: string | null;
+    direction: string | null;
+    references: string | null;
+    approved_at: string | null;
+    rounds?: BriefRound[];
+    current_round?: number;
+    accepts_uploads?: boolean;
+}
+
 export interface PlanAbilities {
     canWork: boolean;
     canApprove: boolean;

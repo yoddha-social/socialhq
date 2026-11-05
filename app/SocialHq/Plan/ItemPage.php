@@ -9,6 +9,8 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiTask;
+use App\SocialHq\Production\Brief;
+use App\SocialHq\Production\BriefTeam;
 
 /**
  * What the item page shows: the item, its copy versions and review thread.
@@ -20,12 +22,15 @@ final class ItemPage
      */
     public static function props(PlanItem $item, User $user, Workspace $workspace): array
     {
-        $item->load(['plan', 'owner.avatarMedia', 'event', 'socialAccount', 'versions.author.avatarMedia', 'reviews.user.avatarMedia', 'reviews.version']);
+        $item->load(['plan', 'owner.avatarMedia', 'event', 'socialAccount', 'versions.author.avatarMedia', 'reviews.user.avatarMedia', 'reviews.version', 'brief.assignee.avatarMedia']);
 
         return [
             'item' => self::item($item),
             'versions' => $item->versions->map(fn (ItemVersion $version): array => self::version($version))->values()->all(),
             'thread' => $item->reviews->map(fn (ItemReview $review): array => self::review($review))->values()->all(),
+            'brief' => $item->brief === null ? null : self::brief($item->brief),
+            'briefKind' => $item->creative->briefKind()?->value,
+            'team' => BriefTeam::members($workspace)->map(fn (User $member): ?array => self::person($member))->values()->all(),
             'abilities' => PlanAccess::abilities($user, $workspace),
             'aiAvailable' => AiRouter::isAvailable(AiTask::Write),
         ];
@@ -93,6 +98,25 @@ final class ItemPage
                 'starts_on' => $item->event->starts_on->toDateString(),
                 'verified' => $item->event->isVerified(),
             ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function brief(Brief $brief): array
+    {
+        return [
+            'id' => $brief->id,
+            'kind' => $brief->kind->value,
+            'stage' => $brief->stage->value,
+            'assignee' => self::person($brief->assignee),
+            'due_on' => $brief->due_on?->toDateString(),
+            'format_notes' => $brief->format_notes,
+            'on_screen_text' => $brief->on_screen_text,
+            'direction' => $brief->direction,
+            'references' => $brief->references,
+            'approved_at' => $brief->approved_at?->toIso8601String(),
         ];
     }
 

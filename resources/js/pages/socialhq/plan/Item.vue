@@ -2,13 +2,16 @@
 import { Head } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
+import BriefPanel from '@/components/socialhq/plan/item/BriefPanel.vue';
 import CopyEditor from '@/components/socialhq/plan/item/CopyEditor.vue';
 import ItemSummary from '@/components/socialhq/plan/item/ItemSummary.vue';
 import ReviewThread from '@/components/socialhq/plan/item/ReviewThread.vue';
 import type {
+    BriefDetail,
     CopyVersion,
     PlanAbilities,
     PlanItemDetail,
+    PlanPerson,
     ReviewEntry,
 } from '@/components/socialhq/plan/item/types';
 import VersionHistory from '@/components/socialhq/plan/item/VersionHistory.vue';
@@ -20,6 +23,9 @@ const props = defineProps<{
     item: PlanItemDetail;
     versions: CopyVersion[];
     thread: ReviewEntry[];
+    brief: BriefDetail | null;
+    briefKind: 'graphic' | 'video' | null;
+    team: PlanPerson[];
     abilities: PlanAbilities;
     aiAvailable: boolean;
 }>();
@@ -66,6 +72,15 @@ const useVersion = (version: CopyVersion): void => {
                         :can-edit="abilities.canWork"
                         @use="useVersion"
                     />
+                    <BriefPanel
+                        v-if="brief || briefKind"
+                        :item-id="item.id"
+                        :brief="brief"
+                        :brief-kind="briefKind"
+                        :team="team"
+                        :abilities="abilities"
+                        :ai-available="aiAvailable"
+                    />
                 </div>
                 <div class="min-w-0 lg:sticky lg:top-4">
                     <ReviewThread
@@ -73,7 +88,7 @@ const useVersion = (version: CopyVersion): void => {
                         :entries="thread"
                         :can-comment="abilities.canWork"
                         :has-copy="versions.length > 0"
-                        :has-brief="false"
+                        :has-brief="brief !== null"
                     />
                 </div>
             </div>

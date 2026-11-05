@@ -5,7 +5,10 @@ commits on `socialhq/overnight-2026-11-05`.
 
 ## Branches
 - `socialhq/checkpoint-2026-11-05`: everything that existed (open PRs #3, #5–#13
-  combined, merge conflicts resolved). Pushed. Module + unit tests: 2070 passed.
+  combined, merge conflicts resolved). Pushed. Module + unit tests: 2070 passed. Full
+  feature suite: 8736 passed, 1 failed: a TryPost billing test that expects pt-BR
+  currency formatting the PHP image's ICU data doesn't give (`US$ 18,00` vs `$18.00`).
+  Not ours; it fails the same way on the base.
 - `socialhq/overnight-2026-11-05`: tonight's work, on top of the checkpoint.
 
 ## Log

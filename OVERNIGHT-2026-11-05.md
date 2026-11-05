@@ -127,3 +127,19 @@ commits on `socialhq/overnight-2026-11-05`.
   - Checked and fine: migrations on PostgreSQL and MySQL, route order and middleware,
     shared-prop cost, job timeouts against Horizon, and that the AI guard breaks no
     TryPost feature.
+- **Polish and performance feedback:**
+  - **Production board:** the five columns fit a desktop screen and run full height.
+  - **Calendar:** event chips become a dot and count in narrow day cells.
+  - **Phones:** the plan's grid/list switch moves next to the month.
+  - **Item page:** clearer "About" select and blocked "Create post".
+  - **Member view:**
+    - the board hides moves a member can't make and names who can;
+    - one-brand approvers see who manages the shared dates;
+    - tests check each page's abilities for a member, an admin and the owner.
+  - **Copy budget:** 124 button, tab and badge labels are now under the single-line
+    copy test.
+  - **"What worked lately"** (month page, collapsed by default): the brand's best and
+    weakest posts of the last 90 days by engagement (falling back to reach, then views),
+    and the best format. It uses the same query the AI planner uses, so people and the
+    AI see the same numbers.
+  - Browser: checked the board, calendar and panel on the trial data.

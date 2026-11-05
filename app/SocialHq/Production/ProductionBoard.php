@@ -13,8 +13,8 @@ use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Plan\ReviewKind;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * The production board: a workspace's briefs by stage, and moving them.
@@ -138,6 +138,10 @@ final class ProductionBoard
             throw new HttpException(Response::HTTP_FORBIDDEN, __('socialhq_production.board.errors.approvers_only', [
                 'names' => implode(', ', self::approverNames($brief->workspace)),
             ]));
+        }
+
+        if ($to === BriefStage::Approved && $brief->files()->doesntExist()) {
+            throw new HttpException(Response::HTTP_CONFLICT, __('socialhq_production.board.errors.approve_needs_files'));
         }
 
         if ($to === BriefStage::InReview && BriefRounds::submitBlocker($brief) !== null) {

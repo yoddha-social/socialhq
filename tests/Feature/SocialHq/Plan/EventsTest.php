@@ -10,6 +10,8 @@ use App\SocialHq\Events\EventCategory;
 use App\SocialHq\Events\EventRegion;
 use App\SocialHq\Events\EventsForMonth;
 use App\SocialHq\Events\ImportOfficialEvents;
+use App\SocialHq\Plan\ContentPlan;
+use App\SocialHq\Plan\PlanItem;
 use App\Support\Timezone;
 use Carbon\CarbonImmutable;
 
@@ -489,4 +491,24 @@ test('an approver of one brand manages that brand\'s dates but not the dates eve
 
     expect($shared->fresh()->isVerified())->toBeTrue()
         ->and($own->fresh()->isVerified())->toBeTrue();
+});
+
+test('narrowing a shared date to one brand unlinks it from the other brands\' items', function () {
+    $other = Workspace::factory()->create(['account_id' => $this->account->id, 'user_id' => $this->owner->id]);
+    $shared = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'starts_on' => $this->day, 'ends_on' => $this->day]);
+    $theirs = PlanItem::factory()->create([
+        'plan_id' => ContentPlan::factory()->create(['workspace_id' => $other->id])->id,
+        'event_id' => $shared->id,
+    ]);
+    $ours = PlanItem::factory()->create([
+        'plan_id' => ContentPlan::factory()->create(['workspace_id' => $this->workspace->id])->id,
+        'event_id' => $shared->id,
+    ]);
+
+    $this->actingAs($this->owner)
+        ->put(route('socialhq.plan.events.update', $shared->id), eventPayload($this->day, ['name' => $shared->name, 'category' => 'festival', 'brand_only' => true]))
+        ->assertRedirect();
+
+    expect($theirs->fresh()->event_id)->toBeNull()
+        ->and($ours->fresh()->event_id)->toBe($shared->id);
 });

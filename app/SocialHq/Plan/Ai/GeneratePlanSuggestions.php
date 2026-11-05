@@ -161,7 +161,11 @@ class GeneratePlanSuggestions implements ShouldQueue
         $channels = $channelList->keyBy('id');
         $cadence = PlanOptions::cadence($profile, $channelList);
         $events = PlanOptions::events($workspace, $month, $end)->groupBy('key');
-        $planned = $plan->items()->where('status', ItemStatus::Planned)->get(['social_account_id', 'scheduled_on', 'title']);
+        // Planned items, plus suggestions someone started work on (they survive a new draft).
+        $planned = $plan->items()
+            ->where(fn ($query) => $query->where('status', ItemStatus::Planned)
+                ->orWhere(fn ($query) => $query->where('status', ItemStatus::Suggested)->where(fn ($query) => $query->has('versions')->orHas('brief'))))
+            ->get(['social_account_id', 'scheduled_on', 'title']);
 
         /** @var array<string, true> $taken channel id + day already holding an item */
         $taken = $planned

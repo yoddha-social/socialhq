@@ -15,6 +15,7 @@ use App\SocialHq\Events\ImportOfficialEvents;
 use App\SocialHq\Http\Requests\Plan\StoreCalendarEventRequest;
 use App\SocialHq\Http\Requests\Plan\UpdateCalendarEventRequest;
 use App\SocialHq\Plan\PlanAccess;
+use App\SocialHq\Plan\PlanItem;
 use App\Support\Timezone;
 use Carbon\CarbonImmutable;
 use Closure;
@@ -88,6 +89,11 @@ class EventController extends Controller
 
         self::whileLocked($workspace, function () use ($request, $workspace, $found, $brandOnly): void {
             self::ensureUnique($workspace, $brandOnly, $found->key, $request->validated('starts_on'), $found->id);
+
+            if ($brandOnly && $found->workspace_id === null) {
+                // Narrowed to this brand: the other brands' items stop pointing at it.
+                PlanItem::query()->where('event_id', $found->id)->where('workspace_id', '!=', $workspace->id)->update(['event_id' => null]);
+            }
 
             $found->update([
                 ...self::attributes($request->validated()),

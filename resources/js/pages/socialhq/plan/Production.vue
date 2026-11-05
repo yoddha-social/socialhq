@@ -150,9 +150,9 @@ const targetsOf = (card: BoardCardData): BriefStage[] =>
             (props.abilities.canApprove || !needsApprover(card.stage, stage)),
     );
 
-/** Whether this viewer may drop cards into a column at all. */
-const acceptsDrops = (stage: BriefStage): boolean =>
-    props.abilities.canApprove || !DECIDED.includes(stage);
+/** Whether this viewer may drop a card from `from` into a column: anyone may reorder a column; only approvers move cards into a decided one. */
+const acceptsDrops = (stage: BriefStage, from: BriefStage): boolean =>
+    props.abilities.canApprove || !DECIDED.includes(stage) || from === stage;
 
 const moveWithMenu = (card: BoardCardData, stage: BriefStage): void => {
     void applyMove(card.id, card.stage, stage, columnCards(stage).length);
@@ -181,7 +181,9 @@ onMounted(() => {
 
         if (column && list) {
             cleanups.push(
-                registerColumn(column, list, stage, () => acceptsDrops(stage)),
+                registerColumn(column, list, stage, (from) =>
+                    acceptsDrops(stage, from),
+                ),
             );
         }
     });

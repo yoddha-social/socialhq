@@ -57,7 +57,7 @@ export const useProductionBoard = (options: {
         el: HTMLElement,
         list: HTMLElement,
         stage: BriefStage,
-        accepts?: () => boolean,
+        accepts?: (from: BriefStage) => boolean,
     ) => () => void;
 } => {
     const preview = ref<BoardDragPreview | null>(null);
@@ -171,13 +171,14 @@ export const useProductionBoard = (options: {
         el: HTMLElement,
         list: HTMLElement,
         stage: BriefStage,
-        accepts: () => boolean = () => true,
+        accepts: (from: BriefStage) => boolean = () => true,
     ): (() => void) => {
         lists.set(stage, list);
 
         const cleanup = dropTargetForElements({
             element: el,
-            canDrop: ({ source }) => isCard(source.data) && accepts(),
+            canDrop: ({ source }) =>
+                isCard(source.data) && accepts(source.data.stage),
             getData: () => ({ [COLUMN_KEY]: true, stage }),
         });
 

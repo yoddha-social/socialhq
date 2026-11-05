@@ -209,6 +209,7 @@ return [
         'errors' => [
             'approvers_only' => 'Only approvers can approve a creative or ask for changes, so only they move cards into or out of Approved and Changes requested: :names.',
             'review_needs_files' => 'To send this creative for review, upload the files for a new round first.',
+            'approve_needs_files' => 'To approve this creative, its files need to be uploaded first.',
         ],
     ],
 

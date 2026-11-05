@@ -88,6 +88,7 @@ test('a card moves between columns and keeps the order it was dropped in', funct
 
 test('only approvers move a card into or out of Approved', function () {
     $brief = boardBrief($this->plan, ['stage' => BriefStage::InReview]);
+    BriefFile::query()->create(['brief_id' => $brief->id, 'round' => 1, 'path' => 'socialhq/briefs/test/one.png', 'original_name' => 'one.png', 'mime_type' => 'image/png', 'size' => 3]);
 
     $this->actingAs($this->designer)->putJson(route('socialhq.plan.board.move', $brief->id), ['stage' => 'approved', 'ordered_ids' => [$brief->id]])
         ->assertForbidden()
@@ -150,4 +151,15 @@ test('cards of another workspace cannot be moved and outsiders see no board', fu
     $this->actingAs(workspaceOutsider($this->workspace))->get(route('socialhq.plan.production'))->assertForbidden();
 
     expect($foreign->fresh()->stage)->toBe(BriefStage::Todo);
+});
+
+test('a creative with no files can\'t be dragged into Approved, even by an approver', function () {
+    $brief = boardBrief($this->plan, ['stage' => 'in_progress']);
+
+    $this->actingAs($this->owner)->putJson(route('socialhq.plan.board.move', $brief->id), [
+        'stage' => 'approved',
+        'ordered_ids' => [$brief->id],
+    ])->assertConflict();
+
+    expect($brief->fresh()->stage->value)->toBe('in_progress');
 });

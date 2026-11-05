@@ -42,7 +42,8 @@ onMounted(() => {
         cleanup = props.register(root.value, () => ({
             briefId: props.card.id,
             stage: props.card.stage,
-            movable: props.targets.length > 0,
+            // Every card can be reordered within its column; the columns decide where it may go.
+            movable: true,
         }));
     }
 

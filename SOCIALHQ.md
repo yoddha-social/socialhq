@@ -110,6 +110,50 @@ Not yet: picking the entries that match the request (embeddings through the
 `embed` task; `forPrompt()` already takes the request as `$focus`), and
 feeding it to calendar drafts and scripts.
 
+## Planning (Plan in the sidebar)
+
+The month's content, from idea to post. One workspace is one brand. Code:
+`app/SocialHq/{Events,Plan,Production}/`, pages in
+`resources/js/pages/socialhq/plan/`, routes in `routes/socialhq/*.php`
+(`socialhq.plan.*`), copy in `lang/en/socialhq_{plan,events,production}.php`.
+Who may do what is `App\SocialHq\Plan\PlanAccess`: anyone who may create posts
+works on plans, copy and briefs; approving (a plan, copy, a creative, an event
+date) follows TryPost's `approvePosts`, so it matches who approves posts.
+
+- **Events** (`/socialhq/plan/events`). Dated festivals, holidays and days,
+  shared by the account's brands or for one brand only. "Import official dates"
+  loads `database/data/socialhq/events/` (the BS 2083 holiday notice and
+  international days, a source per row; `php artisan socialhq:events:import`
+  does the same). Every imported date starts as "Needs check" until an approver
+  confirms it; changing a date or name clears the confirmation. Re-importing
+  never brings back a date the team edited, moved or deleted. The AI never
+  calculates a date and plans only around confirmed ones. The publish calendar
+  shows a marker on days with events (PATCHES rows 60–63).
+- **Content plan** (`/socialhq/plan/{YYYY-MM}`). Items with a date, channel,
+  format (TryPost's content type), what to make, pillar, owner, event, objective
+  and angle. "Generate with AI" (`ContentPlanner`, a queued job) drafts the
+  month from confirmed events, `BrandKnowledge`, pillars and posts per week
+  (brand settings), the last 90 days of posts with metrics and the team's focus.
+  Its suggestions are checked in code (date in the month and not past, channel,
+  format, confirmed event around its dates, paused channels, duplicates) before
+  they show, dashed, to accept or drop. "Approve plan" waits until no
+  suggestion is open; any change sends an approved plan back to review.
+- **Item** (`/socialhq/plan/items/{id}`). Copy (caption, hashtags, script for
+  video, notes) saved as numbered versions, never edited in place; AI writes or
+  rewrites a version (`CopyWriter`). Review thread: send for review, request
+  changes (a note is required), approve; approved copy is locked until someone
+  starts a new version. The brief (graphic or video) is prefilled from the
+  format; `BriefWriter` drafts empty fields. Creative files are uploaded in
+  rounds, reviewed like copy, and kept on the private `local` disk, served only
+  to members. "Create post" opens TryPost's composer with the approved copy,
+  the final files, the date and the channel; posting follows TryPost's
+  approvals.
+- **Production** (`/socialhq/plan/production`). Every brief by stage, with drag
+  and drop or a keyboard "Move to" menu. Only approvers move a card into or out
+  of Changes requested and Approved.
+- **AI output** must list every key as required (strict providers such as Groq
+  refuse a schema with optional keys, and models drop them); `""` means none.
+
 ## AI graphics
 
 "Generate with AI" in the media menu of ideas and posts makes a still graphic

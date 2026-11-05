@@ -36,7 +36,7 @@ class RegisterRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             // Social HQ: the sign-up allow list runs before `unique` and stops there (bail), so an email that may not sign up never learns whether it has an account.
-            'email' => ['bail', 'required', 'string', 'lowercase', 'email', 'max:255', SignupRules::allowListRule(fn (): bool => $this->invite() !== null), 'unique:'.User::class],
+            'email' => ['bail', 'required', 'string', 'lowercase', 'email', 'max:255', SignupRules::allowListRule(fn (): bool => SignupRules::isOpenInvite($this->invite())), 'unique:'.User::class],
             'password' => ['required', Rules\Password::defaults()],
             'locale' => ['required', Rule::enum(Locale::class)],
             'timezone' => ['nullable', 'string'],

@@ -4,6 +4,7 @@ import { computed } from 'vue';
 
 import CalendarPostChip from '@/components/publish/CalendarPostChip.vue';
 import CalendarSlotChip from '@/components/publish/CalendarSlotChip.vue';
+import CalendarEventMarkers from '@/components/socialhq/plan/CalendarEventMarkers.vue';
 import {
     calendarTargetKey,
     useCalendarDragContext,
@@ -161,9 +162,10 @@ const visibleMonthItems = (day: dayjs.Dayjs): CalendarItem[] =>
                     :data-drop-over="isDayOver(day) || undefined"
                     :data-testid="`calendar-day-${dayKey(day)}`"
                 >
-                    <div class="flex items-center justify-between">
+                    <div class="flex items-center justify-between gap-1">
+                        <div class="flex min-w-0 items-center gap-1">
                         <span
-                            class="inline-flex size-6 items-center justify-center rounded-full text-sm font-medium"
+                            class="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-sm font-medium"
                             :class="{
                                 'bg-primary text-primary-foreground':
                                     isToday(day),
@@ -177,6 +179,11 @@ const visibleMonthItems = (day: dayjs.Dayjs): CalendarItem[] =>
                         >
                             {{ day.format('D') }}
                         </span>
+                        <CalendarEventMarkers
+                            :day="dayKey(day)"
+                            :compact="!isDesktop"
+                        />
+                        </div>
                         <button
                             v-if="
                                 canCreatePost &&

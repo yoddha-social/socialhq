@@ -12,10 +12,13 @@ use App\SocialHq\Ai\ApprovedProvidersGuard;
 use App\SocialHq\AiGraphics\AiGraphics;
 use App\SocialHq\Approval\ApprovalRules;
 use App\SocialHq\Approval\RecordApprovalEvents;
+use App\SocialHq\Events\ImportEventsCommand;
 use App\SocialHq\Http\Middleware\RedirectWhileAwaitingAccess;
 use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Signup\AccessRequests;
+use App\SocialHq\Signup\PasswordResetProof;
 use App\SocialHq\Signup\SignupRules;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -50,7 +53,7 @@ class SocialHqServiceProvider extends ServiceProvider
         Event::listen(ApprovedProvidersGuard::EVENTS, [ApprovedProvidersGuard::class, 'handle']);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiRoutesCommand::class]);
+            $this->commands([AiRoutesCommand::class, ImportEventsCommand::class]);
         }
 
         Route::middleware('web')->group(base_path('routes/socialhq.php'));
@@ -62,6 +65,7 @@ class SocialHqServiceProvider extends ServiceProvider
         // GitHub sign-ups arrive confirmed).
         Event::listen(Registered::class, fn (Registered $event) => $event->user instanceof User ? AccessRequests::notifyAdmins($event->user) : null);
         Event::listen(Verified::class, fn (Verified $event) => $event->user instanceof User ? AccessRequests::notifyAdmins($event->user) : null);
+        Event::listen(PasswordReset::class, fn (PasswordReset $event) => $event->user instanceof User ? PasswordResetProof::handle($event->user) : null);
 
         // Someone waiting for access who gets a workspace another way (an invite) is let in.
         User::updated(fn (User $user) => $user->wasChanged('current_workspace_id') ? AccessRequests::closeOnceJoined($user) : null);
@@ -94,6 +98,7 @@ class SocialHqServiceProvider extends ServiceProvider
 
         RateLimiter::for('socialhq-ai-graphics', fn (Request $request): Limit => Limit::perHour(AiGraphics::userHourlyLimit())
             ->by((string) $request->user()?->id));
+        RateLimiter::for('socialhq-plan-generate', fn (Request $request): Limit => Limit::perHour(5)->by((string) $request->user()?->id));
 
         // AI copy and briefs on plan items: 20 an hour per person.
         RateLimiter::for('socialhq-plan-ai', fn (Request $request): Limit => Limit::perHour(20)

@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -510,4 +511,61 @@ test('members who cannot decide get no waiting count, so no banner or menu item'
 
     $this->actingAs($member)->get(route('app.calendar'))
         ->assertInertia(fn ($page) => $page->where('socialhq.signup.pendingRequests', 0));
+});
+
+test('a password reset ends the sessions of whoever registered the address and confirms it', function () {
+    Bus::fake([SendNotification::class]);
+    signUp('asha@acme.test');
+    $this->post(route('logout'));
+    $squatter = User::query()->where('email', 'asha@acme.test')->firstOrFail();
+    DB::table('sessions')->insert([
+        'id' => 'squatter-session',
+        'user_id' => $squatter->id,
+        'ip_address' => '203.0.113.9',
+        'user_agent' => 'Squatter',
+        'payload' => '',
+        'last_activity' => now()->getTimestamp(),
+    ]);
+    config(['session.driver' => 'database']);
+
+    $token = Password::broker()->createToken($squatter);
+    $this->post(route('password.store'), [
+        'token' => $token,
+        'email' => 'asha@acme.test',
+        'password' => 'A-new-Passw0rd!-2026',
+        'password_confirmation' => 'A-new-Passw0rd!-2026',
+    ])->assertRedirect(route('login'));
+
+    expect(DB::table('sessions')->where('user_id', $squatter->id)->exists())->toBeFalse()
+        ->and($squatter->fresh()->hasVerifiedEmail())->toBeTrue();
+    Bus::assertDispatched(SendNotification::class, fn (SendNotification $job): bool => $job->mailable instanceof AccessRequested);
+});
+
+test('google finds the sign-up whatever the case of the address and creates no second account', function () {
+    signUp('asha@acme.test');
+    $this->post(route('logout'));
+
+    googleSignsIn('Asha@Acme.test');
+    $this->get(route('auth.google.callback'))->assertRedirect();
+
+    expect(User::query()->whereLike('email', 'asha@acme.test')->count())->toBe(1);
+    $this->assertAuthenticatedAs(User::query()->where('email', 'asha@acme.test')->firstOrFail());
+});
+
+test('an invite someone already accepted does not let a sign-up skip the allow list', function () {
+    $invite = Invite::factory()->create([
+        'account_id' => $this->account->id,
+        'invited_by' => $this->owner->id,
+        'email' => 'guest@elsewhere.test',
+        'workspaces' => [$this->workspace->id],
+        'accepted_at' => now(),
+    ]);
+
+    $this->post(route('register.store'), [
+        'name' => 'Guest',
+        'email' => 'guest@elsewhere.test',
+        'password' => strongPassword(),
+        'locale' => 'en',
+        'invite' => $invite->id,
+    ])->assertSessionHasErrors(['email' => __('socialhq.signup.not_allowed')]);
 });

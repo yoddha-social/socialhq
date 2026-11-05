@@ -12,6 +12,7 @@ use App\Http\Resources\App\SocialAccountResource;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use App\SocialHq\Events\EventsForMonth;
 use App\Support\RequestIds;
 use App\Support\Timezone;
 use Carbon\CarbonImmutable;
@@ -113,6 +114,8 @@ class BuildCalendarPageProps
                 'status' => $status,
             ],
             'filterAccounts' => fn () => SocialAccountResource::collection($filterAccounts()),
+            // Social HQ: festival and holiday markers for the shown days (PATCHES.md row 60).
+            'shqEvents' => fn (): array => EventsForMonth::markersByDay($workspace, $rangeStart, $rangeEnd),
         ];
 
         if ($request->boolean('undated')) {

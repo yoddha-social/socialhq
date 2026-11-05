@@ -11,16 +11,21 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * One dated occurrence of a festival, holiday or day the brands may post
  * about. Dates come from official sources and a person confirms them in the
  * app; AI never calculates them. Changing the date or the name clears the
  * confirmation.
+ *
+ * import_key and import_date record the row of the official list an event
+ * came from (null for dates people added); the app never changes them.
+ * Deleting only hides an event, so a re-import doesn't bring it back.
  */
 class CalendarEvent extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'shq_events';
 
@@ -43,6 +48,7 @@ class CalendarEvent extends Model
             'region' => EventRegion::class,
             'starts_on' => 'immutable_date',
             'ends_on' => 'immutable_date',
+            'import_date' => 'immutable_date',
             'public_holiday' => 'boolean',
             'verified_at' => 'immutable_datetime',
         ];

@@ -136,15 +136,23 @@ final class SignupRules
     }
 
     /**
-     * Whether the session carries an invite that still exists (an invite
-     * link opened before signing up). A deleted invite's id does not count.
+     * Whether the session carries an open invite (an invite link opened
+     * before signing up). A deleted or already accepted invite does not count.
      */
     public static function hasSessionInvite(): bool
     {
         $request = request();
 
         return $request->hasSession()
-            && Invite::fromId((string) $request->session()->get('pending_invite_id')) !== null;
+            && self::isOpenInvite(Invite::fromId((string) $request->session()->get('pending_invite_id')));
+    }
+
+    /**
+     * An invite that still lets someone in: it exists and nobody accepted it yet.
+     */
+    public static function isOpenInvite(?Invite $invite): bool
+    {
+        return $invite !== null && $invite->accepted_at === null;
     }
 
     /**

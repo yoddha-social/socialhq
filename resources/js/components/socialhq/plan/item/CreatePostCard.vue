@@ -86,7 +86,11 @@ const createPost = async (): Promise<void> => {
         class="grid gap-3 rounded-xl border bg-card px-5 py-4"
         data-testid="item-create-post"
     >
-        <p class="text-sm text-muted-foreground">
+        <p
+            id="socialhq-create-post-reason"
+            class="text-sm text-muted-foreground"
+            data-testid="item-create-post-reason"
+        >
             {{ ready ? $t('socialhq_production.post.ready') : $t(waitingKey) }}
         </p>
         <p
@@ -104,7 +108,12 @@ const createPost = async (): Promise<void> => {
         <Button
             v-if="abilities.canWork"
             class="w-full"
+            :variant="ready ? 'default' : 'outline'"
+            :class="ready ? '' : 'text-muted-foreground'"
             :disabled="!ready"
+            :aria-describedby="
+                ready ? undefined : 'socialhq-create-post-reason'
+            "
             :loading="http.processing"
             data-testid="item-create-post-button"
             @click="createPost"

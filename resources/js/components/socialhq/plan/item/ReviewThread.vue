@@ -212,7 +212,7 @@ const addComment = (): void => {
                     <NativeSelect
                         id="socialhq-review-about"
                         v-model="form.about"
-                        class="h-7 text-xs"
+                        class="h-7 w-auto min-w-28 py-0 pr-8 pl-2.5 text-xs"
                         data-testid="item-review-about"
                     >
                         <NativeSelectOption value="">

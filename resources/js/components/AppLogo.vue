@@ -12,8 +12,10 @@ withDefaults(
     defineProps<{
         /** `full` is the mark and the "Social HQ" wordmark, `mark` the mark alone. */
         variant?: 'full' | 'mark';
+        /** Size class for the mark, when it should not follow the text size. */
+        markClass?: string;
     }>(),
-    { variant: 'full' },
+    { variant: 'full', markClass: undefined },
 );
 
 // Each logo on the page needs its own gradient id: a shared one breaks
@@ -33,7 +35,8 @@ const viewBox = `${LOGO_VIEW_BOX.x} ${LOGO_VIEW_BOX.y} ${LOGO_VIEW_BOX.size} ${L
             :viewBox="viewBox"
             :class="[
                 'shrink-0',
-                variant === 'full' ? 'size-[1.7em]' : 'size-[1.15em]',
+                markClass ??
+                    (variant === 'full' ? 'size-[1.7em]' : 'size-[1.15em]'),
             ]"
             aria-hidden="true"
         >

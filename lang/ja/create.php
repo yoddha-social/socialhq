@@ -102,7 +102,7 @@ return [
             'subtitle' => 'ほとんどのアカウントで効果的な型から始めましょう。',
         ],
         'see_all' => 'すべて表示',
-        'by_trypost' => 'TryPost 提供',
+        'by_trypost' => 'Social HQ 提供',
         'by_author' => '作成者: :name',
         'copy' => 'テンプレートをコピー',
         'copied' => 'コピーしました',

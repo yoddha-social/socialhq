@@ -35,7 +35,7 @@ return [
 
     'source' => [
         'title' => 'Origen',
-        'description' => 'TryPost vigila esta cuenta en busca de publicaciones nuevas del formato de abajo.',
+        'description' => 'Social HQ vigila esta cuenta en busca de publicaciones nuevas del formato de abajo.',
         'watch_label' => 'Vigilar',
         'watch_description' => 'El tipo de publicación que inicia un repost.',
         'needs_reconnect' => 'Necesita reconectarse',
@@ -49,7 +49,7 @@ return [
 
     'empty' => [
         'title' => 'Aún no hay ningún repurpose',
-        'description' => 'TryPost sigue la cuenta que elijas y republica cada publicación nueva en las redes que marques.',
+        'description' => 'Social HQ sigue la cuenta que elijas y republica cada publicación nueva en las redes que marques.',
     ],
 
     'table' => [
@@ -66,7 +66,7 @@ return [
 
     'create' => [
         'title' => 'Nuevo repurpose',
-        'description' => 'Elige la cuenta que TryPost debe vigilar. Los destinos se eligen en la siguiente pantalla.',
+        'description' => 'Elige la cuenta que Social HQ debe vigilar. Los destinos se eligen en la siguiente pantalla.',
         'source_label' => 'Cuenta de origen',
         'source_placeholder' => 'Elige una cuenta',
         'source_search' => 'Buscar cuentas',
@@ -106,7 +106,7 @@ return [
         'watermark' => 'Vigilando desde',
         'last_polled' => 'Última comprobación',
         'draft_hint' => 'Elige al menos un destino y actívalo. Solo se replican las publicaciones hechas después de activarlo.',
-        'active_hint' => 'TryPost comprueba esta cuenta con regularidad y replica cada publicación nueva.',
+        'active_hint' => 'Social HQ comprueba esta cuenta con regularidad y replica cada publicación nueva.',
         'paused_hint' => 'Las comprobaciones están detenidas. Al reanudar, continúa donde lo dejó y no se pierde nada publicado mientras tanto.',
         'disabled_hint' => 'Apagado. Al activarlo de nuevo empieza desde cero: lo que publicaste mientras estaba apagado se queda fuera.',
     ],
@@ -121,7 +121,7 @@ return [
         'original_from' => 'original del :date',
         'empty' => [
             'title' => 'Nada todavía',
-            'description' => 'Las publicaciones que esta cuenta haga fuera de TryPost aparecerán aquí.',
+            'description' => 'Las publicaciones que esta cuenta haga fuera de Social HQ aparecerán aquí.',
         ],
         'open_post' => 'Abrir publicación',
         'statuses' => [
@@ -133,7 +133,7 @@ return [
             'failed' => 'Falló',
         ],
         'reasons' => [
-            'published_via_trypost' => 'Ya publicado con TryPost',
+            'published_via_trypost' => 'Ya publicado con Social HQ',
             'media_url_missing' => 'La red no compartió un archivo descargable, normalmente por audio con derechos de autor',
             'download_failed' => 'No se pudo descargar el vídeo',
             'post_creation_failed' => 'No se pudieron crear las publicaciones',

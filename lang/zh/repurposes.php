@@ -35,7 +35,7 @@ return [
 
     'source' => [
         'title' => '来源',
-        'description' => 'TryPost 会盯着这个账号，寻找下面所选格式的新内容。',
+        'description' => 'Social HQ 会盯着这个账号，寻找下面所选格式的新内容。',
         'watch_label' => '监控格式',
         'watch_description' => '触发转发的帖子类型。',
         'needs_reconnect' => '需要重新连接',
@@ -49,7 +49,7 @@ return [
 
     'empty' => [
         'title' => '还没有设置 Repurpose',
-        'description' => 'TryPost 会监控你选择的账号，并将每条新内容重新发布到你勾选的网络。',
+        'description' => 'Social HQ 会监控你选择的账号，并将每条新内容重新发布到你勾选的网络。',
     ],
 
     'table' => [
@@ -66,7 +66,7 @@ return [
 
     'create' => [
         'title' => '新建 Repurpose',
-        'description' => '选择 TryPost 要盯着的账号。目标平台在下一屏选择。',
+        'description' => '选择 Social HQ 要盯着的账号。目标平台在下一屏选择。',
         'source_label' => '来源账号',
         'source_placeholder' => '选择一个账号',
         'source_search' => '搜索账号',
@@ -106,7 +106,7 @@ return [
         'watermark' => '开始监控于',
         'last_polled' => '上次检查',
         'draft_hint' => '至少选一个目标再启用。只有启用之后发布的内容才会被同步。',
-        'active_hint' => 'TryPost 会定期检查这个账号，并同步每条新内容。',
+        'active_hint' => 'Social HQ 会定期检查这个账号，并同步每条新内容。',
         'paused_hint' => '检查已暂停。继续后会从停下的地方接着走，期间发布的内容不会丢失。',
         'disabled_hint' => '已关闭。再次启用会重新开始：关闭期间发布的内容不会被同步。',
     ],
@@ -121,7 +121,7 @@ return [
         'original_from' => '原帖发布于 :date',
         'empty' => [
             'title' => '暂无内容',
-            'description' => '该账号在 TryPost 之外发布的内容会显示在这里。',
+            'description' => '该账号在 Social HQ 之外发布的内容会显示在这里。',
         ],
         'open_post' => '打开帖子',
         'statuses' => [
@@ -133,7 +133,7 @@ return [
             'failed' => '失败',
         ],
         'reasons' => [
-            'published_via_trypost' => '已通过 TryPost 发布',
+            'published_via_trypost' => '已通过 Social HQ 发布',
             'media_url_missing' => '平台没有提供可下载的文件，通常是因为音频有版权',
             'download_failed' => '视频下载失败',
             'post_creation_failed' => '无法创建帖子',

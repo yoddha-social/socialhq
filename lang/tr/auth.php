@@ -20,8 +20,8 @@ return [
     'throttle' => 'Çok fazla giriş denemesi. Lütfen :seconds saniye sonra tekrar deneyin.',
 
     'flash' => [
-        'welcome' => 'TryPost\'a hoş geldiniz!',
-        'welcome_trial' => 'TryPost\'a hoş geldiniz! Deneme süreniz başladı.',
+        'welcome' => 'Social HQ\'a hoş geldiniz!',
+        'welcome_trial' => 'Social HQ\'a hoş geldiniz! Deneme süreniz başladı.',
     ],
 
     'legal' => 'Devam ederek <a href=":terms_url" target="_blank">Hizmet Şartları</a> ve <a href=":privacy_url" target="_blank">Gizlilik Politikası</a>\'nı kabul etmiş olursunuz.',
@@ -60,7 +60,7 @@ return [
     'github_email_unavailable' => 'GitHub\'dan e-postanız alınamadı. GitHub e-postanızı herkese açık yapın veya e-posta iznini verin, ardından tekrar deneyin.',
 
     'login' => [
-        'title' => 'TryPost\'a giriş yapın',
+        'title' => 'Social HQ\'a giriş yapın',
         'page_title' => 'Giriş yap',
         'email' => 'E-posta adresi',
         'password' => 'Parola',
@@ -74,7 +74,7 @@ return [
     ],
 
     'register' => [
-        'title' => 'TryPost hesabı oluşturun',
+        'title' => 'Social HQ hesabı oluşturun',
         'page_title' => 'Kayıt ol',
         'name' => 'Ad',
         'name_placeholder' => 'Ad soyad',

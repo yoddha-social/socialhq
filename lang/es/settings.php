@@ -51,14 +51,14 @@ return [
         'title' => 'Preferencias',
         'theme' => [
             'heading' => 'Apariencia',
-            'description' => 'Elige cómo se ve TryPost para ti.',
+            'description' => 'Elige cómo se ve Social HQ para ti.',
             'light' => 'Claro',
             'dark' => 'Oscuro',
             'system' => 'Sistema',
         ],
         'language' => [
             'heading' => 'Idioma',
-            'description' => 'El idioma en que se muestra la interfaz de TryPost.',
+            'description' => 'El idioma en que se muestra la interfaz de Social HQ.',
             'search' => 'Buscar idiomas',
             'empty' => 'No se encontró ningún idioma',
             'suggestions' => 'Sugerencias',
@@ -179,7 +179,7 @@ return [
         'delete_only_description' => 'No puedes eliminar tu único workspace. Cancela la suscripción en facturación para dejar de pagar, o elimina tu cuenta en Autenticación para cancelar la facturación y borrar todo de forma permanente.',
         'delete_go_to_billing' => 'Ir a facturación',
         'delete_go_to_delete_account' => 'Eliminar cuenta',
-        'delete_members_warning' => '{1}:count miembro más perderá el acceso. Los miembros sin otro workspace en TryPost se eliminarán de forma permanente.|[2,*]:count miembros más perderán el acceso. Los miembros sin otro workspace en TryPost se eliminarán de forma permanente.',
+        'delete_members_warning' => '{1}:count miembro más perderá el acceso. Los miembros sin otro workspace en Social HQ se eliminarán de forma permanente.|[2,*]:count miembros más perderán el acceso. Los miembros sin otro workspace en Social HQ se eliminarán de forma permanente.',
         'delete_action' => 'Eliminar workspace',
         'delete_cancel' => 'Cancelar',
         'delete_confirm_title' => '¿Eliminar workspace?',
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => 'Ya existe una invitación para este correo.',
-            'email_belongs_to_account' => 'Este correo ya pertenece a otra cuenta de TryPost. Pide un correo de trabajo dedicado.',
+            'email_belongs_to_account' => 'Este correo ya pertenece a otra cuenta de Social HQ. Pide un correo de trabajo dedicado.',
             'cannot_remove_self' => 'No puedes eliminarte a ti mismo.',
             'cannot_remove_owner' => 'No puedes eliminar al propietario de la cuenta.',
             'cannot_change_own_access' => 'No puedes cambiar tu propio acceso.',

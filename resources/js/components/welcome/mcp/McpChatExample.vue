@@ -36,7 +36,7 @@ const scheduledTime = computed((): string => date.formatClockTime('10:00'));
                 class="inline-flex items-center gap-1.5 self-start rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground"
             >
                 <AppLogo variant="mark" class="text-[12px]" />
-                TryPost
+                Social HQ
                 <IconCheck class="size-3.5 text-green-500" />
             </span>
             <p class="text-sm text-foreground">

@@ -99,7 +99,7 @@ return [
             ],
             'permissions' => [
                 'lead' => 'Todas as permissões selecionadas para todas as páginas e contas do Instagram',
-                'rest' => 'ao conectar, inclusive as que você não vai conectar ao TryPost.',
+                'rest' => 'ao conectar, inclusive as que você não vai conectar ao Social HQ.',
             ],
         ],
         'learn_how' => 'Saiba como.',
@@ -121,8 +121,8 @@ return [
         'close' => 'Fechar',
         'title_single' => 'Conecte sua conta',
         'title_select' => 'Selecione as contas',
-        'subtitle_single' => 'Escolha a conta em que o TryPost vai publicar no :network.',
-        'subtitle_select' => 'Escolha as contas em que o TryPost vai publicar no :network.',
+        'subtitle_single' => 'Escolha a conta em que o Social HQ vai publicar no :network.',
+        'subtitle_select' => 'Escolha as contas em que o Social HQ vai publicar no :network.',
         'selected' => ':count selecionadas',
         'select_all' => 'Selecionar todas',
         'connected' => 'Conectada',
@@ -153,7 +153,7 @@ return [
             ],
             'missing_permission' => [
                 'title' => 'Permissão necessária',
-                'description' => 'O TryPost precisa de permissão para publicar seus posts. Conecte de novo e mantenha essa permissão marcada.',
+                'description' => 'O Social HQ precisa de permissão para publicar seus posts. Conecte de novo e mantenha essa permissão marcada.',
             ],
             'expired' => [
                 'title' => 'Esta conexão expirou',
@@ -170,7 +170,7 @@ return [
             'start_again' => 'Começar de novo',
         ],
         'errors' => [
-            'bluesky_email_unconfirmed' => 'Confirme seu e-mail nas configurações do Bluesky e conecte sua conta novamente. O TryPost exige um e-mail confirmado para publicar vídeos.',
+            'bluesky_email_unconfirmed' => 'Confirme seu e-mail nas configurações do Bluesky e conecte sua conta novamente. O Social HQ exige um e-mail confirmado para publicar vídeos.',
             'error_connecting' => 'Erro ao conectar conta. Por favor, tente novamente.',
             'network_taken' => 'Este workspace já tem uma conta para esta rede. Desconecte-a primeiro.',
             'wrong_account' => 'Essa é outra conta. Autorize a que você está reconectando.',
@@ -185,7 +185,7 @@ return [
             'page_not_found' => 'Página não encontrada.',
             'channel_not_found' => 'Canal não encontrado.',
             'pages_read_incomplete' => 'Não conseguimos terminar de ler suas páginas. Tente novamente em instantes.',
-            'publish_permission_missing' => 'O TryPost precisa de permissão para publicar seus posts. Conecte de novo e mantenha essa permissão marcada.',
+            'publish_permission_missing' => 'O Social HQ precisa de permissão para publicar seus posts. Conecte de novo e mantenha essa permissão marcada.',
             'cancelled' => 'Conexão cancelada.',
             'pages_missing_permission' => 'Encontramos páginas, mas nenhuma em que você possa publicar. É preciso ter um cargo na própria página e aceitar todas as permissões.',
             'no_facebook_pages' => 'Nenhuma página do Facebook encontrada. Você precisa ser administrador de pelo menos uma página.',

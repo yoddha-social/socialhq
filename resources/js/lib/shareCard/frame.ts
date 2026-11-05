@@ -106,13 +106,12 @@ export const paintPanel = (context: CanvasRenderingContext2D): Box => {
 /** The grid the logo's paths are drawn on. */
 const LOGO_GRID = 410;
 
-/** The TryPost mark, the four quarters of `AppLogo.vue`. */
+/** The Social HQ mark of `AppLogo.vue`: a speech bubble on the brand colour. */
 const paintLogo = (context: CanvasRenderingContext2D, at: Point, size: number): void => {
-    const quarters: [string, string][] = [
-        ['M410 109.736V410H128.863L410 109.736Z', '#3660E0'],
-        ['M410 0H281.138L205 81.3178L410 300.264V0Z', '#855ED4'],
-        ['M0 0V300.264L205 81.3178L281.138 0H0Z', '#FFCC33'],
-        ['M0 109.736V410H128.862L205 328.682L0 109.736Z', '#F39200'],
+    const shapes: [string, string][] = [
+        ['M0 0H410V410H0Z', '#4338CA'],
+        ['M135 105H275A45 45 0 0 1 320 150V230A45 45 0 0 1 275 275H180L120 325V272.4A45 45 0 0 1 90 230V150A45 45 0 0 1 135 105Z', '#FFFFFF'],
+        ['M173 190a18 18 0 1 1-36 0a18 18 0 1 1 36 0ZM223 190a18 18 0 1 1-36 0a18 18 0 1 1 36 0ZM273 190a18 18 0 1 1-36 0a18 18 0 1 1 36 0Z', '#4338CA'],
     ];
 
     context.save();
@@ -124,7 +123,7 @@ const paintLogo = (context: CanvasRenderingContext2D, at: Point, size: number): 
     context.translate(at.x, at.y);
     context.scale(size / LOGO_GRID, size / LOGO_GRID);
 
-    for (const [path, color] of quarters) {
+    for (const [path, color] of shapes) {
         context.fillStyle = color;
         context.fill(new Path2D(path));
     }

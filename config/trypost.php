@@ -28,7 +28,7 @@ return [
     */
 
     'changelog' => [
-        'enabled' => (bool) env('CHANGELOG_ENABLED', true),
+        'enabled' => (bool) env('CHANGELOG_ENABLED', false),
         'path' => resource_path('changelog'),
     ],
 
@@ -44,8 +44,8 @@ return [
     */
 
     'legal' => [
-        'terms_url' => env('LEGAL_TERMS_URL', 'https://trypost.it/terms'),
-        'privacy_url' => env('LEGAL_PRIVACY_URL', 'https://trypost.it/privacy'),
+        'terms_url' => env('LEGAL_TERMS_URL'),
+        'privacy_url' => env('LEGAL_PRIVACY_URL'),
     ],
 
     /*
@@ -285,7 +285,7 @@ return [
     |
     */
 
-    'user_agent' => env('TRYPOST_USER_AGENT', 'TryPost.it/1.0 (+https://trypost.it)'),
+    'user_agent' => env('TRYPOST_USER_AGENT', 'SocialHQ/1.0 (+https://github.com/yoddha-social/socialhq)'),
 
     /*
     |--------------------------------------------------------------------------

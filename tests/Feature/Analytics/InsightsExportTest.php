@@ -107,7 +107,7 @@ test('the CSV export streams the summary, performance, followers and posts the p
 
     $response->assertOk()
         ->assertHeader('Content-Type', 'text/csv; charset=UTF-8')
-        ->assertDownload('trypost-insights-2026-09-30.csv');
+        ->assertDownload('socialhq-insights-2026-09-30.csv');
 
     $content = $response->streamedContent();
     $rows = insightsCsvRows($content);
@@ -141,7 +141,7 @@ test('the Markdown export renders each section as a table', function () {
 
     $response->assertOk()
         ->assertHeader('Content-Type', 'text/markdown; charset=UTF-8')
-        ->assertDownload('trypost-insights-2026-09-30.md');
+        ->assertDownload('socialhq-insights-2026-09-30.md');
 
     $content = $response->streamedContent();
 

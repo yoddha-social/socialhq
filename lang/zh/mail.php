@@ -8,7 +8,7 @@ return [
         'tagline' => '由 :brand 团队发送',
         'manage_notifications' => '管理通知',
         'signoff' => '祝好，',
-        'team' => 'TryPost 团队',
+        'team' => 'Social HQ 团队',
     ],
 
     'account_disconnected' => [
@@ -19,7 +19,7 @@ return [
         'intro' => '以下账号已与工作区 :workspace 断开连接。',
         'reasons_title' => '可能的原因：',
         'reason_expired' => '访问令牌已过期',
-        'reason_revoked' => '你撤销了 TryPost 的访问权限',
+        'reason_revoked' => '你撤销了 Social HQ 的访问权限',
         'reason_error' => '出现了认证错误',
         'reconnect_cta' => '请重新连接账号，以继续排期和发布内容。',
         'button' => '重新连接账号',
@@ -120,7 +120,7 @@ return [
         'heading' => '内容已发布',
         'body' => '工作区 :workspace 中的内容已成功发布。',
         'button' => '在社交平台查看',
-        'open_in_app' => '在 TryPost 中打开',
+        'open_in_app' => '在 Social HQ 中打开',
     ],
 
     'webhook_paused' => [
@@ -140,7 +140,7 @@ return [
         'intro' => '你 <strong>:workspace</strong> 工作区中的以下社交账号已断开连接，需要重新连接：',
         'reasons_title' => '这可能是由于以下原因：',
         'reason_expired' => '访问令牌已过期',
-        'reason_revoked' => '你在该平台上撤销了对 TryPost 的授权',
+        'reason_revoked' => '你在该平台上撤销了对 Social HQ 的授权',
         'reason_changed' => '该平台更改了其身份验证要求',
         'reconnect_cta' => '请重新连接这些账号，以继续安排和发布帖子。',
         'button' => '重新连接账号',

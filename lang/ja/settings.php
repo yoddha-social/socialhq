@@ -51,14 +51,14 @@ return [
         'title' => '環境設定',
         'theme' => [
             'heading' => '外観',
-            'description' => 'TryPost の表示方法を選択します。',
+            'description' => 'Social HQ の表示方法を選択します。',
             'light' => 'ライト',
             'dark' => 'ダーク',
             'system' => 'システム',
         ],
         'language' => [
             'heading' => '言語',
-            'description' => 'TryPost の画面に表示する言語です。',
+            'description' => 'Social HQ の画面に表示する言語です。',
             'search' => '言語を検索',
             'empty' => '言語が見つかりません',
             'suggestions' => 'おすすめ',
@@ -179,7 +179,7 @@ return [
         'delete_only_description' => '唯一のワークスペースは削除できません。支払いを止めるには請求設定でサブスクリプションを解約するか、認証設定でアカウントを削除して請求を止め、すべてを完全に削除してください。',
         'delete_go_to_billing' => '請求へ移動',
         'delete_go_to_delete_account' => 'アカウントを削除',
-        'delete_members_warning' => '{1}他のメンバー :count 人がアクセスできなくなります。別のTryPostワークスペースがないメンバーのアカウントは完全に削除されます。|[2,*]他のメンバー :count 人がアクセスできなくなります。別のTryPostワークスペースがないメンバーのアカウントは完全に削除されます。',
+        'delete_members_warning' => '{1}他のメンバー :count 人がアクセスできなくなります。別のSocial HQワークスペースがないメンバーのアカウントは完全に削除されます。|[2,*]他のメンバー :count 人がアクセスできなくなります。別のSocial HQワークスペースがないメンバーのアカウントは完全に削除されます。',
         'delete_action' => 'ワークスペースを削除',
         'delete_cancel' => 'キャンセル',
         'delete_confirm_title' => 'ワークスペースを削除しますか？',
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => 'このメールアドレスには既に招待が存在します。',
-            'email_belongs_to_account' => 'このメールアドレスは既に別の TryPost アカウントに属しています。専用の仕事用メールアドレスをご利用ください。',
+            'email_belongs_to_account' => 'このメールアドレスは既に別の Social HQ アカウントに属しています。専用の仕事用メールアドレスをご利用ください。',
             'cannot_remove_self' => '自分自身を削除することはできません。',
             'cannot_remove_owner' => 'アカウントのオーナーは削除できません。',
             'cannot_change_own_access' => '自分のアクセス権は変更できません。',

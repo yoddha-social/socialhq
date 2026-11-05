@@ -422,7 +422,7 @@ return [
         'copy' => '复制图片',
         'copied' => '图片已复制',
         'create_post' => '创建帖子',
-        'mark' => '由 TryPost 制作',
+        'mark' => '由 Social HQ 制作',
         'copy_failed' => '无法复制图片，请改为下载。',
         'post_failed' => '无法准备帖子，请重试。',
         'caption_workspace' => '我们所有频道的:metric：:value（:range）📈',

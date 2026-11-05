@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
-import { IconCircleCheck } from '@tabler/icons-vue';
+import {
+    IconCalendarEvent,
+    IconCircleCheck,
+    IconPencilStar,
+    IconUserCheck,
+} from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import AppLogo from '@/components/AppLogo.vue';
 import LanguageSelect from '@/components/LanguageSelect.vue';
-import G2ReviewsLink from '@/components/reviews/G2ReviewsLink.vue';
-import ReviewCard from '@/components/reviews/ReviewCard.vue';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useGuestLocale } from '@/composables/useGuestLocale';
-import { REVIEWS } from '@/lib/reviews';
 import type { Auth } from '@/types';
 
 const widthClass = {
@@ -39,18 +41,11 @@ const page = usePage();
 const isGuest = computed(() => !(page.props.auth as Auth).user);
 const { locale, languages } = useGuestLocale();
 
-const reviews = REVIEWS.map((review, index) => ({
-    ...review,
-    rotation: index % 2 === 0 ? '-rotate-1' : 'rotate-1',
-}));
-
-// The marquee scrolls one full copy of the list, so a second copy fills the gap
-// it leaves behind. Both copies must render identically for the loop to be
-// seamless, hence the rotation living on the review rather than on the index.
-const loopedReviews = [
-    ...reviews.map((review) => ({ ...review, duplicate: false })),
-    ...reviews.map((review) => ({ ...review, duplicate: true })),
-];
+const panelPoints = [
+    { key: 'plan', icon: IconCalendarEvent },
+    { key: 'write', icon: IconPencilStar },
+    { key: 'approve', icon: IconUserCheck },
+] as const;
 </script>
 
 <template>
@@ -75,7 +70,10 @@ const loopedReviews = [
             </div>
 
             <div
-                :class="['my-auto flex w-full flex-col gap-6', widthClass[width]]"
+                :class="[
+                    'my-auto flex w-full flex-col gap-6',
+                    widthClass[width],
+                ]"
                 data-testid="auth-content"
             >
                 <div class="flex flex-col items-center gap-4 text-center">
@@ -130,62 +128,32 @@ const loopedReviews = [
             class="hidden p-8 ps-0 lg:sticky lg:top-0 lg:block lg:h-svh lg:self-start"
         >
             <div
-                class="relative flex h-full flex-col items-center overflow-hidden rounded-[20px] bg-primary-subtle px-12 pt-14 text-center xl:px-16"
+                class="relative flex h-full flex-col items-center justify-center overflow-hidden rounded-[20px] bg-primary-subtle px-12 text-center xl:px-16"
             >
-
                 <h2
                     class="motion-auth-reveal max-w-lg font-heading text-[clamp(30px,3.2vw,48px)] leading-[1.12] font-normal tracking-[-0.03em] text-balance text-foreground"
                 >
-                    {{ $t('auth.reviews.heading') }}
+                    {{ $t('socialhq.auth_panel.heading') }}
                 </h2>
 
-                <div
-                    class="motion-auth-fade relative mt-10 min-h-0 w-full flex-1 overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_12%,black_82%,transparent)]"
+                <ul
+                    class="motion-auth-fade mt-12 flex w-full max-w-md flex-col gap-4 text-start"
+                    data-testid="auth-panel-points"
                 >
-                    <div
-                        class="marquee mx-auto flex w-full max-w-md flex-col gap-4 text-start"
-                        data-testid="auth-reviews"
+                    <li
+                        v-for="point in panelPoints"
+                        :key="point.key"
+                        class="flex items-center gap-3 rounded-lg bg-card p-4 text-sm text-foreground shadow-xs"
                     >
-                        <ReviewCard
-                            v-for="(review, index) in loopedReviews"
-                            :key="`${review.key}-${index}`"
-                            :review="review"
-                            :class="review.rotation"
-                            :aria-hidden="review.duplicate"
+                        <component
+                            :is="point.icon"
+                            class="size-5 shrink-0 text-primary-text"
+                            aria-hidden="true"
                         />
-                    </div>
-                </div>
-                <G2ReviewsLink
-                    class="motion-auth-fade my-6"
-                    data-testid="auth-reviews-g2-link"
-                />
+                        {{ $t(`socialhq.auth_panel.points.${point.key}`) }}
+                    </li>
+                </ul>
             </div>
         </div>
     </div>
 </template>
-
-<style scoped>
-@keyframes marquee-down {
-    0% {
-        transform: translateY(calc(-50% - 0.5rem));
-    }
-
-    100% {
-        transform: translateY(0);
-    }
-}
-
-.marquee {
-    animation: marquee-down 45s linear infinite;
-}
-
-.marquee:hover {
-    animation-play-state: paused;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .marquee {
-        animation: none;
-    }
-}
-</style>

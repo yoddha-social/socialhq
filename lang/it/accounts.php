@@ -99,7 +99,7 @@ return [
             ],
             'permissions' => [
                 'lead' => 'Tutte le autorizzazioni selezionate per tutte le Pagine e gli account Instagram',
-                'rest' => 'durante il collegamento, anche quelli che non collegherai a TryPost.',
+                'rest' => 'durante il collegamento, anche quelli che non collegherai a Social HQ.',
             ],
         ],
         'learn_how' => 'Scopri come.',
@@ -121,8 +121,8 @@ return [
         'close' => 'Chiudi',
         'title_single' => 'Collega il tuo account',
         'title_select' => 'Seleziona gli account',
-        'subtitle_single' => 'Scegli l\'account su cui TryPost pubblicherà su :network.',
-        'subtitle_select' => 'Scegli gli account su cui TryPost pubblicherà su :network.',
+        'subtitle_single' => 'Scegli l\'account su cui Social HQ pubblicherà su :network.',
+        'subtitle_select' => 'Scegli gli account su cui Social HQ pubblicherà su :network.',
         'selected' => ':count selezionati',
         'select_all' => 'Seleziona tutti',
         'connected' => 'Collegato',
@@ -153,7 +153,7 @@ return [
             ],
             'missing_permission' => [
                 'title' => 'Autorizzazione necessaria',
-                'description' => 'TryPost ha bisogno dell\'autorizzazione per pubblicare i tuoi post. Collega di nuovo e lascia attiva quell\'autorizzazione.',
+                'description' => 'Social HQ ha bisogno dell\'autorizzazione per pubblicare i tuoi post. Collega di nuovo e lascia attiva quell\'autorizzazione.',
             ],
             'expired' => [
                 'title' => 'Questo collegamento è scaduto',
@@ -170,7 +170,7 @@ return [
             'start_again' => 'Ricomincia',
         ],
         'errors' => [
-            'bluesky_email_unconfirmed' => 'Conferma la tua email nelle impostazioni di Bluesky, poi collega di nuovo il tuo account. TryPost richiede un’email confermata per pubblicare video.',
+            'bluesky_email_unconfirmed' => 'Conferma la tua email nelle impostazioni di Bluesky, poi collega di nuovo il tuo account. Social HQ richiede un’email confermata per pubblicare video.',
             'error_connecting' => 'Errore durante il collegamento dell\'account. Riprova.',
             'network_taken' => 'Questo workspace ha già un account per questa rete. Scollegalo prima.',
             'wrong_account' => 'Questo è un account diverso. Autorizza quello che stai ricollegando.',
@@ -185,7 +185,7 @@ return [
             'page_not_found' => 'Pagina non trovata.',
             'channel_not_found' => 'Canale non trovato.',
             'pages_read_incomplete' => 'Non siamo riusciti a leggere tutte le tue Pagine. Riprova tra poco.',
-            'publish_permission_missing' => 'TryPost ha bisogno dell\'autorizzazione per pubblicare i tuoi post. Collega di nuovo e lascia attiva quell\'autorizzazione.',
+            'publish_permission_missing' => 'Social HQ ha bisogno dell\'autorizzazione per pubblicare i tuoi post. Collega di nuovo e lascia attiva quell\'autorizzazione.',
             'cancelled' => 'Connessione annullata.',
             'pages_missing_permission' => 'Abbiamo trovato Pagine, ma nessuna su cui pubblicare. Serve un ruolo sulla Pagina stessa e tutte le autorizzazioni accettate.',
             'no_facebook_pages' => 'Nessuna pagina Facebook trovata. Devi essere amministratore di almeno una pagina.',

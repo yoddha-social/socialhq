@@ -8,9 +8,9 @@ return [
         'title_error' => 'Etwas ist schiefgelaufen',
         'closing' => 'Dieses Fenster schließt sich automatisch.',
         'manual_close' => 'Du kannst dieses Fenster jetzt schließen.',
-        'canva_return' => 'Dein Design ist auf dem Weg zu TryPost.',
+        'canva_return' => 'Dein Design ist auf dem Weg zu Social HQ.',
         'title_connected' => 'Verbunden',
-        'google_drive_ready' => 'Google Drive ist verbunden. Wähle deine Datei in TryPost aus.',
+        'google_drive_ready' => 'Google Drive ist verbunden. Wähle deine Datei in Social HQ aus.',
         'google_photos_opening' => 'Google Photos wird geöffnet …',
     ],
 ];

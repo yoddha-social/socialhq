@@ -52,10 +52,10 @@ return [
     'plan_cancel_anytime' => '随时取消',
     'mcp' => [
         'title' => '和 AI 聊天，轻松管理社交媒体',
-        'description' => '用你最喜欢的 AI，在 TryPost 中创建、排期和分析帖子。',
+        'description' => '用你最喜欢的 AI，在 Social HQ 中创建、排期和分析帖子。',
         'connect_with' => '连接 :client',
         'connect_ai' => '连接你的 AI',
-        'pick_ai' => '你想在哪里使用 TryPost？',
+        'pick_ai' => '你想在哪里使用 Social HQ？',
         'connect_other' => '连接其他应用',
         'connected' => ':client 已连接',
         'benefits' => [

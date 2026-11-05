@@ -422,7 +422,7 @@ return [
         'copy' => '画像をコピー',
         'copied' => '画像をコピーしました',
         'create_post' => '投稿を作成',
-        'mark' => 'TryPost で作成',
+        'mark' => 'Social HQ で作成',
         'copy_failed' => '画像をコピーできませんでした。ダウンロードしてください。',
         'post_failed' => '投稿を準備できませんでした。もう一度お試しください。',
         'caption_workspace' => '全チャンネルの:metric: :value (:range) 📈',

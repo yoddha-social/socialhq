@@ -51,14 +51,14 @@ return [
         'title' => 'Präferenzen',
         'theme' => [
             'heading' => 'Darstellung',
-            'description' => 'Wähle, wie TryPost für dich aussieht.',
+            'description' => 'Wähle, wie Social HQ für dich aussieht.',
             'light' => 'Hell',
             'dark' => 'Dunkel',
             'system' => 'System',
         ],
         'language' => [
             'heading' => 'Sprache',
-            'description' => 'Die Sprache der TryPost-Oberfläche.',
+            'description' => 'Die Sprache der Social HQ-Oberfläche.',
             'search' => 'Sprachen suchen',
             'empty' => 'Keine Sprache gefunden',
             'suggestions' => 'Vorschläge',
@@ -179,7 +179,7 @@ return [
         'delete_only_description' => 'Du kannst deinen einzigen Workspace nicht löschen. Kündige das Abonnement in der Abrechnung, um die Zahlung zu stoppen, oder lösche dein Konto unter Authentifizierung, um die Abrechnung zu beenden und alles dauerhaft zu entfernen.',
         'delete_go_to_billing' => 'Zur Abrechnung',
         'delete_go_to_delete_account' => 'Konto löschen',
-        'delete_members_warning' => '{1}:count weiteres Mitglied verliert den Zugriff. Mitglieder ohne anderen TryPost-Workspace werden dauerhaft gelöscht.|[2,*]:count weitere Mitglieder verlieren den Zugriff. Mitglieder ohne anderen TryPost-Workspace werden dauerhaft gelöscht.',
+        'delete_members_warning' => '{1}:count weiteres Mitglied verliert den Zugriff. Mitglieder ohne anderen Social HQ-Workspace werden dauerhaft gelöscht.|[2,*]:count weitere Mitglieder verlieren den Zugriff. Mitglieder ohne anderen Social HQ-Workspace werden dauerhaft gelöscht.',
         'delete_action' => 'Workspace löschen',
         'delete_cancel' => 'Abbrechen',
         'delete_confirm_title' => 'Workspace löschen?',
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => 'Für diese E-Mail existiert bereits eine Einladung.',
-            'email_belongs_to_account' => 'Diese E-Mail gehört bereits zu einem anderen TryPost-Konto. Bitte eine dedizierte Arbeits-E-Mail verwenden.',
+            'email_belongs_to_account' => 'Diese E-Mail gehört bereits zu einem anderen Social HQ-Konto. Bitte eine dedizierte Arbeits-E-Mail verwenden.',
             'cannot_remove_self' => 'Du kannst dich nicht selbst entfernen.',
             'cannot_remove_owner' => 'Du kannst den Kontoinhaber nicht entfernen.',
             'cannot_change_own_access' => 'Du kannst deinen eigenen Zugriff nicht ändern.',

@@ -95,7 +95,7 @@ class ListChannelPublicationsTool extends Tool
             'period' => $schema->string()->enum(['current', 'previous'])->description('Optional: rank the posts of the current range (default) or of the previous range of the same length.'),
             'sort' => $schema->string()->enum(ChannelMetrics::sortable())->description('Optional metric to rank by; a metric the channel does not report falls back to the first one it does (see filters.sort).'),
             'labels' => $schema->array()->items($schema->string())->description('Optional workspace label UUIDs; only posts with one of them count.'),
-            'untagged' => $schema->boolean()->description('Optional: include posts without labels (and posts published outside TryPost).'),
+            'untagged' => $schema->boolean()->description('Optional: include posts without labels (and posts published outside Social HQ).'),
             'types' => $schema->array()->items($schema->string())->description('Optional post types of this channel\'s platform (see list-content-types-tool); only those posts count.'),
             'page' => $schema->integer()->description('Page number.'),
         ];

@@ -8,7 +8,7 @@ return [
         'tagline' => ':brandチームより送信',
         'manage_notifications' => '通知設定',
         'signoff' => 'よろしくお願いいたします。',
-        'team' => 'TryPost チーム',
+        'team' => 'Social HQ チーム',
     ],
 
     'account_disconnected' => [
@@ -19,7 +19,7 @@ return [
         'intro' => '以下のアカウントがワークスペース :workspace から切断されました。',
         'reasons_title' => '考えられる原因:',
         'reason_expired' => 'アクセストークンの有効期限が切れた',
-        'reason_revoked' => 'TryPost のアクセス権を取り消した',
+        'reason_revoked' => 'Social HQ のアクセス権を取り消した',
         'reason_error' => '認証エラーが発生した',
         'reconnect_cta' => 'アカウントを再接続すると、投稿の予約と公開を続けられます。',
         'button' => 'アカウントを再接続',
@@ -120,7 +120,7 @@ return [
         'heading' => '投稿が公開されました',
         'body' => 'ワークスペース :workspace の投稿が正常に公開されました。',
         'button' => 'SNSで投稿を見る',
-        'open_in_app' => 'TryPostで開く',
+        'open_in_app' => 'Social HQで開く',
     ],
 
     'webhook_paused' => [
@@ -140,7 +140,7 @@ return [
         'intro' => '<strong>:workspace</strong> ワークスペースの以下のソーシャルアカウントが接続解除されており、再接続が必要です:',
         'reasons_title' => '次の理由が考えられます:',
         'reason_expired' => 'アクセストークンの有効期限が切れた',
-        'reason_revoked' => 'プラットフォーム上で TryPost へのアクセスを取り消した',
+        'reason_revoked' => 'プラットフォーム上で Social HQ へのアクセスを取り消した',
         'reason_changed' => 'プラットフォームが認証要件を変更した',
         'reconnect_cta' => '投稿のスケジュールと公開を続けるには、これらのアカウントを再接続してください。',
         'button' => 'アカウントを再接続',

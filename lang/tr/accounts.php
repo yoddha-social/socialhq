@@ -99,7 +99,7 @@ return [
             ],
             'permissions' => [
                 'lead' => 'Tüm sayfalar ve Instagram hesapları için tüm izinler seçilmiş',
-                'rest' => '(bağlanırken, TryPost\'a bağlamayacaklarınız dahil).',
+                'rest' => '(bağlanırken, Social HQ\'a bağlamayacaklarınız dahil).',
             ],
         ],
         'learn_how' => 'Nasıl yapılır?',
@@ -121,8 +121,8 @@ return [
         'close' => 'Kapat',
         'title_single' => 'Hesabınızı bağlayın',
         'title_select' => 'Hesapları seç',
-        'subtitle_single' => ':network üzerinde TryPost\'un paylaşım yapacağı hesabı seçin.',
-        'subtitle_select' => ':network üzerinde TryPost\'un paylaşım yapacağı hesapları seçin.',
+        'subtitle_single' => ':network üzerinde Social HQ\'un paylaşım yapacağı hesabı seçin.',
+        'subtitle_select' => ':network üzerinde Social HQ\'un paylaşım yapacağı hesapları seçin.',
         'selected' => ':count seçildi',
         'select_all' => 'Tümünü seç',
         'connected' => 'Bağlı',
@@ -153,7 +153,7 @@ return [
             ],
             'missing_permission' => [
                 'title' => 'İzin gerekli',
-                'description' => 'TryPost\'un gönderilerinizi yayınlamak için izne ihtiyacı var. Yeniden bağlanın ve bu izni işaretli bırakın.',
+                'description' => 'Social HQ\'un gönderilerinizi yayınlamak için izne ihtiyacı var. Yeniden bağlanın ve bu izni işaretli bırakın.',
             ],
             'expired' => [
                 'title' => 'Bu bağlantının süresi doldu',
@@ -170,7 +170,7 @@ return [
             'start_again' => 'Baştan başla',
         ],
         'errors' => [
-            'bluesky_email_unconfirmed' => 'Bluesky ayarlarından e-posta adresinizi doğrulayın, ardından hesabınızı yeniden bağlayın. TryPost ile video paylaşmak için doğrulanmış bir e-posta adresi gereklidir.',
+            'bluesky_email_unconfirmed' => 'Bluesky ayarlarından e-posta adresinizi doğrulayın, ardından hesabınızı yeniden bağlayın. Social HQ ile video paylaşmak için doğrulanmış bir e-posta adresi gereklidir.',
             'error_connecting' => 'Hesap bağlanırken hata oluştu. Lütfen tekrar deneyin.',
             'network_taken' => 'Bu çalışma alanında bu ağa ait zaten bir hesap var. Önce bağlantısını kesin.',
             'wrong_account' => 'Bu farklı bir hesap. Yeniden bağladığınız hesabı yetkilendirin.',
@@ -185,7 +185,7 @@ return [
             'page_not_found' => 'Sayfa bulunamadı.',
             'channel_not_found' => 'Kanal bulunamadı.',
             'pages_read_incomplete' => 'Sayfalarınızın tamamını okuyamadık. Birazdan tekrar deneyin.',
-            'publish_permission_missing' => 'TryPost\'un gönderilerinizi yayınlamak için izne ihtiyacı var. Yeniden bağlanın ve bu izni işaretli bırakın.',
+            'publish_permission_missing' => 'Social HQ\'un gönderilerinizi yayınlamak için izne ihtiyacı var. Yeniden bağlanın ve bu izni işaretli bırakın.',
             'cancelled' => 'Bağlantı iptal edildi.',
             'pages_missing_permission' => 'Sayfalar bulduk ama paylaşım yapabileceğiniz yok. Sayfanın kendisinde bir rolünüz ve tüm izinler gerekli.',
             'no_facebook_pages' => 'Facebook Sayfası bulunamadı. En az bir sayfanın yöneticisi olmanız gerekir.',

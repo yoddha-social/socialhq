@@ -35,7 +35,7 @@ return [
 
     'source' => [
         'title' => 'Kaynak',
-        'description' => 'TryPost bu hesabı aşağıdaki formattaki yeni gönderiler için izler.',
+        'description' => 'Social HQ bu hesabı aşağıdaki formattaki yeni gönderiler için izler.',
         'watch_label' => 'İzle',
         'watch_description' => 'Repost başlatan gönderi türü.',
         'needs_reconnect' => 'Yeniden bağlanmalı',
@@ -49,7 +49,7 @@ return [
 
     'empty' => [
         'title' => 'Henüz repurpose kurulmadı',
-        'description' => 'TryPost seçtiğiniz hesabı izler ve her yeni gönderiyi işaretlediğiniz ağlarda yeniden paylaşır.',
+        'description' => 'Social HQ seçtiğiniz hesabı izler ve her yeni gönderiyi işaretlediğiniz ağlarda yeniden paylaşır.',
     ],
 
     'table' => [
@@ -66,7 +66,7 @@ return [
 
     'create' => [
         'title' => 'Yeni repurpose',
-        'description' => 'TryPost\'un izlemesi gereken hesabı seç. Hedefleri bir sonraki ekranda seçeceksin.',
+        'description' => 'Social HQ\'un izlemesi gereken hesabı seç. Hedefleri bir sonraki ekranda seçeceksin.',
         'source_label' => 'Kaynak hesap',
         'source_placeholder' => 'Bir hesap seç',
         'source_search' => 'Hesap ara',
@@ -106,7 +106,7 @@ return [
         'watermark' => 'İzleme başlangıcı',
         'last_polled' => 'Son kontrol',
         'draft_hint' => 'En az bir hedef seç ve etkinleştir. Yalnızca etkinleştirmeden sonra paylaşılan gönderiler kopyalanır.',
-        'active_hint' => 'TryPost bu hesabı düzenli olarak kontrol eder ve her yeni gönderiyi kopyalar.',
+        'active_hint' => 'Social HQ bu hesabı düzenli olarak kontrol eder ve her yeni gönderiyi kopyalar.',
         'paused_hint' => 'Kontroller beklemede. Sürdürdüğünde kaldığı yerden devam eder, bu arada paylaşılan hiçbir şey kaybolmaz.',
         'disabled_hint' => 'Kapalı. Yeniden etkinleştirmek sıfırdan başlar: kapalıyken paylaştıkların dışarıda kalır.',
     ],
@@ -121,7 +121,7 @@ return [
         'original_from' => ':date tarihli özgün gönderi',
         'empty' => [
             'title' => 'Henüz bir şey yok',
-            'description' => 'Bu hesabın TryPost dışında paylaştığı gönderiler burada görünür.',
+            'description' => 'Bu hesabın Social HQ dışında paylaştığı gönderiler burada görünür.',
         ],
         'open_post' => 'Gönderiyi aç',
         'statuses' => [
@@ -133,7 +133,7 @@ return [
             'failed' => 'Başarısız',
         ],
         'reasons' => [
-            'published_via_trypost' => 'Zaten TryPost ile yayınlandı',
+            'published_via_trypost' => 'Zaten Social HQ ile yayınlandı',
             'media_url_missing' => 'Ağ indirilebilir bir dosya paylaşmadı, genellikle telif hakkı korumalı ses nedeniyle',
             'download_failed' => 'Video indirilemedi',
             'post_creation_failed' => 'Gönderiler oluşturulamadı',

@@ -35,7 +35,7 @@ return [
 
     'source' => [
         'title' => 'Source',
-        'description' => 'TryPost surveille ce compte pour les nouvelles publications du format ci-dessous.',
+        'description' => 'Social HQ surveille ce compte pour les nouvelles publications du format ci-dessous.',
         'watch_label' => 'Surveiller',
         'watch_description' => 'Le type de publication qui déclenche un repost.',
         'needs_reconnect' => 'Reconnexion nécessaire',
@@ -49,7 +49,7 @@ return [
 
     'empty' => [
         'title' => 'Aucun repurpose configuré',
-        'description' => 'TryPost surveille le compte que vous choisissez et republie chaque nouvelle publication sur les réseaux sélectionnés.',
+        'description' => 'Social HQ surveille le compte que vous choisissez et republie chaque nouvelle publication sur les réseaux sélectionnés.',
     ],
 
     'table' => [
@@ -66,7 +66,7 @@ return [
 
     'create' => [
         'title' => 'Nouveau repurpose',
-        'description' => 'Choisissez le compte que TryPost doit surveiller. Les destinations se choisissent à l\'écran suivant.',
+        'description' => 'Choisissez le compte que Social HQ doit surveiller. Les destinations se choisissent à l\'écran suivant.',
         'source_label' => 'Compte source',
         'source_placeholder' => 'Choisissez un compte',
         'source_search' => 'Rechercher des comptes',
@@ -106,7 +106,7 @@ return [
         'watermark' => 'Surveillé depuis',
         'last_polled' => 'Dernière vérification',
         'draft_hint' => 'Choisissez au moins une destination, puis activez. Seules les publications faites après l\'activation sont répliquées.',
-        'active_hint' => 'TryPost vérifie ce compte régulièrement et réplique chaque nouvelle publication.',
+        'active_hint' => 'Social HQ vérifie ce compte régulièrement et réplique chaque nouvelle publication.',
         'paused_hint' => 'Les vérifications sont suspendues. La reprise repart là où elle s\'est arrêtée, rien n\'est perdu.',
         'disabled_hint' => 'Désactivé. Une nouvelle activation repart de zéro : ce que vous avez publié entre-temps reste de côté.',
     ],
@@ -121,7 +121,7 @@ return [
         'original_from' => 'original du :date',
         'empty' => [
             'title' => 'Rien pour l\'instant',
-            'description' => 'Les publications de ce compte hors de TryPost apparaîtront ici.',
+            'description' => 'Les publications de ce compte hors de Social HQ apparaîtront ici.',
         ],
         'open_post' => 'Ouvrir la publication',
         'statuses' => [
@@ -133,7 +133,7 @@ return [
             'failed' => 'Échec',
         ],
         'reasons' => [
-            'published_via_trypost' => 'Déjà publié via TryPost',
+            'published_via_trypost' => 'Déjà publié via Social HQ',
             'media_url_missing' => 'Le réseau n\'a pas fourni de fichier téléchargeable, généralement à cause d\'un audio protégé par le droit d\'auteur',
             'download_failed' => 'La vidéo n\'a pas pu être téléchargée',
             'post_creation_failed' => 'Impossible de créer les publications',

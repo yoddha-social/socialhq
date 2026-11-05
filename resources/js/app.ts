@@ -15,7 +15,7 @@ import { capturePageview, initializePostHog, syncPostHogContext } from '@/postho
 import { syncPreferences } from '@/preferences';
 import type { Auth } from '@/types';
 
-const appName = import.meta.env.VITE_APP_NAME || 'TryPost.it';
+const appName = import.meta.env.VITE_APP_NAME || 'Social HQ';
 
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),

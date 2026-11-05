@@ -477,7 +477,5 @@ const replaceWithDraft = (): void => {
                 </Button>
             </div>
         </form>
-
-        <slot :brief="brief" />
     </section>
 </template>

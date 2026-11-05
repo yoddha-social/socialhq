@@ -4,6 +4,7 @@ import { computed, ref } from 'vue';
 
 import BriefPanel from '@/components/socialhq/plan/item/BriefPanel.vue';
 import CopyEditor from '@/components/socialhq/plan/item/CopyEditor.vue';
+import CreativeRounds from '@/components/socialhq/plan/item/CreativeRounds.vue';
 import ItemSummary from '@/components/socialhq/plan/item/ItemSummary.vue';
 import ReviewThread from '@/components/socialhq/plan/item/ReviewThread.vue';
 import type {
@@ -80,6 +81,12 @@ const useVersion = (version: CopyVersion): void => {
                         :team="team"
                         :abilities="abilities"
                         :ai-available="aiAvailable"
+                    />
+                    <CreativeRounds
+                        v-if="brief"
+                        :item-id="item.id"
+                        :brief="brief"
+                        :abilities="abilities"
                     />
                 </div>
                 <div class="min-w-0 lg:sticky lg:top-4">

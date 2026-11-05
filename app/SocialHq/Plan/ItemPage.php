@@ -9,7 +9,10 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiTask;
+use App\Enums\Media\Type as MediaType;
 use App\SocialHq\Production\Brief;
+use App\SocialHq\Production\BriefFile;
+use App\SocialHq\Production\BriefRounds;
 use App\SocialHq\Production\BriefTeam;
 
 /**
@@ -22,7 +25,7 @@ final class ItemPage
      */
     public static function props(PlanItem $item, User $user, Workspace $workspace): array
     {
-        $item->load(['plan', 'owner.avatarMedia', 'event', 'socialAccount', 'versions.author.avatarMedia', 'reviews.user.avatarMedia', 'reviews.version', 'brief.assignee.avatarMedia']);
+        $item->load(['plan', 'owner.avatarMedia', 'event', 'socialAccount', 'versions.author.avatarMedia', 'reviews.user.avatarMedia', 'reviews.version', 'brief.assignee.avatarMedia', 'brief.files.uploader.avatarMedia']);
 
         return [
             'item' => self::item($item),
@@ -117,6 +120,35 @@ final class ItemPage
             'direction' => $brief->direction,
             'references' => $brief->references,
             'approved_at' => $brief->approved_at?->toIso8601String(),
+            'current_round' => (int) $brief->files->max('round'),
+            'accepts_uploads' => BriefRounds::acceptsUploads($brief),
+            'rounds' => $brief->files
+                ->groupBy('round')
+                ->sortKeysDesc()
+                ->map(fn ($files, int $round): array => [
+                    'round' => $round,
+                    'files' => $files->map(fn (BriefFile $file): array => self::file($brief, $file))->values()->all(),
+                ])
+                ->values()
+                ->all(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function file(Brief $brief, BriefFile $file): array
+    {
+        return [
+            'id' => $file->id,
+            'name' => $file->original_name,
+            'mime_type' => $file->mime_type,
+            'type' => MediaType::fromMime($file->mime_type)?->value,
+            'size' => $file->size,
+            'note' => $file->note,
+            'url' => route('socialhq.plan.items.brief.files.show', ['item' => $brief->item_id, 'file' => $file->id]),
+            'uploader' => $file->relationLoaded('uploader') ? self::person($file->uploader) : null,
+            'created_at' => $file->created_at?->toIso8601String(),
         ];
     }
 

@@ -4,6 +4,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import CalendarPostChip from '@/components/publish/CalendarPostChip.vue';
 import CalendarSlotChip from '@/components/publish/CalendarSlotChip.vue';
+import CalendarEventMarkers from '@/components/socialhq/plan/CalendarEventMarkers.vue';
 import {
     calendarTargetKey,
     useCalendarDragContext,
@@ -196,6 +197,7 @@ watch(
             >
                 <span>{{ column.day.format(compact ? 'ddd' : 'dddd') }}</span>
                 <span>{{ column.day.format('D') }}</span>
+                <CalendarEventMarkers :day="column.key" :compact="compact" />
             </div>
         </div>
 

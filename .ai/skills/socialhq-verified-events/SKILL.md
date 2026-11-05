@@ -5,9 +5,19 @@ description: Models and imports the verified events dataset (Nepali festivals wi
 
 # Verified events
 
-**Status: not built in the fork yet.** The Rails reference
-(`../socialhq-rails-reference/api/app/models/calendar_event.rb`, `db/data/`) is the
-design to port with `socialhq-port-from-rails`. Update this skill once it lands.
+**Status: built (overnight 2026-11-05).** Code in `app/SocialHq/Events/`:
+`CalendarEvent` (table `shq_events`, account-wide or one brand's), `ImportOfficialEvents`
+(+ `socialhq:events:import`) for `database/data/socialhq/events/*.csv`, and
+`EventsForMonth::forWorkspace()` / `markersByDay()` for the planner and the publish
+calendar. The page is Plan › Events (`socialhq.plan.events.index`); confirming,
+editing and importing need `approvePosts`. The sections below "Decide before
+porting" are the original notes from the Rails reference.
+
+- Imported rows are unconfirmed. Re-importing keeps confirmations and never
+  overwrites a row a person added (`created_by`) or edited (`updated_at` later
+  than `created_at`); the importer and confirming save without touching
+  timestamps so that test stays true.
+- A day in both CSVs (Christmas, Women's Day) is imported once, from the Nepal file.
 
 ## The one rule
 

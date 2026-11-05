@@ -5,7 +5,6 @@ import {
     IconCalendarPlus,
     IconChecks,
     IconCircleCheck,
-    IconLayoutGrid,
     IconList,
     IconPlug,
     IconPlus,
@@ -23,12 +22,15 @@ import PlanItemSheet from '@/components/socialhq/plan/PlanItemSheet.vue';
 import PlanListView from '@/components/socialhq/plan/PlanListView.vue';
 import PlanMonthGrid from '@/components/socialhq/plan/PlanMonthGrid.vue';
 import PlanMonthSwitcher from '@/components/socialhq/plan/PlanMonthSwitcher.vue';
-import PlanSummaryStrip from '@/components/socialhq/plan/PlanSummaryStrip.vue';
-import PlanTabs from '@/components/socialhq/plan/PlanTabs.vue';
 import {
     toastFirstError,
     toastRequestFailed,
 } from '@/components/socialhq/plan/planRequests';
+import PlanSummaryStrip from '@/components/socialhq/plan/PlanSummaryStrip.vue';
+import PlanTabs from '@/components/socialhq/plan/PlanTabs.vue';
+import PlanViewToggle, {
+    type PlanView,
+} from '@/components/socialhq/plan/PlanViewToggle.vue';
 import type {
     PlanAbilities,
     PlanChannel,
@@ -45,6 +47,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useAtLeastBreakpoint } from '@/composables/useBreakpoint';
 import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -59,8 +62,6 @@ import {
     drop as dropItem,
 } from '@/routes/socialhq/plan/items';
 import { accept as acceptSuggestions } from '@/routes/socialhq/plan/suggestions';
-
-type PlanView = 'grid' | 'list';
 
 const props = defineProps<{
     month: string;
@@ -91,18 +92,16 @@ const readView = (): PlanView => {
 
 const view = ref<PlanView>(readView());
 
-const setView = (next: PlanView): void => {
-    view.value = next;
-
+watch(view, (next) => {
     try {
         window.localStorage.setItem(VIEW_STORAGE_KEY, next);
     } catch {
         // Storage blocked: the choice lasts until the page is left.
     }
-};
+});
 
-const showGrid = (): void => setView('grid');
-const showList = (): void => setView('list');
+/** The grid/list switch sits in the tab bar on md+, next to the month switcher below. */
+const isDesktop = useAtLeastBreakpoint('md');
 
 const monthLabel = computed(() =>
     dayjs(`${props.month}-01`)
@@ -354,44 +353,8 @@ const openBrandSettings = (): void => {
 
         <div class="flex min-h-0 flex-1 flex-col">
             <PlanTabs active="plan">
-                <template #filters>
-                    <div
-                        v-if="hasChannels"
-                        class="flex rounded-lg border border-border-strong bg-card p-[3px]"
-                        role="group"
-                        :aria-label="$t('socialhq_plan.view.label')"
-                    >
-                        <button
-                            type="button"
-                            class="flex size-7 items-center justify-center rounded-md transition-control focus-visible:outline-2 focus-visible:outline-ring"
-                            :class="
-                                view === 'grid'
-                                    ? 'bg-primary-selected text-primary-text'
-                                    : 'text-muted-foreground hover:bg-accent'
-                            "
-                            :aria-pressed="view === 'grid'"
-                            :aria-label="$t('socialhq_plan.view.grid')"
-                            data-testid="plan-view-grid"
-                            @click="showGrid"
-                        >
-                            <IconLayoutGrid class="size-4" />
-                        </button>
-                        <button
-                            type="button"
-                            class="flex size-7 items-center justify-center rounded-md transition-control focus-visible:outline-2 focus-visible:outline-ring"
-                            :class="
-                                view === 'list'
-                                    ? 'bg-primary-selected text-primary-text'
-                                    : 'text-muted-foreground hover:bg-accent'
-                            "
-                            :aria-pressed="view === 'list'"
-                            :aria-label="$t('socialhq_plan.view.list')"
-                            data-testid="plan-view-list"
-                            @click="showList"
-                        >
-                            <IconList class="size-4" />
-                        </button>
-                    </div>
+                <template v-if="hasChannels && isDesktop" #filters>
+                    <PlanViewToggle v-model="view" />
                 </template>
             </PlanTabs>
 
@@ -403,6 +366,10 @@ const openBrandSettings = (): void => {
                     :month="month"
                     :today="today"
                     @go="goToMonth"
+                />
+                <PlanViewToggle
+                    v-if="hasChannels && !isDesktop"
+                    v-model="view"
                 />
                 <Badge
                     :variant="STATUS_BADGE[status]"

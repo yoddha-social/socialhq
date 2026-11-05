@@ -34,6 +34,8 @@ return [
         'generating' => 'Generating the graphic. This takes up to a minute.',
         'review_note' => 'Requests and results go through an automatic content check. Every generation is logged.',
         'label' => 'AI graphic',
+        'recent_label' => 'Your recent graphics (click to add)',
+        'use_recent' => 'Add the graphic for: :prompt',
         'errors' => [
             'blocked' => 'The content check blocked this graphic.',
             'check_unavailable' => 'The content check is unavailable, so nothing was generated. Try again in a few minutes.',
@@ -42,6 +44,7 @@ return [
             'daily_limit' => 'This workspace has used today\'s AI graphics. Try again tomorrow.',
             'too_many_references' => 'Add at most :count reference images.',
             'reference_type' => 'Reference images must be JPEG, PNG or WebP.',
+            'attach_failed' => 'The graphic could not be added. Try again.',
         ],
     ],
 ];

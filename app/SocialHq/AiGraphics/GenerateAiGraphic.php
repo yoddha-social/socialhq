@@ -100,10 +100,10 @@ class GenerateAiGraphic implements ShouldQueue
     private function store(AiGraphic $graphic, Workspace $workspace, string $bytes, string $mime): void
     {
         $path = tempnam(sys_get_temp_dir(), 'shq-ai-graphic-');
+        $extension = AiGraphics::extensionFor($mime);
 
         try {
             file_put_contents($path, $bytes);
-            $extension = $mime === 'image/jpeg' ? 'jpg' : (str_contains($mime, 'webp') ? 'webp' : 'png');
 
             $media = $workspace->addMediaFromPath(
                 $path,
@@ -117,7 +117,10 @@ class GenerateAiGraphic implements ShouldQueue
             @unlink($path);
         }
 
-        $graphic->update(['status' => AiGraphic::GENERATED, 'media_id' => $media->id]);
+        $resultPath = "socialhq/ai-graphics/results/{$graphic->id}.{$extension}";
+        Storage::disk('local')->put($resultPath, $bytes);
+
+        $graphic->update(['status' => AiGraphic::GENERATED, 'media_id' => $media->id, 'result_path' => $resultPath]);
         MediaImportStatus::complete($graphic->import_id, $media);
     }
 

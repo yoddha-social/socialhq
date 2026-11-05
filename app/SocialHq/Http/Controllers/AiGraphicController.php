@@ -9,11 +9,13 @@ use App\SocialHq\AiGraphics\AiGraphic;
 use App\SocialHq\AiGraphics\AiGraphics;
 use App\SocialHq\AiGraphics\GenerateAiGraphic;
 use App\SocialHq\AiGraphics\GraphicFormat;
+use App\SocialHq\AiGraphics\RecentAiGraphics;
 use App\SocialHq\AiGraphics\VisionCheck;
 use App\SocialHq\Http\Requests\StoreAiGraphicRequest;
 use App\Support\MediaImportStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as ImageResponse;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -61,12 +63,75 @@ class AiGraphicController extends Controller
             throw ValidationException::withMessages(['prompt' => $blocked]);
         }
 
-        $paths = array_map(fn (UploadedFile $file): string => $file->store('socialhq/ai-graphics', 'local'), $files);
+        $paths = array_map(fn (UploadedFile $file): string => $file->store('socialhq/ai-graphics/references', 'local'), $files);
 
         MediaImportStatus::pending($graphic->import_id, $user->id, $workspace->id);
         GenerateAiGraphic::dispatch($graphic->id, $paths);
 
         return response()->json(['import_id' => $graphic->import_id], Response::HTTP_ACCEPTED);
+    }
+
+    /**
+     * The person's generated graphics of the last days in this workspace.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $workspace = $user->currentWorkspace;
+
+        abort_unless($workspace !== null && $user->can('createPost', $workspace), Response::HTTP_FORBIDDEN);
+
+        return response()->json([
+            'graphics' => RecentAiGraphics::for($user, $workspace)->map(fn (AiGraphic $graphic): array => [
+                'import_id' => $graphic->import_id,
+                'prompt' => $graphic->prompt,
+                'created_at' => $graphic->created_at?->toIso8601String(),
+                'preview_url' => route('socialhq.ai-graphics.image', $graphic->import_id),
+            ])->values(),
+        ]);
+    }
+
+    public function image(Request $request, string $import): ImageResponse
+    {
+        $graphic = $this->ownGenerated($request, $import);
+        $bytes = RecentAiGraphics::bytes($graphic);
+
+        abort_if($bytes === null, Response::HTTP_NOT_FOUND);
+
+        return response($bytes, Response::HTTP_OK, [
+            'Content-Type' => RecentAiGraphics::mime($bytes),
+            'Cache-Control' => 'private, max-age=3600',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    /**
+     * Attach a recent graphic again: a fresh upload, returned as an import.
+     */
+    public function attach(Request $request, string $import): JsonResponse
+    {
+        $graphic = $this->ownGenerated($request, $import);
+        $user = $request->user();
+
+        abort_unless($user->can('createPost', $user->currentWorkspace), Response::HTTP_FORBIDDEN);
+
+        $importId = RecentAiGraphics::attachAgain($graphic, $user, $user->currentWorkspace);
+
+        abort_if($importId === null, Response::HTTP_GONE);
+
+        return response()->json(['import_id' => $importId], Response::HTTP_CREATED);
+    }
+
+    private function ownGenerated(Request $request, string $import): AiGraphic
+    {
+        $user = $request->user();
+
+        return AiGraphic::query()
+            ->where('import_id', $import)
+            ->where('user_id', $user->id)
+            ->where('workspace_id', $user->current_workspace_id)
+            ->where('status', AiGraphic::GENERATED)
+            ->first() ?? abort(Response::HTTP_NOT_FOUND);
     }
 
     public function show(Request $request, string $import): JsonResponse

@@ -16,7 +16,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
-import { show, store } from '@/routes/socialhq/ai-graphics';
+import { attach, index, show, store } from '@/routes/socialhq/ai-graphics';
 
 // Social HQ: "Generate with AI" from the media menu of ideas and posts. The
 // request is vision-checked while the dialog waits, then generated (and
@@ -78,10 +78,63 @@ const reset = (): void => {
     message.value = null;
 };
 
+interface RecentGraphic {
+    import_id: string;
+    prompt: string;
+    preview_url: string;
+}
+
+const recent = ref<RecentGraphic[]>([]);
+const attaching = ref<string | null>(null);
+
+// Graphics finished after their editor closed can be attached from here.
+const loadRecent = async (): Promise<void> => {
+    try {
+        const response = await useHttp<
+            Record<string, never>,
+            { graphics: RecentGraphic[] }
+        >({}).get(index.url());
+        recent.value = response?.graphics ?? [];
+    } catch {
+        recent.value = [];
+    }
+};
+
+const useRecent = async (graphic: RecentGraphic): Promise<void> => {
+    if (attaching.value) {
+        return;
+    }
+
+    attaching.value = graphic.import_id;
+    message.value = null;
+
+    try {
+        const response = await useHttp<
+            Record<string, never>,
+            { import_id: string }
+        >({}).post(attach.url(graphic.import_id));
+
+        if (response?.import_id) {
+            emit('started', {
+                importId: response.import_id,
+                label: trans('socialhq.ai_graphics.label'),
+            });
+            open.value = false;
+        }
+    } catch {
+        message.value = trans('socialhq.ai_graphics.errors.attach_failed');
+    } finally {
+        attaching.value = null;
+    }
+};
+
 // Closing the dialog while generating keeps waiting: the graphic is still
-// attached when it is done. Only leaving the editor stops that.
+// attached when it is done, while the editor stays open; otherwise it shows
+// up under "Your recent graphics".
 watch(open, (isOpen) => {
-    if (!isOpen && phase.value === 'idle') {
+    if (isOpen) {
+        void loadRecent();
+    } else if (phase.value === 'idle') {
         reset();
     }
 });
@@ -359,6 +412,44 @@ const submit = async (): Promise<void> => {
                             : $t('socialhq.ai_graphics.generating')
                     }}
                 </p>
+
+                <div
+                    v-if="recent.length > 0"
+                    class="grid gap-2"
+                    data-testid="socialhq-ai-graphic-recent"
+                >
+                    <Label>{{ $t('socialhq.ai_graphics.recent_label') }}</Label>
+                    <div class="flex gap-2 overflow-x-auto pb-1">
+                        <button
+                            v-for="graphic in recent"
+                            :key="graphic.import_id"
+                            type="button"
+                            class="relative size-16 shrink-0 overflow-hidden rounded-lg border border-border hover:ring-2 hover:ring-ring disabled:opacity-50"
+                            :title="graphic.prompt"
+                            :aria-label="
+                                $t('socialhq.ai_graphics.use_recent', {
+                                    prompt: graphic.prompt,
+                                })
+                            "
+                            :disabled="attaching !== null"
+                            :data-testid="`socialhq-ai-graphic-recent-${graphic.import_id}`"
+                            @click="useRecent(graphic)"
+                        >
+                            <img
+                                :src="graphic.preview_url"
+                                alt=""
+                                loading="lazy"
+                                class="size-full object-cover"
+                            />
+                            <span
+                                v-if="attaching === graphic.import_id"
+                                class="absolute inset-0 flex items-center justify-center bg-background/70"
+                            >
+                                <Spinner />
+                            </span>
+                        </button>
+                    </div>
+                </div>
 
                 <p class="flex items-start gap-2 text-xs text-muted-foreground">
                     <IconShieldCheck class="mt-px size-3.5 shrink-0" />

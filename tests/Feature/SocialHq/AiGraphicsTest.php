@@ -60,7 +60,7 @@ test('a prompt with a reference image becomes a graphic the composer can attach'
         ->and($graphic->reference_count)->toBe(1)
         ->and(Media::query()->find($graphic->media_id)?->workspace_id)->toBe($this->workspace->id)
         ->and(MediaImportStatus::find($importId, $this->owner->id, $this->workspace->id)['status'])->toBe(MediaImportStatus::DONE)
-        ->and(Storage::disk('local')->allFiles('socialhq/ai-graphics'))->toBe([]);
+        ->and(Storage::disk('local')->allFiles('socialhq/ai-graphics/references'))->toBe([]);
 
     Image::assertGenerated(fn (ImagePrompt $prompt): bool => $prompt->contains('Happy Dashain')
         && $prompt->size === '9:16'
@@ -196,4 +196,53 @@ test('the generation timeout is configurable within what the queue worker allows
 
     config(['socialhq.ai_graphics.timeout_seconds' => 5000]);
     expect(AiGraphics::timeoutSeconds())->toBe(540);
+});
+
+test('recent graphics can be previewed and attached again, by the person who made them only', function () {
+    aiGraphicAllowed();
+    Image::fake([$this->png]);
+
+    $importId = $this->actingAs($this->owner)
+        ->postJson(route('socialhq.ai-graphics.store'), ['prompt' => 'A Tihar greeting', 'format' => 'square'])
+        ->json('import_id');
+    $graphic = AiGraphic::query()->where('import_id', $importId)->sole();
+
+    expect(Storage::disk('local')->exists($graphic->result_path))->toBeTrue();
+
+    $this->getJson(route('socialhq.ai-graphics.index'))
+        ->assertOk()
+        ->assertJsonPath('graphics.0.import_id', $importId)
+        ->assertJsonPath('graphics.0.preview_url', route('socialhq.ai-graphics.image', $importId));
+
+    $this->get(route('socialhq.ai-graphics.image', $importId))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'image/png');
+
+    $again = $this->postJson(route('socialhq.ai-graphics.attach', $importId))
+        ->assertCreated()
+        ->json('import_id');
+
+    $status = MediaImportStatus::find($again, $this->owner->id, $this->workspace->id);
+    expect($status['status'])->toBe(MediaImportStatus::DONE)
+        ->and($status['media_id'])->not->toBe($graphic->media_id)
+        ->and(Media::query()->count())->toBe(2);
+
+    $colleague = workspaceMember($this->workspace, 'admin');
+    $this->actingAs($colleague)->getJson(route('socialhq.ai-graphics.index'))->assertJsonCount(0, 'graphics');
+    $this->get(route('socialhq.ai-graphics.image', $importId))->assertNotFound();
+    $this->postJson(route('socialhq.ai-graphics.attach', $importId))->assertNotFound();
+});
+
+test('a graphic made before copies were kept is attached from its first upload', function () {
+    aiGraphicAllowed();
+    Image::fake([$this->png]);
+
+    $importId = $this->actingAs($this->owner)
+        ->postJson(route('socialhq.ai-graphics.store'), ['prompt' => 'A Tihar greeting', 'format' => 'square'])
+        ->json('import_id');
+    $graphic = AiGraphic::query()->where('import_id', $importId)->sole();
+    Storage::disk('local')->delete($graphic->result_path);
+    $graphic->update(['result_path' => null]);
+
+    $this->postJson(route('socialhq.ai-graphics.attach', $importId))->assertCreated();
 });

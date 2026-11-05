@@ -42,6 +42,15 @@ final class AiGraphics
         return max(30, min(540, (int) config('socialhq.ai_graphics.timeout_seconds', 150)));
     }
 
+    public static function extensionFor(string $mime): string
+    {
+        return match ($mime) {
+            'image/jpeg' => 'jpg',
+            'image/webp' => 'webp',
+            default => 'png',
+        };
+    }
+
     public static function visionCheckEnabled(): bool
     {
         return (bool) config('socialhq.ai_graphics.vision_check', true);

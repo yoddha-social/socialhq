@@ -26,7 +26,7 @@ class GenerateAiGraphic implements ShouldQueue
 
     public int $tries = 1;
 
-    public int $timeout = 180;
+    public int $timeout;
 
     /**
      * @param  list<string>  $referencePaths  on the local disk; deleted when done
@@ -34,6 +34,7 @@ class GenerateAiGraphic implements ShouldQueue
     public function __construct(public int $aiGraphicId, public array $referencePaths = [])
     {
         $this->onQueue(ImportRemoteMedia::QUEUE);
+        $this->timeout = AiGraphics::timeoutSeconds() + 60;
     }
 
     public function handle(): void
@@ -59,7 +60,7 @@ class GenerateAiGraphic implements ShouldQueue
             $image = ImageGeneration::of(self::fullPrompt($graphic))
                 ->attachments($references)
                 ->size($graphic->format->aspectRatio($graphic->provider))
-                ->timeout(150)
+                ->timeout(AiGraphics::timeoutSeconds())
                 ->generate($graphic->provider, $graphic->model)
                 ->firstImage();
 

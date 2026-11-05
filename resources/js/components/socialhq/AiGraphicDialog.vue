@@ -26,7 +26,8 @@ import { show, store } from '@/routes/socialhq/ai-graphics';
 const FORMATS = ['square', 'portrait', 'story', 'landscape'] as const;
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const POLL_INTERVAL_MS = 2000;
-const MAX_POLLS = 120;
+// Up to 10 minutes: longer than the slowest generation the server allows.
+const MAX_POLLS = 300;
 
 type Phase = 'idle' | 'checking' | 'generating';
 

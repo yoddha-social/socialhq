@@ -37,6 +37,11 @@ final class AiGraphics
         return ! self::visionCheckEnabled() || filled(config('ai.providers.'.self::visionProvider().'.key'));
     }
 
+    public static function timeoutSeconds(): int
+    {
+        return max(30, min(540, (int) config('socialhq.ai_graphics.timeout_seconds', 150)));
+    }
+
     public static function visionCheckEnabled(): bool
     {
         return (bool) config('socialhq.ai_graphics.vision_check', true);

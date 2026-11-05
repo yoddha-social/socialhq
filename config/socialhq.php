@@ -40,6 +40,8 @@ return [
         'vision_check' => (bool) env('SOCIALHQ_AI_GRAPHICS_VISION_CHECK', true),
         'vision_provider' => env('SOCIALHQ_AI_GRAPHICS_VISION_PROVIDER'),
         'vision_model' => env('SOCIALHQ_AI_GRAPHICS_VISION_MODEL'),
+        // How long the image model may take. The queue worker allows 630 s.
+        'timeout_seconds' => (int) env('SOCIALHQ_AI_GRAPHICS_TIMEOUT', 150),
         'max_reference_images' => 3,
         'max_reference_kilobytes' => 10240,
         'per_user_per_hour' => (int) env('SOCIALHQ_AI_GRAPHICS_PER_USER_PER_HOUR', 20),

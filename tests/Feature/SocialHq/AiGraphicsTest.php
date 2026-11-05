@@ -6,6 +6,8 @@ use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\AiGraphics\AiGraphic;
+use App\SocialHq\AiGraphics\AiGraphics;
+use App\SocialHq\AiGraphics\GenerateAiGraphic;
 use App\SocialHq\AiGraphics\GraphicSafetyReviewer;
 use App\Support\MediaImportStatus;
 use Illuminate\Http\UploadedFile;
@@ -185,4 +187,13 @@ test('a generation status is only visible to the person who asked', function () 
     $this->actingAs(workspaceMember($this->workspace, 'admin'))
         ->getJson(route('socialhq.ai-graphics.show', $importId))
         ->assertNotFound();
+});
+
+test('the generation timeout is configurable within what the queue worker allows', function () {
+    config(['socialhq.ai_graphics.timeout_seconds' => 300]);
+    expect(AiGraphics::timeoutSeconds())->toBe(300)
+        ->and((new GenerateAiGraphic(1))->timeout)->toBe(360);
+
+    config(['socialhq.ai_graphics.timeout_seconds' => 5000]);
+    expect(AiGraphics::timeoutSeconds())->toBe(540);
 });

@@ -19,6 +19,9 @@ class ContentPlan extends Model
 {
     use HasFactory;
 
+    /** A running AI draft older than this is treated as dead. */
+    public const STALE_MINUTES = 10;
+
     protected $table = 'shq_content_plans';
 
     protected $guarded = ['id'];
@@ -31,6 +34,7 @@ class ContentPlan extends Model
             'generation_status' => GenerationStatus::class,
             'generation_rejections' => 'array',
             'generated_at' => 'immutable_datetime',
+            'generation_started_at' => 'immutable_datetime',
             'submitted_at' => 'immutable_datetime',
             'approved_at' => 'immutable_datetime',
         ];
@@ -58,6 +62,22 @@ class ContentPlan extends Model
     public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    /**
+     * An AI draft is running and started less than STALE_MINUTES ago. An
+     * older run (a worker that died) no longer blocks a new one.
+     */
+    public function isGenerating(): bool
+    {
+        return $this->generation_status === GenerationStatus::Running
+            && $this->generation_started_at !== null
+            && $this->generation_started_at->greaterThan(now()->subMinutes(self::STALE_MINUTES));
+    }
+
+    public function hasOpenSuggestions(): bool
+    {
+        return $this->items()->where('status', ItemStatus::Suggested)->exists();
     }
 
     /**

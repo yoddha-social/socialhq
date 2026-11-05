@@ -284,7 +284,7 @@ const monthLabel = (month: string): string =>
                 </Button>
                 <NativeSelect
                     v-model="kindModel"
-                    class="h-7 text-xs"
+                    class="h-7 w-auto py-0 pr-8 pl-2.5 text-xs"
                     :aria-label="$t('socialhq_production.board.filters.kind')"
                     data-testid="board-filter-kind"
                 >
@@ -300,7 +300,7 @@ const monthLabel = (month: string): string =>
                 </NativeSelect>
                 <NativeSelect
                     v-model="monthModel"
-                    class="h-7 text-xs"
+                    class="h-7 w-auto py-0 pr-8 pl-2.5 text-xs"
                     :aria-label="$t('socialhq_production.board.filters.month')"
                     data-testid="board-filter-month"
                 >
@@ -335,7 +335,11 @@ const monthLabel = (month: string): string =>
             </Button>
         </div>
 
-        <div v-else class="px-4 py-6 md:px-8" data-testid="production-board">
+        <div
+            v-else
+            class="flex flex-[1_0_auto] flex-col px-4 py-6 md:px-8"
+            data-testid="production-board"
+        >
             <p
                 v-if="cards.length === 0"
                 class="mb-4 text-sm text-muted-foreground"
@@ -344,7 +348,7 @@ const monthLabel = (month: string): string =>
                 {{ $t('socialhq_production.board.no_results') }}
             </p>
             <div
-                class="flex snap-x gap-4 overflow-x-auto pb-4"
+                class="flex flex-[1_0_auto] snap-x gap-4 overflow-x-auto pb-4"
                 :aria-label="$t('socialhq_production.board.label')"
                 role="region"
             >
@@ -352,7 +356,7 @@ const monthLabel = (month: string): string =>
                     v-for="stage in stages"
                     :key="stage"
                     :ref="(el) => setColumnEl(stage, el)"
-                    class="flex w-72 shrink-0 snap-start flex-col rounded-xl bg-muted/50 p-2 transition-colors"
+                    class="flex min-w-55 flex-1 basis-0 snap-start flex-col rounded-xl bg-muted/50 p-2 transition-colors"
                     :class="
                         placeholderIndex(stage) !== null
                             ? 'bg-primary-subtle/60'
@@ -374,7 +378,7 @@ const monthLabel = (month: string): string =>
                     </h2>
                     <ol
                         :ref="(el) => setListEl(stage, el)"
-                        class="relative flex min-h-24 flex-col gap-2"
+                        class="relative flex min-h-24 flex-1 flex-col gap-2"
                     >
                         <template
                             v-for="(row, index) in rows(stage)"
@@ -404,7 +408,8 @@ const monthLabel = (month: string): string =>
                                 columnCards(stage).length === 0 &&
                                 placeholderIndex(stage) === null
                             "
-                            class="px-2 py-6 text-center text-xs text-muted-foreground"
+                            class="flex flex-1 items-center justify-center rounded-lg border border-dashed border-border px-2 py-6 text-center text-xs text-muted-foreground"
+                            data-testid="board-column-empty"
                         >
                             {{ $t('socialhq_production.board.column_empty') }}
                         </li>

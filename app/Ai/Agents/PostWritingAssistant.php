@@ -9,15 +9,15 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
 use App\SocialHq\Ai\AiTask;
 use App\SocialHq\Ai\UsesAiTask;
-use Laravel\Ai\Attributes\Temperature;
+use App\SocialHq\Ai\UsesModelSafeTemperature;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Promptable;
 
-#[Temperature(0.7)]
 class PostWritingAssistant implements Agent
 {
     use Promptable;
     use UsesAiTask;
+    use UsesModelSafeTemperature;
 
     public function __construct(
         public PostAssistantMode $mode,
@@ -49,5 +49,10 @@ class PostWritingAssistant implements Agent
             'hard_max_chars' => $this->hardMaxChars ?? $this->platform?->maxContentLength(),
             'target_chars' => $this->platform?->recommendedAiContentLength(),
         ])->render();
+    }
+
+    protected function preferredTemperature(): float
+    {
+        return 0.7;
     }
 }

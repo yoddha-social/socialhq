@@ -52,6 +52,17 @@ final class PlanAccess
     }
 
     /**
+     * An item of the request's current workspace, after the same checks as
+     * workspace(); an item of any other workspace is not found.
+     */
+    public static function item(Request $request, int $item, bool $approve = false): PlanItem
+    {
+        $workspace = self::workspace($request, $approve);
+
+        return PlanItem::query()->where('workspace_id', $workspace->id)->findOrFail($item);
+    }
+
+    /**
      * What the pages need to show or hide actions.
      *
      * @return array{canWork: bool, canApprove: bool, canManageBrand: bool}

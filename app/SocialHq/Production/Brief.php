@@ -69,6 +69,6 @@ class Brief extends Model
 
     public function currentRound(): int
     {
-        return (int) $this->files()->max('round');
+        return (int) BriefFile::query()->where('brief_id', $this->id)->max('round');
     }
 }

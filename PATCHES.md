@@ -58,7 +58,7 @@ Change a TryPost file when that is the right place, and add a row.
 | 60 | `app/Actions/Post/BuildCalendarPageProps.php` | A `shqEvents` prop (closure, so partial reloads skip it unless asked): the shown days' events from `EventsForMonth::markersByDay()` (2 lines + 1 import) | Festival and holiday markers on the publish calendar |
 | 61 | `resources/js/pages/posts/Calendar.vue` | `shqEvents` added to `RELOAD_PROPS`, so moving between periods refreshes the markers (1 line) | Same |
 | 62 | `resources/js/components/publish/CalendarMonthGrid.vue` | `CalendarEventMarkers` next to each day number (the number and markers share a wrapper; 9 lines + 1 import) | Same |
-| 63 | `resources/js/components/publish/CalendarTimeGrid.vue` | `CalendarEventMarkers` in each day's column header, week and days views (1 line + 1 import) | Same |
+| 63 | `resources/js/components/publish/CalendarTimeGrid.vue` | `CalendarEventMarkers` beside the day number in each column header, week and days views; the number's span wraps both so the header keeps its height (4 lines + 1 import) | Same |
 
 Files we **added** aren't listed here; they're under the module paths in
 SOCIALHQ.md, plus `config/socialhq.php`, `routes/socialhq.php`, `CLAUDE.md`,

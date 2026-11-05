@@ -17,11 +17,14 @@ use Throwable;
  * Loads the official dates (database/data/socialhq/events/*.csv) into an
  * account, as account-wide events that a person still has to confirm.
  *
- * Rows are matched by (account, no brand, key, start date). A new row is
- * created unconfirmed; a row that changed in the file is updated without
- * touching its timestamps, so a later import can still tell it apart from a
- * row a person edited. Rows a person added or edited are never overwritten,
- * and an unchanged row keeps its confirmation.
+ * Each imported event remembers its row of the list (import_key +
+ * import_date), and a re-import matches on that, wherever the team has
+ * since moved the event. A new row is created unconfirmed; a row that
+ * changed in the file is updated without touching its timestamps, so a later
+ * import can still tell it apart from a row a person edited. Rows a person
+ * added, edited, narrowed to one brand or deleted are never overwritten or
+ * brought back, and an unchanged row keeps its confirmation. Rows that left
+ * the list are counted, not deleted.
  */
 final class ImportOfficialEvents
 {
@@ -43,11 +46,15 @@ final class ImportOfficialEvents
     ];
 
     /**
+     * `missing` counts the account's imported dates that are no longer in the
+     * official list (only when the whole shipped dataset is read).
+     *
      * @param  list<string>|null  $paths  CSV files to read; the shipped dataset when null.
-     * @return array{created: int, updated: int, skipped: int}
+     * @return array{created: int, updated: int, skipped: int, missing: int}
      */
     public static function handle(Account $account, ?array $paths = null): array
     {
+        $wholeDataset = $paths === null;
         $paths ??= array_map(fn (string $file): string => database_path(self::DIRECTORY.'/'.$file), self::FILES);
 
         // Read and check every file first: a bad row stops the import before anything is written.
@@ -59,11 +66,15 @@ final class ImportOfficialEvents
             ->values()
             ->all();
 
-        return Cache::lock("socialhq:events-import:{$account->id}", 120)->block(30, fn (): array => DB::transaction(function () use ($account, $rows): array {
-            $counts = ['created' => 0, 'updated' => 0, 'skipped' => 0];
+        return Cache::lock("socialhq:events-import:{$account->id}", 120)->block(30, fn (): array => DB::transaction(function () use ($account, $rows, $wholeDataset): array {
+            $counts = ['created' => 0, 'updated' => 0, 'skipped' => 0, 'missing' => 0];
 
             foreach ($rows as $row) {
                 $counts[self::write($account, $row)]++;
+            }
+
+            if ($wholeDataset) {
+                $counts['missing'] = self::missing($account, $rows);
             }
 
             return $counts;
@@ -75,7 +86,8 @@ final class ImportOfficialEvents
      */
     public static function keyFor(string $name): string
     {
-        return Str::limit(Str::slug($name), 80, '') ?: 'event';
+        // A name with no Latin letters slugs to nothing: key it by a hash, so two such names don't clash.
+        return Str::limit(Str::slug($name), 80, '') ?: 'event-'.substr(hash('sha256', $name), 0, 10);
     }
 
     /**
@@ -85,19 +97,25 @@ final class ImportOfficialEvents
     private static function write(Account $account, array $row): string
     {
         $existing = CalendarEvent::query()
+            ->withTrashed()
             ->where('account_id', $account->id)
-            ->whereNull('workspace_id')
-            ->where('key', data_get($row, 'key'))
-            ->where('starts_on', data_get($row, 'starts_on'))
+            ->where('import_key', data_get($row, 'key'))
+            ->where('import_date', data_get($row, 'starts_on'))
             ->first();
 
         if ($existing === null) {
-            CalendarEvent::query()->create([...$row, 'account_id' => $account->id, 'workspace_id' => null]);
+            CalendarEvent::query()->create([
+                ...$row,
+                'account_id' => $account->id,
+                'workspace_id' => null,
+                'import_key' => data_get($row, 'key'),
+                'import_date' => data_get($row, 'starts_on'),
+            ]);
 
             return 'created';
         }
 
-        if (self::editedByPerson($existing)) {
+        if ($existing->trashed() || self::editedByPerson($existing)) {
             return 'skipped';
         }
 
@@ -111,6 +129,23 @@ final class ImportOfficialEvents
         $existing->save();
 
         return 'updated';
+    }
+
+    /**
+     * How many of the account's imported dates (not deleted) are no longer in the list.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     */
+    private static function missing(Account $account, array $rows): int
+    {
+        $listed = collect($rows)->map(fn (array $row): string => data_get($row, 'key').'|'.data_get($row, 'starts_on'))->flip();
+
+        return CalendarEvent::query()
+            ->where('account_id', $account->id)
+            ->whereNotNull('import_key')
+            ->get(['id', 'import_key', 'import_date'])
+            ->reject(fn (CalendarEvent $event): bool => $listed->has("{$event->import_key}|{$event->import_date?->toDateString()}"))
+            ->count();
     }
 
     private static function editedByPerson(CalendarEvent $event): bool

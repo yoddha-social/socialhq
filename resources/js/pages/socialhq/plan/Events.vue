@@ -346,14 +346,26 @@ const confirmDelete = (): void => {
                             <EventsEmptyIllustration />
                         </template>
                         <template v-if="abilities.canApprove" #action>
-                            <Button
-                                :loading="isImporting"
-                                data-testid="socialhq-events-import-first"
-                                @click="importOfficialDates"
+                            <div
+                                class="flex flex-wrap items-center justify-center gap-2"
                             >
-                                <IconDownload class="size-4" />
-                                {{ $t('socialhq_events.actions.import') }}
-                            </Button>
+                                <Button
+                                    variant="outline"
+                                    data-testid="socialhq-events-add-first"
+                                    @click="openAddEvent"
+                                >
+                                    <IconPlus class="size-4" />
+                                    {{ $t('socialhq_events.actions.add') }}
+                                </Button>
+                                <Button
+                                    :loading="isImporting"
+                                    data-testid="socialhq-events-import-first"
+                                    @click="importOfficialDates"
+                                >
+                                    <IconDownload class="size-4" />
+                                    {{ $t('socialhq_events.actions.import') }}
+                                </Button>
+                            </div>
                         </template>
                     </EmptyState>
 
@@ -498,9 +510,13 @@ const confirmDelete = (): void => {
                                     : $t('socialhq_events.empty.no_match')
                             "
                             :description="
-                                events.length === 0
-                                    ? $t('socialhq_events.empty.none_hint')
-                                    : $t('socialhq_events.empty.no_match_hint')
+                                events.length > 0
+                                    ? $t('socialhq_events.empty.no_match_hint')
+                                    : view === 'upcoming'
+                                      ? $t(
+                                            'socialhq_events.empty.none_hint_upcoming',
+                                        )
+                                      : $t('socialhq_events.empty.none_hint')
                             "
                             data-testid="socialhq-events-no-results"
                         >

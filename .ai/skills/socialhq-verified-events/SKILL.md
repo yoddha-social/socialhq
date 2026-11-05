@@ -13,10 +13,17 @@ calendar. The page is Plan › Events (`socialhq.plan.events.index`); confirming
 editing and importing need `approvePosts`. The sections below "Decide before
 porting" are the original notes from the Rails reference.
 
-- Imported rows are unconfirmed. Re-importing keeps confirmations and never
-  overwrites a row a person added (`created_by`) or edited (`updated_at` later
-  than `created_at`); the importer and confirming save without touching
-  timestamps so that test stays true.
+- Imported rows are unconfirmed and remember their row of the list
+  (`import_key` + `import_date`, never changed by the app); re-imports match on
+  that, so a date the team moved, renamed or narrowed to one brand is found.
+  Re-importing keeps confirmations and never overwrites a row a person added
+  (`created_by`) or edited (`updated_at` later than `created_at`); the importer
+  and confirming save without touching timestamps so that test stays true.
+- Deleting is a soft delete, so a re-import doesn't bring a date back. There is
+  no unique index (account-wide rows have a null `workspace_id`): the page checks
+  for a duplicate with the account row locked. Imported dates that left the list
+  are counted (`missing`), never deleted.
+- A shared date can't be of the `brand` kind.
 - A day in both CSVs (Christmas, Women's Day) is imported once, from the Nepal file.
 
 ## The one rule

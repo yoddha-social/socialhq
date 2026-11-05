@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
-import { watch } from 'vue';
+import { computed, watch } from 'vue';
 
 import DatePicker from '@/components/DatePicker.vue';
 import type {
@@ -74,10 +74,16 @@ watch(open, (isOpen) => {
     }
 });
 
+/**
+ * A one-day event moves as a whole; a longer one keeps its end unless the new
+ * start passes it.
+ */
 const setStartsOn = (value: string | null): void => {
+    const wasOneDay = form.ends_on === form.starts_on;
+
     form.starts_on = value ?? '';
 
-    if (form.starts_on !== '' && form.ends_on < form.starts_on) {
+    if (form.starts_on !== '' && (wasOneDay || form.ends_on < form.starts_on)) {
         form.ends_on = form.starts_on;
     }
 };
@@ -90,8 +96,21 @@ const setPublicHoliday = (value: boolean): void => {
     form.public_holiday = value;
 };
 
+/** The brand kind is only for one brand's dates (the server refuses it otherwise). */
+const SHARED_FALLBACK_CATEGORY: EventCategory = 'observance';
+
+const categoryOptions = computed(() =>
+    form.brand_only
+        ? props.categories
+        : props.categories.filter((category) => category !== 'brand'),
+);
+
 const setBrandOnly = (value: boolean): void => {
     form.brand_only = value;
+
+    if (!value && form.category === 'brand') {
+        form.category = SHARED_FALLBACK_CATEGORY;
+    }
 };
 
 const close = (): void => {
@@ -189,7 +208,7 @@ const submit = (): void => {
                             data-testid="socialhq-event-category"
                         >
                             <NativeSelectOption
-                                v-for="category in categories"
+                                v-for="category in categoryOptions"
                                 :key="category"
                                 :value="category"
                             >
@@ -198,6 +217,12 @@ const submit = (): void => {
                                 }}
                             </NativeSelectOption>
                         </NativeSelect>
+                        <p
+                            v-if="form.errors.category"
+                            class="text-sm text-destructive"
+                        >
+                            {{ form.errors.category }}
+                        </p>
                     </div>
 
                     <div class="flex flex-col gap-2">
@@ -352,7 +377,7 @@ const submit = (): void => {
                         {{
                             event
                                 ? $t('socialhq_events.dialog.save')
-                                : $t('socialhq_events.dialog.add')
+                                : $t('socialhq_events.actions.add')
                         }}
                     </Button>
                 </DialogFooter>

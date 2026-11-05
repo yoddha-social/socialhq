@@ -6,6 +6,7 @@ namespace App\SocialHq\Events;
 
 use App\Models\Account;
 use Illuminate\Console\Command;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 /**
@@ -42,7 +43,11 @@ class ImportEventsCommand extends Command
             return self::FAILURE;
         }
 
-        $this->info("Created {$counts['created']}, updated {$counts['updated']}, skipped {$counts['skipped']} (unchanged or edited in the app).");
+        $this->info("Created {$counts['created']}, updated {$counts['updated']}, skipped {$counts['skipped']} (unchanged, or edited or deleted in the app).");
+
+        if ($counts['missing'] > 0) {
+            $this->warn("{$counts['missing']} imported dates are no longer in the official list; they were left as they are.");
+        }
 
         return self::SUCCESS;
     }
@@ -52,7 +57,8 @@ class ImportEventsCommand extends Command
         $id = $this->option('account');
 
         if (filled($id)) {
-            $account = Account::query()->find($id);
+            // Account ids are UUIDs; PostgreSQL rejects anything else in the query.
+            $account = Str::isUuid((string) $id) ? Account::query()->find($id) : null;
 
             if ($account === null) {
                 $this->error("No account with id {$id}.");

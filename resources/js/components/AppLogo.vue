@@ -31,7 +31,10 @@ const viewBox = `${LOGO_VIEW_BOX.x} ${LOGO_VIEW_BOX.y} ${LOGO_VIEW_BOX.size} ${L
     >
         <svg
             :viewBox="viewBox"
-            class="size-[1.15em] shrink-0"
+            :class="[
+                'shrink-0',
+                variant === 'full' ? 'size-[1.7em]' : 'size-[1.15em]',
+            ]"
             aria-hidden="true"
         >
             <defs>

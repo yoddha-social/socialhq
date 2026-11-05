@@ -89,3 +89,31 @@ export interface PlanLookups {
     events: Record<number, PlanEvent>;
     pillars: string[];
 }
+
+/** The metric "What worked lately" ranks posts by. */
+export type WhatWorkedMetric = 'engagement' | 'reach' | 'views';
+
+/** One past post in "What worked lately" (PastPerformance::lately). */
+export interface WhatWorkedPost {
+    id: string | number;
+    date: string;
+    platform: string;
+    content_type: string | null;
+    channel: string | null;
+    avatar_url: string | null;
+    excerpt: string | null;
+    value: number | null;
+    url: string | null;
+}
+
+/** How the brand's posts of the last 90 days did (the `whatWorked` prop). */
+export interface WhatWorked {
+    metric: WhatWorkedMetric | null;
+    best: WhatWorkedPost[];
+    weakest: WhatWorkedPost[];
+    best_format: {
+        content_type: string;
+        average: number;
+        posts: number;
+    } | null;
+}

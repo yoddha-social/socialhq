@@ -66,6 +66,22 @@ return [
         'count_of_target' => ':count of :target',
         'events_covered' => ':covered of :total confirmed events covered',
     ],
+    'lately' => [
+        'title' => 'What worked lately',
+        'period' => 'Last 90 days',
+        'best' => 'Did best',
+        'weakest' => 'Did least well',
+        'best_format' => 'Best format lately: :format (avg :average :metric)',
+        'metrics' => [
+            'engagement' => 'engagements',
+            'reach' => 'reach',
+            'views' => 'views',
+        ],
+        'open_post' => 'Open this post on the network',
+        'empty' => 'No published posts with metrics in the last 90 days yet.',
+        'failed' => 'Couldn\'t load your recent posts. Try again.',
+        'retry' => 'Try again',
+    ],
     'grid' => [
         'add_on' => 'Add an item on :day',
         'nothing_today' => 'Nothing planned today.',

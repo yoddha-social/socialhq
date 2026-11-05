@@ -31,6 +31,7 @@ import PlanTabs from '@/components/socialhq/plan/PlanTabs.vue';
 import PlanViewToggle, {
     type PlanView,
 } from '@/components/socialhq/plan/PlanViewToggle.vue';
+import PlanWhatWorkedPanel from '@/components/socialhq/plan/PlanWhatWorkedPanel.vue';
 import type {
     PlanAbilities,
     PlanChannel,
@@ -39,6 +40,7 @@ import type {
     PlanItem,
     PlanLookups,
     PlanOwner,
+    WhatWorked,
 } from '@/components/socialhq/plan/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -76,6 +78,7 @@ const props = defineProps<{
     creatives: string[];
     abilities: PlanAbilities;
     ai: { available: boolean; hourlyLimit: number };
+    whatWorked?: WhatWorked;
 }>();
 
 const VIEW_STORAGE_KEY = 'socialhq.plan.view';
@@ -578,6 +581,8 @@ const openBrandSettings = (): void => {
                     :pillars="pillars"
                     :cadence="cadence"
                 />
+
+                <PlanWhatWorkedPanel :what-worked="whatWorked" />
 
                 <div
                     class="flex min-h-[28rem] flex-1 flex-col overflow-hidden rounded-xl border border-border-strong bg-card"

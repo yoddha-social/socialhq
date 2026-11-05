@@ -6,6 +6,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import type { BriefStage } from '@/components/socialhq/plan/item/types';
 import type { BoardCardData } from '@/components/socialhq/plan/production/types';
+import type { BoardCardHandle } from '@/components/socialhq/plan/production/useProductionBoard';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,13 +23,11 @@ import { show as showItem } from '@/routes/socialhq/plan/items';
 
 const props = defineProps<{
     card: BoardCardData;
-    stages: BriefStage[];
+    /** The stages this viewer may move the card to, its own excluded. */
+    targets: BriefStage[];
     dragging: boolean;
     highlighted: boolean;
-    register: (
-        el: HTMLElement,
-        card: () => { briefId: number; stage: BriefStage },
-    ) => () => void;
+    register: (el: HTMLElement, card: () => BoardCardHandle) => () => void;
 }>();
 
 const emit = defineEmits<{
@@ -43,6 +42,7 @@ onMounted(() => {
         cleanup = props.register(root.value, () => ({
             briefId: props.card.id,
             stage: props.card.stage,
+            movable: props.targets.length > 0,
         }));
     }
 
@@ -65,10 +65,6 @@ const isOverdue = computed(
         ),
 );
 
-const otherStages = computed(() =>
-    props.stages.filter((stage) => stage !== props.card.stage),
-);
-
 const moveTo = (stage: BriefStage): void => {
     emit('move', stage);
 };
@@ -77,8 +73,9 @@ const moveTo = (stage: BriefStage): void => {
 <template>
     <li
         ref="root"
-        class="group relative cursor-grab rounded-lg border bg-card shadow-xs transition-opacity active:cursor-grabbing"
+        class="group relative rounded-lg border bg-card shadow-xs transition-opacity"
         :class="[
+            targets.length > 0 ? 'cursor-grab active:cursor-grabbing' : '',
             dragging ? 'opacity-40' : '',
             highlighted ? 'ring-2 ring-primary' : '',
         ]"
@@ -106,7 +103,7 @@ const moveTo = (stage: BriefStage): void => {
                 >
                     {{ card.title }}
                 </Link>
-                <DropdownMenu>
+                <DropdownMenu v-if="targets.length > 0">
                     <DropdownMenuTrigger as-child>
                         <Button
                             variant="ghost"
@@ -127,7 +124,7 @@ const moveTo = (stage: BriefStage): void => {
                             {{ $t('socialhq_production.board.move_to') }}
                         </DropdownMenuLabel>
                         <DropdownMenuItem
-                            v-for="stage in otherStages"
+                            v-for="stage in targets"
                             :key="stage"
                             :data-testid="`board-card-move-${card.id}-${stage}`"
                             @select="moveTo(stage)"

@@ -142,6 +142,18 @@ const { preview, registerCard, registerColumn } = useProductionBoard({
     },
 });
 
+/** Where this viewer may move a card: approvers anywhere, others around the decided stages. */
+const targetsOf = (card: BoardCardData): BriefStage[] =>
+    props.stages.filter(
+        (stage) =>
+            stage !== card.stage &&
+            (props.abilities.canApprove || !needsApprover(card.stage, stage)),
+    );
+
+/** Whether this viewer may drop cards into a column at all. */
+const acceptsDrops = (stage: BriefStage): boolean =>
+    props.abilities.canApprove || !DECIDED.includes(stage);
+
 const moveWithMenu = (card: BoardCardData, stage: BriefStage): void => {
     void applyMove(card.id, card.stage, stage, columnCards(stage).length);
 };
@@ -168,7 +180,9 @@ onMounted(() => {
         const list = listEls.get(stage);
 
         if (column && list) {
-            cleanups.push(registerColumn(column, list, stage));
+            cleanups.push(
+                registerColumn(column, list, stage, () => acceptsDrops(stage)),
+            );
         }
     });
 });
@@ -341,6 +355,17 @@ const monthLabel = (month: string): string =>
             data-testid="production-board"
         >
             <p
+                v-if="!abilities.canApprove && approverNames.length > 0"
+                class="mb-4 text-sm text-muted-foreground"
+                data-testid="board-approvers-note"
+            >
+                {{
+                    $t('socialhq_production.board.approvers_note', {
+                        names: approverNames.join(', '),
+                    })
+                }}
+            </p>
+            <p
                 v-if="cards.length === 0"
                 class="mb-4 text-sm text-muted-foreground"
                 data-testid="board-no-results"
@@ -396,7 +421,7 @@ const monthLabel = (month: string): string =>
                             <BoardCard
                                 v-else
                                 :card="row.card"
-                                :stages="stages"
+                                :targets="targetsOf(row.card)"
                                 :dragging="preview?.briefId === row.card.id"
                                 :highlighted="highlight === row.card.id"
                                 :register="registerCard"

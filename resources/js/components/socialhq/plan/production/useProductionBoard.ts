@@ -23,6 +23,13 @@ export interface BoardDragPreview {
 
 type DragData = Record<string | symbol, unknown>;
 
+/** A card as the board sees it; `movable: false` keeps it from being dragged. */
+export interface BoardCardHandle {
+    briefId: number;
+    stage: BriefStage;
+    movable?: boolean;
+}
+
 const CARD_KEY = 'productionBoardCard';
 const COLUMN_KEY = 'productionBoardColumn';
 
@@ -45,14 +52,12 @@ export const useProductionBoard = (options: {
     ) => void;
 }): {
     preview: Ref<BoardDragPreview | null>;
-    registerCard: (
-        el: HTMLElement,
-        card: () => { briefId: number; stage: BriefStage },
-    ) => () => void;
+    registerCard: (el: HTMLElement, card: () => BoardCardHandle) => () => void;
     registerColumn: (
         el: HTMLElement,
         list: HTMLElement,
         stage: BriefStage,
+        accepts?: () => boolean,
     ) => () => void;
 } => {
     const preview = ref<BoardDragPreview | null>(null);
@@ -142,13 +147,18 @@ export const useProductionBoard = (options: {
 
     const registerCard = (
         el: HTMLElement,
-        card: () => { briefId: number; stage: BriefStage },
+        card: () => BoardCardHandle,
     ): (() => void) => {
         el.dataset.sortableBrief = String(card().briefId);
 
         const cleanup = draggable({
             element: el,
-            getInitialData: () => ({ [CARD_KEY]: true, ...card() }),
+            canDrag: () => card().movable !== false,
+            getInitialData: () => {
+                const { briefId, stage } = card();
+
+                return { [CARD_KEY]: true, briefId, stage };
+            },
         });
 
         return () => {
@@ -161,12 +171,13 @@ export const useProductionBoard = (options: {
         el: HTMLElement,
         list: HTMLElement,
         stage: BriefStage,
+        accepts: () => boolean = () => true,
     ): (() => void) => {
         lists.set(stage, list);
 
         const cleanup = dropTargetForElements({
             element: el,
-            canDrop: ({ source }) => isCard(source.data),
+            canDrop: ({ source }) => isCard(source.data) && accepts(),
             getData: () => ({ [COLUMN_KEY]: true, stage }),
         });
 

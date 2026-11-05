@@ -205,6 +205,7 @@ return [
         'move_card' => 'Move :title',
         'moved' => 'Moved to :stage.',
         'move_failed' => 'Couldn\'t move the card. Try again.',
+        'approvers_note' => 'Only :names can move cards into or out of Approved and Changes requested.',
         'errors' => [
             'approvers_only' => 'Only approvers can approve a creative or ask for changes, so only they move cards into or out of Approved and Changes requested: :names.',
             'review_needs_files' => 'To send this creative for review, upload the files for a new round first.',

@@ -58,19 +58,20 @@ class ContentPlanner implements Agent, HasStructuredOutput
     {
         return [
             'summary' => $schema->string()->required(),
-            // Only what an item can't do without is required: a model may leave out pillar,
-            // event_key, objective and angle (some providers refuse an answer that omits a
-            // required key, even a nullable one); the job reads a missing one as null.
+            // Every key is required and none is nullable: providers with strict structured
+            // output (Groq) refuse a schema that leaves a key out of `required`, and some
+            // models drop a nullable key altogether. An empty string means "none"; the job
+            // reads it (or a missing key) as null.
             'items' => $schema->array()->max(self::MAX_ITEMS)->items($schema->object([
                 'date' => $schema->string()->required(),
+                'event_key' => $schema->string()->description('The event\'s key, or "" when the post is not about an event.')->required(),
                 'channel' => $schema->string()->required(),
                 'content_type' => $schema->string()->required(),
                 'creative' => $schema->string()->enum(array_map(fn (CreativeKind $kind): string => $kind->value, CreativeKind::cases()))->required(),
                 'title' => $schema->string()->required(),
-                'pillar' => $schema->string()->nullable(),
-                'objective' => $schema->string()->nullable(),
-                'angle' => $schema->string()->nullable(),
-                'event_key' => $schema->string()->nullable(),
+                'pillar' => $schema->string()->description('One of the pillars, or "" when there are none.')->required(),
+                'objective' => $schema->string()->required(),
+                'angle' => $schema->string()->required(),
             ])->withoutAdditionalProperties())->required(),
         ];
     }

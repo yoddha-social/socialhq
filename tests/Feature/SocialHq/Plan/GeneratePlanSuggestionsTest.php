@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\User\Locale;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\SocialAccount;
@@ -18,7 +19,6 @@ use App\SocialHq\Plan\ItemSource;
 use App\SocialHq\Plan\ItemStatus;
 use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Plan\PlanStatus;
-use App\Enums\User\Locale;
 use Carbon\CarbonImmutable;
 use Illuminate\JsonSchema\JsonSchemaTypeFactory;
 use Illuminate\Support\Facades\Exceptions;
@@ -352,11 +352,11 @@ test('the job holds the AI to the cadence, the formats, the event dates and the 
         ]);
 });
 
-test('the planner schema requires only what an item cannot do without', function () {
+test('the planner schema lists every key as required, as strict providers want', function () {
     $schema = (new ContentPlanner(Locale::DEFAULT))->schema(new JsonSchemaTypeFactory);
     $item = data_get($schema['items']->toArray(), 'items');
 
-    expect($item['required'])->toEqualCanonicalizing(['date', 'channel', 'content_type', 'creative', 'title']);
+    expect($item['required'])->toEqualCanonicalizing(['date', 'channel', 'content_type', 'creative', 'title', 'pillar', 'objective', 'angle', 'event_key']);
 });
 
 test('an answer without items is logged with who answered and how it stopped', function () {

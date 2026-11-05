@@ -113,8 +113,12 @@ other 15 locales.
 
 ## Branding
 
-The app, its emails and its MCP server are called Social HQ, with our own mark
-(`AppLogo.vue`, `public/favicon.svg`, `public/images/socialhq/`). `APP_NAME`
+The app, its emails and its MCP server are called Social HQ, with our own mark:
+an S and a rising arrow in a hexagon, navy to teal. Its shape and colours live
+in `resources/js/components/socialhq/logo.ts` (used by `AppLogo.vue` and the
+share card); `public/images/socialhq/logo.svg` and `public/favicon.svg` are the
+same mark as files, and the PNGs (favicon, touch icon, email header, MCP icon)
+are rendered from it. `APP_NAME`
 (runtime) and `VITE_APP_NAME` (image build) default to "Social HQ". TryPost's
 name stays where it is credit or code: the license, the source link, class names,
 `trypost.*` config keys, the `/mcp/trypost` URL and the "Setup guides" links,

@@ -1,11 +1,25 @@
 <script setup lang="ts">
+import { useId } from 'vue';
+
+import {
+    LOGO_DOT,
+    LOGO_GRADIENT,
+    LOGO_PATH,
+    LOGO_VIEW_BOX,
+} from '@/components/socialhq/logo';
+
 withDefaults(
     defineProps<{
-        /** `full` is the mark and the "Social HQ" wordmark, `mark` the round mark alone. */
+        /** `full` is the mark and the "Social HQ" wordmark, `mark` the mark alone. */
         variant?: 'full' | 'mark';
     }>(),
     { variant: 'full' },
 );
+
+// Each logo on the page needs its own gradient id: a shared one breaks
+// when the first logo using it is hidden.
+const gradientId = `socialhq-mark-${useId()}`;
+const viewBox = `${LOGO_VIEW_BOX.x} ${LOGO_VIEW_BOX.y} ${LOGO_VIEW_BOX.size} ${LOGO_VIEW_BOX.size}`;
 </script>
 
 <template>
@@ -16,18 +30,33 @@ withDefaults(
         data-testid="app-logo"
     >
         <svg
-            viewBox="0 0 410 410"
-            class="size-[1.15em] shrink-0 [clip-path:circle(50%)]"
+            :viewBox="viewBox"
+            class="size-[1.15em] shrink-0"
             aria-hidden="true"
         >
-            <rect width="410" height="410" fill="#4338CA" />
-            <path
-                d="M135 105H275A45 45 0 0 1 320 150V230A45 45 0 0 1 275 275H180L120 325V272.4A45 45 0 0 1 90 230V150A45 45 0 0 1 135 105Z"
-                fill="#FFFFFF"
-            />
-            <path
-                d="M173 190a18 18 0 1 1-36 0a18 18 0 1 1 36 0ZM223 190a18 18 0 1 1-36 0a18 18 0 1 1 36 0ZM273 190a18 18 0 1 1-36 0a18 18 0 1 1 36 0Z"
-                fill="#4338CA"
+            <defs>
+                <linearGradient
+                    :id="gradientId"
+                    :x1="LOGO_GRADIENT.from.x"
+                    :y1="LOGO_GRADIENT.from.y"
+                    :x2="LOGO_GRADIENT.to.x"
+                    :y2="LOGO_GRADIENT.to.y"
+                    gradientUnits="userSpaceOnUse"
+                >
+                    <stop
+                        v-for="stop in LOGO_GRADIENT.stops"
+                        :key="stop.offset"
+                        :offset="stop.offset"
+                        :stop-color="stop.color"
+                    />
+                </linearGradient>
+            </defs>
+            <path :d="LOGO_PATH" :fill="`url(#${gradientId})`" />
+            <circle
+                :cx="LOGO_DOT.cx"
+                :cy="LOGO_DOT.cy"
+                :r="LOGO_DOT.r"
+                :fill="LOGO_DOT.color"
             />
         </svg>
         <span v-if="variant === 'full'" aria-hidden="true">Social HQ</span>

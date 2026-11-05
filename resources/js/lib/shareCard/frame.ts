@@ -1,3 +1,4 @@
+import { LOGO_DOT, LOGO_GRADIENT, LOGO_PATH, LOGO_VIEW_BOX } from '@/components/socialhq/logo';
 import { ink, muted, surface } from '@/lib/shareCard/colors';
 import { paintChange } from '@/lib/shareCard/draw';
 import { ellipsise, writeText } from '@/lib/shareCard/text';
@@ -103,31 +104,25 @@ export const paintPanel = (context: CanvasRenderingContext2D): Box => {
     return panel;
 };
 
-/** The grid the logo's paths are drawn on. */
-const LOGO_GRID = 410;
-
-/** The Social HQ mark of `AppLogo.vue`: a speech bubble on the brand colour. */
+/** The Social HQ mark of `AppLogo.vue`, painted from the same path and gradient. */
 const paintLogo = (context: CanvasRenderingContext2D, at: Point, size: number): void => {
-    const shapes: [string, string][] = [
-        ['M0 0H410V410H0Z', '#4338CA'],
-        ['M135 105H275A45 45 0 0 1 320 150V230A45 45 0 0 1 275 275H180L120 325V272.4A45 45 0 0 1 90 230V150A45 45 0 0 1 135 105Z', '#FFFFFF'],
-        ['M173 190a18 18 0 1 1-36 0a18 18 0 1 1 36 0ZM223 190a18 18 0 1 1-36 0a18 18 0 1 1 36 0ZM273 190a18 18 0 1 1-36 0a18 18 0 1 1 36 0Z', '#4338CA'],
-    ];
+    const scale = size / LOGO_VIEW_BOX.size;
+    const gradient = context.createLinearGradient(LOGO_GRADIENT.from.x, LOGO_GRADIENT.from.y, LOGO_GRADIENT.to.x, LOGO_GRADIENT.to.y);
 
-    context.save();
-    context.beginPath();
-    context.arc(at.x + size / 2, at.y + size / 2, size / 2, 0, Math.PI * 2);
-    context.clip();
-    context.fillStyle = surface();
-    context.fillRect(at.x, at.y, size, size);
-    context.translate(at.x, at.y);
-    context.scale(size / LOGO_GRID, size / LOGO_GRID);
-
-    for (const [path, color] of shapes) {
-        context.fillStyle = color;
-        context.fill(new Path2D(path));
+    for (const stop of LOGO_GRADIENT.stops) {
+        gradient.addColorStop(stop.offset, stop.color);
     }
 
+    context.save();
+    context.translate(at.x, at.y);
+    context.scale(scale, scale);
+    context.translate(-LOGO_VIEW_BOX.x, -LOGO_VIEW_BOX.y);
+    context.fillStyle = gradient;
+    context.fill(new Path2D(LOGO_PATH));
+    context.beginPath();
+    context.arc(LOGO_DOT.cx, LOGO_DOT.cy, LOGO_DOT.r, 0, Math.PI * 2);
+    context.fillStyle = LOGO_DOT.color;
+    context.fill();
     context.restore();
 };
 

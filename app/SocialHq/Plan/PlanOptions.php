@@ -10,6 +10,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Events\CalendarEvent;
+use App\SocialHq\Events\EventsForMonth;
 use App\SocialHq\Knowledge\BrandProfile;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -115,17 +116,12 @@ final class PlanOptions
     }
 
     /**
-     * The swap point for App\SocialHq\Events\EventsForMonth (built by the events lane).
+     * The brand's events overlapping the range (shared and brand-only), oldest first.
      *
      * @return Collection<int, CalendarEvent>
      */
     private static function eventsBetween(Workspace $workspace, CarbonImmutable $from, CarbonImmutable $to): Collection
     {
-        return CalendarEvent::query()
-            ->visibleTo($workspace)
-            ->overlapping($from->toDateString(), $to->toDateString())
-            ->orderBy('starts_on')
-            ->orderBy('name')
-            ->get();
+        return EventsForMonth::forWorkspace($workspace, $from, $to);
     }
 }

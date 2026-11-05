@@ -17,6 +17,7 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 
 class GitHubController extends Controller
@@ -50,7 +51,7 @@ class GitHubController extends Controller
         }
 
         $user = User::where('github_id', (string) $githubUser->getId())
-            ->when($githubUser->getEmail(), fn ($query, $email) => $query->orWhere('email', $email))
+            ->when($githubUser->getEmail(), fn ($query, $email) => $query->orWhere('email', Str::lower($email)))
             ->first();
 
         if ($user) {
@@ -119,7 +120,7 @@ class GitHubController extends Controller
 
         $user = CreateUser::execute([
             'name' => $githubUser->getName() ?? $githubUser->getNickname() ?? explode('@', $githubUser->getEmail())[0],
-            'email' => $githubUser->getEmail(),
+            'email' => Str::lower((string) $githubUser->getEmail()),
             'github_id' => (string) $githubUser->getId(),
             'email_verified_at' => now(),
             'is_invite' => $invite !== null,

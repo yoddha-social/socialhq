@@ -15,7 +15,9 @@ use App\SocialHq\Approval\RecordApprovalEvents;
 use App\SocialHq\Http\Middleware\RedirectWhileAwaitingAccess;
 use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Signup\AccessRequests;
+use App\SocialHq\Signup\PasswordResetProof;
 use App\SocialHq\Signup\SignupRules;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -62,6 +64,7 @@ class SocialHqServiceProvider extends ServiceProvider
         // GitHub sign-ups arrive confirmed).
         Event::listen(Registered::class, fn (Registered $event) => $event->user instanceof User ? AccessRequests::notifyAdmins($event->user) : null);
         Event::listen(Verified::class, fn (Verified $event) => $event->user instanceof User ? AccessRequests::notifyAdmins($event->user) : null);
+        Event::listen(PasswordReset::class, fn (PasswordReset $event) => $event->user instanceof User ? PasswordResetProof::handle($event->user) : null);
 
         // Someone waiting for access who gets a workspace another way (an invite) is let in.
         User::updated(fn (User $user) => $user->wasChanged('current_workspace_id') ? AccessRequests::closeOnceJoined($user) : null);

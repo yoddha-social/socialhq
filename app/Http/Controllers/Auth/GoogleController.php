@@ -17,6 +17,7 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 
 class GoogleController extends Controller
@@ -48,7 +49,7 @@ class GoogleController extends Controller
         }
 
         $user = User::where('google_id', $googleUser->getId())
-            ->orWhere('email', $googleUser->getEmail())
+            ->orWhere('email', Str::lower((string) $googleUser->getEmail()))
             ->first();
 
         // Social HQ: an address Google hasn't verified proves nothing (PATCHES.md row 41).
@@ -118,7 +119,7 @@ class GoogleController extends Controller
 
         $user = CreateUser::execute([
             'name' => $googleUser->getName(),
-            'email' => $googleUser->getEmail(),
+            'email' => Str::lower((string) $googleUser->getEmail()),
             'google_id' => $googleUser->getId(),
             'email_verified_at' => now(),
             'is_invite' => $invite !== null,

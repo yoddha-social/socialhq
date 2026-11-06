@@ -51,3 +51,18 @@ Ideas outside tonight's scope, for you to decide on. Nothing here is built.
   `storage/app/private` is on a persistent volume (or move it to a private R2 bucket).
 - **Calendar drag and drop** on the plan grid (the move endpoint exists; the UI uses the
   date field in the side sheet).
+
+## Brand knowledge (added 2026-11-06)
+- **Bikram Sambat dates in old calendars** are skipped with a message asking for AD
+  dates. Converting them needs a verified BS↔AD month-length table (the official
+  calendar), never computed or guessed. Worth adding if the team's sheets are in BS.
+- **Scanned PDFs** fail with "no text found". OCR (Tesseract in the image, or the
+  `vision` AI task) would read them; both add cost or image size.
+- **Embeddings for search**: today's search matches words (BM25, Nepali works), so
+  "cost" doesn't find "price" and English doesn't find Nepali. Once an embedding model
+  is picked (with pgvector and the paid key), bind a blended search in place of
+  `LexicalKnowledgeSearch`; nothing else changes.
+- **Company-wide knowledge**: knowledge is per workspace (brand). If several brands
+  share company facts, a shared account-level section would save copying them.
+- **Old calendars and "What worked lately"**: the panel on the month page reads only
+  posts published through the app; it could include imported rows with metrics too.

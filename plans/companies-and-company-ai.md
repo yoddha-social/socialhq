@@ -31,6 +31,20 @@ company brings its own AI provider keys; ours keeps the platform keys.
   platform's only when `uses_platform_ai` is on; otherwise AI features say how to
   set it up.
 
+As built (2026-11-06), checked live against LiteLLM v1.106.7:
+- Credentials, teams, team keys and `/health/test_connection` need no licence;
+  `/model/new` needs `store_model_in_db: true`. **Team-scoped models
+  (`model_info.team_id`) need LiteLLM Enterprise**, so each company's
+  deployments are global groups `shq-<task>@shq-co-<account>` and its team's
+  `models` list lets only its own key call them (verified: the team key gets 403
+  on `shq-write`, the platform key 403 on a company group).
+- Provider order is the deployments' `order` in each group (verified: a failing
+  first deployment falls over to the second).
+- The app holds a management key (`LITELLM_ADMIN_KEY`: a `proxy_admin` user's
+  key limited by `allowed_routes`), not the master key. Limit found: a key
+  allowed `/key/generate` can mint an unrestricted key for its own admin user,
+  so a stolen one is admin-equivalent; it is still revocable on its own.
+
 ## Step 3 (later): bring your own social apps
 Per-company Meta (and YouTube, X) app credentials so a company publishes through
 its own app until our app passes App Review. See the answer in the session notes.

@@ -63,6 +63,10 @@ Change a TryPost file when that is the right place, and add a row.
 | 80 | `composer.json`, `composer.lock` | Adds `openspout/openspout` (CSV and XLSX reading) and `smalot/pdfparser` (PDF text), both pure PHP | Brand knowledge: importing old calendars from spreadsheets and reading uploaded documents |
 | 81 | `tests/fixtures/single-line-copy.php` | Budgets for the old calendars' buttons (`socialhq_calendars.*`), at their English length (7 lines) | `SingleLineCopyTest` keeps them on one line once they are translated |
 | 84 | `tests/fixtures/single-line-copy.php` | Budgets for the brand knowledge documents' single-line labels (buttons, status badges in `socialhq_knowledge`), at their English length (12 lines) | `SingleLineCopyTest` keeps them on one line once they are translated |
+| 93 | `app/Services/Repurpose/CaptionAdapter.php` | The shortening call runs inside `AiTenant::run($workspace, ...)` (1 line + import) | Company AI: the repurpose job has no signed-in user, so the workspace decides whose LiteLLM key it uses; without it the call fails closed |
+| 94 | `resources/js/composables/useSettingsNavigation.ts` | An "AI" item (Settings › AI) after Billing for the owner of an approved company (`socialhq.companyAi.canManage`; 15 lines + 2 imports) | Company AI: each company manages its own AI providers |
+| 95 | `.env.example` | `LITELLM_ADMIN_KEY`, `LITELLM_ADMIN_URL`, `SOCIALHQ_SECRETS_KEY`, `SOCIALHQ_SECRETS_PREVIOUS_KEYS` (8 lines) | Company AI settings |
+| 96 | `tests/fixtures/single-line-copy.php` | Budgets for Settings › AI's buttons, menu items and badges (`socialhq_ai.*`), at their English length (14 lines) | `SingleLineCopyTest` keeps them on one line once they are translated |
 
 Files we **added** aren't listed here; they're under the module paths in
 SOCIALHQ.md, plus `config/socialhq.php`, `routes/socialhq.php`, `CLAUDE.md`,

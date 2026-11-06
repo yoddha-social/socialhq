@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\SocialHq\Ai;
 
+use App\Models\Account;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Str;
@@ -23,7 +24,8 @@ class AiRoutesCommand extends Command
 {
     protected $signature = 'socialhq:ai-routes
         {--live : Send a small request through each text, vision and embedding task}
-        {--images : With --live, also generate one image (may cost money)}';
+        {--images : With --live, also generate one image (may cost money)}
+        {--account= : Route as this company (its account id) instead of the platform}';
 
     protected $description = 'Show the AI route of every task, optionally checking each one live';
 
@@ -32,7 +34,26 @@ class AiRoutesCommand extends Command
 
     public function handle(): int
     {
-        $this->line('Gateway: '.(AiRouter::usesGateway() ? 'litellm' : 'direct'));
+        $accountId = $this->option('account');
+
+        if (blank($accountId)) {
+            return AiTenant::run(AiTenant::PLATFORM, fn (): int => $this->show());
+        }
+
+        $account = Account::query()->find($accountId);
+
+        if ($account === null) {
+            $this->error('No account has that id.');
+
+            return self::FAILURE;
+        }
+
+        return AiTenant::run($account, fn (): int => $this->show());
+    }
+
+    private function show(): int
+    {
+        $this->line('Gateway: '.(AiRouter::usesGateway() ? 'litellm' : 'direct').', as '.(filled($this->option('account')) ? "account {$this->option('account')}" : 'the platform'));
 
         $rows = [];
 

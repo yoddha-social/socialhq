@@ -21,11 +21,6 @@ Change a TryPost file when that is the right place, and add a row.
 | 11 | `resources/js/components/members/MemberAccessFields.vue` | Shows `socialhq/MembersReviewedNote.vue` instead of the publishing choice when members are always reviewed (about 8 lines) | The choice no longer applies |
 | 12 | `phpunit.xml` | Turns our approval rules off for the test run (2 lines) | Upstream's tests expect TryPost's rules; ours switch them on |
 | 13 | `resources/js/components/posts/composer/MediaSourceMenu.vue` | Adds `socialhq/AiGraphicMenuItem.vue` under "Upload from computer" and `socialhq/AiGraphicDialog.vue` after the menu (9 lines) | "Generate with AI" graphics in the media menu of ideas and posts |
-| 20 | `app/Actions/User/CreateUser.php` | A sign-up allowed by `SignupRules` joins the team's account with no workspace and opens an access request, instead of getting an account of its own (about 12 lines) | Self sign-up with company emails, let in by an admin (rows 13 to 19 are in the AI branches) |
-| 21 | `app/Http/Requests/App/Auth/RegisterRequest.php` | Without an invite (posted or in the session), refuses emails `SignupRules` doesn't allow (5 lines) | Same |
-| 22 | `app/Http/Middleware/App/EnsureRegistrationEnabled.php` | Lets registration through on a self-hosted install when sign-up is open (1 line) | Same |
-| 23 | `app/Http/Controllers/Auth/Concerns/PreservesInvite.php` | Google and GitHub sign-ups follow the same allow list (6 lines) | Same |
-| 24 | `resources/js/pages/auth/Login.vue` | Shows the sign-up link when sign-up is open (4 lines) | Same |
 | 13 | `resources/js/components/posts/composer/MediaSourceMenu.vue` | Adds `socialhq/AiGraphicMenuItem.vue` under "Upload from computer" and `socialhq/AiGraphicDialog.vue` after the menu (9 lines) | "Generate with AI" graphics in the media menu of ideas and posts (rows 8–12 are in the approval-gate branch) |
 | 14 | `composer.json` | Removes `boost:update` from `post-update-cmd` (1 line) | It rewrote AGENTS.md and the Boost skills on every `composer update`, undoing our edits. Run it by hand and review the diff |
 | 15 | `app/Ai/Agents/IdeaGenerator.php`, `MediaAltTextGenerator.php`, `PostContentShortener.php`, `PostWritingAssistant.php` | `use UsesAiTask;` and an `aiTask()` method naming the agent's AI task (about 10 lines each) | `App\SocialHq\Ai\AiRouter` picks the providers per task: the LiteLLM model group, or the direct route, approved providers only |
@@ -75,8 +70,6 @@ Change a TryPost file when that is the right place, and add a row.
 | 93 | `.github/workflows/release-docker.yml` | Deleted | TryPost's own image release; ours is `socialhq-image.yml` |
 | 94 | `tests/Browser/CalendarDragAndDropTest.php` | "The hour under way" test uses the app's five-minute rule and accepts either outcome in the minute when the page's clock may differ (8 lines) | It used six minutes, so it failed whenever it ran in minute :54 of an hour |
 | 95 | `tests/Browser/{SidebarMenu,SidebarLanguageSwitch,WelcomeMcp,McpSettings,ComposerMediaSources,AuthLanguageSwitcher,InsightsShareChart}Test.php` | Expect the Social HQ name, share card file name and support links (17 lines) | The rebrand changed that copy; the tests still asserted TryPost's |
-| 4 | `app/Ai/Agents/{IdeaGenerator,MediaAltTextGenerator,PostContentShortener,PostWritingAssistant}.php` | `#[Temperature(x)]` replaced by `use UsesModelSafeTemperature` plus `preferredTemperature()` returning the same value | Claude 5 models reject `temperature`, which broke every AI feature. Candidate for an upstream PR |
-| 5 | `app/Support/Timezone.php` | `normalize()` asks ICU for an alias's canonical name without first requiring it in PHP's legacy tz list | Without the legacy tz database (Ubuntu's tzdata-legacy), every legacy alias became UTC; this also kept CI red. Proposed upstream (trypostit/trypost#478) |
 
 Files we **added** aren't listed here; they're under the module paths in
 SOCIALHQ.md, plus `config/socialhq.php`, `routes/socialhq.php`, `CLAUDE.md`,

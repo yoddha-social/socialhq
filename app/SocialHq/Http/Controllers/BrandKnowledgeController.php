@@ -11,6 +11,7 @@ use App\SocialHq\Http\Requests\UpdateBrandProfileRequest;
 use App\SocialHq\Http\Requests\UpdateKnowledgeEntryRequest;
 use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\BrandProfile;
+use App\SocialHq\Knowledge\Calendars\OldCalendars;
 use App\SocialHq\Knowledge\KnowledgeEntry;
 use App\SocialHq\Knowledge\KnowledgeKind;
 use App\SocialHq\Plan\PlanOptions;
@@ -63,6 +64,7 @@ class BrandKnowledgeController extends Controller
             'planChannels' => $channels->map(PlanPage::channel(...))->values()->all(),
             'kinds' => array_map(fn (KnowledgeKind $kind): string => $kind->value, KnowledgeKind::cases()),
             'canEdit' => BrandKnowledge::canEdit($request->user(), $workspace),
+            'pastCalendars' => OldCalendars::forPage($workspace),
         ]);
     }
 

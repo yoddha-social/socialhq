@@ -16,6 +16,8 @@ use App\SocialHq\Events\ImportEventsCommand;
 use App\SocialHq\Http\Controllers\Plan\PlanGenerationController;
 use App\SocialHq\Http\Middleware\RedirectWhileAwaitingAccess;
 use App\SocialHq\Knowledge\BrandKnowledge;
+use App\SocialHq\Knowledge\Calendars\CalendarStorage;
+use App\SocialHq\Knowledge\Calendars\PruneCalendarUploadsCommand;
 use App\SocialHq\Production\BriefStorage;
 use App\SocialHq\Signup\AccessRequests;
 use App\SocialHq\Signup\PasswordResetProof;
@@ -24,6 +26,7 @@ use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
@@ -55,7 +58,7 @@ class SocialHqServiceProvider extends ServiceProvider
         Event::listen(ApprovedProvidersGuard::EVENTS, [ApprovedProvidersGuard::class, 'handle']);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiRoutesCommand::class, ImportEventsCommand::class]);
+            $this->commands([AiRoutesCommand::class, ImportEventsCommand::class, PruneCalendarUploadsCommand::class]);
         }
 
         Route::middleware('web')->group(base_path('routes/socialhq.php'));
@@ -108,6 +111,11 @@ class SocialHqServiceProvider extends ServiceProvider
 
         // Brief files go with the brief, its item or its plan (rows cascade, files don't).
         BriefStorage::registerCleanup();
+
+        // Old calendar uploads: the file goes with its import or its brand, and
+        // uploads never imported go after a day.
+        CalendarStorage::registerCleanup();
+        $this->callAfterResolving(Schedule::class, fn (Schedule $schedule) => $schedule->command(PruneCalendarUploadsCommand::class)->hourly()->withoutOverlapping());
 
         // One share for the whole module: a second Inertia::share('socialhq') would replace this one.
         Inertia::share('socialhq', fn (): array => [

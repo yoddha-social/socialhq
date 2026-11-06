@@ -120,6 +120,13 @@ return [
     'knowledge' => [
         'prompt_characters' => (int) env('SOCIALHQ_KNOWLEDGE_PROMPT_CHARACTERS', 6000),
         'max_entries' => (int) env('SOCIALHQ_KNOWLEDGE_MAX_ENTRIES', 300),
+        // Old calendars (CSV or XLSX) imported as past posts for the AI planner.
+        // An upload never confirmed is deleted after a day.
+        'calendars' => [
+            'max_file_megabytes' => (int) env('SOCIALHQ_CALENDAR_MAX_FILE_MB', 5),
+            'max_rows' => (int) env('SOCIALHQ_CALENDAR_MAX_ROWS', 5000),
+            'max_imports' => (int) env('SOCIALHQ_CALENDAR_MAX_IMPORTS', 50),
+        ],
     ],
 
     /*

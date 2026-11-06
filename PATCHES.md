@@ -60,6 +60,7 @@ Change a TryPost file when that is the right place, and add a row.
 | 62 | `resources/js/components/publish/CalendarMonthGrid.vue` | `CalendarEventMarkers` next to each day number (the number and markers share a wrapper; 9 lines + 1 import) | Same |
 | 63 | `resources/js/components/publish/CalendarTimeGrid.vue` | `CalendarEventMarkers` beside the day number in each column header, week and days views; the number's span wraps both so the header keeps its height (4 lines + 1 import) | Same |
 | 75 | `tests/fixtures/single-line-copy.php` | Budgets for the planning layer's single-line labels (buttons, tabs, badges, menu items in `socialhq_plan`, `socialhq_events`, `socialhq_production`), at their English length (124 lines) | `SingleLineCopyTest` keeps them on one line once they are translated |
+| 80 | `composer.json`, `composer.lock` | Adds `openspout/openspout` (CSV and XLSX reading) and `smalot/pdfparser` (PDF text), both pure PHP | Brand knowledge: importing old calendars from spreadsheets and reading uploaded documents |
 
 Files we **added** aren't listed here; they're under the module paths in
 SOCIALHQ.md, plus `config/socialhq.php`, `routes/socialhq.php`, `CLAUDE.md`,

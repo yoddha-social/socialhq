@@ -54,6 +54,9 @@ const form = useForm({
     pinned: false,
 });
 
+/** An example post: the body is the post itself, read for its tone. */
+const isExample = computed(() => form.kind === 'example_post');
+
 /** Errors by key, including "limit", which belongs to no field. */
 const errors = computed(
     () => form.errors as Partial<Record<EntryField | 'limit', string>>,
@@ -173,9 +176,13 @@ const submit = (): void => {
                         v-model="form.title"
                         v-bind="errorAttributes('title')"
                         :placeholder="
-                            $t(
-                                'socialhq.brand.entries.dialog.title_placeholder',
-                            )
+                            isExample
+                                ? $t(
+                                      'socialhq.brand.entries.dialog.example_title_placeholder',
+                                  )
+                                : $t(
+                                      'socialhq.brand.entries.dialog.title_placeholder',
+                                  )
                         "
                         data-testid="socialhq-knowledge-title"
                     />
@@ -190,7 +197,13 @@ const submit = (): void => {
 
                 <div class="flex flex-col gap-2">
                     <Label for="socialhq-knowledge-body">
-                        {{ $t('socialhq.brand.entries.dialog.body') }}
+                        {{
+                            isExample
+                                ? $t(
+                                      'socialhq.brand.entries.dialog.example_body',
+                                  )
+                                : $t('socialhq.brand.entries.dialog.body')
+                        }}
                     </Label>
                     <Textarea
                         id="socialhq-knowledge-body"
@@ -198,7 +211,13 @@ const submit = (): void => {
                         v-bind="errorAttributes('body')"
                         rows="6"
                         :placeholder="
-                            $t('socialhq.brand.entries.dialog.body_placeholder')
+                            isExample
+                                ? $t(
+                                      'socialhq.brand.entries.dialog.example_body_placeholder',
+                                  )
+                                : $t(
+                                      'socialhq.brand.entries.dialog.body_placeholder',
+                                  )
                         "
                         data-testid="socialhq-knowledge-body"
                     />

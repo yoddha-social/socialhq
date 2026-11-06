@@ -29,6 +29,8 @@ final class BrandKnowledge
 
     private const ENTRIES_HEADING = 'What to know:';
 
+    private const EXAMPLES_HEADING = "Example posts in the brand's voice (match their tone and style; don't reuse their facts, prices or dates):";
+
     private const ELLIPSIS = '…';
 
     public static function canEdit(User $user, Workspace $workspace): bool
@@ -61,8 +63,8 @@ final class BrandKnowledge
         [$profileText, $profileTrimmed] = self::profileSection($workspace, intdiv($budget, 2));
         $used = self::size($profileText);
 
-        // The heading, and the blank line after the profile, come out of the entries' room.
-        $room = $budget - $used - self::size(self::ENTRIES_HEADING) - ($profileText === '' ? 0 : 2);
+        // Both headings, and the blank lines between sections, come out of the entries' room.
+        $room = $budget - $used - self::size(self::ENTRIES_HEADING) - self::size(self::EXAMPLES_HEADING) - 4;
 
         $entries = KnowledgeEntry::query()
             ->where('workspace_id', $workspace->id)
@@ -71,6 +73,7 @@ final class BrandKnowledge
             ->get(['id', 'kind', 'title', 'body']);
 
         $facts = [];
+        $examples = [];
         $fits = [];
         $left = $room;
 
@@ -84,12 +87,21 @@ final class BrandKnowledge
                 $fits[$entry->id] = PromptFit::NoRoom;
             } else {
                 $fits[$entry->id] = PromptFit::Included;
-                $facts[] = $fact;
                 $left -= $cost;
+
+                if ($entry->kind->isExample()) {
+                    $examples[] = $fact;
+                } else {
+                    $facts[] = $fact;
+                }
             }
         }
 
-        $sections = array_filter([$profileText, $facts === [] ? '' : self::ENTRIES_HEADING."\n".implode("\n", $facts)]);
+        $sections = array_filter([
+            $profileText,
+            $facts === [] ? '' : self::ENTRIES_HEADING."\n".implode("\n", $facts),
+            $examples === [] ? '' : self::EXAMPLES_HEADING."\n".implode("\n", $examples),
+        ]);
         $text = implode("\n\n", $sections);
 
         return new KnowledgePrompt($text, self::size($text), $budget, $profileTrimmed, $fits);
@@ -220,6 +232,10 @@ final class BrandKnowledge
     {
         $title = self::clean($entry->title);
         $body = str_replace("\n", "\n  ", self::clean($entry->body));
+
+        if ($entry->kind->isExample()) {
+            return "- {$title}\n  {$body}";
+        }
 
         return "- {$entry->kind->promptLabel()}: {$title}\n  {$body}";
     }

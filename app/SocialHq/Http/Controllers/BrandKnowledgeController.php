@@ -13,6 +13,8 @@ use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Knowledge\KnowledgeEntry;
 use App\SocialHq\Knowledge\KnowledgeKind;
+use App\SocialHq\Plan\PlanOptions;
+use App\SocialHq\Plan\PlanPage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -31,6 +33,7 @@ class BrandKnowledgeController extends Controller
         $workspace = $this->workspace($request, edit: false);
         $profile = BrandProfile::query()->where('workspace_id', $workspace->id)->first();
         $prompt = BrandKnowledge::assemble($workspace);
+        $channels = PlanOptions::channels($workspace);
 
         return Inertia::render('socialhq/BrandKnowledge', [
             'profile' => collect(BrandProfile::FIELDS)->mapWithKeys(fn (string $field): array => [$field => (string) $profile?->{$field}]),
@@ -53,6 +56,11 @@ class BrandKnowledgeController extends Controller
                 'budget' => $prompt->budget,
                 'profileTrimmed' => $prompt->profileTrimmed,
             ],
+            // The plan reads these too; they are edited here and on the plan page.
+            'pillars' => PlanOptions::pillars($profile),
+            'cadence' => PlanOptions::cadence($profile, $channels),
+            // Not 'channels': that name is the sidebar's shared prop.
+            'planChannels' => $channels->map(PlanPage::channel(...))->values()->all(),
             'kinds' => array_map(fn (KnowledgeKind $kind): string => $kind->value, KnowledgeKind::cases()),
             'canEdit' => BrandKnowledge::canEdit($request->user(), $workspace),
         ]);

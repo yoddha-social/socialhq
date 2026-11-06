@@ -5,9 +5,11 @@ import { computed, ref } from 'vue';
 
 import EmptyState from '@/components/EmptyState.vue';
 import SettingsListRow from '@/components/settings/SettingsListRow.vue';
+import BrandPlanningSection from '@/components/socialhq/BrandPlanningSection.vue';
 import KnowledgeEntryDialog, {
     type KnowledgeEntryRow,
 } from '@/components/socialhq/KnowledgeEntryDialog.vue';
+import type { PlanChannel } from '@/components/socialhq/plan/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,6 +40,9 @@ const props = defineProps<{
     entries: KnowledgeEntryRow[];
     usage: { used: number; budget: number; profileTrimmed: boolean };
     kinds: string[];
+    pillars: string[];
+    cadence: Record<string, number | null>;
+    planChannels: PlanChannel[];
     canEdit: boolean;
 }>();
 
@@ -255,6 +260,13 @@ const confirmDelete = (): void => {
                         </div>
                     </form>
                 </section>
+
+                <BrandPlanningSection
+                    :pillars="pillars"
+                    :cadence="cadence"
+                    :channels="planChannels"
+                    :can-edit="canEdit"
+                />
 
                 <section class="flex flex-col gap-4">
                     <div class="flex items-start justify-between gap-4">

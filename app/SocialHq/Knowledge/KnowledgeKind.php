@@ -14,6 +14,7 @@ enum KnowledgeKind: string
     case Project = 'project';
     case Campaign = 'campaign';
     case Fact = 'fact';
+    case ExamplePost = 'example_post';
     case Other = 'other';
 
     public function promptLabel(): string
@@ -23,7 +24,17 @@ enum KnowledgeKind: string
             self::Project => 'Project',
             self::Campaign => 'Past campaign',
             self::Fact => 'Company fact',
+            self::ExamplePost => 'Example post',
             self::Other => 'Note',
         };
+    }
+
+    /**
+     * Example posts show the AI how the brand sounds. They go in their own
+     * prompt section, read for tone, not for facts.
+     */
+    public function isExample(): bool
+    {
+        return $this === self::ExamplePost;
     }
 }

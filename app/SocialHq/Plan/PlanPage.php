@@ -135,9 +135,11 @@ final class PlanPage
     }
 
     /**
+     * A channel as the plan pages show it, with the formats it can post.
+     *
      * @return array<string, mixed>
      */
-    private static function channel(SocialAccount $channel): array
+    public static function channel(SocialAccount $channel): array
     {
         return [
             'id' => $channel->id,

@@ -13,6 +13,8 @@ import KnowledgeDocumentsSection, {
 import KnowledgeEntryDialog, {
     type KnowledgeEntryRow,
 } from '@/components/socialhq/KnowledgeEntryDialog.vue';
+import type { PastCalendar } from '@/components/socialhq/oldCalendars';
+import OldCalendarsSection from '@/components/socialhq/OldCalendarsSection.vue';
 import type { PlanChannel } from '@/components/socialhq/plan/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -49,6 +51,7 @@ const props = defineProps<{
     planChannels: PlanChannel[];
     canEdit: boolean;
     documents: KnowledgeDocumentsProp;
+    pastCalendars: PastCalendar[];
 }>();
 
 const profileFields: { field: ProfileField; rows: number; hint: boolean }[] = [
@@ -427,6 +430,11 @@ const confirmDelete = (): void => {
 
                 <KnowledgeDocumentsSection
                     :documents="documents"
+                    :can-edit="canEdit"
+                />
+
+                <OldCalendarsSection
+                    :calendars="pastCalendars"
                     :can-edit="canEdit"
                 />
 

@@ -145,6 +145,13 @@ return [
             'max_part_bytes' => 20 * 1024 * 1024,
             'pdf_decode_bytes' => 32 * 1024 * 1024,
         ],
+        // Old calendars (CSV or XLSX) imported as past posts for the AI planner.
+        // An upload never confirmed is deleted after a day.
+        'calendars' => [
+            'max_file_megabytes' => (int) env('SOCIALHQ_CALENDAR_MAX_FILE_MB', 5),
+            'max_rows' => (int) env('SOCIALHQ_CALENDAR_MAX_ROWS', 5000),
+            'max_imports' => (int) env('SOCIALHQ_CALENDAR_MAX_IMPORTS', 50),
+        ],
     ],
 
     /*

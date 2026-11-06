@@ -8,6 +8,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Models\SocialAccount;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Knowledge\BrandKnowledge;
+use App\SocialHq\Knowledge\Calendars\OldCalendars;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\ItemStatus;
 use App\SocialHq\Plan\PastPerformance;
@@ -22,7 +23,7 @@ use Illuminate\Support\Collection;
  * Everything the AI planner is told about a month, as one JSON-ready array:
  * the days, the team's goals, the brand, its pillars, its channels with their
  * cadence and formats, the month's events (confirmed or not, flagged), what is
- * already planned, and how recent posts did.
+ * already planned, how recent posts did, and the team's old calendars.
  */
 final class PlannerContext
 {
@@ -46,6 +47,7 @@ final class PlannerContext
      *     events: list<array{key: string, name: string, category: string, starts_on: string, ends_on: string, confirmed: bool}>,
      *     already_planned: list<array{title: string, date: string, channel: string|null}>,
      *     past_posts: list<array<string, mixed>>,
+     *     old_calendar: list<array<string, mixed>>,
      * }
      */
     public static function build(ContentPlan $plan, CarbonImmutable $today): array
@@ -97,6 +99,7 @@ final class PlannerContext
                 ->values()
                 ->all(),
             'past_posts' => self::pastPosts($workspace->id),
+            'old_calendar' => OldCalendars::forPlanner($workspace->id, $month),
         ];
     }
 

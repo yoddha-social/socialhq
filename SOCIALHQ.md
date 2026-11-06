@@ -106,6 +106,19 @@ the user's current workspace; their controllers authorize that workspace. New
 features (calendar drafts, scripts, briefs) call `forPrompt()` with the
 workspace they work for and pass the text to their own prompt view.
 
+**Old calendars** (same page): admins import past content calendars as CSV
+or XLSX (up to 5 MB and 5,000 rows, 50 per brand; `knowledge.calendars` in
+`config/socialhq.php`). The upload waits on the private `local` disk while
+the admin matches columns (guessed from English and Nepali headers; only
+the date is required) and the date order; importing stores the rows in
+`shq_past_posts` and deletes the file. Rows without a readable AD date, in
+the future or with a Bikram Sambat year (2070–2099) are skipped with a
+reason; dates are never converted. Uploads never imported are pruned after
+a day (`socialhq:calendars:prune`, hourly). The planner gets up to 60 rows
+(`old_calendar`): the plan's month in earlier years first, then the best by
+engagement, reach or views, then the newest. Code:
+`app/SocialHq/Knowledge/Calendars/`.
+
 The planner, the copy writer and the brief writer read it too (see Planning).
 
 **Documents.** Admins upload PDF, Word (.docx), PowerPoint (.pptx), text and

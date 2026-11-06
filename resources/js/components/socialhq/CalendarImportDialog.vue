@@ -476,24 +476,25 @@ const submit = async (): Promise<void> => {
                     <Label for="socialhq-calendar-date-order">
                         {{ $t('socialhq_calendars.dialog.date_order') }}
                     </Label>
-                    <NativeSelect
-                        id="socialhq-calendar-date-order"
-                        v-model="dateOrder"
-                        class="sm:w-72"
-                        data-testid="socialhq-calendar-date-order"
-                    >
-                        <NativeSelectOption
-                            v-for="order in DATE_ORDERS"
-                            :key="order"
-                            :value="order"
+                    <div class="sm:w-72">
+                        <NativeSelect
+                            id="socialhq-calendar-date-order"
+                            v-model="dateOrder"
+                            data-testid="socialhq-calendar-date-order"
                         >
-                            {{
-                                $t(
-                                    `socialhq_calendars.dialog.date_orders.${order}`,
-                                )
-                            }}
-                        </NativeSelectOption>
-                    </NativeSelect>
+                            <NativeSelectOption
+                                v-for="order in DATE_ORDERS"
+                                :key="order"
+                                :value="order"
+                            >
+                                {{
+                                    $t(
+                                        `socialhq_calendars.dialog.date_orders.${order}`,
+                                    )
+                                }}
+                            </NativeSelectOption>
+                        </NativeSelect>
+                    </div>
                     <p
                         v-if="!sheet.date_order_certain"
                         class="text-sm text-muted-foreground"

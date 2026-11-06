@@ -21,6 +21,7 @@ Change a TryPost file when that is the right place, and add a row.
 | 18 | `phpunit.xml` | `SOCIALHQ_AI_GATEWAY=direct` and `SOCIALHQ_AI_APPROVED_PROVIDERS` for the test providers (2 lines) | Tests call the SDK's fakes and `Http::fake()`, never LiteLLM |
 | 19 | `.env.example` | "Social HQ AI routing" block under the AI settings | Documents the gateway, the approved list and the routes |
 | 90 | `app/Models/Traits/HasWorkspace.php` | `switchWorkspace()` also sets the `currentWorkspace` relation (1 line) | The relation stayed on the old workspace for the rest of the request; browser tests reuse the signed-in user across requests, so the sidebar kept the old name |
+| 4 | `app/Ai/Agents/{IdeaGenerator,MediaAltTextGenerator,PostContentShortener,PostWritingAssistant}.php` | `#[Temperature(x)]` replaced by `use UsesModelSafeTemperature` plus `preferredTemperature()` returning the same value | Claude 5 models reject `temperature`, which broke every AI feature. Candidate for an upstream PR |
 | 5 | `app/Support/Timezone.php` | `normalize()` asks ICU for an alias's canonical name without first requiring it in PHP's legacy tz list | Without the legacy tz database (Ubuntu's tzdata-legacy), every legacy alias became UTC; this also kept CI red. Proposed upstream (trypostit/trypost#478) |
 
 Files we **added** aren't listed here; they're under the module paths in

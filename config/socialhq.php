@@ -40,6 +40,12 @@ return [
     | tier), so a key for one can sit in .env without being used. LiteLLM's
     | own providers are approved in its config.yaml, reviewed in git.
     |
+    | models_without_temperature: models that reject the `temperature`
+    | parameter, as regular expressions. The agents send their preferred
+    | temperature to every other model. The Claude 5 family rejects it
+    | (claude-sonnet-5-5, claude-opus-5-5, ...); Claude 4.x accepts it. Through
+    | LiteLLM, drop_params removes it for models that don't take it.
+    |
     */
 
     'ai' => [
@@ -61,6 +67,9 @@ return [
             'vision' => env('SOCIALHQ_AI_ROUTE_VISION'),
             'image' => env('SOCIALHQ_AI_ROUTE_IMAGE'),
             'embed' => env('SOCIALHQ_AI_ROUTE_EMBED'),
+        ],
+        'models_without_temperature' => [
+            '/^claude-[a-z]+-5(-\d{1,2})?(-\d{8})?$/',
         ],
     ],
 

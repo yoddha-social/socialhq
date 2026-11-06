@@ -10,6 +10,7 @@ whenever you touch an upstream file; keep each edit as small as possible.
 | 1 | `bootstrap/providers.php` | Registers `App\SocialHq\SocialHqServiceProvider` (2 lines) | Loads the Social HQ module |
 | 2 | `resources/js/components/AppSidebar.vue` | Imports and renders `socialhq/SourceLink.vue` in the sidebar footer (2 lines) | AGPL-3.0 §13: users of the modified version can get its source |
 | 3 | `README.md` | Short Social HQ note at the top | Says what this fork is and where our docs are |
+| 5 | `app/Support/Timezone.php` | `normalize()` asks ICU for an alias's canonical name without first requiring it in PHP's legacy tz list | Without the legacy tz database (Ubuntu's tzdata-legacy), every legacy alias became UTC; this also kept CI red. Proposed upstream (trypostit/trypost#478) |
 
 Files we **added** (no merge risk) aren't listed here; they're under the
 module paths in SOCIALHQ.md, plus `config/socialhq.php`,

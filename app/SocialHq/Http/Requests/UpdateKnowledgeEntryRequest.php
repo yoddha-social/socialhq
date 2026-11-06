@@ -21,6 +21,23 @@ class UpdateKnowledgeEntryRequest extends FormRequest
             'title' => ['required', 'string', 'max:120'],
             'body' => ['required', 'string', 'max:4000'],
             'use_in_ai' => ['required', 'boolean'],
+            'pinned' => ['sometimes', 'boolean'],
+        ];
+    }
+
+    /**
+     * The labels people see in the dialog, so errors name the right field.
+     *
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'kind' => __('socialhq.brand.entries.dialog.kind'),
+            'title' => __('socialhq.brand.entries.dialog.title'),
+            'body' => __('socialhq.brand.entries.dialog.body'),
+            'use_in_ai' => __('socialhq.brand.entries.dialog.use_in_ai'),
+            'pinned' => __('socialhq.brand.entries.dialog.pinned'),
         ];
     }
 }

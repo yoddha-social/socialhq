@@ -1,23 +1,23 @@
 <x-main>
   <x-message authenticated="true">
     <x-heading>
-      @{{ __('socialhq.signup.mail.requested.heading') }}
+      @{{ __('mail.socialhq_access_requested.heading') }}
     </x-heading>
 
     <p class="m-0 leading-6">
-      @{{ __('socialhq.signup.mail.requested.body', ['name' => $requesterName, 'email' => $requesterEmail]) }}
+      @{{ __('mail.socialhq_access_requested.body', ['name' => $requesterName, 'email' => $requesterEmail]) }}
     </p>
 
     <x-spacer height="24px" />
 
     <x-button href="@{{ $url }}">
-      @{{ __('socialhq.signup.mail.requested.button') }}
+      @{{ __('mail.socialhq_access_requested.button') }}
     </x-button>
 
     <x-spacer height="24px" />
 
     <p class="m-0 leading-6 text-muted-foreground text-sm">
-      @{{ __('socialhq.signup.mail.requested.note') }}
+      @{{ __('mail.socialhq_access_requested.note') }}
     </p>
   </x-message>
 </x-main>

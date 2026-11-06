@@ -20,6 +20,16 @@ class BrandProfile extends Model
 
     protected $guarded = ['id'];
 
+    protected function casts(): array
+    {
+        return [
+            // Content pillars, in the brand's order (their colours follow it).
+            'pillars' => 'array',
+            // Posts per week, keyed by social account id; read by the planner.
+            'cadence' => 'array',
+        ];
+    }
+
     /**
      * @return BelongsTo<Workspace, $this>
      */

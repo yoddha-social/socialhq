@@ -8,14 +8,19 @@ use App\Models\Post;
 use App\Models\User;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiRoutesCommand;
+use App\SocialHq\Ai\ApprovedProvidersGuard;
 use App\SocialHq\AiGraphics\AiGraphics;
 use App\SocialHq\Approval\ApprovalRules;
 use App\SocialHq\Approval\RecordApprovalEvents;
+use App\SocialHq\Events\ImportEventsCommand;
+use App\SocialHq\Http\Controllers\Plan\PlanGenerationController;
 use App\SocialHq\Http\Middleware\RedirectWhileAwaitingAccess;
 use App\SocialHq\Knowledge\BrandKnowledge;
-use App\SocialHq\Signup\AccessRequest;
+use App\SocialHq\Production\BriefStorage;
 use App\SocialHq\Signup\AccessRequests;
+use App\SocialHq\Signup\PasswordResetProof;
 use App\SocialHq\Signup\SignupRules;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -46,8 +51,11 @@ class SocialHqServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(database_path('migrations/socialhq'));
 
+        // No SDK request reaches a provider outside SOCIALHQ_AI_APPROVED_PROVIDERS, whoever makes it.
+        Event::listen(ApprovedProvidersGuard::EVENTS, [ApprovedProvidersGuard::class, 'handle']);
+
         if ($this->app->runningInConsole()) {
-            $this->commands([AiRoutesCommand::class]);
+            $this->commands([AiRoutesCommand::class, ImportEventsCommand::class]);
         }
 
         Route::middleware('web')->group(base_path('routes/socialhq.php'));
@@ -59,18 +67,47 @@ class SocialHqServiceProvider extends ServiceProvider
         // GitHub sign-ups arrive confirmed).
         Event::listen(Registered::class, fn (Registered $event) => $event->user instanceof User ? AccessRequests::notifyAdmins($event->user) : null);
         Event::listen(Verified::class, fn (Verified $event) => $event->user instanceof User ? AccessRequests::notifyAdmins($event->user) : null);
+        Event::listen(PasswordReset::class, fn (PasswordReset $event) => $event->user instanceof User ? PasswordResetProof::handle($event->user) : null);
+
+        // Someone waiting for access who gets a workspace another way (an invite) is let in.
+        User::updated(fn (User $user) => $user->wasChanged('current_workspace_id') ? AccessRequests::closeOnceJoined($user) : null);
+
+        // Sign-up by email: 5 tries a minute and 20 an hour per address. Each limit needs its own key.
+        RateLimiter::for('socialhq-register', fn (Request $request): array => [
+            Limit::perMinute(5)->by("minute:{$request->ip()}"),
+            Limit::perHour(20)->by("hour:{$request->ip()}"),
+        ]);
 
         Post::created(RecordApprovalEvents::created(...));
         Post::updated(RecordApprovalEvents::updated(...));
 
-        // Brand knowledge in the caption and idea prompts, for the workspace the call runs in.
-        View::composer('prompts.socialhq.brand_knowledge', fn ($view) => $view->with(
-            'brand_knowledge',
-            BrandKnowledge::forPrompt(auth()->user() instanceof User ? auth()->user()->currentWorkspace : null),
-        ));
+        /*
+         * Brand knowledge in TryPost's caption and idea prompts, which include this
+         * view without passing a workspace. Reading the user's current workspace is
+         * safe only there: their controllers authorize that same workspace. New
+         * features must not rely on this: call BrandKnowledge::forPrompt() with the
+         * workspace they work for and pass the text to their own prompt view.
+         */
+        View::composer('prompts.socialhq.brand_knowledge', function ($view): void {
+            if ($view->offsetExists('brand_knowledge')) {
+                return;
+            }
+
+            $workspace = auth()->user() instanceof User ? auth()->user()->currentWorkspace : null;
+
+            $view->with('brand_knowledge', $workspace === null ? '' : BrandKnowledge::forPrompt($workspace));
+        });
 
         RateLimiter::for('socialhq-ai-graphics', fn (Request $request): Limit => Limit::perHour(AiGraphics::userHourlyLimit())
             ->by((string) $request->user()?->id));
+        RateLimiter::for('socialhq-plan-generate', fn (Request $request): Limit => Limit::perHour(PlanGenerationController::HOURLY_LIMIT)->by((string) $request->user()?->id));
+
+        // AI copy and briefs on plan items: 20 an hour per person.
+        RateLimiter::for('socialhq-plan-ai', fn (Request $request): Limit => Limit::perHour(20)
+            ->by((string) $request->user()?->id));
+
+        // Brief files go with the brief, its item or its plan (rows cascade, files don't).
+        BriefStorage::registerCleanup();
 
         // One share for the whole module: a second Inertia::share('socialhq') would replace this one.
         Inertia::share('socialhq', fn (): array => [
@@ -86,13 +123,8 @@ class SocialHqServiceProvider extends ServiceProvider
             ],
             'signup' => [
                 'open' => SignupRules::isOpen(),
-                'pendingRequests' => (function (): int {
-                    $user = auth()->user();
-
-                    return $user instanceof User && AccessRequests::canDecide($user)
-                        ? AccessRequest::query()->where('account_id', $user->account_id)->awaitingDecision()->count()
-                        : 0;
-                })(),
+                // One query, 0 for anyone who can't decide (the workspace menu and the Members banner read it).
+                'pendingRequests' => auth()->user() instanceof User ? AccessRequests::pendingCountFor(auth()->user()) : 0,
             ],
         ]);
     }

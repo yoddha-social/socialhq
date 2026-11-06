@@ -12,10 +12,12 @@ use App\Http\Controllers\Auth\Concerns\PreservesSignupPreferences;
 use App\Http\Controllers\Controller;
 use App\Models\Invite;
 use App\Models\User;
+use App\SocialHq\Signup\OAuthSignIn;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 
 class GitHubController extends Controller
@@ -49,11 +51,11 @@ class GitHubController extends Controller
         }
 
         $user = User::where('github_id', (string) $githubUser->getId())
-            ->when($githubUser->getEmail(), fn ($query, $email) => $query->orWhere('email', $email))
+            ->when($githubUser->getEmail(), fn ($query, $email) => $query->orWhere('email', Str::lower($email)))
             ->first();
 
         if ($user) {
-            return $this->loginExistingUser($user, (string) $githubUser->getId());
+            return $this->loginExistingUser($user, (string) $githubUser->getId(), $githubUser->getEmail());
         }
 
         if (! $githubUser->getEmail()) {
@@ -84,15 +86,14 @@ class GitHubController extends Controller
             ->with('flash.success', __('settings.profile.providers.flash_connected', ['provider' => 'GitHub']));
     }
 
-    private function loginExistingUser(User $user, string $githubId): RedirectResponse
+    private function loginExistingUser(User $user, string $githubId, ?string $verifiedEmail): RedirectResponse
     {
         if (! $user->github_id) {
             $user->update(['github_id' => $githubId]);
         }
 
-        if (! $user->hasVerifiedEmail()) {
-            $user->markEmailAsVerified();
-        }
+        // Social HQ: GitHub's proof of the email (its verified primary address) wins over an unconfirmed password sign-up (PATCHES.md row 41).
+        OAuthSignIn::claimUnverified($user, $verifiedEmail, request());
 
         Auth::login($user, remember: true);
 
@@ -119,7 +120,7 @@ class GitHubController extends Controller
 
         $user = CreateUser::execute([
             'name' => $githubUser->getName() ?? $githubUser->getNickname() ?? explode('@', $githubUser->getEmail())[0],
-            'email' => $githubUser->getEmail(),
+            'email' => Str::lower((string) $githubUser->getEmail()),
             'github_id' => (string) $githubUser->getId(),
             'email_verified_at' => now(),
             'is_invite' => $invite !== null,

@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# Copies the English Social HQ module copy to every other locale (see lang/en/socialhq.php).
+# Copies the English Social HQ module copy (lang/en/socialhq*.php) to every other locale.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 for dir in lang/*/; do
     locale=$(basename "$dir")
-    [ "$locale" = en ] || cp lang/en/socialhq.php "lang/$locale/socialhq.php"
+    [ "$locale" = en ] && continue
+    for file in lang/en/socialhq*.php; do
+        cp "$file" "lang/$locale/$(basename "$file")"
+    done
 done

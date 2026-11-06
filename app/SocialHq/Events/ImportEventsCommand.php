@@ -1,0 +1,80 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\SocialHq\Events;
+
+use App\Models\Account;
+use Illuminate\Console\Command;
+use Illuminate\Support\Str;
+use InvalidArgumentException;
+
+/**
+ * Loads the official dates into an account, unconfirmed. Safe to run again:
+ * confirmations and rows a person edited are kept.
+ */
+class ImportEventsCommand extends Command
+{
+    protected $signature = 'socialhq:events:import
+        {--account= : The account id (needed when there is more than one account)}
+        {--file=* : A CSV file to read instead of the shipped dataset (repeatable)}';
+
+    protected $description = 'Import the official Nepali and international dates into an account, unconfirmed';
+
+    public function handle(): int
+    {
+        $account = $this->account();
+
+        if ($account === null) {
+            return self::FAILURE;
+        }
+
+        $files = collect((array) $this->option('file'))
+            ->filter()
+            ->map(fn (string $file): string => is_file($file) ? $file : database_path(ImportOfficialEvents::DIRECTORY."/{$file}"))
+            ->values()
+            ->all();
+
+        try {
+            $counts = ImportOfficialEvents::handle($account, $files === [] ? null : $files);
+        } catch (InvalidArgumentException $exception) {
+            $this->error($exception->getMessage());
+
+            return self::FAILURE;
+        }
+
+        $this->info("Created {$counts['created']}, updated {$counts['updated']}, skipped {$counts['skipped']} (unchanged, or edited or deleted in the app).");
+
+        if ($counts['missing'] > 0) {
+            $this->warn("{$counts['missing']} imported dates are no longer in the official list; they were left as they are.");
+        }
+
+        return self::SUCCESS;
+    }
+
+    private function account(): ?Account
+    {
+        $id = $this->option('account');
+
+        if (filled($id)) {
+            // Account ids are UUIDs; PostgreSQL rejects anything else in the query.
+            $account = Str::isUuid((string) $id) ? Account::query()->find($id) : null;
+
+            if ($account === null) {
+                $this->error("No account with id {$id}.");
+            }
+
+            return $account;
+        }
+
+        $accounts = Account::query()->limit(2)->get();
+
+        if ($accounts->count() === 1) {
+            return $accounts->first();
+        }
+
+        $this->error($accounts->isEmpty() ? 'There is no account yet.' : 'There is more than one account: pass --account=<id>.');
+
+        return null;
+    }
+}

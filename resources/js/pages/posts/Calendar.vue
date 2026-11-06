@@ -119,6 +119,7 @@ const RELOAD_PROPS = [
     'view',
     'displayTimezone',
     'filters',
+    'shqEvents', // Social HQ: event markers (PATCHES.md row 61)
 ];
 
 /**

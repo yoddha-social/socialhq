@@ -108,14 +108,31 @@ final class AiRouter
     }
 
     /**
-     * The first target's driver, for provider-specific request shapes such
-     * as image aspect ratios.
+     * The driver every target of the task's route shares, for
+     * provider-specific request shapes such as image aspect ratios; null when
+     * the route mixes drivers (or has none), so callers pick a shape every
+     * driver accepts. Read from route(), the targets the SDK really tries.
      */
-    public static function leadingDriver(AiTask $task): ?string
+    public static function sharedDriver(AiTask $task): ?string
     {
-        $provider = array_key_first(self::approvedTargets($task));
+        try {
+            $providers = array_keys(self::route($task));
+        } catch (AiUnavailableException) {
+            return null;
+        }
 
-        return $provider === null ? null : config("ai.providers.{$provider}.driver");
+        $drivers = array_unique(array_map(fn (string $provider): mixed => config("ai.providers.{$provider}.driver"), $providers));
+
+        return count($drivers) === 1 && is_string($drivers[0]) ? $drivers[0] : null;
+    }
+
+    /**
+     * Whether a provider entry may be called at all. ApprovedProvidersGuard
+     * asks this before every SDK request, whatever code made it.
+     */
+    public static function isApproved(string $provider): bool
+    {
+        return in_array($provider, self::approvedProviders(), true);
     }
 
     /**
@@ -127,6 +144,10 @@ final class AiRouter
     public static function explain(AiTask $task): array
     {
         $rows = [];
+
+        if (self::usesGateway() && blank(config("socialhq.ai.routes.{$task->value}")) && ! self::gatewayServes($task)) {
+            return [['provider' => $task->litellmProvider(), 'model' => $task->litellmGroup(), 'used' => false, 'reason' => 'not in SOCIALHQ_AI_GATEWAY_TASKS']];
+        }
 
         foreach (self::configuredTargets($task) as $provider => $model) {
             $reason = self::rejection($task, $provider) ?? (self::hasCredentials($provider) ? null : 'no key');
@@ -163,7 +184,7 @@ final class AiRouter
         }
 
         if (self::usesGateway()) {
-            return [$task->litellmProvider() => $task->litellmGroup()];
+            return self::gatewayServes($task) ? [$task->litellmProvider() => $task->litellmGroup()] : [];
         }
 
         $default = match ($task) {
@@ -197,9 +218,20 @@ final class AiRouter
     /**
      * Why a target can't serve the task, or null when it can.
      */
+    /**
+     * The gateway serves only the tasks listed in SOCIALHQ_AI_GATEWAY_TASKS:
+     * shq-image and shq-embed have no free provider, so they are listed only
+     * once the paid key is set in LiteLLM. An unlisted task is unavailable
+     * and its button stays hidden instead of failing on every click.
+     */
+    private static function gatewayServes(AiTask $task): bool
+    {
+        return in_array($task->value, Arr::wrap(config('socialhq.ai.litellm.tasks', [])), true);
+    }
+
     private static function rejection(AiTask $task, string $provider): ?string
     {
-        if (! in_array($provider, self::approvedProviders(), true)) {
+        if (! self::isApproved($provider)) {
             return 'not approved';
         }
 

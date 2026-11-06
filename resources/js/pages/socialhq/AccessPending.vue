@@ -2,6 +2,7 @@
 import { Form, Head } from '@inertiajs/vue3';
 
 import TextLink from '@/components/TextLink.vue';
+import Toast from '@/components/Toast.vue';
 import { Button } from '@/components/ui/button';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import { logout } from '@/routes';
@@ -25,6 +26,8 @@ defineProps<{
         "
     >
         <Head :title="$t('socialhq.signup.pending.page_title')" />
+        <!-- Flash messages land here too (an invite declined while waiting). -->
+        <Toast />
 
         <div class="flex flex-col gap-6" data-testid="socialhq-access-pending">
             <p

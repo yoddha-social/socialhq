@@ -35,10 +35,15 @@ return [
     | targets, comma separated, tried in order on rate limits and overload.
     | Without a model the provider's default model is used.
     |
-    | approved_providers: the only provider entries ever called. None of them
-    | may train on prompts or let people read them (no Gemini or Mistral free
-    | tier), so a key for one can sit in .env without being used. LiteLLM's
-    | own providers are approved in its config.yaml, reviewed in git.
+    | approved_providers: the only provider entries ever called; any other SDK
+    | request is refused before it is sent (ApprovedProvidersGuard). None of
+    | them may train on prompts or let people read them (never the Gemini free
+    | tier; Mistral only with "Anonymous improvement data" off in its console),
+    | so a key for one can sit in .env without being used. LiteLLM's own
+    | providers are approved in its config.yaml, reviewed in git.
+    |
+    | litellm.tasks (SOCIALHQ_AI_GATEWAY_TASKS): the tasks the gateway serves.
+    | image and embed have only paid Gemini there; list them once its key is set.
     |
     | models_without_temperature: models that reject the `temperature`
     | parameter, as regular expressions. The agents send their preferred
@@ -56,6 +61,12 @@ return [
             'key' => env('LITELLM_API_KEY'),
             // Unset: the embedding model's native size. Fixed once the knowledge base stores vectors.
             'embedding_dimensions' => env('LITELLM_EMBEDDING_DIMENSIONS'),
+            // Tasks the gateway serves. image and embed have only paid Gemini in
+            // LiteLLM: add them once GEMINI_PAID_API_KEY is set there.
+            'tasks' => array_values(array_filter(array_map(
+                trim(...),
+                explode(',', (string) env('SOCIALHQ_AI_GATEWAY_TASKS', 'write,structured,vision')),
+            ))),
         ],
         'approved_providers' => array_values(array_filter(array_map(
             trim(...),
@@ -97,8 +108,12 @@ return [
     |
     | Each workspace's brand profile and knowledge entries, read by the
     | caption assistant and the idea generator. prompt_characters caps what
-    | goes into one prompt (about 1,500 tokens): the profile plus the newest
-    | entries marked for AI that fit, small enough for free models' limits.
+    | goes into one prompt: the profile (at most half, shortened when longer),
+    | then the pinned and newest entries marked for AI that fit. It is counted
+    | by BrandKnowledge::size(), where characters outside Latin-1 (Devanagari,
+    | emoji) count double. 6000 is about 1,500 tokens of English; Nepali text
+    | costs more tokens per character, so the same budget holds less of it.
+    | A rough guard for free models' limits, not a token count.
     |
     */
 
@@ -141,8 +156,12 @@ return [
     | Self-hosted TryPost only registers people with an invite. Social HQ also
     | lets people sign up whose email is listed here, either exactly or by
     | domain (comma separated; public mail domains such as gmail.com are
-    | ignored). They join the account of account_owner (the only account when
-    | blank) without any workspace, and wait until an admin approves them.
+    | ignored). They join the account of account_owner (matched by email,
+    | whatever its case) without any workspace, and wait until an admin
+    | approves them. Blank: the oldest account that owns a workspace (every
+    | invited person holds an empty account of their own until they accept,
+    | so there is rarely just one). When the lists are set but no account is
+    | found, sign-up stays closed and a warning is logged (once an hour).
     | Both lists empty: invites only, as upstream.
     |
     */

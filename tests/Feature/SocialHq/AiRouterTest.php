@@ -12,6 +12,8 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Laravel\Ai\AiManager;
 
+use function Laravel\Ai\agent;
+
 beforeEach(function () {
     config([
         'socialhq.ai.gateway' => 'direct',
@@ -57,6 +59,7 @@ function useLiteLlm(): void
         'socialhq.ai.approved_providers' => ['litellm', 'litellm-images'],
         'socialhq.ai.litellm.url' => 'http://litellm.test/v1',
         'socialhq.ai.litellm.key' => 'sk-virtual-key',
+        'socialhq.ai.litellm.tasks' => ['write', 'structured', 'vision', 'image', 'embed'],
     ]);
     AiRouter::registerGateway();
     app(AiManager::class)->forgetInstance([AiRouter::LITELLM, AiRouter::LITELLM_IMAGES]);
@@ -160,7 +163,7 @@ test('the gateway routes each task to its model group, images through the images
         ->and(AiRouter::route(AiTask::Vision))->toBe([AiRouter::LITELLM => 'shq-vision'])
         ->and(AiRouter::route(AiTask::Image))->toBe([AiRouter::LITELLM_IMAGES => 'shq-image'])
         ->and(AiRouter::route(AiTask::Embed))->toBe([AiRouter::LITELLM => 'shq-embed'])
-        ->and(AiRouter::leadingDriver(AiTask::Image))->toBe('openai');
+        ->and(AiRouter::sharedDriver(AiTask::Image))->toBe('openai');
 });
 
 test('without a LiteLLM key the gateway is unavailable instead of falling back to direct keys', function () {
@@ -187,4 +190,48 @@ test('the routes command lists every task and why a target is unused', function 
             ['embed', 'openai', 'yes'],
         ])
         ->assertSuccessful();
+});
+
+test('a request to a provider that is not approved is refused before it is sent', function () {
+    Http::fake();
+    config(['ai.providers.groq' => ['driver' => 'groq', 'key' => 'groq-key']]);
+
+    expect(fn () => agent(instructions: 'Say hi.')->prompt('Hi', provider: 'groq'))
+        ->toThrow(AiUnavailableException::class, 'not approved');
+
+    Http::assertNothingSent();
+});
+
+test('an approved provider still gets the request', function () {
+    Http::fake(['*' => Http::response(chatCompletion('Hello'))]);
+    fakeCompatibleProviders();
+
+    expect((string) agent(instructions: 'Say hi.')->prompt('Hi', provider: 'free-one'))->toBe('Hello');
+
+    Http::assertSentCount(1);
+});
+
+test('the gateway serves only the tasks it is told to', function () {
+    useLiteLlm();
+    config(['socialhq.ai.litellm.tasks' => ['write', 'structured', 'vision']]);
+
+    expect(AiRouter::isAvailable(AiTask::Write))->toBeTrue()
+        ->and(AiRouter::isAvailable(AiTask::Image))->toBeFalse()
+        ->and(AiRouter::isAvailable(AiTask::Embed))->toBeFalse()
+        ->and(fn () => AiRouter::route(AiTask::Image))->toThrow(AiUnavailableException::class);
+
+    config(['socialhq.ai.litellm.tasks' => ['write', 'image']]);
+
+    expect(AiRouter::route(AiTask::Image))->toBe([AiRouter::LITELLM_IMAGES => 'shq-image']);
+});
+
+test('the image shape follows the driver every target shares', function () {
+    config(['socialhq.ai.routes.image' => 'gemini']);
+    expect(AiRouter::sharedDriver(AiTask::Image))->toBe('gemini');
+
+    config(['socialhq.ai.routes.image' => 'gemini,openai']);
+    expect(AiRouter::sharedDriver(AiTask::Image))->toBeNull();
+
+    config(['socialhq.ai.routes.image' => 'openai,gemini', 'ai.providers.openai.key' => null]);
+    expect(AiRouter::sharedDriver(AiTask::Image))->toBe('gemini');
 });

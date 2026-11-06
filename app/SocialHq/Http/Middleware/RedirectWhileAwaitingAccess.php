@@ -13,7 +13,9 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * People who signed up and are not let in yet see the waiting page, wherever
  * they go (welcome steps, workspace creation, the calendar...). They can
- * still confirm their email and log out.
+ * still confirm their email, open and answer an invite, and log out.
+ * Accepting an invite gives them a workspace, which closes their request
+ * (AccessRequests::closeOnceJoined).
  */
 class RedirectWhileAwaitingAccess
 {
@@ -23,6 +25,9 @@ class RedirectWhileAwaitingAccess
         'verification.notice',
         'verification.verify',
         'verification.send',
+        'app.invites.show',
+        'app.invites.accept',
+        'app.invites.decline',
     ];
 
     /**
@@ -37,6 +42,11 @@ class RedirectWhileAwaitingAccess
             || $request->routeIs(...self::ALLOWED_ROUTES)
             || AccessRequests::pendingFor($user) === null) {
             return $next($request);
+        }
+
+        // A message on its way (an invite declined) reaches the waiting page.
+        if ($request->hasSession()) {
+            $request->session()->reflash();
         }
 
         return redirect()->route('socialhq.access.pending');

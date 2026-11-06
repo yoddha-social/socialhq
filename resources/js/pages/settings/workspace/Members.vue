@@ -4,6 +4,7 @@ import { IconPlus } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
 import UsersTab from '@/components/settings/UsersTab.vue';
+import AccessRequestsBanner from '@/components/socialhq/AccessRequestsBanner.vue';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
@@ -38,6 +39,8 @@ const openInviteDialog = (): void => {
                 {{ $t('settings.members.invite.submit') }}
             </Button>
         </template>
+
+        <AccessRequestsBanner />
 
         <UsersTab
             v-model:invite-open="inviteOpen"

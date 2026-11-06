@@ -30,13 +30,13 @@ class BrandKnowledgeController extends Controller
     {
         $workspace = $this->workspace($request, edit: false);
         $profile = BrandProfile::query()->where('workspace_id', $workspace->id)->first();
+        $prompt = BrandKnowledge::assemble($workspace);
 
         return Inertia::render('socialhq/BrandKnowledge', [
             'profile' => collect(BrandProfile::FIELDS)->mapWithKeys(fn (string $field): array => [$field => (string) $profile?->{$field}]),
             'entries' => KnowledgeEntry::query()
                 ->where('workspace_id', $workspace->id)
-                ->latest('updated_at')
-                ->latest('id')
+                ->inPromptOrder()
                 ->get()
                 ->map(fn (KnowledgeEntry $entry): array => [
                     'id' => $entry->id,
@@ -44,8 +44,15 @@ class BrandKnowledgeController extends Controller
                     'title' => $entry->title,
                     'body' => $entry->body,
                     'use_in_ai' => $entry->use_in_ai,
+                    'pinned' => $entry->pinned,
+                    'fit' => $prompt->fitOf($entry)->value,
                     'updated_at' => $entry->updated_at?->toIso8601String(),
                 ]),
+            'usage' => [
+                'used' => $prompt->used,
+                'budget' => $prompt->budget,
+                'profileTrimmed' => $prompt->profileTrimmed,
+            ],
             'kinds' => array_map(fn (KnowledgeKind $kind): string => $kind->value, KnowledgeKind::cases()),
             'canEdit' => BrandKnowledge::canEdit($request->user(), $workspace),
         ]);
@@ -67,8 +74,10 @@ class BrandKnowledgeController extends Controller
     {
         $workspace = $this->workspace($request, edit: true);
 
+        // Count, then create: two admins adding at once may go one or two past
+        // the limit. Accepted; the limit only keeps the page and the prompt small.
         if (KnowledgeEntry::query()->where('workspace_id', $workspace->id)->count() >= (int) config('socialhq.knowledge.max_entries', 300)) {
-            throw ValidationException::withMessages(['title' => __('socialhq.brand.errors.too_many')]);
+            throw ValidationException::withMessages(['limit' => __('socialhq.brand.errors.too_many')]);
         }
 
         KnowledgeEntry::query()->create([

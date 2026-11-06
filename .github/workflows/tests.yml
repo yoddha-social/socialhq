@@ -180,12 +180,14 @@ jobs:
         # Browser tests on the shared runners fail at random (a different TryPost test each
         # run). Failed files get one sequential retry; a pass on retry is reported as a
         # warning, so flaky tests stay visible. A test that fails twice fails the job.
+        # Output goes to a file, not a pipe: the Playwright server Pest starts keeps a
+        # pipe open after Pest exits, so `| tee` never ends.
         run: |
-          set -o pipefail
-          if ./vendor/bin/pest tests/Browser --compact --colors=never --parallel --processes=3 \
-              --shard=${{ matrix.shard }}/3 2>&1 | tee browser.log; then
-            exit 0
-          fi
+          status=0
+          ./vendor/bin/pest tests/Browser --compact --colors=never --parallel --processes=3 \
+            --shard=${{ matrix.shard }}/3 > browser.log 2>&1 || status=$?
+          cat browser.log
+          [ "$status" -eq 0 ] && exit 0
           files=$(grep -oE 'FAILED +Tests\\Browser\\[A-Za-z0-9_\\]+' browser.log \
             | sed -E 's/^FAILED +//; s#\\#/#g; s#^Tests/#tests/#; s#$#.php#' | sort -u || true)
           if [ -z "$files" ]; then

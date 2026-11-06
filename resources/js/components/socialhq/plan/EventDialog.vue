@@ -41,6 +41,12 @@ const props = defineProps<{
 
 const open = defineModel<boolean>('open', { default: false });
 
+/** A country's public holiday (not Nepal's): its second name is the local one. */
+const isOtherCountry = computed(
+    () =>
+        props.event?.country_code != null && props.event.country_code !== 'NP',
+);
+
 const form = useForm({
     name: '',
     name_ne: '',
@@ -184,12 +190,16 @@ const submit = (): void => {
 
                     <div class="flex flex-col gap-2">
                         <Label for="socialhq-event-name-ne">
-                            {{ $t('socialhq_events.dialog.name_ne') }}
+                            {{
+                                isOtherCountry
+                                    ? $t('socialhq_events.dialog.name_local')
+                                    : $t('socialhq_events.dialog.name_ne')
+                            }}
                         </Label>
                         <Input
                             id="socialhq-event-name-ne"
                             v-model="form.name_ne"
-                            lang="ne"
+                            :lang="isOtherCountry ? undefined : 'ne'"
                             data-testid="socialhq-event-name-ne"
                         />
                         <p

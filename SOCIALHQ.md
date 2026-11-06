@@ -190,6 +190,16 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   never brings back a date the team edited, moved or deleted. The AI never
   calculates a date and plans only around confirmed ones. The publish calendar
   shows a marker on days with events (PATCHES rows 60–63).
+  Each date has a country (`country_code`, ISO 3166-1 alpha-2): `NP` for
+  Nepal's, a country's code for its public holidays, null for international
+  days. "Add a country" (who may change shared dates) imports countries'
+  public holidays for this year and the next from Nager.Date
+  (`ImportPublicHolidays`, `--country=US` on the command; host in
+  `socialhq.events.nager`, answers cached per country and year), as "Needs
+  check" with Nager.Date as the source; re-importing follows the same rules,
+  per country. Nepal never comes from Nager.Date. The country filter and
+  `EventsForMonth`'s `$countries` keep the chosen countries' dates plus every
+  date without a country.
 - **Content plan** (`/socialhq/plan/{YYYY-MM}`). Items with a date, channel,
   format (TryPost's content type), what to make, pillar, owner, event, objective
   and angle. "Generate with AI" (`ContentPlanner`, a queued job) drafts the

@@ -25,6 +25,11 @@ porting" are the original notes from the Rails reference.
   are counted (`missing`), never deleted.
 - A shared date can't be of the `brand` kind.
 - A day in both CSVs (Christmas, Women's Day) is imported once, from the Nepal file.
+- Each event has a `country_code` (NP, another ISO code, or null for international).
+  Other countries' public holidays come from Nager.Date (`ImportPublicHolidays`,
+  "Add a country"), matched within their country; the CSV importer only matches
+  and counts NP and null rows (`fromOfficialList`). Both share `WriteImportedEvent`.
+  `EventsForMonth::forWorkspace(..., $countries)` keeps those countries plus null.
 
 ## The one rule
 

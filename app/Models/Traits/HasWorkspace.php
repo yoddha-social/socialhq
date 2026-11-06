@@ -34,6 +34,7 @@ trait HasWorkspace
     public function switchWorkspace(Workspace $workspace): void
     {
         $this->update(['current_workspace_id' => $workspace->id]);
+        $this->setRelation('currentWorkspace', $workspace);
     }
 
     /**

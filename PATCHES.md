@@ -12,6 +12,7 @@ whenever you touch an upstream file; keep each edit as small as possible.
 | 3 | `README.md` | Short Social HQ note at the top | Says what this fork is and where our docs are |
 | 6 | `resources/js/types/command-palette.ts` | Adds the `workspaces` group (1 line) | Command palette entries to switch workspace |
 | 7 | `resources/js/components/command-palette/CommandPaletteContent.vue` | Adds `socialhq/workspaceCommandEntries.ts` entries to the palette, shown while searching (5 lines) | Same |
+| 90 | `app/Models/Traits/HasWorkspace.php` | `switchWorkspace()` also sets the `currentWorkspace` relation (1 line) | The relation stayed on the old workspace for the rest of the request; browser tests reuse the signed-in user across requests, so the sidebar kept the old name |
 
 Files we **added** (no merge risk) aren't listed here; they're under the
 module paths in SOCIALHQ.md, plus `config/socialhq.php`,

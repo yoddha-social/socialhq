@@ -73,7 +73,7 @@ Change a TryPost file when that is the right place, and add a row.
 | 94 | `resources/js/composables/useSettingsNavigation.ts` | An "AI" item (Settings › AI) after Billing for the owner of an approved company (`socialhq.companyAi.canManage`; 15 lines + 2 imports) | Company AI: each company manages its own AI providers |
 | 95 | `.env.example` | `LITELLM_ADMIN_KEY`, `LITELLM_ADMIN_URL`, `SOCIALHQ_SECRETS_KEY`, `SOCIALHQ_SECRETS_PREVIOUS_KEYS` (8 lines) | Company AI settings |
 | 96 | `tests/fixtures/single-line-copy.php` | Budgets for Settings › AI's buttons, menu items and badges (`socialhq_ai.*`), at their English length (14 lines) | `SingleLineCopyTest` keeps them on one line once they are translated |
-| 99 | `app/Console/Commands/ProcessScheduledPosts.php` | Skips due posts and limit retries of a paused company (2 checks + 1 import) | A paused company publishes nothing; its posts wait, and go out once it is restored |
+| 99 | `app/Console/Commands/ProcessScheduledPosts.php` | Skips due posts and limit retries of a paused company (one query for the paused workspaces, 2 checks, 1 import) | A paused company publishes nothing; its posts wait, and go out once it is restored |
 
 Files we **added** aren't listed here; they're under the module paths in
 SOCIALHQ.md, plus `config/socialhq.php`, `routes/socialhq.php`, `CLAUDE.md`,

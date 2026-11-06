@@ -57,13 +57,17 @@ final class PlanOptions
     }
 
     /**
-     * Events the brand sees that overlap the days given, confirmed or not, in date order.
+     * Events the brand sees that overlap the days given, confirmed or not, in
+     * date order. With countries, only the events of those countries and the
+     * international ones (no country).
      *
+     * @param  list<string>|null  $countries  ISO 3166-1 alpha-2 codes, or null for every event
      * @return Collection<int, CalendarEvent>
      */
-    public static function events(Workspace $workspace, CarbonImmutable $from, CarbonImmutable $to): Collection
+    public static function events(Workspace $workspace, CarbonImmutable $from, CarbonImmutable $to, ?array $countries = null): Collection
     {
-        return self::eventsBetween($workspace, $from, $to);
+        // The audience's countries plus every event without one (international, brand-only).
+        return EventsForMonth::forWorkspace($workspace, $from, $to, $countries);
     }
 
     public static function profile(Workspace $workspace): ?BrandProfile
@@ -132,15 +136,5 @@ final class PlanOptions
             CreativeKind::Document => $contentType->supportsDocument(),
             CreativeKind::None => ! $contentType->requiresMedia(),
         };
-    }
-
-    /**
-     * The brand's events overlapping the range (shared and brand-only), oldest first.
-     *
-     * @return Collection<int, CalendarEvent>
-     */
-    private static function eventsBetween(Workspace $workspace, CarbonImmutable $from, CarbonImmutable $to): Collection
-    {
-        return EventsForMonth::forWorkspace($workspace, $from, $to);
     }
 }

@@ -35,6 +35,7 @@ class CopyWriter implements Agent, HasStructuredOutput
         public bool $isRewrite,
         public ?int $maxLength,
         public int $maxHashtags,
+        public string $visualStyle = '',
     ) {}
 
     public function aiTask(): AiTask
@@ -52,6 +53,7 @@ class CopyWriter implements Agent, HasStructuredOutput
             'is_rewrite' => $this->isRewrite,
             'max_length' => $this->maxLength,
             'max_hashtags' => $this->maxHashtags,
+            'visual_style' => $this->visualStyle,
         ])->render();
     }
 

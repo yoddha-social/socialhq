@@ -6,16 +6,20 @@ import {
     IconDownload,
     IconLock,
     IconPlus,
+    IconWorld,
 } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
 import EmptyState from '@/components/EmptyState.vue';
+import EventCountryDialog from '@/components/socialhq/plan/EventCountryDialog.vue';
 import EventDialog from '@/components/socialhq/plan/EventDialog.vue';
 import EventListItem from '@/components/socialhq/plan/EventListItem.vue';
 import EventsEmptyIllustration from '@/components/socialhq/plan/EventsEmptyIllustration.vue';
-import type {
-    CalendarEventRow,
-    EventCategory,
+import {
+    countryName,
+    type CalendarEventRow,
+    type EventCategory,
+    type HolidayCountry,
 } from '@/components/socialhq/plan/eventStyles';
 import PlanHeader from '@/components/socialhq/plan/PlanHeader.vue';
 import PlanTabs from '@/components/socialhq/plan/PlanTabs.vue';
@@ -28,6 +32,10 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import {
+    NativeSelect,
+    NativeSelectOption,
+} from '@/components/ui/native-select';
 import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -48,8 +56,16 @@ const props = defineProps<{
     today: string;
     from: string;
     to: string;
+    /** The country filter (ISO code), or null for every country. */
+    country: string | null;
     events: CalendarEventRow[];
     hasEvents: boolean;
+    /** The countries the brand has dates for. */
+    countries: string[];
+    /** "Add a country": loaded when the dialog opens; null when Nager.Date can't be reached. */
+    holidayCountries?: HolidayCountry[] | null;
+    holidayYears: number[];
+    maxHolidayCountries: number;
     categories: EventCategory[];
     abilities: {
         canWork: boolean;
@@ -151,9 +167,19 @@ const defaultDay = computed(() =>
         : props.today,
 );
 
+/** Every visit keeps the country filter unless it sets its own. */
 const visit = (query: Record<string, string>): void => {
+    const withCountry =
+        props.country && !('country' in query)
+            ? { ...query, country: props.country }
+            : query;
+
     router.get(
-        eventsIndex.url({ query }),
+        eventsIndex.url({
+            query: Object.fromEntries(
+                Object.entries(withCountry).filter(([, value]) => value !== ''),
+            ),
+        }),
         {},
         { preserveState: true, preserveScroll: true },
     );
@@ -183,6 +209,47 @@ const showMonth = (): void => {
 
 const showUpcoming = (): void => {
     visit({ view: 'upcoming' });
+};
+
+/** The countries in the filter: the brand's, plus the one picked. */
+const countryOptions = computed(() =>
+    [
+        ...new Set([
+            ...props.countries,
+            ...(props.country ? [props.country] : []),
+        ]),
+    ]
+        .map((code) => ({
+            code,
+            name: countryName(code, activeLocale.value),
+        }))
+        .sort((first, second) => first.name.localeCompare(second.name)),
+);
+
+const selectedCountryName = computed(() =>
+    props.country ? countryName(props.country, activeLocale.value) : null,
+);
+
+/** The country filter's select: picking one reloads the page for it ('' is every country). */
+const countryModel = computed({
+    get: (): string => props.country ?? '',
+    set: (value: unknown): void => {
+        const period: Record<string, string> =
+            props.view === 'upcoming'
+                ? { view: 'upcoming' }
+                : { month: props.month };
+
+        visit({
+            ...period,
+            country: typeof value === 'string' ? value : '',
+        });
+    },
+});
+
+const isCountryDialogOpen = ref(false);
+
+const openAddCountry = (): void => {
+    isCountryDialogOpen.value = true;
 };
 
 const busyEventId = ref<number | null>(null);
@@ -280,6 +347,19 @@ const confirmDelete = (): void => {
 
         <template v-if="abilities.canApprove && hasEvents" #header-actions>
             <div class="flex items-center gap-2">
+                <Button
+                    v-if="abilities.canManageSharedEvents"
+                    variant="outline"
+                    class="max-sm:w-8 max-sm:px-0"
+                    :aria-label="$t('socialhq_events.actions.add_country')"
+                    data-testid="socialhq-events-add-country"
+                    @click="openAddCountry"
+                >
+                    <IconWorld class="size-4" />
+                    <span class="max-sm:sr-only">{{
+                        $t('socialhq_events.actions.add_country')
+                    }}</span>
+                </Button>
                 <Button
                     v-if="abilities.canManageSharedEvents"
                     variant="outline"
@@ -383,6 +463,19 @@ const confirmDelete = (): void => {
                                 >
                                     <IconDownload class="size-4" />
                                     {{ $t('socialhq_events.actions.import') }}
+                                </Button>
+                                <Button
+                                    v-if="abilities.canManageSharedEvents"
+                                    variant="outline"
+                                    data-testid="socialhq-events-add-country-first"
+                                    @click="openAddCountry"
+                                >
+                                    <IconWorld class="size-4" />
+                                    {{
+                                        $t(
+                                            'socialhq_events.actions.add_country',
+                                        )
+                                    }}
                                 </Button>
                             </div>
                         </template>
@@ -519,7 +612,43 @@ const confirmDelete = (): void => {
                                     >{{ counts[by] }}</span
                                 >
                             </button>
+
+                            <NativeSelect
+                                v-if="countryOptions.length > 0"
+                                class="h-8 w-auto"
+                                v-model="countryModel"
+                                :aria-label="
+                                    $t('socialhq_events.filters.country')
+                                "
+                                data-testid="socialhq-events-country-filter"
+                            >
+                                <NativeSelectOption value="">
+                                    {{
+                                        $t(
+                                            'socialhq_events.filters.all_countries',
+                                        )
+                                    }}
+                                </NativeSelectOption>
+                                <NativeSelectOption
+                                    v-for="option in countryOptions"
+                                    :key="option.code"
+                                    :value="option.code"
+                                >
+                                    {{ option.name }}
+                                </NativeSelectOption>
+                            </NativeSelect>
                         </div>
+                        <p
+                            v-if="selectedCountryName"
+                            class="-mt-2 text-xs text-muted-foreground"
+                            data-testid="socialhq-events-country-hint"
+                        >
+                            {{
+                                $t('socialhq_events.filters.country_hint', {
+                                    country: selectedCountryName,
+                                })
+                            }}
+                        </p>
 
                         <EmptyState
                             v-if="groups.length === 0"
@@ -636,6 +765,14 @@ const confirmDelete = (): void => {
         :categories="categories"
         :default-day="defaultDay"
         :can-share="abilities.canManageSharedEvents"
+    />
+
+    <EventCountryDialog
+        v-if="abilities.canManageSharedEvents"
+        v-model:open="isCountryDialogOpen"
+        :countries="holidayCountries"
+        :years="holidayYears"
+        :max="maxHolidayCountries"
     />
 
     <Dialog v-if="abilities.canApprove" v-model:open="isDeleteOpen">

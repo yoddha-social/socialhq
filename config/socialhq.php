@@ -305,6 +305,31 @@ return [
             'max_rows' => (int) env('SOCIALHQ_CALENDAR_MAX_ROWS', 5000),
             'max_imports' => (int) env('SOCIALHQ_CALENDAR_MAX_IMPORTS', 50),
         ],
+        // Brand look: the logo (PNG, JPEG, WebP or a sanitised SVG) on the private disk.
+        'look' => [
+            'logo_kilobytes' => (int) env('SOCIALHQ_BRAND_LOGO_KILOBYTES', 2048),
+        ],
+        // Google Docs, Sheets and Slides links shared with "Anyone with the link",
+        // read through Google's export URLs (no Google sign-in).
+        'google' => [
+            'host' => env('SOCIALHQ_GOOGLE_DOCS_HOST', 'docs.google.com'),
+            'timeout_seconds' => (int) env('SOCIALHQ_GOOGLE_TIMEOUT_SECONDS', 20),
+        ],
+        // "Read our website": same site only, robots.txt respected, a pause between
+        // requests, then one AI call on the cleaned, deduplicated, cut text.
+        'website' => [
+            'max_pages' => (int) env('SOCIALHQ_WEBSITE_MAX_PAGES', 25),
+            'delay_ms' => (int) env('SOCIALHQ_WEBSITE_DELAY_MS', 1000),
+            'max_seconds' => (int) env('SOCIALHQ_WEBSITE_MAX_SECONDS', 150),
+            'timeout_seconds' => 15,
+            'page_kilobytes' => 2048,
+            'robots_kilobytes' => 512,
+            'sitemap_kilobytes' => 5120,
+            'max_sitemaps' => 3,
+            // What the AI gets: at most this much per page, and in all.
+            'page_characters' => (int) env('SOCIALHQ_WEBSITE_PAGE_CHARACTERS', 4000),
+            'ai_characters' => (int) env('SOCIALHQ_WEBSITE_AI_CHARACTERS', 20000),
+        ],
     ],
 
     /*
@@ -355,6 +380,28 @@ return [
         'domains' => array_values(array_filter(array_map('trim', explode(',', (string) env('SOCIALHQ_SIGNUP_DOMAINS', ''))))),
         'emails' => array_values(array_filter(array_map('trim', explode(',', (string) env('SOCIALHQ_SIGNUP_EMAILS', ''))))),
         'account_owner' => env('SOCIALHQ_SIGNUP_ACCOUNT_OWNER'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Events: public holidays by country (Nager.Date)
+    |--------------------------------------------------------------------------
+    |
+    | "Add a country" on the events page imports a country's public holidays
+    | from Nager.Date (free, no key), unconfirmed. Nepal's dates come from our
+    | official list instead. Each (country, year) answer is cached for
+    | cache_hours and the country list for a day; failures are not cached.
+    | At most max_countries per import, for this year and the next.
+    |
+    */
+
+    'events' => [
+        'nager' => [
+            'host' => rtrim((string) env('SOCIALHQ_NAGER_HOST', 'https://date.nager.at'), '/'),
+            'timeout_seconds' => (int) env('SOCIALHQ_NAGER_TIMEOUT', 10),
+            'cache_hours' => (int) env('SOCIALHQ_NAGER_CACHE_HOURS', 12),
+            'max_countries' => 5,
+        ],
     ],
 
     /*

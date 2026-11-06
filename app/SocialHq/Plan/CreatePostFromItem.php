@@ -12,6 +12,7 @@ use App\SocialHq\Production\BriefFile;
 use App\SocialHq\Production\BriefStage;
 use App\SocialHq\Production\BriefStorage;
 use App\Support\MediaImportStatus;
+use App\Support\Timezone;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -40,7 +41,11 @@ final class CreatePostFromItem
     }
 
     /**
-     * @return array{content: string, media: Collection<int, Media>, import_ids: list<string>, scheduled_on: string, social_account_id: ?string}
+     * The post's time is the item's posting time as a wall clock in the
+     * user's zone (what the composer takes), or null without one (the
+     * composer then uses 09:00 of the day).
+     *
+     * @return array{content: string, media: Collection<int, Media>, import_ids: list<string>, scheduled_on: string, scheduled_at: ?string, social_account_id: ?string}
      */
     public static function execute(PlanItem $item, User $user): array
     {
@@ -71,6 +76,7 @@ final class CreatePostFromItem
             'media' => $media,
             'import_ids' => $importIds,
             'scheduled_on' => $item->scheduled_on->toDateString(),
+            'scheduled_at' => SuggestedTime::wallClockIn($item, Timezone::normalize($user->timezone)),
             'social_account_id' => $item->socialAccount?->workspace_id === $item->workspace_id ? $item->socialAccount->id : null,
         ];
     }

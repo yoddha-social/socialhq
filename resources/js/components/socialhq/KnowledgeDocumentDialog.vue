@@ -35,6 +35,14 @@ export interface KnowledgeDocumentRow {
     status: KnowledgeDocumentStatus;
     failure: string | null;
     use_in_ai: boolean;
+    source:
+        | 'upload'
+        | 'google_doc'
+        | 'google_sheet'
+        | 'google_slides'
+        | 'website';
+    source_url: string | null;
+    read_at: string | null;
     created_at: string | null;
 }
 
@@ -162,14 +170,22 @@ const submit = (): void => {
                     </DialogTitle>
                     <DialogDescription>
                         {{
-                            document
+                            document?.source === 'website'
                                 ? $t(
-                                      'socialhq_knowledge.documents.dialog.edit_description',
+                                      'socialhq_knowledge.documents.website_note',
                                   )
-                                : $t(
-                                      'socialhq_knowledge.documents.dialog.upload_description',
-                                      { size: String(maxMegabytes) },
-                                  )
+                                : document && document.source !== 'upload'
+                                  ? $t(
+                                        'socialhq_knowledge.links.dialog.edit_description',
+                                    )
+                                  : document
+                                    ? $t(
+                                          'socialhq_knowledge.documents.dialog.edit_description',
+                                      )
+                                    : $t(
+                                          'socialhq_knowledge.documents.dialog.upload_description',
+                                          { size: String(maxMegabytes) },
+                                      )
                         }}
                     </DialogDescription>
                 </DialogHeader>

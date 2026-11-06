@@ -20,7 +20,7 @@ class GraphicSafetyReviewer implements Agent, HasStructuredOutput
     use Promptable;
     use UsesAiTask;
 
-    public function __construct(public bool $reviewsResult = false) {}
+    public function __construct(public bool $reviewsResult = false, public bool $brandLogo = false) {}
 
     public function aiTask(): AiTask
     {
@@ -29,7 +29,7 @@ class GraphicSafetyReviewer implements Agent, HasStructuredOutput
 
     public function instructions(): string
     {
-        return view('prompts.socialhq.graphic_safety_review', ['reviews_result' => $this->reviewsResult])->render();
+        return view('prompts.socialhq.graphic_safety_review', ['reviews_result' => $this->reviewsResult, 'brand_logo' => $this->brandLogo])->render();
     }
 
     /**

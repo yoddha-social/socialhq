@@ -7,6 +7,7 @@ declare(strict_types=1);
 // Loaded inside the group in routes/socialhq.php (auth, account ready, workspace;
 // prefix socialhq/plan; names socialhq.plan.*).
 
+use App\SocialHq\Http\Controllers\Plan\AudienceController;
 use App\SocialHq\Http\Controllers\Plan\BrandSettingsController;
 use App\SocialHq\Http\Controllers\Plan\ItemCommentController;
 use App\SocialHq\Http\Controllers\Plan\ItemCopyAiController;
@@ -20,6 +21,7 @@ use App\SocialHq\Http\Controllers\Plan\PlanItemWriteController;
 use Illuminate\Support\Facades\Route;
 
 Route::put('brand-settings', [BrandSettingsController::class, 'update'])->name('brand-settings.update');
+Route::put('audience', [AudienceController::class, 'update'])->name('audience.update');
 
 Route::get('items/{item}', [PlanItemController::class, 'show'])->whereNumber('item')->name('items.show');
 

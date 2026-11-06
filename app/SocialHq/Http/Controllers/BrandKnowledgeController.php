@@ -9,12 +9,15 @@ use App\Models\Workspace;
 use App\SocialHq\Http\Requests\StoreKnowledgeEntryRequest;
 use App\SocialHq\Http\Requests\UpdateBrandProfileRequest;
 use App\SocialHq\Http\Requests\UpdateKnowledgeEntryRequest;
+use App\SocialHq\Knowledge\Audience\AudiencePage;
 use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Knowledge\Calendars\OldCalendars;
 use App\SocialHq\Knowledge\Documents\DocumentsPage;
 use App\SocialHq\Knowledge\KnowledgeEntry;
 use App\SocialHq\Knowledge\KnowledgeKind;
+use App\SocialHq\Knowledge\Look\LookPage;
+use App\SocialHq\Knowledge\Website\WebsitePanel;
 use App\SocialHq\Plan\PlanOptions;
 use App\SocialHq\Plan\PlanPage;
 use Illuminate\Http\RedirectResponse;
@@ -67,6 +70,9 @@ class BrandKnowledgeController extends Controller
             'canEdit' => BrandKnowledge::canEdit($request->user(), $workspace),
             'documents' => DocumentsPage::prop($workspace),
             'pastCalendars' => OldCalendars::forPage($workspace),
+            'audience' => AudiencePage::prop($workspace, $request->user()),
+            'look' => LookPage::prop($workspace),
+            'website' => WebsitePanel::prop($workspace),
         ]);
     }
 

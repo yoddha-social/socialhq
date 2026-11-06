@@ -32,6 +32,7 @@ class BriefWriter implements Agent, HasStructuredOutput
         public array $context,
         public string $brandKnowledge,
         public bool $isVideo,
+        public string $brandLook = '',
     ) {}
 
     public function aiTask(): AiTask
@@ -46,6 +47,7 @@ class BriefWriter implements Agent, HasStructuredOutput
             'context' => json_encode($this->context, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             'brand_knowledge' => $this->brandKnowledge,
             'is_video' => $this->isVideo,
+            'brand_look' => $this->brandLook,
         ])->render();
     }
 

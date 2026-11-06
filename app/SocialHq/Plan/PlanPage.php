@@ -12,6 +12,8 @@ use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiTask;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Http\Controllers\Plan\PlanGenerationController;
+use App\SocialHq\Knowledge\Audience\Audience;
+use App\SocialHq\Knowledge\Audience\AudienceCountries;
 use App\Support\Timezone;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Gate;
@@ -60,6 +62,13 @@ final class PlanPage
             'creatives' => array_map(fn (CreativeKind $kind): string => $kind->value, CreativeKind::cases()),
             'abilities' => [...$abilities, 'canGenerate' => $abilities['canWork'] && $aiAvailable],
             'ai' => ['available' => $aiAvailable, 'hourlyLimit' => PlanGenerationController::HOURLY_LIMIT],
+            // Posting times are written in the main audience zone and shown in the viewer's too.
+            'audience' => [
+                'mainTimezone' => Audience::mainZone($profile, $user->timezone),
+                'countries' => array_map(fn (string $code): array => ['code' => $code, 'name' => AudienceCountries::name($code)], Audience::countries($profile)),
+            ],
+            // What "Generate with AI" opens with: the brand's last switches and the month's days.
+            'generateDefaults' => PlannerOptions::defaults($month, $profile)->toArray(),
             // Asked for by a partial reload when the "What worked lately" panel opens.
             'whatWorked' => Inertia::optional(fn (): array => PastPerformance::lately($workspace->id)),
         ];
@@ -84,6 +93,9 @@ final class PlanPage
             'angle' => $item->angle,
             'event_id' => $item->event_id,
             'owner_id' => $item->owner_id,
+            'suggested_time' => $item->suggested_time,
+            'suggested_timezone' => $item->suggested_timezone,
+            'suggested_at' => SuggestedTime::instant($item)?->toIso8601ZuluString(),
             'status' => $item->status->value,
             'source' => $item->source->value,
             'copy_status' => $item->copy_status->value,

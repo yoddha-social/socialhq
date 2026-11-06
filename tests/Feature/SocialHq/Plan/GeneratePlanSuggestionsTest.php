@@ -357,7 +357,7 @@ test('the planner schema lists every key as required, as strict providers want',
     $schema = (new ContentPlanner(Locale::DEFAULT))->schema(new JsonSchemaTypeFactory);
     $item = data_get($schema['items']->toArray(), 'items');
 
-    expect($item['required'])->toEqualCanonicalizing(['date', 'channel', 'content_type', 'creative', 'title', 'pillar', 'objective', 'angle', 'event_key']);
+    expect($item['required'])->toEqualCanonicalizing(['date', 'channel', 'content_type', 'creative', 'title', 'pillar', 'objective', 'angle', 'event_key', 'suggested_time']);
 });
 
 test('an answer without items is logged with who answered and how it stopped', function () {

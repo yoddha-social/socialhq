@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { IconBook, IconPin, IconPlus, IconSparkles } from '@tabler/icons-vue';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import EmptyState from '@/components/EmptyState.vue';
 import SettingsListRow from '@/components/settings/SettingsListRow.vue';
+import type { AudienceProp } from '@/components/socialhq/audience';
+import AudienceSection from '@/components/socialhq/AudienceSection.vue';
+import BrandLookSection from '@/components/socialhq/BrandLookSection.vue';
 import BrandPlanningSection from '@/components/socialhq/BrandPlanningSection.vue';
+import type {
+    BrandLookProp,
+    WebsiteProp,
+} from '@/components/socialhq/brandSources';
 import KnowledgeCheckBox from '@/components/socialhq/KnowledgeCheckBox.vue';
 import KnowledgeDocumentsSection, {
     type KnowledgeDocumentsProp,
@@ -16,6 +23,7 @@ import KnowledgeEntryDialog, {
 import type { PastCalendar } from '@/components/socialhq/oldCalendars';
 import OldCalendarsSection from '@/components/socialhq/OldCalendarsSection.vue';
 import type { PlanChannel } from '@/components/socialhq/plan/types';
+import WebsiteReadSection from '@/components/socialhq/WebsiteReadSection.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -52,6 +60,9 @@ const props = defineProps<{
     canEdit: boolean;
     documents: KnowledgeDocumentsProp;
     pastCalendars: PastCalendar[];
+    audience: AudienceProp;
+    look: BrandLookProp;
+    website: WebsiteProp;
 }>();
 
 const profileFields: { field: ProfileField; rows: number; hint: boolean }[] = [
@@ -63,6 +74,18 @@ const profileFields: { field: ProfileField; rows: number; hint: boolean }[] = [
 ];
 
 const profileForm = useForm({ ...props.profile });
+
+// A website suggestion accepted elsewhere on the page changes the profile:
+// show it, unless the admin is editing the form.
+watch(
+    () => props.profile,
+    (profile) => {
+        if (!profileForm.isDirty) {
+            profileForm.defaults({ ...profile });
+            profileForm.reset();
+        }
+    },
+);
 
 /** Nothing written yet: no profile field, no entry and no document. */
 const isEmpty = computed(
@@ -216,6 +239,8 @@ const confirmDelete = (): void => {
                     </p>
                 </section>
 
+                <WebsiteReadSection :website="website" :can-edit="canEdit" />
+
                 <section class="flex flex-col gap-4">
                     <h2 class="text-base font-semibold text-foreground">
                         {{ $t('socialhq.brand.profile.title') }}
@@ -270,12 +295,16 @@ const confirmDelete = (): void => {
                     </form>
                 </section>
 
+                <BrandLookSection :look="look" :can-edit="canEdit" />
+
                 <BrandPlanningSection
                     :pillars="pillars"
                     :cadence="cadence"
                     :channels="planChannels"
                     :can-edit="canEdit"
                 />
+
+                <AudienceSection :audience="audience" :can-edit="canEdit" />
 
                 <section class="flex flex-col gap-4">
                     <div class="flex items-start justify-between gap-4">

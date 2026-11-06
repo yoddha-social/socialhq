@@ -24,7 +24,9 @@ use Throwable;
  * import can still tell it apart from a row a person edited. Rows a person
  * added, edited, narrowed to one brand or deleted are never overwritten or
  * brought back, and an unchanged row keeps its confirmation. Rows that left
- * the list are counted, not deleted.
+ * the list are counted, not deleted. Only the list's own rows (Nepal's and
+ * the international ones) are matched and counted: other countries'
+ * holidays belong to ImportPublicHolidays.
  */
 final class ImportOfficialEvents
 {
@@ -70,7 +72,7 @@ final class ImportOfficialEvents
             $counts = ['created' => 0, 'updated' => 0, 'skipped' => 0, 'missing' => 0];
 
             foreach ($rows as $row) {
-                $counts[self::write($account, $row)]++;
+                $counts[WriteImportedEvent::handle($account, $row, fn ($query) => $query->fromOfficialList())]++;
             }
 
             if ($wholeDataset) {
@@ -91,47 +93,6 @@ final class ImportOfficialEvents
     }
 
     /**
-     * @param  array<string, mixed>  $row
-     * @return 'created'|'updated'|'skipped'
-     */
-    private static function write(Account $account, array $row): string
-    {
-        $existing = CalendarEvent::query()
-            ->withTrashed()
-            ->where('account_id', $account->id)
-            ->where('import_key', data_get($row, 'key'))
-            ->where('import_date', data_get($row, 'starts_on'))
-            ->first();
-
-        if ($existing === null) {
-            CalendarEvent::query()->create([
-                ...$row,
-                'account_id' => $account->id,
-                'workspace_id' => null,
-                'import_key' => data_get($row, 'key'),
-                'import_date' => data_get($row, 'starts_on'),
-            ]);
-
-            return 'created';
-        }
-
-        if ($existing->trashed() || self::editedByPerson($existing)) {
-            return 'skipped';
-        }
-
-        $existing->fill($row);
-
-        if (! $existing->isDirty()) {
-            return 'skipped';
-        }
-
-        $existing->timestamps = false;
-        $existing->save();
-
-        return 'updated';
-    }
-
-    /**
      * How many of the account's imported dates (not deleted) are no longer in the list.
      *
      * @param  list<array<string, mixed>>  $rows
@@ -142,16 +103,11 @@ final class ImportOfficialEvents
 
         return CalendarEvent::query()
             ->where('account_id', $account->id)
+            ->fromOfficialList()
             ->whereNotNull('import_key')
             ->get(['id', 'import_key', 'import_date'])
             ->reject(fn (CalendarEvent $event): bool => $listed->has("{$event->import_key}|{$event->import_date?->toDateString()}"))
             ->count();
-    }
-
-    private static function editedByPerson(CalendarEvent $event): bool
-    {
-        return $event->created_by !== null
-            || ($event->updated_at !== null && $event->created_at !== null && $event->updated_at->greaterThan($event->created_at));
     }
 
     /**
@@ -233,6 +189,7 @@ final class ImportOfficialEvents
         return [
             ...self::common($record, $category),
             'region' => EventRegion::Nepal,
+            'country_code' => CalendarEvent::NEPAL,
             'bs_date' => self::clean(data_get($record, 'date_bs'), 60),
             'name_ne' => self::clean(data_get($record, 'name_ne'), 160),
             'public_holiday' => $holiday !== 'no',
@@ -256,6 +213,7 @@ final class ImportOfficialEvents
         return [
             ...self::common($record, $category),
             'region' => EventRegion::International,
+            'country_code' => null,
             'bs_date' => null,
             'name_ne' => null,
             'public_holiday' => false,

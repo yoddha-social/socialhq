@@ -30,6 +30,7 @@ use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\Calendars\CalendarStorage;
 use App\SocialHq\Knowledge\Calendars\PruneCalendarUploadsCommand;
 use App\SocialHq\Knowledge\Documents\DocumentStorage;
+use App\SocialHq\Knowledge\Look\LogoStorage;
 use App\SocialHq\Knowledge\Search\KnowledgeSearch;
 use App\SocialHq\Knowledge\Search\LexicalKnowledgeSearch;
 use App\SocialHq\Knowledge\TryPostPromptFocus;
@@ -177,6 +178,11 @@ class SocialHqServiceProvider extends ServiceProvider
         // Brand knowledge documents: 20 uploads an hour per person; "Check what the AI reads" 30 a minute.
         RateLimiter::for('socialhq-knowledge-uploads', fn (Request $request): Limit => Limit::perHour(20)->by((string) $request->user()?->id));
         RateLimiter::for('socialhq-knowledge-search', fn (Request $request): Limit => Limit::perMinute(30)->by((string) $request->user()?->id));
+        // "Read our website": 5 runs an hour per person (each reads up to 25 pages and makes one AI call).
+        RateLimiter::for('socialhq-website-reads', fn (Request $request): Limit => Limit::perHour(5)->by((string) $request->user()?->id));
+
+        // Brand logos go with their workspace.
+        LogoStorage::registerCleanup();
 
         // Old calendar uploads: the file goes with its import or its brand, and
         // uploads never imported go after a day.

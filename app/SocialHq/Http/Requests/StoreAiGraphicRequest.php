@@ -19,13 +19,16 @@ class StoreAiGraphicRequest extends FormRequest
      */
     public function rules(): array
     {
-        $maxImages = (int) config('socialhq.ai_graphics.max_reference_images', 3);
+        // The brand's logo, when added, takes one of the reference places.
+        $maxImages = max(0, (int) config('socialhq.ai_graphics.max_reference_images', 3) - ($this->boolean('use_brand_logo') ? 1 : 0));
         $maxKilobytes = (int) config('socialhq.ai_graphics.max_reference_kilobytes', 10240);
 
         return [
             'prompt' => ['required', 'string', 'min:3', 'max:2000'],
             'format' => ['required', Rule::enum(GraphicFormat::class)],
             'references' => ['nullable', 'array', "max:{$maxImages}"],
+            'use_brand_look' => ['sometimes', 'boolean'],
+            'use_brand_logo' => ['sometimes', 'boolean'],
             'references.*' => [
                 'file',
                 'mimetypes:image/jpeg,image/png,image/webp',

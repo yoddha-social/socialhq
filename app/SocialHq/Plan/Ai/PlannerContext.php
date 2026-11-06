@@ -7,6 +7,7 @@ namespace App\SocialHq\Plan\Ai;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\SocialAccount;
 use App\SocialHq\Events\CalendarEvent;
+use App\SocialHq\Knowledge\Audience\Audience;
 use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\Calendars\OldCalendars;
 use App\SocialHq\Plan\ContentPlan;
@@ -15,15 +16,19 @@ use App\SocialHq\Plan\PastPerformance;
 use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Plan\PlanMonth;
 use App\SocialHq\Plan\PlanOptions;
+use App\SocialHq\Plan\PlannerOptions;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Collection;
 
 /**
  * Everything the AI planner is told about a month, as one JSON-ready array:
- * the days, the team's goals, the brand, its pillars, its channels with their
- * cadence and formats, the month's events (confirmed or not, flagged), what is
- * already planned, how recent posts did, and the team's old calendars.
+ * the days to plan (the run's range), the team's goals, the brand, where its
+ * audience is, its pillars, its channels with their cadence and formats, the
+ * range's events (confirmed or not, flagged; only the audience's countries'
+ * and international ones when asked), what is already planned, and, when
+ * the run asks for them, how recent posts did and the team's old calendars.
+ * What a run leaves out is not sent at all, to keep the prompt small.
  */
 final class PlannerContext
 {
@@ -39,37 +44,41 @@ final class PlannerContext
      * @return array{
      *     month: string,
      *     today: string,
+     *     range: array{from: string, to: string},
      *     days: list<string>,
      *     goals: string|null,
      *     brand: string,
+     *     audience: array{main_timezone: string, locations: list<array<string, mixed>>},
      *     pillars: list<string>,
      *     channels: list<array{key: string, platform: string, name: string, posts_per_week: int|null, content_types: list<string>}>,
      *     events: list<array{key: string, name: string, category: string, starts_on: string, ends_on: string, confirmed: bool}>,
      *     already_planned: list<array{title: string, date: string, channel: string|null}>,
-     *     past_posts: list<array<string, mixed>>,
-     *     old_calendar: list<array<string, mixed>>,
+     *     past_posts?: list<array<string, mixed>>,
+     *     old_calendar?: list<array<string, mixed>>,
      * }
      */
-    public static function build(ContentPlan $plan, CarbonImmutable $today): array
+    public static function build(ContentPlan $plan, CarbonImmutable $today, ?string $fallbackZone = null): array
     {
         $workspace = $plan->workspace;
         $month = CarbonImmutable::createFromFormat('!Y-m-d', $plan->month->toDateString(), 'UTC');
-        $end = PlanMonth::end($month);
         $profile = PlanOptions::profile($workspace);
+        $options = PlannerOptions::forPlan($plan, $profile);
         $channels = PlanOptions::channels($workspace);
         $cadence = PlanOptions::cadence($profile, $channels);
-        $events = PlanOptions::events($workspace, $month, $end);
+        $events = PlanOptions::events($workspace, $options->from, $options->to, $options->eventCountries($profile));
         $pillars = PlanOptions::pillars($profile);
 
         return [
             'month' => PlanMonth::key($month),
             'today' => $today->toDateString(),
-            'days' => collect(CarbonPeriod::create($month, $end))
+            'range' => ['from' => $options->from->toDateString(), 'to' => $options->to->toDateString()],
+            'days' => collect(CarbonPeriod::create($options->from, $options->to))
                 ->map(fn ($day): string => $day->format('Y-m-d D'))
                 ->values()
                 ->all(),
             'goals' => filled($plan->goals) ? trim((string) $plan->goals) : null,
             'brand' => BrandKnowledge::forPrompt($workspace, self::focus($plan, $pillars, $events, $channels)),
+            'audience' => Audience::forPlanner($profile, Audience::mainZone($profile, $fallbackZone)),
             'pillars' => $pillars,
             'channels' => $channels->map(fn (SocialAccount $channel): array => [
                 'key' => $channel->id,
@@ -98,8 +107,8 @@ final class PlannerContext
                 ])
                 ->values()
                 ->all(),
-            'past_posts' => self::pastPosts($workspace->id),
-            'old_calendar' => OldCalendars::forPlanner($workspace->id, $month),
+            ...($options->pastPosts ? ['past_posts' => self::pastPosts($workspace->id)] : []),
+            ...($options->oldCalendars ? ['old_calendar' => OldCalendars::forPlanner($workspace->id, $month)] : []),
         ];
     }
 

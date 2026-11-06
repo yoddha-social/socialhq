@@ -33,6 +33,7 @@ class ContentPlan extends Model
             'status' => PlanStatus::class,
             'generation_status' => GenerationStatus::class,
             'generation_rejections' => 'array',
+            'generation_options' => 'array',
             'generated_at' => 'immutable_datetime',
             'generation_started_at' => 'immutable_datetime',
             'submitted_at' => 'immutable_datetime',

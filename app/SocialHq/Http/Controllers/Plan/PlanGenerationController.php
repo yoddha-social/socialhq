@@ -8,11 +8,15 @@ use App\Http\Controllers\Controller;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiTask;
 use App\SocialHq\Http\Requests\Plan\GeneratePlanRequest;
+use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Plan\Ai\GeneratePlanSuggestions;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\GenerationStatus;
 use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Plan\PlanMonth;
+use App\SocialHq\Plan\PlannerOptions;
+use App\SocialHq\Plan\PlanOptions;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -44,11 +48,13 @@ class PlanGenerationController extends Controller
             throw ValidationException::withMessages(['generate' => (string) $gate->message()]);
         }
 
-        $plan = PlanMonth::findOrCreate($workspace, PlanMonth::parse($month, $user), $user);
+        $start = PlanMonth::parse($month, $user);
+        $plan = PlanMonth::findOrCreate($workspace, $start, $user);
+        $options = self::options($request, $start, PlanOptions::profile($workspace));
 
         $runId = (string) Str::uuid7();
 
-        $started = DB::transaction(function () use ($plan, $request, $user, $runId): bool {
+        $started = DB::transaction(function () use ($plan, $request, $user, $runId, $options): bool {
             $locked = ContentPlan::query()->lockForUpdate()->findOrFail($plan->id);
 
             if ($locked->isGenerating()) {
@@ -62,6 +68,7 @@ class PlanGenerationController extends Controller
                 'generation_started_at' => now(),
                 'generation_requested_by' => $user->id,
                 'generation_run_id' => $runId,
+                'generation_options' => $options->toArray(),
             ])->save();
 
             return true;
@@ -69,8 +76,27 @@ class PlanGenerationController extends Controller
 
         abort_unless($started, Response::HTTP_CONFLICT, __('socialhq_plan.generation.errors.already_running'));
 
+        // The switches are the brand's next defaults (the days and the focus belong to this month).
+        BrandProfile::query()->updateOrCreate(['workspace_id' => $workspace->id], ['planner_options' => $options->switches()]);
+
         GeneratePlanSuggestions::dispatch($plan->id, $runId);
 
         return back();
+    }
+
+    /**
+     * The submitted options over the brand's remembered ones.
+     */
+    private static function options(GeneratePlanRequest $request, CarbonImmutable $month, ?BrandProfile $profile): PlannerOptions
+    {
+        $defaults = PlannerOptions::defaults($month, $profile);
+
+        return PlannerOptions::within($month, [
+            'from' => $request->validated('from', $defaults->from->toDateString()),
+            'to' => $request->validated('to', $defaults->to->toDateString()),
+            'old_calendars' => $request->boolean('old_calendars', $defaults->oldCalendars),
+            'past_posts' => $request->boolean('past_posts', $defaults->pastPosts),
+            'audience_events' => $request->boolean('audience_events', $defaults->audienceEvents),
+        ]);
     }
 }

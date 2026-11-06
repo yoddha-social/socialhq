@@ -23,6 +23,9 @@ class BrandProfile extends Model
     protected function casts(): array
     {
         return [
+            // Where the audience is (Audience\Audience reads it) and the planner switches last used (PlannerOptions).
+            'audience_locations' => 'array',
+            'planner_options' => 'array',
             // Content pillars, in the brand's order (their colours follow it).
             'pillars' => 'array',
             // Posts per week, keyed by social account id; read by the planner.

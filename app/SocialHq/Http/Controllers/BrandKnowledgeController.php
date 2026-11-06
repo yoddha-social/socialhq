@@ -9,6 +9,7 @@ use App\Models\Workspace;
 use App\SocialHq\Http\Requests\StoreKnowledgeEntryRequest;
 use App\SocialHq\Http\Requests\UpdateBrandProfileRequest;
 use App\SocialHq\Http\Requests\UpdateKnowledgeEntryRequest;
+use App\SocialHq\Knowledge\Audience\AudiencePage;
 use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Knowledge\Calendars\OldCalendars;
@@ -67,6 +68,7 @@ class BrandKnowledgeController extends Controller
             'canEdit' => BrandKnowledge::canEdit($request->user(), $workspace),
             'documents' => DocumentsPage::prop($workspace),
             'pastCalendars' => OldCalendars::forPage($workspace),
+            'audience' => AudiencePage::prop($workspace, $request->user()),
         ]);
     }
 

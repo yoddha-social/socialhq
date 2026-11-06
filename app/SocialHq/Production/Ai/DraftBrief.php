@@ -7,6 +7,7 @@ namespace App\SocialHq\Production\Ai;
 use App\Models\User;
 use App\SocialHq\Ai\AiTenant;
 use App\SocialHq\Knowledge\BrandKnowledge;
+use App\SocialHq\Knowledge\Look\BrandLook;
 use App\SocialHq\Plan\CopyStatus;
 use App\SocialHq\Plan\ItemVersion;
 use App\SocialHq\Production\Brief;
@@ -58,6 +59,7 @@ final class DraftBrief
             // What the brief is about: the item, and the caption it illustrates.
             brandKnowledge: BrandKnowledge::forPrompt($brief->workspace, collect([$item->title, $item->angle, $version?->caption])->filter()->implode("\n")),
             isVideo: $brief->kind === BriefKind::Video,
+            brandLook: BrandLook::promptFor($brief->workspace),
         ))->prompt('Draft the brief for this post.'));
 
         $draft = [

@@ -88,7 +88,7 @@ class GenerateAiGraphic implements ShouldQueue
             'model' => $response->meta->model ?? $graphic->model,
         ]);
 
-        $blocked = VisionCheck::review($graphic->prompt, [Image::fromBase64($image->image, $image->mime())], reviewsResult: true);
+        $blocked = VisionCheck::review($graphic->prompt, [Image::fromBase64($image->image, $image->mime())], reviewsResult: true, brandLogo: (bool) $graphic->brand_logo);
 
         if ($blocked !== null) {
             $this->finish($graphic, AiGraphic::BLOCKED, $blocked);
@@ -100,16 +100,18 @@ class GenerateAiGraphic implements ShouldQueue
     }
 
     /**
-     * The user's prompt with what makes it a social media graphic.
+     * The user's prompt with what makes it a social media graphic, and the
+     * brand's logo and look when the request asked for them.
      */
     public static function fullPrompt(AiGraphic $graphic): string
     {
-        $references = $graphic->reference_count > 0
-            ? ' Use the attached reference image'.($graphic->reference_count > 1 ? 's' : '').' as the prompt describes.'
-            : '';
-
-        return trim($graphic->prompt)."\n\nA finished still graphic for a social media post, ".$graphic->format->value.' format.'.$references
-            .' Any text in the image must be spelled exactly as written in the prompt.';
+        return trim(view('prompts.socialhq.graphic_prompt', [
+            'prompt' => trim($graphic->prompt),
+            'format' => $graphic->format->value,
+            'reference_count' => $graphic->reference_count,
+            'brand_logo' => (bool) $graphic->brand_logo,
+            'brand_look' => (string) $graphic->brand_look,
+        ])->render());
     }
 
     private function store(AiGraphic $graphic, Workspace $workspace, string $bytes, string $mime): void

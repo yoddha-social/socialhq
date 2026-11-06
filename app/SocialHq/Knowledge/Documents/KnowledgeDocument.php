@@ -12,7 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A file a workspace admin uploaded for brand knowledge (a brochure, a price
- * list, a deck). Its text is read once (ExtractKnowledgeDocument) into
+ * list, a deck), a link-shared Google file, or the website's text
+ * (DocumentSource). Its text is read once (ExtractKnowledgeDocument) into
  * excerpts (KnowledgeChunk) that search finds for the request at hand. The
  * file stays on the private disk, for download only.
  */
@@ -33,6 +34,9 @@ class KnowledgeDocument extends Model
             'pages' => 'integer',
             'characters' => 'integer',
             'chunk_count' => 'integer',
+            'source' => DocumentSource::class,
+            'auto_title' => 'boolean',
+            'read_at' => 'datetime',
         ];
     }
 
@@ -50,6 +54,16 @@ class KnowledgeDocument extends Model
     public function chunks(): HasMany
     {
         return $this->hasMany(KnowledgeChunk::class, 'document_id');
+    }
+
+    /**
+     * Documents that count toward the per-brand limit (the website's text doesn't).
+     *
+     * @param  Builder<KnowledgeDocument>  $query
+     */
+    public function scopeCountedTowardLimit(Builder $query): void
+    {
+        $query->where('source', '!=', DocumentSource::Website->value);
     }
 
     public function type(): ?DocumentType

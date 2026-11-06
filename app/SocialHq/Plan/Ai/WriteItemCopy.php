@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Models\User;
 use App\SocialHq\Ai\AiTenant;
 use App\SocialHq\Knowledge\BrandKnowledge;
+use App\SocialHq\Knowledge\Look\BrandLook;
 use App\SocialHq\Plan\CreativeKind;
 use App\SocialHq\Plan\ItemCopy;
 use App\SocialHq\Plan\ItemPage;
@@ -44,6 +45,7 @@ final class WriteItemCopy
             isRewrite: $latest !== null,
             maxLength: $maxLength === null ? null : self::captionBudget($maxLength, $maxHashtags, $latest?->hashtags),
             maxHashtags: $maxHashtags,
+            visualStyle: BrandLook::of($item->workspace)?->copyLine() ?? '',
         ))->prompt($latest === null ? 'Write the copy for this post.' : 'Rewrite the copy for this post.'));
 
         $caption = trim((string) data_get($response, 'caption'));

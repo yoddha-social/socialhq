@@ -5043,8 +5043,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-10-27T07:05:50+00:00",
-            "published-time": "2026-10-27T07:15:15+00:00"
+            "time": "2026-10-27T07:05:50+00:00"
         },
         {
             "name": "paragonie/constant_time_encoding",
@@ -5321,16 +5320,16 @@
         },
         {
             "name": "phpseclib/phpseclib",
-            "version": "3.0.54",
+            "version": "3.0.58",
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpseclib/phpseclib.git",
-                "reference": "5418963581a6d3e69f030d8c972238cb6add3166"
+                "reference": "91f3a6436bb84040ac0cf49e761977f17d16a39b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpseclib/phpseclib/zipball/5418963581a6d3e69f030d8c972238cb6add3166",
-                "reference": "5418963581a6d3e69f030d8c972238cb6add3166",
+                "url": "https://api.github.com/repos/phpseclib/phpseclib/zipball/91f3a6436bb84040ac0cf49e761977f17d16a39b",
+                "reference": "91f3a6436bb84040ac0cf49e761977f17d16a39b",
                 "shasum": ""
             },
             "require": {
@@ -5411,7 +5410,7 @@
             ],
             "support": {
                 "issues": "https://github.com/phpseclib/phpseclib/issues",
-                "source": "https://github.com/phpseclib/phpseclib/tree/3.0.54"
+                "source": "https://github.com/phpseclib/phpseclib/tree/3.0.58"
             },
             "funding": [
                 {
@@ -5427,7 +5426,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-06-14T19:54:17+00:00"
+            "time": "2026-11-02T10:45:48+00:00"
         },
         {
             "name": "phpstan/phpdoc-parser",
@@ -7250,8 +7249,7 @@
                 "issues": "https://github.com/smalot/pdfparser/issues",
                 "source": "https://github.com/smalot/pdfparser/tree/v2.13.1"
             },
-            "time": "2026-10-13T08:49:45+00:00",
-            "published-time": "2026-10-13T09:05:15+00:00"
+            "time": "2026-10-13T08:49:45+00:00"
         },
         {
             "name": "socialiteproviders/facebook",
@@ -16061,5 +16059,5 @@
         "php": "^8.2"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.11.0"
+    "plugin-api-version": "2.9.0"
 }

@@ -34,9 +34,11 @@ import PlanViewToggle, {
 import PlanWhatWorkedPanel from '@/components/socialhq/plan/PlanWhatWorkedPanel.vue';
 import type {
     PlanAbilities,
+    PlanAudience,
     PlanChannel,
     PlanData,
     PlanEvent,
+    PlanGenerateOptions,
     PlanItem,
     PlanLookups,
     PlanOwner,
@@ -62,6 +64,7 @@ import {
 import {
     accept as acceptItem,
     drop as dropItem,
+    restore as restoreItem,
 } from '@/routes/socialhq/plan/items';
 import { accept as acceptSuggestions } from '@/routes/socialhq/plan/suggestions';
 
@@ -78,6 +81,8 @@ const props = defineProps<{
     creatives: string[];
     abilities: PlanAbilities;
     ai: { available: boolean; hourlyLimit: number };
+    audience: PlanAudience;
+    generateDefaults: PlanGenerateOptions;
     whatWorked?: WhatWorked;
 }>();
 
@@ -218,6 +223,9 @@ const acceptOne = (item: PlanItem): void =>
 
 const dropOne = (item: PlanItem): void =>
     itemWrite(item, dropItem.url(item.id));
+
+const restoreOne = (item: PlanItem): void =>
+    itemWrite(item, restoreItem.url(item.id));
 
 const acceptAll = (): void => {
     router.post(
@@ -607,7 +615,12 @@ const openBrandSettings = (): void => {
                             v-if="items.length"
                             :items="items"
                             :lookups="lookups"
+                            :can-work="abilities.canWork"
+                            :busy-item-id="busyItemId"
                             @open="openItem"
+                            @accept="acceptOne"
+                            @drop="dropOne"
+                            @restore="restoreOne"
                         />
                         <EmptyState
                             v-else
@@ -635,6 +648,7 @@ const openBrandSettings = (): void => {
         :pillars="pillars"
         :creatives="creatives"
         :can-work="abilities.canWork"
+        :main-timezone="audience.mainTimezone"
     />
 
     <PlanGenerateDialog
@@ -642,9 +656,12 @@ const openBrandSettings = (): void => {
         v-model:open="generateOpen"
         :month="month"
         :month-label="monthLabel"
+        :today="today"
         :goals="plan?.goals ?? null"
         :has-suggestions="suggestions.length > 0"
         :hourly-limit="ai.hourlyLimit"
+        :defaults="generateDefaults"
+        :audience="audience"
     />
 
     <PlanBrandSettingsDialog

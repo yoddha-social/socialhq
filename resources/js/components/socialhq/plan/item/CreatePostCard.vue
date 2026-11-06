@@ -28,6 +28,8 @@ const http = useHttp<
         content: string;
         media: MediaItem[];
         scheduled_on: string;
+        /** The item's posting time as a wall clock in the user's zone, or null. */
+        scheduled_at: string | null;
         social_account_id: string | null;
     }
 >({});
@@ -60,7 +62,7 @@ const createPost = async (): Promise<void> => {
         }
 
         openPostComposer({
-            date: draft.scheduled_on,
+            date: draft.scheduled_at ?? draft.scheduled_on,
             socialAccountIds: draft.social_account_id
                 ? [draft.social_account_id]
                 : [],

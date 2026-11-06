@@ -5,6 +5,8 @@ import { computed, ref } from 'vue';
 
 import EmptyState from '@/components/EmptyState.vue';
 import SettingsListRow from '@/components/settings/SettingsListRow.vue';
+import type { AudienceProp } from '@/components/socialhq/audience';
+import AudienceSection from '@/components/socialhq/AudienceSection.vue';
 import BrandPlanningSection from '@/components/socialhq/BrandPlanningSection.vue';
 import KnowledgeCheckBox from '@/components/socialhq/KnowledgeCheckBox.vue';
 import KnowledgeDocumentsSection, {
@@ -52,6 +54,7 @@ const props = defineProps<{
     canEdit: boolean;
     documents: KnowledgeDocumentsProp;
     pastCalendars: PastCalendar[];
+    audience: AudienceProp;
 }>();
 
 const profileFields: { field: ProfileField; rows: number; hint: boolean }[] = [
@@ -276,6 +279,8 @@ const confirmDelete = (): void => {
                     :channels="planChannels"
                     :can-edit="canEdit"
                 />
+
+                <AudienceSection :audience="audience" :can-edit="canEdit" />
 
                 <section class="flex flex-col gap-4">
                     <div class="flex items-start justify-between gap-4">

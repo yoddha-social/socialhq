@@ -100,6 +100,7 @@ return [
         'open_row' => 'Edit ":title"',
         'week' => 'Week of :date',
         'week_count' => '{1} :count item|[0,*] :count items',
+        'sort' => 'Sort the list',
         'sort_by' => 'Sort by :column',
         'no_time' => 'No time',
     ],
@@ -118,6 +119,7 @@ return [
         'drop' => 'Drop',
         'drop_named' => 'Drop ":title"',
         'restore' => 'Restore',
+        'restore_named' => 'Restore ":title"',
         'delete' => 'Delete',
     ],
     'copy_status' => [
@@ -191,7 +193,7 @@ return [
         'description' => 'The AI suggests items from your confirmed events, brand profile, pillars, posts per week and past posts. You accept or drop each one.',
         'goals' => 'What should this month focus on?',
         'goals_placeholder' => 'For example: launch the winter menu, more reels, nothing on Saturdays.',
-        'replaces' => 'This replaces the AI suggestions you haven\'t accepted yet. Planned items stay.',
+        'replaces' => 'This replaces the AI suggestions you haven\'t accepted yet on these days. Planned items stay.',
         'start' => 'Generate',
         'too_many' => 'You can start up to :limit AI drafts an hour. Try again later.',
         'from' => 'From',
@@ -206,7 +208,6 @@ return [
         'audience_events' => 'Only your audience\'s events',
         'audience_events_help' => 'Holidays of :countries, plus international days.',
         'audience_events_none' => 'To keep to your audience\'s events, add where your audience is on Brand knowledge.',
-        'replaces_range' => 'This replaces the AI suggestions you haven\'t accepted yet on these days. Planned items stay.',
         'validation' => [
             'range' => 'Pick the first and the last day to plan.',
             'range_order' => 'Pick a last day on or after the first one.',

@@ -8,6 +8,7 @@ import PasswordRequirements from '@/components/auth/PasswordRequirements.vue';
 import type { PasswordRequirement } from '@/components/auth/PasswordRequirements.vue';
 import SocialLogin from '@/components/auth/SocialLogin.vue';
 import InputError from '@/components/InputError.vue';
+import CompanyNameField from '@/components/socialhq/CompanyNameField.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -115,6 +116,9 @@ const hasSocial = computed(
                             />
                             <InputError :message="errors.email" />
                         </div>
+
+                        <!-- Social HQ: asking to start a company (PATCHES.md). -->
+                        <CompanyNameField :invite="invite" :error="errors.company_name" />
 
                         <div class="grid gap-2">
                             <Label for="password">{{ $t('auth.register.password') }}</Label>

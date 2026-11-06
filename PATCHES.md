@@ -22,6 +22,8 @@ whenever you touch an upstream file; keep each edit as small as possible.
 | 22 | `app/Http/Middleware/App/EnsureRegistrationEnabled.php` | Lets registration through on a self-hosted install when sign-up is open (1 line) | Same |
 | 23 | `app/Http/Controllers/Auth/Concerns/PreservesInvite.php` | Google and GitHub sign-ups follow the same allow list (6 lines) | Same |
 | 24 | `resources/js/pages/auth/Login.vue` | Shows the sign-up link when sign-up is open (4 lines) | Same |
+| 90 | `app/Models/Traits/HasWorkspace.php` | `switchWorkspace()` also sets the `currentWorkspace` relation (1 line) | The relation stayed on the old workspace for the rest of the request; browser tests reuse the signed-in user across requests, so the sidebar kept the old name |
+| 5 | `app/Support/Timezone.php` | `normalize()` asks ICU for an alias's canonical name without first requiring it in PHP's legacy tz list | Without the legacy tz database (Ubuntu's tzdata-legacy), every legacy alias became UTC; this also kept CI red. Proposed upstream (trypostit/trypost#478) |
 
 Files we **added** (no merge risk) aren't listed here; they're under the
 module paths in SOCIALHQ.md, plus `config/socialhq.php`,

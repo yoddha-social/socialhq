@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { attach, index, show, store } from '@/routes/socialhq/ai-graphics';
 
@@ -42,7 +43,7 @@ const emit = defineEmits<{
 }>();
 
 const page = usePage();
-const maxReferences = computed(
+const maxImages = computed(
     () =>
         (page.props.socialhq as AiGraphicsProps | undefined)?.aiGraphics
             ?.maxReferences ?? 3,
@@ -58,9 +59,33 @@ const http = useHttp<
         prompt: string;
         format: (typeof FORMATS)[number];
         references: File[];
+        use_brand_look: boolean;
+        use_brand_logo: boolean;
     },
     { import_id: string }
->({ prompt: '', format: 'square', references: [] });
+>({
+    prompt: '',
+    format: 'square',
+    references: [],
+    use_brand_look: true,
+    use_brand_logo: false,
+});
+
+// Brand look (Settings › Brand knowledge): what this brand can add.
+interface BrandOffer {
+    look: boolean;
+    logo: string | null;
+    vectorLogo: boolean;
+}
+
+const brand = ref<BrandOffer>({ look: false, logo: null, vectorLogo: false });
+
+// The brand's logo, when added, takes one of the reference places.
+const maxReferences = computed(
+    () =>
+        maxImages.value -
+        (http.use_brand_logo && brand.value.logo !== null ? 1 : 0),
+);
 
 const phase = ref<Phase>('idle');
 const message = ref<string | null>(null);
@@ -97,9 +122,14 @@ const loadRecent = async (): Promise<void> => {
     try {
         const response = await useHttp<
             Record<string, never>,
-            { graphics: RecentGraphic[] }
+            { graphics: RecentGraphic[]; brand?: BrandOffer }
         >({}).get(index.url());
         recent.value = response?.graphics ?? [];
+        brand.value = response?.brand ?? {
+            look: false,
+            logo: null,
+            vectorLogo: false,
+        };
     } catch {
         recent.value = [];
     }
@@ -236,6 +266,14 @@ const onPaste = (event: ClipboardEvent): void => {
         event.preventDefault();
         addFiles(images);
     }
+};
+
+const setUseBrandLook = (value: boolean): void => {
+    http.use_brand_look = value;
+};
+
+const setUseBrandLogo = (value: boolean): void => {
+    http.use_brand_logo = value;
 };
 
 const removeReference = (index: number): void => {
@@ -465,6 +503,70 @@ const submit = async (): Promise<void> => {
                             http.errors['references.0'] ??
                             http.errors.references
                         }}
+                    </p>
+                </div>
+
+                <div
+                    v-if="brand.look || brand.logo || brand.vectorLogo"
+                    class="grid gap-3"
+                    data-testid="socialhq-ai-graphic-brand"
+                >
+                    <div
+                        v-if="brand.look"
+                        class="flex items-center justify-between gap-4"
+                    >
+                        <Label for="socialhq-ai-graphic-brand-look">
+                            {{
+                                $t('socialhq_knowledge.look.graphics.use_look')
+                            }}
+                        </Label>
+                        <Switch
+                            id="socialhq-ai-graphic-brand-look"
+                            :model-value="http.use_brand_look"
+                            :disabled="busy"
+                            data-testid="socialhq-ai-graphic-brand-look"
+                            @update:model-value="
+                                setUseBrandLook(Boolean($event))
+                            "
+                        />
+                    </div>
+                    <div
+                        v-if="brand.logo"
+                        class="flex items-center justify-between gap-4"
+                    >
+                        <div class="flex items-center gap-2">
+                            <img
+                                :src="brand.logo"
+                                alt=""
+                                class="size-8 rounded border border-border object-contain"
+                            />
+                            <Label for="socialhq-ai-graphic-brand-logo">
+                                {{
+                                    $t(
+                                        'socialhq_knowledge.look.graphics.add_logo',
+                                    )
+                                }}
+                            </Label>
+                        </div>
+                        <Switch
+                            id="socialhq-ai-graphic-brand-logo"
+                            :model-value="http.use_brand_logo"
+                            :disabled="
+                                busy ||
+                                (!http.use_brand_logo &&
+                                    http.references.length >= maxImages)
+                            "
+                            data-testid="socialhq-ai-graphic-brand-logo"
+                            @update:model-value="
+                                setUseBrandLogo(Boolean($event))
+                            "
+                        />
+                    </div>
+                    <p
+                        v-else-if="brand.vectorLogo"
+                        class="text-xs text-muted-foreground"
+                    >
+                        {{ $t('socialhq_knowledge.look.graphics.vector_logo') }}
                     </p>
                 </div>
 

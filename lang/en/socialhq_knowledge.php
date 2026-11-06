@@ -94,6 +94,7 @@ return [
             'url_placeholder' => 'https://docs.google.com/document/d/…',
             'title_hint' => 'Leave it empty to use the file\'s name.',
             'add' => 'Add link',
+            'edit_description' => 'To get this file\'s latest text, choose Read again on it.',
         ],
         'default_titles' => [
             'google_doc' => 'Google Docs file',
@@ -140,6 +141,11 @@ return [
         'style_notes_hint' => 'Visual style, mood, and what to do and avoid.',
         'style_notes_placeholder' => 'Bright and warm, plenty of white space, real photos of our team and products. No stock photos, no dark backgrounds.',
         'save' => 'Save brand look',
+        'graphics' => [
+            'use_look' => 'Follow our brand look',
+            'add_logo' => 'Add our logo',
+            'vector_logo' => 'To add your logo, upload a PNG version in Settings › Brand knowledge.',
+        ],
         'cancel' => 'Cancel',
         'errors' => [
             'hex' => 'Enter a colour as # and six hex digits, like #0b1f3a.',
@@ -158,7 +164,6 @@ return [
     'website' => [
         'title' => 'Read our website',
         'description' => 'We read up to :count pages of your site and suggest profile text, knowledge entries and colours. Nothing is saved until you accept it.',
-        'member_note' => 'A workspace admin can read your website into brand knowledge here.',
         'url' => 'Website address',
         'url_placeholder' => 'www.example.com',
         'start' => 'Read website',

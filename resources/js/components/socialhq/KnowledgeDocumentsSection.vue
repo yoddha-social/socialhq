@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { router, usePoll } from '@inertiajs/vue3';
 import {
+    IconBrandGoogleDrive,
     IconDots,
     IconDownload,
+    IconExternalLink,
     IconFileText,
     IconFileTypeDocx,
     IconFileTypePdf,
@@ -10,6 +12,7 @@ import {
     IconFileTypeTxt,
     IconMarkdown,
     IconUpload,
+    IconWorld,
 } from '@tabler/icons-vue';
 import { computed, ref, watch, type Component } from 'vue';
 
@@ -18,6 +21,7 @@ import SettingsListRow from '@/components/settings/SettingsListRow.vue';
 import KnowledgeDocumentDialog, {
     type KnowledgeDocumentRow,
 } from '@/components/socialhq/KnowledgeDocumentDialog.vue';
+import KnowledgeLinkDialog from '@/components/socialhq/KnowledgeLinkDialog.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,19 +44,24 @@ import { formatFullNumber } from '@/lib/utils';
 import {
     destroy as destroyDocument,
     show as downloadDocument,
+    refresh as refreshDocument,
 } from '@/routes/socialhq/brand/documents';
 
 export interface KnowledgeDocumentsProp {
     items: KnowledgeDocumentRow[];
     limit: number;
+    /** Uploads and links: the website's text doesn't count toward the limit. */
+    counted: number;
     maxMegabytes: number;
 }
 
 /**
  * The Documents section of Brand knowledge: brochures, price lists and decks
- * whose matching parts the AI reads. Admins upload, edit and delete them;
- * everyone who reads brand knowledge downloads them. While a document is
- * being read, the list reloads every few seconds.
+ * whose matching parts the AI reads, uploaded or linked from Google Docs,
+ * Sheets and Slides (read again on request), and the website's text kept
+ * from "Read our website". Admins add, edit and delete them; everyone who
+ * reads brand knowledge downloads them. While a document is being read,
+ * the list reloads every few seconds.
  */
 const props = defineProps<{
     documents: KnowledgeDocumentsProp;
@@ -68,7 +77,9 @@ const TYPE_ICONS: Record<string, Component> = {
 };
 
 const items = computed(() => props.documents.items);
-const atLimit = computed(() => items.value.length >= props.documents.limit);
+const atLimit = computed(
+    () => props.documents.counted >= props.documents.limit,
+);
 const isReading = computed(() =>
     items.value.some((document) => document.status === 'processing'),
 );
@@ -91,8 +102,20 @@ watch(
     { immediate: true },
 );
 
-const iconOf = (document: KnowledgeDocumentRow): Component =>
-    (document.type && TYPE_ICONS[document.type]) || IconFileText;
+const isGoogle = (document: KnowledgeDocumentRow): boolean =>
+    document.source.startsWith('google_');
+
+const iconOf = (document: KnowledgeDocumentRow): Component => {
+    if (isGoogle(document)) {
+        return IconBrandGoogleDrive;
+    }
+
+    if (document.source === 'website') {
+        return IconWorld;
+    }
+
+    return (document.type && TYPE_ICONS[document.type]) || IconFileText;
+};
 
 const formatSize = (bytes: number): string =>
     bytes >= 1024 * 1024
@@ -105,9 +128,32 @@ const deletingDocument = ref<KnowledgeDocumentRow | null>(null);
 const isDeleteOpen = ref(false);
 const isDeleting = ref(false);
 
+const isLinkDialogOpen = ref(false);
+const refreshing = ref<number | null>(null);
+
 const openUpload = (): void => {
     editingDocument.value = null;
     isDialogOpen.value = true;
+};
+
+const openAddLink = (): void => {
+    isLinkDialogOpen.value = true;
+};
+
+const readAgain = (document: KnowledgeDocumentRow): void => {
+    router.post(
+        refreshDocument.url(document.id),
+        {},
+        {
+            preserveScroll: true,
+            onStart: () => {
+                refreshing.value = document.id;
+            },
+            onFinish: () => {
+                refreshing.value = null;
+            },
+        },
+    );
 };
 
 const openEdit = (document: KnowledgeDocumentRow): void => {
@@ -155,15 +201,26 @@ const confirmDelete = (): void => {
                     {{ $t('socialhq_knowledge.documents.description') }}
                 </p>
             </div>
-            <Button
+            <div
                 v-if="canEdit && !atLimit"
-                class="shrink-0 self-start"
-                data-testid="socialhq-document-upload"
-                @click="openUpload"
+                class="flex shrink-0 flex-wrap gap-2 self-start"
             >
-                <IconUpload class="size-4" />
-                {{ $t('socialhq_knowledge.documents.upload') }}
-            </Button>
+                <Button
+                    variant="outline"
+                    data-testid="socialhq-document-add-link"
+                    @click="openAddLink"
+                >
+                    <IconBrandGoogleDrive class="size-4" />
+                    {{ $t('socialhq_knowledge.documents.add_link') }}
+                </Button>
+                <Button
+                    data-testid="socialhq-document-upload"
+                    @click="openUpload"
+                >
+                    <IconUpload class="size-4" />
+                    {{ $t('socialhq_knowledge.documents.upload') }}
+                </Button>
+            </div>
         </div>
 
         <p
@@ -251,7 +308,15 @@ const confirmDelete = (): void => {
                         </template>
                     </div>
                     <p class="truncate text-sm text-muted-foreground">
-                        <span v-if="document.type">
+                        <span v-if="document.source !== 'upload'">
+                            {{
+                                $t(
+                                    `socialhq_knowledge.documents.sources.${document.source}`,
+                                )
+                            }}
+                            ·
+                        </span>
+                        <span v-else-if="document.type">
                             {{
                                 $t(
                                     `socialhq_knowledge.documents.types.${document.type}`,
@@ -259,7 +324,9 @@ const confirmDelete = (): void => {
                             }}
                             ·
                         </span>
-                        {{ formatSize(document.size) }}
+                        <template v-if="document.source === 'upload'">
+                            {{ formatSize(document.size) }}
+                        </template>
                         <template
                             v-if="document.status === 'ready' && document.pages"
                         >
@@ -297,6 +364,12 @@ const confirmDelete = (): void => {
                         }}
                     </p>
                     <p
+                        v-if="document.source === 'website' && canEdit"
+                        class="text-sm text-muted-foreground"
+                    >
+                        {{ $t('socialhq_knowledge.documents.website_note') }}
+                    </p>
+                    <p
                         v-if="document.status === 'ready' && document.truncated"
                         class="text-sm text-muted-foreground"
                     >
@@ -311,6 +384,28 @@ const confirmDelete = (): void => {
                 <template #actions>
                     <div class="flex shrink-0 items-center gap-1">
                         <Button
+                            v-if="isGoogle(document) && document.source_url"
+                            variant="ghost"
+                            size="icon-sm"
+                            as="a"
+                            :href="document.source_url"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            :aria-label="
+                                $t(
+                                    'socialhq_knowledge.documents.open_source_label',
+                                    { title: document.title },
+                                )
+                            "
+                            :data-testid="`socialhq-document-source-${document.id}`"
+                        >
+                            <IconExternalLink class="size-4" />
+                        </Button>
+                        <Button
+                            v-if="
+                                document.source === 'upload' ||
+                                document.status === 'ready'
+                            "
                             variant="ghost"
                             size="icon-sm"
                             as="a"
@@ -345,6 +440,21 @@ const confirmDelete = (): void => {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem
+                                    v-if="isGoogle(document)"
+                                    :disabled="
+                                        document.status === 'processing' ||
+                                        refreshing === document.id
+                                    "
+                                    :data-testid="`socialhq-document-refresh-${document.id}`"
+                                    @select="readAgain(document)"
+                                >
+                                    {{
+                                        $t(
+                                            'socialhq_knowledge.documents.read_again',
+                                        )
+                                    }}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
                                     :data-testid="`socialhq-document-edit-${document.id}`"
                                     @select="openEdit(document)"
                                 >
@@ -376,6 +486,8 @@ const confirmDelete = (): void => {
             :document="editingDocument"
             :max-megabytes="documents.maxMegabytes"
         />
+
+        <KnowledgeLinkDialog v-model:open="isLinkDialogOpen" />
 
         <Dialog v-model:open="isDeleteOpen">
             <DialogContent class="sm:max-w-md">

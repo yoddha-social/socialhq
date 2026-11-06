@@ -22,7 +22,7 @@ use Symfony\Component\DomCrawler\UriResolver;
  */
 final class SafeHttpFetcher
 {
-    private const string USER_AGENT = 'TryPostBot/1.0 (+https://trypost.it)';
+    private const string USER_AGENT = 'SocialHQBot/1.0 (+https://github.com/yoddha-social/socialhq)';
 
     private const int TIMEOUT_SECONDS = 10;
 

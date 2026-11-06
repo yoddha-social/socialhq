@@ -52,10 +52,10 @@ return [
     'plan_cancel_anytime' => 'Отмена в любой момент',
     'mcp' => [
         'title' => 'Ведите соцсети прямо в чате',
-        'description' => 'Создавайте, планируйте и анализируйте посты в TryPost с любимым ИИ.',
+        'description' => 'Создавайте, планируйте и анализируйте посты в Social HQ с любимым ИИ.',
         'connect_with' => 'Подключить :client',
         'connect_ai' => 'Подключить ИИ',
-        'pick_ai' => 'Где вы хотите использовать TryPost?',
+        'pick_ai' => 'Где вы хотите использовать Social HQ?',
         'connect_other' => 'Подключить другое приложение',
         'connected' => ':client подключён',
         'benefits' => [

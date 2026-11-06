@@ -12,7 +12,7 @@ it('exposes the trypost logo as the mcp server icon', function () {
 
     $icon = $icons[0]->newInstance();
 
-    expect($icon->src)->toBe('images/trypost/icon.png')
+    expect($icon->src)->toBe('images/socialhq/icon.png')
         ->and($icon->mimeType)->toBe('image/png')
         ->and($icon->theme)->toBeNull();
 });

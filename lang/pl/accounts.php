@@ -99,7 +99,7 @@ return [
             ],
             'permissions' => [
                 'lead' => 'Wszystkie uprawnienia zaznaczone dla wszystkich stron i kont na Instagramie',
-                'rest' => 'podczas łączenia, także tych, których nie połączysz z TryPost.',
+                'rest' => 'podczas łączenia, także tych, których nie połączysz z Social HQ.',
             ],
         ],
         'learn_how' => 'Dowiedz się jak.',
@@ -121,8 +121,8 @@ return [
         'close' => 'Zamknij',
         'title_single' => 'Połącz konto',
         'title_select' => 'Wybierz konta',
-        'subtitle_single' => 'Wybierz konto, na którym TryPost będzie publikować w :network.',
-        'subtitle_select' => 'Wybierz konta, na których TryPost będzie publikować w :network.',
+        'subtitle_single' => 'Wybierz konto, na którym Social HQ będzie publikować w :network.',
+        'subtitle_select' => 'Wybierz konta, na których Social HQ będzie publikować w :network.',
         'selected' => 'Wybrane: :count',
         'select_all' => 'Wybierz wszystkie',
         'connected' => 'Połączone',
@@ -153,7 +153,7 @@ return [
             ],
             'missing_permission' => [
                 'title' => 'Potrzebne uprawnienie',
-                'description' => 'TryPost potrzebuje uprawnienia do publikowania Twoich postów. Połącz ponownie i pozostaw to uprawnienie zaznaczone.',
+                'description' => 'Social HQ potrzebuje uprawnienia do publikowania Twoich postów. Połącz ponownie i pozostaw to uprawnienie zaznaczone.',
             ],
             'expired' => [
                 'title' => 'To połączenie wygasło',
@@ -170,7 +170,7 @@ return [
             'start_again' => 'Zacznij od nowa',
         ],
         'errors' => [
-            'bluesky_email_unconfirmed' => 'Potwierdź adres e-mail w ustawieniach Bluesky, a następnie ponownie połącz konto. TryPost wymaga potwierdzonego adresu e-mail, aby publikować filmy.',
+            'bluesky_email_unconfirmed' => 'Potwierdź adres e-mail w ustawieniach Bluesky, a następnie ponownie połącz konto. Social HQ wymaga potwierdzonego adresu e-mail, aby publikować filmy.',
             'error_connecting' => 'Błąd podczas łączenia konta. Spróbuj ponownie.',
             'network_taken' => 'Ta przestrzeń robocza ma już konto dla tej sieci. Najpierw je rozłącz.',
             'wrong_account' => 'To inne konto. Autoryzuj to, które ponownie łączysz.',
@@ -185,7 +185,7 @@ return [
             'page_not_found' => 'Nie znaleziono strony.',
             'channel_not_found' => 'Nie znaleziono kanału.',
             'pages_read_incomplete' => 'Nie udało się odczytać wszystkich Twoich stron. Spróbuj ponownie za chwilę.',
-            'publish_permission_missing' => 'TryPost potrzebuje uprawnienia do publikowania Twoich postów. Połącz ponownie i zostaw to uprawnienie zaznaczone.',
+            'publish_permission_missing' => 'Social HQ potrzebuje uprawnienia do publikowania Twoich postów. Połącz ponownie i zostaw to uprawnienie zaznaczone.',
             'cancelled' => 'Połączenie anulowane.',
             'pages_missing_permission' => 'Znaleźliśmy strony, ale na żadnej nie możesz publikować. Potrzebujesz roli na samej stronie i wszystkich uprawnień.',
             'no_facebook_pages' => 'Nie znaleziono stron na Facebooku. Musisz być administratorem co najmniej jednej strony.',

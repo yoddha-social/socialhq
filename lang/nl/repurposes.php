@@ -35,7 +35,7 @@ return [
 
     'source' => [
         'title' => 'Bron',
-        'description' => 'TryPost volgt dit account op nieuwe berichten van het formaat hieronder.',
+        'description' => 'Social HQ volgt dit account op nieuwe berichten van het formaat hieronder.',
         'watch_label' => 'Volgen',
         'watch_description' => 'Het soort post dat een repost start.',
         'needs_reconnect' => 'Opnieuw verbinden nodig',
@@ -49,7 +49,7 @@ return [
 
     'empty' => [
         'title' => 'Nog geen repurpose ingesteld',
-        'description' => 'TryPost volgt het account dat je kiest en plaatst elk nieuw bericht opnieuw op de netwerken die je aanvinkt.',
+        'description' => 'Social HQ volgt het account dat je kiest en plaatst elk nieuw bericht opnieuw op de netwerken die je aanvinkt.',
     ],
 
     'table' => [
@@ -66,7 +66,7 @@ return [
 
     'create' => [
         'title' => 'Nieuwe repurpose',
-        'description' => 'Kies het account dat TryPost moet volgen. De bestemmingen kies je in het volgende scherm.',
+        'description' => 'Kies het account dat Social HQ moet volgen. De bestemmingen kies je in het volgende scherm.',
         'source_label' => 'Bronaccount',
         'source_placeholder' => 'Kies een account',
         'source_search' => 'Accounts zoeken',
@@ -106,7 +106,7 @@ return [
         'watermark' => 'Gevolgd sinds',
         'last_polled' => 'Laatst gecontroleerd',
         'draft_hint' => 'Kies minstens één bestemming en activeer daarna. Alleen berichten van na de activering worden gerepliceerd.',
-        'active_hint' => 'TryPost controleert dit account regelmatig en repliceert elk nieuw bericht.',
+        'active_hint' => 'Social HQ controleert dit account regelmatig en repliceert elk nieuw bericht.',
         'paused_hint' => 'De controles liggen stil. Bij hervatten gaat het verder waar het stopte, er gaat niets verloren.',
         'disabled_hint' => 'Uitgeschakeld. Opnieuw activeren begint schoon: wat je plaatste terwijl het uit stond, blijft buiten beschouwing.',
     ],
@@ -121,7 +121,7 @@ return [
         'original_from' => 'origineel van :date',
         'empty' => [
             'title' => 'Nog niets',
-            'description' => 'Berichten die dit account buiten TryPost plaatst, verschijnen hier.',
+            'description' => 'Berichten die dit account buiten Social HQ plaatst, verschijnen hier.',
         ],
         'open_post' => 'Post openen',
         'statuses' => [
@@ -133,7 +133,7 @@ return [
             'failed' => 'Mislukt',
         ],
         'reasons' => [
-            'published_via_trypost' => 'Al gepubliceerd via TryPost',
+            'published_via_trypost' => 'Al gepubliceerd via Social HQ',
             'media_url_missing' => 'Het netwerk deelde geen downloadbaar bestand, meestal door auteursrechtelijk beschermde audio',
             'download_failed' => 'De video kon niet worden gedownload',
             'post_creation_failed' => 'Kon de berichten niet aanmaken',

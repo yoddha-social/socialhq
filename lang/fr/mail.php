@@ -8,7 +8,7 @@ return [
         'tagline' => 'Envoyé par l’équipe :brand',
         'manage_notifications' => 'Gérer les notifications',
         'signoff' => 'Cordialement,',
-        'team' => 'L\'équipe TryPost',
+        'team' => 'L\'équipe Social HQ',
     ],
 
     'account_disconnected' => [
@@ -19,7 +19,7 @@ return [
         'intro' => 'Le compte ci-dessous a été déconnecté de l’espace de travail :workspace.',
         'reasons_title' => 'Cela peut être dû à :',
         'reason_expired' => 'Votre jeton d’accès a expiré',
-        'reason_revoked' => 'Vous avez révoqué l’accès de TryPost',
+        'reason_revoked' => 'Vous avez révoqué l’accès de Social HQ',
         'reason_error' => 'Une erreur d’authentification est survenue',
         'reconnect_cta' => 'Reconnectez votre compte pour continuer à planifier et publier.',
         'button' => 'Reconnecter le compte',
@@ -120,7 +120,7 @@ return [
         'heading' => 'Votre publication est en ligne',
         'body' => 'Votre publication dans l’espace de travail :workspace a bien été publiée.',
         'button' => 'Voir sur le réseau',
-        'open_in_app' => 'Ouvrir dans TryPost',
+        'open_in_app' => 'Ouvrir dans Social HQ',
     ],
 
     'webhook_paused' => [
@@ -140,7 +140,7 @@ return [
         'intro' => 'Les comptes sociaux suivants de votre espace de travail <strong>:workspace</strong> ont été déconnectés et doivent être reconnectés :',
         'reasons_title' => 'Cela peut être dû à l\'une des raisons suivantes :',
         'reason_expired' => 'Les jetons d\'accès ont expiré',
-        'reason_revoked' => 'Vous avez révoqué l\'accès de TryPost sur la plateforme',
+        'reason_revoked' => 'Vous avez révoqué l\'accès de Social HQ sur la plateforme',
         'reason_changed' => 'La plateforme a modifié ses exigences d\'authentification',
         'reconnect_cta' => 'Veuillez reconnecter ces comptes pour continuer à programmer et publier vos publications.',
         'button' => 'Reconnecter les comptes',

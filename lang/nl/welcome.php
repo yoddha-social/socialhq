@@ -52,10 +52,10 @@ return [
     'plan_cancel_anytime' => 'Altijd opzegbaar',
     'mcp' => [
         'title' => 'Beheer je socials via chat',
-        'description' => 'Maak, plan en analyseer posts in TryPost met je favoriete AI.',
+        'description' => 'Maak, plan en analyseer posts in Social HQ met je favoriete AI.',
         'connect_with' => 'Koppelen met :client',
         'connect_ai' => 'Koppel je AI',
-        'pick_ai' => 'Waar wil je TryPost gebruiken?',
+        'pick_ai' => 'Waar wil je Social HQ gebruiken?',
         'connect_other' => 'Andere app koppelen',
         'connected' => ':client is gekoppeld',
         'benefits' => [

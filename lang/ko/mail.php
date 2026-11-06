@@ -8,7 +8,7 @@ return [
         'tagline' => ':brand 팀에서 보냄',
         'manage_notifications' => '알림 관리',
         'signoff' => '감사합니다.',
-        'team' => 'TryPost 팀',
+        'team' => 'Social HQ 팀',
     ],
 
     'account_disconnected' => [
@@ -19,7 +19,7 @@ return [
         'intro' => '아래 계정이 :workspace 워크스페이스에서 연결 해제되었습니다.',
         'reasons_title' => '다음과 같은 이유일 수 있습니다:',
         'reason_expired' => '액세스 토큰이 만료되었습니다',
-        'reason_revoked' => 'TryPost의 접근 권한을 취소했습니다',
+        'reason_revoked' => 'Social HQ의 접근 권한을 취소했습니다',
         'reason_error' => '인증 오류가 발생했습니다',
         'reconnect_cta' => '계정을 다시 연결하면 예약과 발행을 계속할 수 있습니다.',
         'button' => '계정 다시 연결',
@@ -120,7 +120,7 @@ return [
         'heading' => '게시물이 발행되었습니다',
         'body' => '워크스페이스 :workspace의 게시물이 정상적으로 발행되었습니다.',
         'button' => '소셜 미디어에서 보기',
-        'open_in_app' => 'TryPost에서 열기',
+        'open_in_app' => 'Social HQ에서 열기',
     ],
 
     'webhook_paused' => [
@@ -140,7 +140,7 @@ return [
         'intro' => '<strong>:workspace</strong> 워크스페이스의 다음 소셜 계정이 연결 해제되어 재연결이 필요합니다:',
         'reasons_title' => '다음과 같은 이유로 발생했을 수 있습니다:',
         'reason_expired' => '액세스 토큰 만료',
-        'reason_revoked' => '플랫폼에서 TryPost에 대한 액세스를 취소함',
+        'reason_revoked' => '플랫폼에서 Social HQ에 대한 액세스를 취소함',
         'reason_changed' => '플랫폼이 인증 요구사항을 변경함',
         'reconnect_cta' => '게시물 예약 및 게시를 계속하려면 이 계정들을 재연결해 주세요.',
         'button' => '계정 재연결',

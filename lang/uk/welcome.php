@@ -52,10 +52,10 @@ return [
     'plan_cancel_anytime' => 'Скасування будь-коли',
     'mcp' => [
         'title' => 'Ведіть соцмережі просто в чаті',
-        'description' => 'Створюйте, плануйте й аналізуйте дописи в TryPost з улюбленим ШІ.',
+        'description' => 'Створюйте, плануйте й аналізуйте дописи в Social HQ з улюбленим ШІ.',
         'connect_with' => 'Підключити :client',
         'connect_ai' => 'Підключити ШІ',
-        'pick_ai' => 'Де ви хочете використовувати TryPost?',
+        'pick_ai' => 'Де ви хочете використовувати Social HQ?',
         'connect_other' => 'Підключити інший застосунок',
         'connected' => ':client підключено',
         'benefits' => [

@@ -52,10 +52,10 @@ return [
     'plan_cancel_anytime' => 'ألغِ في أي وقت',
     'mcp' => [
         'title' => 'أدِر حساباتك الاجتماعية من الدردشة',
-        'description' => 'أنشئ منشوراتك في TryPost وجدولها وحللها باستخدام ذكائك الاصطناعي المفضل.',
+        'description' => 'أنشئ منشوراتك في Social HQ وجدولها وحللها باستخدام ذكائك الاصطناعي المفضل.',
         'connect_with' => 'الربط مع :client',
         'connect_ai' => 'اربط ذكاءك الاصطناعي',
-        'pick_ai' => 'أين تريد استخدام TryPost؟',
+        'pick_ai' => 'أين تريد استخدام Social HQ؟',
         'connect_other' => 'ربط تطبيق آخر',
         'connected' => 'تم ربط :client',
         'benefits' => [

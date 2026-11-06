@@ -23,6 +23,8 @@ use App\Models\Account;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Ai\AiRouter;
+use App\SocialHq\Ai\AiTask;
 use App\Support\HeicConverter;
 use App\Support\LinkTlds;
 use Illuminate\Http\Request;
@@ -107,7 +109,7 @@ class HandleInertiaRequests extends Middleware
                 'privacy' => (string) config('trypost.legal.privacy_url'),
             ],
             'languages' => fn (): array => Locale::options(),
-            'aiEnabled' => fn (): bool => filled(config('ai.providers.'.config('ai.default').'.key')),
+            'aiEnabled' => fn (): bool => AiRouter::isAvailable(AiTask::Write),
             'googleAuthEnabled' => fn (): bool => SocialAuthProvider::Google->isEnabled(),
             'githubAuthEnabled' => fn (): bool => SocialAuthProvider::GitHub->isEnabled(),
             ...(filled($user) ? [

@@ -1,43 +1,9 @@
 <tr>
   <td align="center" class="text-center text-muted-foreground text-xs leading-5 px-6 py-6">
     <p class="m-0 mb-2">
-      {!! str_replace(':brand', '<a href="https://trypost.it" target="_blank" style="color: inherit; font-weight: 600; text-decoration: none;">TryPost</a>', e(__('mail.layout.tagline'))) !!}
+      {!! str_replace(':brand', '<a href="'.e(config('app.url')).'" target="_blank" style="color: inherit; font-weight: 600; text-decoration: none;">'.e(config('app.name')).'</a>', e(__('mail.layout.tagline'))) !!}
     </p>
 
     <yield />
-
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="mx-auto mt-3">
-      <tr>
-        <td class="px-1">
-          <a href="https://github.com/trypostit/trypost" target="_blank">
-            <img src="@{{ asset('/images/emails/social/github.png') }}" width="20" height="20" alt="GitHub">
-          </a>
-        </td>
-        <td class="px-1">
-          <a href="https://x.com/trypostit" target="_blank">
-            <img src="@{{ asset('/images/emails/social/x.png') }}" width="20" height="20" alt="X">
-          </a>
-        </td>
-        <td class="px-1">
-          <a href="https://www.youtube.com/@trypostit" target="_blank">
-            <img src="@{{ asset('/images/emails/social/youtube.png') }}" width="20" height="20" alt="YouTube">
-          </a>
-        </td>
-        <td class="px-1">
-          <a href="https://trypost.it/discord" target="_blank">
-            <img src="@{{ asset('/images/emails/social/discord.png') }}" width="20" height="20" alt="Discord">
-          </a>
-        </td>
-        <td class="px-1">
-          <a href="https://www.instagram.com/trypost.it" target="_blank">
-            <img src="@{{ asset('/images/emails/social/instagram.png') }}" width="20" height="20" alt="Instagram">
-          </a>
-        </td>
-      </tr>
-    </table>
-
-    <p class="m-0 mt-3">
-      &copy; @{{ date('Y') }} TryPost.it
-    </p>
   </td>
 </tr>

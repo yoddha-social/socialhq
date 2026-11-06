@@ -20,7 +20,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly(true)]
 #[IsDestructive(false)]
 #[IsOpenWorld(false)]
-#[Description('Read the latest saved analytics of a published TryPost post, including reactions, comments, saves, reach, views, and watch time where supported. Values may lag the provider until the next analytics job. metrics is "unsupported" for an unpublished post or a network without analytics.')]
+#[Description('Read the latest saved analytics of a published Social HQ post, including reactions, comments, saves, reach, views, and watch time where supported. Values may lag the provider until the next analytics job. metrics is "unsupported" for an unpublished post or a network without analytics.')]
 class GetPostMetricsTool extends Tool
 {
     use AuthorizesMcpTool;

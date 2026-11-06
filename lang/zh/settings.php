@@ -51,14 +51,14 @@ return [
         'title' => '偏好设置',
         'theme' => [
             'heading' => '外观',
-            'description' => '选择 TryPost 的显示方式。',
+            'description' => '选择 Social HQ 的显示方式。',
             'light' => '浅色',
             'dark' => '深色',
             'system' => '跟随系统',
         ],
         'language' => [
             'heading' => '语言',
-            'description' => 'TryPost 界面显示的语言。',
+            'description' => 'Social HQ 界面显示的语言。',
             'search' => '搜索语言',
             'empty' => '未找到语言',
             'suggestions' => '建议',
@@ -179,7 +179,7 @@ return [
         'delete_only_description' => '无法删除唯一的工作区。可在账单中取消订阅以停止付费，或在身份验证设置中删除账户以取消计费并永久删除全部数据。',
         'delete_go_to_billing' => '前往账单',
         'delete_go_to_delete_account' => '删除账户',
-        'delete_members_warning' => '{1}另有 :count 位成员将失去访问权限。没有其他 TryPost 工作区的成员账户将被永久删除。|[2,*]另有 :count 位成员将失去访问权限。没有其他 TryPost 工作区的成员账户将被永久删除。',
+        'delete_members_warning' => '{1}另有 :count 位成员将失去访问权限。没有其他 Social HQ 工作区的成员账户将被永久删除。|[2,*]另有 :count 位成员将失去访问权限。没有其他 Social HQ 工作区的成员账户将被永久删除。',
         'delete_action' => '删除工作区',
         'delete_cancel' => '取消',
         'delete_confirm_title' => '删除工作区？',
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => '该邮箱已有邀请。',
-            'email_belongs_to_account' => '该邮箱已属于另一个 TryPost 账户。请改用专用工作邮箱。',
+            'email_belongs_to_account' => '该邮箱已属于另一个 Social HQ 账户。请改用专用工作邮箱。',
             'cannot_remove_self' => '你不能移除自己。',
             'cannot_remove_owner' => '你不能移除账户所有者。',
             'cannot_change_own_access' => '你不能更改自己的访问权限。',

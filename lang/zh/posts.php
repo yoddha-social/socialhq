@@ -57,8 +57,8 @@ return [
             'edit_in_canva' => '在 Canva 中编辑 :name',
             'errors' => [
                 'import_failed' => '无法导入文件。请重试。',
-                'popup_blocked' => '浏览器拦截了窗口。请允许 TryPost 的弹出窗口后重试。',
-                'scope_not_granted' => 'TryPost 需要访问你选择的文件。请重试并允许访问。',
+                'popup_blocked' => '浏览器拦截了窗口。请允许 Social HQ 的弹出窗口后重试。',
+                'scope_not_granted' => 'Social HQ 需要访问你选择的文件。请重试并允许访问。',
                 'session_expired' => '会话已过期。请重新打开来源。',
                 'video_not_ready' => 'Google Photos 仍在处理此视频。请几分钟后再试。',
                 'google_connect_failed' => '无法连接到 Google，请重试。',
@@ -360,7 +360,7 @@ return [
                 'play' => '试听',
                 'pause' => '暂停',
                 'remove' => '移除音乐',
-                'part_hint' => 'Instagram 不允许 TryPost 选择播放曲目的哪一段。',
+                'part_hint' => 'Instagram 不允许 Social HQ 选择播放曲目的哪一段。',
                 'volume' => '音量',
                 'video_volume' => '视频',
                 'audio_volume' => '音乐',
@@ -1017,7 +1017,7 @@ return [
         ],
         'created_by' => '创建者：:name :when',
         'welcome' => [
-            'title' => '欢迎使用 TryPost 👋',
+            'title' => '欢迎使用 Social HQ 👋',
             'description' => '连接一个频道，开始规划和发布你的帖子。',
             'invite' => '邀请你的团队',
             'connect_more' => '连接更多频道',

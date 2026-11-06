@@ -57,8 +57,8 @@ return [
             'edit_in_canva' => 'Editar :name no Canva',
             'errors' => [
                 'import_failed' => 'Não foi possível importar o arquivo. Tente novamente.',
-                'popup_blocked' => 'Seu navegador bloqueou a janela. Permita pop-ups para o TryPost e tente novamente.',
-                'scope_not_granted' => 'O TryPost precisa de acesso ao arquivo que você escolher. Tente novamente e permita o acesso.',
+                'popup_blocked' => 'Seu navegador bloqueou a janela. Permita pop-ups para o Social HQ e tente novamente.',
+                'scope_not_granted' => 'O Social HQ precisa de acesso ao arquivo que você escolher. Tente novamente e permita o acesso.',
                 'session_expired' => 'Sua sessão expirou. Abra a fonte novamente.',
                 'video_not_ready' => 'O Google Photos ainda está processando este vídeo. Tente novamente em alguns minutos.',
                 'google_connect_failed' => 'Não foi possível conectar ao Google. Tente novamente.',
@@ -360,7 +360,7 @@ return [
                 'play' => 'Ouvir prévia',
                 'pause' => 'Pausar prévia',
                 'remove' => 'Remover música',
-                'part_hint' => 'O Instagram não deixa o TryPost escolher qual trecho da música toca.',
+                'part_hint' => 'O Instagram não deixa o Social HQ escolher qual trecho da música toca.',
                 'volume' => 'Volume',
                 'video_volume' => 'Vídeo',
                 'audio_volume' => 'Música',
@@ -1017,7 +1017,7 @@ return [
         ],
         'created_by' => 'Criado por :name :when',
         'welcome' => [
-            'title' => 'Boas-vindas ao TryPost 👋',
+            'title' => 'Boas-vindas ao Social HQ 👋',
             'description' => 'Conecte um canal para começar a planejar e publicar seus posts.',
             'invite' => 'Convidar sua equipe',
             'connect_more' => 'Conectar mais canais',

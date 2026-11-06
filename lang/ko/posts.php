@@ -57,8 +57,8 @@ return [
             'edit_in_canva' => 'Canva에서 :name 편집',
             'errors' => [
                 'import_failed' => '파일을 가져올 수 없습니다. 다시 시도해 주세요.',
-                'popup_blocked' => '브라우저가 창을 차단했습니다. TryPost의 팝업을 허용하고 다시 시도해 주세요.',
-                'scope_not_granted' => 'TryPost가 선택한 파일에 접근할 수 있어야 합니다. 다시 시도하고 접근을 허용해 주세요.',
+                'popup_blocked' => '브라우저가 창을 차단했습니다. Social HQ의 팝업을 허용하고 다시 시도해 주세요.',
+                'scope_not_granted' => 'Social HQ가 선택한 파일에 접근할 수 있어야 합니다. 다시 시도하고 접근을 허용해 주세요.',
                 'session_expired' => '세션이 만료되었습니다. 소스를 다시 열어 주세요.',
                 'video_not_ready' => 'Google Photos에서 아직 이 동영상을 처리하고 있습니다. 몇 분 후에 다시 시도해 주세요.',
                 'google_connect_failed' => 'Google에 연결할 수 없습니다. 다시 시도해 주세요.',
@@ -360,7 +360,7 @@ return [
                 'play' => '미리듣기',
                 'pause' => '일시정지',
                 'remove' => '음악 삭제',
-                'part_hint' => 'Instagram은 TryPost가 트랙의 어느 부분을 재생할지 선택하도록 허용하지 않습니다.',
+                'part_hint' => 'Instagram은 Social HQ가 트랙의 어느 부분을 재생할지 선택하도록 허용하지 않습니다.',
                 'volume' => '볼륨',
                 'video_volume' => '동영상',
                 'audio_volume' => '음악',
@@ -1017,7 +1017,7 @@ return [
         ],
         'created_by' => '작성자: :name :when',
         'welcome' => [
-            'title' => 'TryPost에 오신 것을 환영합니다 👋',
+            'title' => 'Social HQ에 오신 것을 환영합니다 👋',
             'description' => '채널을 연결하고 게시물 계획과 게시를 시작하세요.',
             'invite' => '팀 초대',
             'connect_more' => '채널 더 연결',

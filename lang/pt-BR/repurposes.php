@@ -35,7 +35,7 @@ return [
 
     'source' => [
         'title' => 'Origem',
-        'description' => 'O TryPost acompanha esta conta em busca de novas publicações do formato abaixo.',
+        'description' => 'O Social HQ acompanha esta conta em busca de novas publicações do formato abaixo.',
         'watch_label' => 'Observar',
         'watch_description' => 'O tipo de post que dispara um repost.',
         'needs_reconnect' => 'Precisa reconectar',
@@ -49,7 +49,7 @@ return [
 
     'empty' => [
         'title' => 'Nenhum repost configurado',
-        'description' => 'O TryPost acompanha a conta que você escolher e republica cada publicação nova nas redes que você marcar.',
+        'description' => 'O Social HQ acompanha a conta que você escolher e republica cada publicação nova nas redes que você marcar.',
     ],
 
     'table' => [
@@ -66,7 +66,7 @@ return [
 
     'create' => [
         'title' => 'Novo repost',
-        'description' => 'Escolha a conta que o TryPost deve acompanhar. Os destinos você escolhe na próxima tela.',
+        'description' => 'Escolha a conta que o Social HQ deve acompanhar. Os destinos você escolhe na próxima tela.',
         'source_label' => 'Conta de origem',
         'source_placeholder' => 'Escolha uma conta',
         'source_search' => 'Buscar contas',
@@ -106,7 +106,7 @@ return [
         'watermark' => 'Acompanhando desde',
         'last_polled' => 'Última verificação',
         'draft_hint' => 'Escolha ao menos um destino e ative. Só publicações feitas depois da ativação são replicadas.',
-        'active_hint' => 'O TryPost verifica esta conta com frequência e replica cada publicação nova.',
+        'active_hint' => 'O Social HQ verifica esta conta com frequência e replica cada publicação nova.',
         'paused_hint' => 'As verificações estão suspensas. Ao retomar, continua de onde parou e nada publicado nesse meio-tempo se perde.',
         'disabled_hint' => 'Desligado. Ao ativar de novo, começa do zero: o que você publicou enquanto estava desligado continua de fora.',
     ],
@@ -121,7 +121,7 @@ return [
         'original_from' => 'original de :date',
         'empty' => [
             'title' => 'Nada ainda',
-            'description' => 'As publicações que essa conta fizer fora do TryPost aparecem aqui.',
+            'description' => 'As publicações que essa conta fizer fora do Social HQ aparecem aqui.',
         ],
         'open_post' => 'Abrir post',
         'statuses' => [
@@ -133,7 +133,7 @@ return [
             'failed' => 'Falhou',
         ],
         'reasons' => [
-            'published_via_trypost' => 'Já publicado pelo TryPost',
+            'published_via_trypost' => 'Já publicado pelo Social HQ',
             'media_url_missing' => 'A rede não disponibilizou o arquivo para download, normalmente por causa de áudio com direitos autorais',
             'download_failed' => 'Não foi possível baixar o vídeo',
             'post_creation_failed' => 'Não foi possível criar os posts',

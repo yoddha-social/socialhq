@@ -116,14 +116,14 @@ const mainNavItems = computed<NavItem[]>(() => [
         >
             <Link
                 :href="postsIndex.url()"
-                class="flex h-8 items-center rounded-md px-2 outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:px-1"
+                class="flex h-[50px] items-center rounded-md px-2 outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:px-1"
                 data-testid="sidebar-logo"
             >
                 <span class="inline-flex group-data-[collapsible=icon]:hidden">
-                    <AppLogo class="text-[20px]" />
+                    <AppLogo class="text-[20px]" mark-class="size-[50px]" />
                 </span>
                 <span class="hidden group-data-[collapsible=icon]:inline-flex">
-                    <AppLogo variant="mark" class="text-[21px]" />
+                    <AppLogo variant="mark" class="text-[26px]" />
                 </span>
             </Link>
         </SidebarHeader>

@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# Lints the Social HQ skills (.ai/skills/socialhq-*/SKILL.md) for drift: skills
+# that describe files that no longer exist, or decisions we have moved past.
+# Bash only, so it runs on the laptop (no PHP) and in CI's linter job.
+#
+#   bin/socialhq-lint-skills
+#
+# Allowlist: .ai/skills/.lintignore, lines of  allow:<relpath>:<regex>
+# Add an entry only where a skill names a stale thing to say it is stale.
+
+set -uo pipefail
+cd "$(dirname "$0")/.."
+
+# Stale terms, with the reason printed on a hit. Keep the reason: it is the point.
+BANNED=(
+  '\bOracle\b|production runs on Hetzner, not Oracle'
+  'trypost-app|the shallow upstream clone is retired; read upstream code in this repo'
+  'socialhq/(api|web)\b|the Rails + React app is retired (socialhq-rails-reference)'
+  'REST API only|only through (its|the) REST|Social HQ is the fork; it calls TryPost code directly'
+  '\bunmodified\b|TryPost is forked and modified (PATCHES.md)'
+  '-confidential|LiteLLM uses task groups shq-*; there is no confidential split'
+  '\bRSpec\b|\bDusk\b|tests are Pest (browser tests via pest-plugin-browser)'
+  '\bSidekiq\b|queues run on Horizon'
+  '\bHerd\b|Herd is upstream author tooling; not used here'
+  'App\\Enums\\UserWorkspace\\Role|workspace roles were removed upstream (is_admin, requires_approval)'
+)
+
+ALLOW=()
+[ -f .ai/skills/.lintignore ] && while IFS= read -r line; do
+  case "$line" in allow:*) ALLOW+=("${line#allow:}") ;; esac
+done < .ai/skills/.lintignore
+
+allowed() { # file line
+  local entry path re
+  for entry in "${ALLOW[@]}"; do
+    path="${entry%%:*}"; re="${entry#*:}"
+    [ "$path" = "$1" ] && grep -qE -- "$re" <<<"$2" && return 0
+  done
+  return 1
+}
+
+ERRORS=0
+err() { printf '%s: %s\n' "$1" "$2"; ERRORS=$((ERRORS + 1)); }
+
+shopt -s nullglob
+for file in .ai/skills/socialhq-*/SKILL.md; do
+  dir="$(basename "$(dirname "$file")")"
+  front="$(awk 'NR==1&&/^---$/{f=1;next} f&&/^---$/{exit} f' "$file")"
+  name="$(sed -n 's/^name: *//p' <<<"$front")"
+  desc="$(sed -n 's/^description: *//p' <<<"$front")"
+
+  [ "$name" = "$dir" ] || err "$file" "name '$name' must match the folder '$dir'"
+  [[ "$name" =~ ^[a-z0-9-]{1,64}$ ]] || err "$file" "name must be 1-64 lowercase letters, digits, hyphens"
+  [[ "$name" =~ claude|anthropic ]] && err "$file" "name must not contain 'claude' or 'anthropic'"
+  [ "${#desc}" -ge 40 ] || err "$file" "description too short (${#desc} chars): say what it does and when to use it"
+  [ "${#desc}" -le 1024 ] || err "$file" "description over 1024 chars"
+  [ "$(wc -l <"$file")" -le 500 ] || err "$file" "over 500 lines: move detail into references/"
+
+  # Backticked repo paths must exist. Skips globs, placeholders and sibling repos.
+  while IFS= read -r p; do
+    case "$p" in *'*'*|*'<'*|*'{'*|*'$'*|../*) continue ;; esac
+    p="${p%/}"
+    [ -e "$p" ] || err "$file" "\`$p\` does not exist"
+  done < <(grep -oE '`(app|resources|database|config|routes|tests|lang|bin|\.ai|\.claude|\.github)/[^` ]+`' "$file" | tr -d '`' | sort -u)
+
+  n=0
+  while IFS= read -r line; do
+    n=$((n + 1))
+    for rule in "${BANNED[@]}"; do
+      re="${rule%|*}"; why="${rule##*|}"
+      if grep -qE -- "$re" <<<"$line" && ! allowed "$file" "$line"; then
+        err "$file:$n" "$why"
+      fi
+    done
+  done <"$file"
+done
+
+if [ $ERRORS -gt 0 ]; then
+  printf '\n%d skill lint error(s).\n' "$ERRORS"
+  exit 1
+fi
+echo "Social HQ skills OK."

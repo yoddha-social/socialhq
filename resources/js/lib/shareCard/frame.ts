@@ -1,3 +1,4 @@
+import { LOGO_DOT, LOGO_GRADIENT, LOGO_PATH, LOGO_VIEW_BOX } from '@/components/socialhq/logo';
 import { ink, muted, surface } from '@/lib/shareCard/colors';
 import { paintChange } from '@/lib/shareCard/draw';
 import { ellipsise, writeText } from '@/lib/shareCard/text';
@@ -103,32 +104,25 @@ export const paintPanel = (context: CanvasRenderingContext2D): Box => {
     return panel;
 };
 
-/** The grid the logo's paths are drawn on. */
-const LOGO_GRID = 410;
-
-/** The TryPost mark, the four quarters of `AppLogo.vue`. */
+/** The Social HQ mark of `AppLogo.vue`, painted from the same path and gradient. */
 const paintLogo = (context: CanvasRenderingContext2D, at: Point, size: number): void => {
-    const quarters: [string, string][] = [
-        ['M410 109.736V410H128.863L410 109.736Z', '#3660E0'],
-        ['M410 0H281.138L205 81.3178L410 300.264V0Z', '#855ED4'],
-        ['M0 0V300.264L205 81.3178L281.138 0H0Z', '#FFCC33'],
-        ['M0 109.736V410H128.862L205 328.682L0 109.736Z', '#F39200'],
-    ];
+    const scale = size / LOGO_VIEW_BOX.size;
+    const gradient = context.createLinearGradient(LOGO_GRADIENT.from.x, LOGO_GRADIENT.from.y, LOGO_GRADIENT.to.x, LOGO_GRADIENT.to.y);
 
-    context.save();
-    context.beginPath();
-    context.arc(at.x + size / 2, at.y + size / 2, size / 2, 0, Math.PI * 2);
-    context.clip();
-    context.fillStyle = surface();
-    context.fillRect(at.x, at.y, size, size);
-    context.translate(at.x, at.y);
-    context.scale(size / LOGO_GRID, size / LOGO_GRID);
-
-    for (const [path, color] of quarters) {
-        context.fillStyle = color;
-        context.fill(new Path2D(path));
+    for (const stop of LOGO_GRADIENT.stops) {
+        gradient.addColorStop(stop.offset, stop.color);
     }
 
+    context.save();
+    context.translate(at.x, at.y);
+    context.scale(scale, scale);
+    context.translate(-LOGO_VIEW_BOX.x, -LOGO_VIEW_BOX.y);
+    context.fillStyle = gradient;
+    context.fill(new Path2D(LOGO_PATH));
+    context.beginPath();
+    context.arc(LOGO_DOT.cx, LOGO_DOT.cy, LOGO_DOT.r, 0, Math.PI * 2);
+    context.fillStyle = LOGO_DOT.color;
+    context.fill();
     context.restore();
 };
 

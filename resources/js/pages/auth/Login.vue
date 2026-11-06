@@ -186,7 +186,9 @@ const pageErrors = usePageErrors();
         </div>
 
         <template #footer>
-            <LegalLinks />
+            <LegalLinks
+                v-if="$page.props.legal.terms && $page.props.legal.privacy"
+            />
         </template>
     </AuthBase>
 </template>

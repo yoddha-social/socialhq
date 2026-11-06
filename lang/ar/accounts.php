@@ -99,7 +99,7 @@ return [
             ],
             'permissions' => [
                 'lead' => 'تحديد جميع الأذونات لجميع الصفحات وحسابات Instagram',
-                'rest' => 'عند الربط، حتى التي لن تربطها بـ TryPost.',
+                'rest' => 'عند الربط، حتى التي لن تربطها بـ Social HQ.',
             ],
         ],
         'learn_how' => 'تعرّف على الطريقة.',
@@ -121,8 +121,8 @@ return [
         'close' => 'إغلاق',
         'title_single' => 'اربط حسابك',
         'title_select' => 'اختر الحسابات',
-        'subtitle_single' => 'اختر الحساب الذي سينشر عليه TryPost في :network.',
-        'subtitle_select' => 'اختر الحسابات التي سينشر عليها TryPost في :network.',
+        'subtitle_single' => 'اختر الحساب الذي سينشر عليه Social HQ في :network.',
+        'subtitle_select' => 'اختر الحسابات التي سينشر عليها Social HQ في :network.',
         'selected' => 'المحدد: :count',
         'select_all' => 'تحديد الكل',
         'connected' => 'متصل',
@@ -153,7 +153,7 @@ return [
             ],
             'missing_permission' => [
                 'title' => 'الإذن مطلوب',
-                'description' => 'يحتاج TryPost إلى إذن لنشر منشوراتك. اربط مرة أخرى وأبقِ هذا الإذن محددًا.',
+                'description' => 'يحتاج Social HQ إلى إذن لنشر منشوراتك. اربط مرة أخرى وأبقِ هذا الإذن محددًا.',
             ],
             'expired' => [
                 'title' => 'انتهت صلاحية هذا الربط',
@@ -170,7 +170,7 @@ return [
             'start_again' => 'ابدأ من جديد',
         ],
         'errors' => [
-            'bluesky_email_unconfirmed' => 'أكّد بريدك الإلكتروني في إعدادات Bluesky، ثم اربط حسابك مجددًا. يتطلب TryPost بريدًا إلكترونيًا مؤكدًا لنشر الفيديوهات.',
+            'bluesky_email_unconfirmed' => 'أكّد بريدك الإلكتروني في إعدادات Bluesky، ثم اربط حسابك مجددًا. يتطلب Social HQ بريدًا إلكترونيًا مؤكدًا لنشر الفيديوهات.',
             'error_connecting' => 'خطأ في ربط الحساب. يرجى المحاولة مرة أخرى.',
             'network_taken' => 'تحتوي مساحة العمل هذه بالفعل على حساب لهذه الشبكة. افصله أولًا.',
             'wrong_account' => 'هذا حساب مختلف. صرّح بالحساب الذي تعيد ربطه.',
@@ -185,7 +185,7 @@ return [
             'page_not_found' => 'لم يتم العثور على الصفحة.',
             'channel_not_found' => 'لم يتم العثور على القناة.',
             'pages_read_incomplete' => 'لم نتمكن من إكمال قراءة صفحاتك. حاول مرة أخرى بعد قليل.',
-            'publish_permission_missing' => 'يحتاج TryPost إلى إذن لنشر منشوراتك. اربط مرة أخرى وأبقِ هذا الإذن محددًا.',
+            'publish_permission_missing' => 'يحتاج Social HQ إلى إذن لنشر منشوراتك. اربط مرة أخرى وأبقِ هذا الإذن محددًا.',
             'cancelled' => 'تم إلغاء الربط.',
             'pages_missing_permission' => 'وجدنا صفحات، لكن لا يمكنك النشر في أي منها. تحتاج إلى دور على الصفحة نفسها وقبول جميع الأذونات.',
             'no_facebook_pages' => 'لم يتم العثور على صفحات Facebook. يجب أن تكون مشرفًا على صفحة واحدة على الأقل.',

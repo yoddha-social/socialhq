@@ -51,14 +51,14 @@ return [
         'title' => '환경설정',
         'theme' => [
             'heading' => '모양',
-            'description' => 'TryPost의 표시 방식을 선택하세요.',
+            'description' => 'Social HQ의 표시 방식을 선택하세요.',
             'light' => '라이트',
             'dark' => '다크',
             'system' => '시스템',
         ],
         'language' => [
             'heading' => '언어',
-            'description' => 'TryPost 인터페이스에 표시되는 언어입니다.',
+            'description' => 'Social HQ 인터페이스에 표시되는 언어입니다.',
             'search' => '언어 검색',
             'empty' => '언어를 찾을 수 없습니다',
             'suggestions' => '추천',
@@ -179,7 +179,7 @@ return [
         'delete_only_description' => '유일한 워크스페이스는 삭제할 수 없습니다. 결제를 멈추려면 청구에서 구독을 취소하거나, 인증 설정에서 계정을 삭제해 결제를 취소하고 모든 데이터를 영구 삭제하세요.',
         'delete_go_to_billing' => '결제로 이동',
         'delete_go_to_delete_account' => '계정 삭제',
-        'delete_members_warning' => '{1}다른 멤버 :count명이 접근 권한을 잃습니다. 다른 TryPost 워크스페이스가 없는 멤버는 계정이 영구 삭제됩니다.|[2,*]다른 멤버 :count명이 접근 권한을 잃습니다. 다른 TryPost 워크스페이스가 없는 멤버는 계정이 영구 삭제됩니다.',
+        'delete_members_warning' => '{1}다른 멤버 :count명이 접근 권한을 잃습니다. 다른 Social HQ 워크스페이스가 없는 멤버는 계정이 영구 삭제됩니다.|[2,*]다른 멤버 :count명이 접근 권한을 잃습니다. 다른 Social HQ 워크스페이스가 없는 멤버는 계정이 영구 삭제됩니다.',
         'delete_action' => '워크스페이스 삭제',
         'delete_cancel' => '취소',
         'delete_confirm_title' => '워크스페이스를 삭제할까요?',
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => '이 이메일에 대한 초대가 이미 존재합니다.',
-            'email_belongs_to_account' => '이 이메일은 이미 다른 TryPost 계정에 속해 있습니다. 전용 업무용 이메일을 사용해 주세요.',
+            'email_belongs_to_account' => '이 이메일은 이미 다른 Social HQ 계정에 속해 있습니다. 전용 업무용 이메일을 사용해 주세요.',
             'cannot_remove_self' => '자신을 제거할 수 없습니다.',
             'cannot_remove_owner' => '계정 소유자는 제거할 수 없습니다.',
             'cannot_change_own_access' => '자신의 접근 권한은 변경할 수 없습니다.',

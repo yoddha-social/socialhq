@@ -422,7 +422,7 @@ return [
         'copy' => 'Bild kopieren',
         'copied' => 'Bild kopiert',
         'create_post' => 'Post erstellen',
-        'mark' => 'Erstellt mit TryPost',
+        'mark' => 'Erstellt mit Social HQ',
         'copy_failed' => 'Bild konnte nicht kopiert werden. Lade es stattdessen herunter.',
         'post_failed' => 'Post konnte nicht vorbereitet werden. Versuche es erneut.',
         'caption_workspace' => ':metric auf unseren Kanälen: :value (:range) 📈',

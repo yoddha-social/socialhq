@@ -20,8 +20,8 @@ return [
     'throttle' => '로그인 시도가 너무 많습니다. :seconds초 후에 다시 시도해 주세요.',
 
     'flash' => [
-        'welcome' => 'TryPost에 오신 것을 환영합니다!',
-        'welcome_trial' => 'TryPost에 오신 것을 환영합니다! 체험이 시작되었습니다.',
+        'welcome' => 'Social HQ에 오신 것을 환영합니다!',
+        'welcome_trial' => 'Social HQ에 오신 것을 환영합니다! 체험이 시작되었습니다.',
     ],
 
     'legal' => '계속 진행하면 <a href=":terms_url" target="_blank">서비스 약관</a> 및 <a href=":privacy_url" target="_blank">개인정보 처리방침</a>에 동의하는 것입니다.',
@@ -60,7 +60,7 @@ return [
     'github_email_unavailable' => 'GitHub에서 이메일을 가져올 수 없습니다. GitHub 이메일을 공개로 설정하거나 이메일 권한을 부여한 후 다시 시도하세요.',
 
     'login' => [
-        'title' => 'TryPost에 로그인',
+        'title' => 'Social HQ에 로그인',
         'page_title' => '로그인',
         'email' => '이메일 주소',
         'password' => '비밀번호',
@@ -74,7 +74,7 @@ return [
     ],
 
     'register' => [
-        'title' => 'TryPost 계정 만들기',
+        'title' => 'Social HQ 계정 만들기',
         'page_title' => '회원가입',
         'name' => '이름',
         'name_placeholder' => '전체 이름',

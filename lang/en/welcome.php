@@ -52,10 +52,10 @@ return [
     'plan_cancel_anytime' => 'Cancel anytime',
     'mcp' => [
         'title' => 'Run your social media from a chat',
-        'description' => 'Create, schedule and analyze your TryPost posts with your favorite AI.',
+        'description' => 'Create, schedule and analyze your Social HQ posts with your favorite AI.',
         'connect_with' => 'Connect with :client',
         'connect_ai' => 'Connect your AI',
-        'pick_ai' => 'Where do you want to use TryPost?',
+        'pick_ai' => 'Where do you want to use Social HQ?',
         'connect_other' => 'Connect another app',
         'connected' => ':client is connected',
         'benefits' => [

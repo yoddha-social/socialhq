@@ -52,10 +52,10 @@ return [
     'plan_cancel_anytime' => 'いつでも解約できます',
     'mcp' => [
         'title' => 'AIとの会話でSNSを運用',
-        'description' => 'お気に入りのAIで、TryPostの投稿を作成・予約・分析。',
+        'description' => 'お気に入りのAIで、Social HQの投稿を作成・予約・分析。',
         'connect_with' => ':clientと接続',
         'connect_ai' => 'AIを接続',
-        'pick_ai' => 'どこでTryPostを使いますか？',
+        'pick_ai' => 'どこでSocial HQを使いますか？',
         'connect_other' => '他のアプリを接続',
         'connected' => ':clientに接続しました',
         'benefits' => [

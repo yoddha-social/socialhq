@@ -35,7 +35,7 @@ return [
 
     'source' => [
         'title' => 'Source',
-        'description' => 'TryPost watches this account for new posts of the format below.',
+        'description' => 'Social HQ watches this account for new posts of the format below.',
         'watch_label' => 'Watch for',
         'watch_description' => 'The kind of post that starts a repost.',
         'needs_reconnect' => 'Needs reconnecting',
@@ -49,7 +49,7 @@ return [
 
     'empty' => [
         'title' => 'No repurpose set up yet',
-        'description' => 'TryPost watches the account you choose and republishes every new post to the networks you pick.',
+        'description' => 'Social HQ watches the account you choose and republishes every new post to the networks you pick.',
     ],
 
     'table' => [
@@ -66,7 +66,7 @@ return [
 
     'create' => [
         'title' => 'New repurpose',
-        'description' => 'Choose the account TryPost should watch. You pick the destinations on the next screen.',
+        'description' => 'Choose the account Social HQ should watch. You pick the destinations on the next screen.',
         'source_label' => 'Source account',
         'source_placeholder' => 'Choose an account',
         'source_search' => 'Search accounts',
@@ -106,7 +106,7 @@ return [
         'watermark' => 'Watching since',
         'last_polled' => 'Last checked',
         'draft_hint' => 'Pick at least one destination, then activate. Only posts published after you activate are replicated.',
-        'active_hint' => 'TryPost checks this account regularly and replicates every new post.',
+        'active_hint' => 'Social HQ checks this account regularly and replicates every new post.',
         'paused_hint' => 'Checks are on hold. Resuming picks up where it stopped, so nothing posted meanwhile is lost.',
         'disabled_hint' => 'Turned off. Activating again starts fresh: whatever you posted while it was off stays off.',
     ],
@@ -121,7 +121,7 @@ return [
         'original_from' => 'original from :date',
         'empty' => [
             'title' => 'Nothing yet',
-            'description' => 'Posts this account publishes outside TryPost will show up here.',
+            'description' => 'Posts this account publishes outside Social HQ will show up here.',
         ],
         'open_post' => 'Open post',
         'statuses' => [
@@ -133,7 +133,7 @@ return [
             'failed' => 'Failed',
         ],
         'reasons' => [
-            'published_via_trypost' => 'Already published through TryPost',
+            'published_via_trypost' => 'Already published through Social HQ',
             'media_url_missing' => 'The network did not share a downloadable file, usually because of copyrighted audio',
             'download_failed' => 'The video could not be downloaded',
             'post_creation_failed' => 'Could not create the posts',

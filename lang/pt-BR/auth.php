@@ -20,8 +20,8 @@ return [
     'throttle' => 'Muitas tentativas de login. Por favor, tente novamente em :seconds segundos.',
 
     'flash' => [
-        'welcome' => 'Bem-vindo ao TryPost!',
-        'welcome_trial' => 'Bem-vindo ao TryPost! Seu período de teste começou.',
+        'welcome' => 'Bem-vindo ao Social HQ!',
+        'welcome_trial' => 'Bem-vindo ao Social HQ! Seu período de teste começou.',
     ],
 
     'legal' => 'Ao continuar, você concorda com nossos <a href=":terms_url" target="_blank">Termos de Serviço</a> e <a href=":privacy_url" target="_blank">Política de Privacidade</a>.',
@@ -60,7 +60,7 @@ return [
     'github_email_unavailable' => 'Não foi possível obter seu e-mail do GitHub. Torne seu e-mail público ou conceda a permissão de e-mail e tente novamente.',
 
     'login' => [
-        'title' => 'Entrar no TryPost',
+        'title' => 'Entrar no Social HQ',
         'page_title' => 'Entrar',
         'email' => 'Endereço de email',
         'password' => 'Senha',
@@ -74,7 +74,7 @@ return [
     ],
 
     'register' => [
-        'title' => 'Criar uma conta no TryPost',
+        'title' => 'Criar uma conta no Social HQ',
         'page_title' => 'Cadastro',
         'name' => 'Nome',
         'name_placeholder' => 'Nome completo',

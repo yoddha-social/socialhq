@@ -35,7 +35,7 @@ return [
 
     'source' => [
         'title' => '소스',
-        'description' => 'TryPost가 이 계정에서 아래 형식의 새 게시물을 지켜봅니다.',
+        'description' => 'Social HQ가 이 계정에서 아래 형식의 새 게시물을 지켜봅니다.',
         'watch_label' => '감시할 형식',
         'watch_description' => '리포스트를 시작하는 게시물 유형입니다.',
         'needs_reconnect' => '다시 연결해야 함',
@@ -49,7 +49,7 @@ return [
 
     'empty' => [
         'title' => '아직 설정된 Repurpose가 없습니다',
-        'description' => 'TryPost가 선택한 계정을 지켜보고 새 게시물을 지정한 네트워크에 다시 게시합니다.',
+        'description' => 'Social HQ가 선택한 계정을 지켜보고 새 게시물을 지정한 네트워크에 다시 게시합니다.',
     ],
 
     'table' => [
@@ -66,7 +66,7 @@ return [
 
     'create' => [
         'title' => '새 Repurpose',
-        'description' => 'TryPost가 지켜볼 계정을 고르세요. 대상은 다음 화면에서 선택합니다.',
+        'description' => 'Social HQ가 지켜볼 계정을 고르세요. 대상은 다음 화면에서 선택합니다.',
         'source_label' => '소스 계정',
         'source_placeholder' => '계정 선택',
         'source_search' => '계정 검색',
@@ -106,7 +106,7 @@ return [
         'watermark' => '확인 시작',
         'last_polled' => '마지막 확인',
         'draft_hint' => '대상을 하나 이상 고른 뒤 활성화하세요. 활성화 이후에 올린 게시물만 복제됩니다.',
-        'active_hint' => 'TryPost가 이 계정을 주기적으로 확인하고 새 게시물을 모두 복제합니다.',
+        'active_hint' => 'Social HQ가 이 계정을 주기적으로 확인하고 새 게시물을 모두 복제합니다.',
         'paused_hint' => '확인이 멈춰 있습니다. 재개하면 멈춘 지점부터 이어지며 그동안 올린 것도 잃지 않습니다.',
         'disabled_hint' => '꺼져 있습니다. 다시 활성화하면 처음부터 시작하며, 꺼져 있는 동안 올린 것은 제외됩니다.',
     ],
@@ -121,7 +121,7 @@ return [
         'original_from' => '원본 :date',
         'empty' => [
             'title' => '아직 없음',
-            'description' => '이 계정이 TryPost 밖에서 올린 게시물이 여기에 표시됩니다.',
+            'description' => '이 계정이 Social HQ 밖에서 올린 게시물이 여기에 표시됩니다.',
         ],
         'open_post' => '게시물 열기',
         'statuses' => [
@@ -133,7 +133,7 @@ return [
             'failed' => '실패',
         ],
         'reasons' => [
-            'published_via_trypost' => '이미 TryPost로 게시됨',
+            'published_via_trypost' => '이미 Social HQ로 게시됨',
             'media_url_missing' => '네트워크가 내려받을 수 있는 파일을 제공하지 않았습니다. 보통 저작권 오디오 때문입니다',
             'download_failed' => '영상을 내려받지 못했습니다',
             'post_creation_failed' => '게시물을 만들지 못했습니다',

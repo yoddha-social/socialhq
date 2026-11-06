@@ -145,18 +145,6 @@ const mediaUrl = computed(() => mediaLimitsDocsUrl(value.value));
                     <blockquote class="text-sm leading-[21px] text-foreground">
                         {{ $t(`${copyKey}.tip`) }}
                     </blockquote>
-                    <figcaption class="flex items-center gap-2">
-                        <img
-                            src="/images/reviews/paulo-castellano.jpg"
-                            alt=""
-                            class="size-8 rounded-lg object-cover"
-                            loading="lazy"
-                        />
-                        <span
-                            class="text-sm leading-[21px] font-medium text-foreground"
-                            >{{ $t('channels.details.signature') }}</span
-                        >
-                    </figcaption>
                 </figure>
 
                 <div class="grid gap-6 sm:grid-cols-2 sm:gap-4">

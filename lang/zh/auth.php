@@ -20,8 +20,8 @@ return [
     'throttle' => '登录尝试次数过多，请在 :seconds 秒后重试。',
 
     'flash' => [
-        'welcome' => '欢迎使用 TryPost！',
-        'welcome_trial' => '欢迎使用 TryPost！你的试用已开始。',
+        'welcome' => '欢迎使用 Social HQ！',
+        'welcome_trial' => '欢迎使用 Social HQ！你的试用已开始。',
     ],
 
     'legal' => '继续即表示你同意我们的<a href=":terms_url" target="_blank">服务条款</a>和<a href=":privacy_url" target="_blank">隐私政策</a>。',
@@ -60,7 +60,7 @@ return [
     'github_email_unavailable' => '无法从 GitHub 获取你的邮箱。请将你的 GitHub 邮箱设为公开，或授予邮箱权限后重试。',
 
     'login' => [
-        'title' => '登录 TryPost',
+        'title' => '登录 Social HQ',
         'page_title' => '登录',
         'email' => '邮箱地址',
         'password' => '密码',
@@ -74,7 +74,7 @@ return [
     ],
 
     'register' => [
-        'title' => '创建 TryPost 账户',
+        'title' => '创建 Social HQ 账户',
         'page_title' => '注册',
         'name' => '姓名',
         'name_placeholder' => '全名',

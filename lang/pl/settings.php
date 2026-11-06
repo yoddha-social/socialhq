@@ -51,14 +51,14 @@ return [
         'title' => 'Preferencje',
         'theme' => [
             'heading' => 'Wygląd',
-            'description' => 'Wybierz, jak wygląda TryPost.',
+            'description' => 'Wybierz, jak wygląda Social HQ.',
             'light' => 'Jasny',
             'dark' => 'Ciemny',
             'system' => 'Systemowy',
         ],
         'language' => [
             'heading' => 'Język',
-            'description' => 'Język interfejsu TryPost.',
+            'description' => 'Język interfejsu Social HQ.',
             'search' => 'Szukaj języków',
             'empty' => 'Nie znaleziono języka',
             'suggestions' => 'Sugestie',
@@ -179,7 +179,7 @@ return [
         'delete_only_description' => 'Nie możesz usunąć swojego jedynego workspace. Anuluj subskrypcję w rozliczeniach, aby przestać płacić, albo usuń konto w Uwierzytelnianiu, aby anulować rozliczenia i trwale usunąć wszystko.',
         'delete_go_to_billing' => 'Przejdź do rozliczeń',
         'delete_go_to_delete_account' => 'Usuń konto',
-        'delete_members_warning' => '{1}:count inny członek straci dostęp. Członkowie bez innego workspace w TryPost zostaną trwale usunięci.|[2,*]:count innych członków straci dostęp. Członkowie bez innego workspace w TryPost zostaną trwale usunięci.',
+        'delete_members_warning' => '{1}:count inny członek straci dostęp. Członkowie bez innego workspace w Social HQ zostaną trwale usunięci.|[2,*]:count innych członków straci dostęp. Członkowie bez innego workspace w Social HQ zostaną trwale usunięci.',
         'delete_action' => 'Usuń workspace',
         'delete_cancel' => 'Anuluj',
         'delete_confirm_title' => 'Usunąć workspace?',
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => 'Zaproszenie dla tego adresu e-mail już istnieje.',
-            'email_belongs_to_account' => 'Ten adres e-mail należy już do innego konta TryPost. Poproś o dedykowany służbowy adres e-mail.',
+            'email_belongs_to_account' => 'Ten adres e-mail należy już do innego konta Social HQ. Poproś o dedykowany służbowy adres e-mail.',
             'cannot_remove_self' => 'Nie możesz usunąć samego siebie.',
             'cannot_remove_owner' => 'Nie możesz usunąć właściciela konta.',
             'cannot_change_own_access' => 'Nie możesz zmienić własnego dostępu.',

@@ -102,7 +102,7 @@ return [
             'subtitle' => 'Empieza con los formatos que funcionan para la mayoría de las cuentas.',
         ],
         'see_all' => 'Ver todas',
-        'by_trypost' => 'Por TryPost',
+        'by_trypost' => 'Por Social HQ',
         'by_author' => 'Por :name',
         'copy' => 'Copiar plantilla',
         'copied' => 'Copiado',

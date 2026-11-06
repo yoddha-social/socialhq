@@ -74,7 +74,7 @@ class InsightsController extends Controller
         ['bounds' => $bounds, 'range' => $current] = $analytics->resolveRange($workspace, $selection, $accountKeys, $clamped);
         $report = $analytics->forRange($workspace, $current, $bounds, $channelKeys, $request->user()->week_starts_on);
         $sections = $export->execute($workspace, $report, $current, $accountKeys, $timezone);
-        $filename = 'trypost-insights-'.now($timezone)->toDateString().".{$format->value}";
+        $filename = 'socialhq-insights-'.now($timezone)->toDateString().".{$format->value}";
 
         return response()->streamDownload(function () use ($format, $sections): void {
             $stream = fopen('php://output', 'wb');

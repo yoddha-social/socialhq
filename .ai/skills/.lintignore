@@ -1,0 +1,5 @@
+# bin/socialhq-lint-skills allowlist:  allow:<relpath>:<regex>
+# Only for lines that name a stale thing in order to say it is stale.
+
+allow:.ai/skills/socialhq-port-from-rails/SKILL.md:LitellmClient. with .-confidential. groups
+allow:.ai/skills/socialhq-port-from-rails/SKILL.md:TryPost REST client

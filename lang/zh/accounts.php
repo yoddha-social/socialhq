@@ -99,7 +99,7 @@ return [
             ],
             'permissions' => [
                 'lead' => '为所有公共主页和 Instagram 账号选择所有权限',
-                'rest' => '（连接时选择，包括你不会连接到 TryPost 的账号）。',
+                'rest' => '（连接时选择，包括你不会连接到 Social HQ 的账号）。',
             ],
         ],
         'learn_how' => '了解方法。',
@@ -121,8 +121,8 @@ return [
         'close' => '关闭',
         'title_single' => '连接你的账号',
         'title_select' => '选择账号',
-        'subtitle_single' => '选择 TryPost 在 :network 上发布的账号。',
-        'subtitle_select' => '选择 TryPost 在 :network 上发布的账号。',
+        'subtitle_single' => '选择 Social HQ 在 :network 上发布的账号。',
+        'subtitle_select' => '选择 Social HQ 在 :network 上发布的账号。',
         'selected' => '已选 :count 个',
         'select_all' => '全选',
         'connected' => '已连接',
@@ -153,7 +153,7 @@ return [
             ],
             'missing_permission' => [
                 'title' => '需要权限',
-                'description' => 'TryPost 需要发布帖子的权限。请重新连接并保持该权限勾选。',
+                'description' => 'Social HQ 需要发布帖子的权限。请重新连接并保持该权限勾选。',
             ],
             'expired' => [
                 'title' => '此连接已过期',
@@ -170,7 +170,7 @@ return [
             'start_again' => '重新开始',
         ],
         'errors' => [
-            'bluesky_email_unconfirmed' => '请在 Bluesky 设置中验证邮箱，然后重新连接账号。通过 TryPost 发布视频需要先验证邮箱。',
+            'bluesky_email_unconfirmed' => '请在 Bluesky 设置中验证邮箱，然后重新连接账号。通过 Social HQ 发布视频需要先验证邮箱。',
             'error_connecting' => '连接账号时出错，请重试。',
             'network_taken' => '此工作区已连接了该网络的账号。请先断开该连接。',
             'wrong_account' => '这是另一个账号。请授权你正在重新连接的那个。',
@@ -185,7 +185,7 @@ return [
             'page_not_found' => '未找到主页。',
             'channel_not_found' => '未找到频道。',
             'pages_read_incomplete' => '我们没能读取你的全部主页。请稍后再试。',
-            'publish_permission_missing' => 'TryPost 需要发布帖子的权限。请重新连接，并保持勾选该权限。',
+            'publish_permission_missing' => 'Social HQ 需要发布帖子的权限。请重新连接，并保持勾选该权限。',
             'cancelled' => '已取消连接。',
             'pages_missing_permission' => '我们找到了主页，但没有你能发布的。你需要在主页本身拥有角色，并接受全部权限。',
             'no_facebook_pages' => '未找到 Facebook 主页。你至少需要是一个主页的管理员。',

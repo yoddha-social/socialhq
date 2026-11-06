@@ -174,7 +174,7 @@ const thumbnailFor = (post: TopPost): string | null => {
                         }}</span>
                         <template v-if="post.origin === 'trypost'">
                             <AppLogo variant="mark" class="text-[13px]" />
-                            <span class="shrink-0">TryPost</span>
+                            <span class="shrink-0">Social HQ</span>
                         </template>
                         <template v-else>
                             <PlatformBrandIcon

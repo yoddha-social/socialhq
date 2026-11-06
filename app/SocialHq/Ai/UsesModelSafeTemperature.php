@@ -15,6 +15,10 @@ trait UsesModelSafeTemperature
 
     public function temperature(): ?float
     {
-        return ModelCapabilities::acceptsTemperature() ? $this->preferredTemperature() : null;
+        $accepts = method_exists($this, 'aiTask')
+            ? ModelCapabilities::acceptsTemperatureFor($this->aiTask())
+            : ModelCapabilities::acceptsTemperature();
+
+        return $accepts ? $this->preferredTemperature() : null;
     }
 }

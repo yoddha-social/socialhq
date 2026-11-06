@@ -51,14 +51,14 @@ return [
         'title' => 'Предпочтения',
         'theme' => [
             'heading' => 'Оформление',
-            'description' => 'Выберите, как выглядит TryPost.',
+            'description' => 'Выберите, как выглядит Social HQ.',
             'light' => 'Светлая',
             'dark' => 'Тёмная',
             'system' => 'Системная',
         ],
         'language' => [
             'heading' => 'Язык',
-            'description' => 'Язык интерфейса TryPost.',
+            'description' => 'Язык интерфейса Social HQ.',
             'search' => 'Поиск языков',
             'empty' => 'Язык не найден',
             'suggestions' => 'Рекомендации',
@@ -179,7 +179,7 @@ return [
         'delete_only_description' => 'Вы не можете удалить свой единственный workspace. Отмените подписку в разделе оплаты, чтобы перестать платить, или удалите аккаунт в Аутентификации, чтобы отменить оплату и навсегда удалить всё.',
         'delete_go_to_billing' => 'Перейти к оплате',
         'delete_go_to_delete_account' => 'Удалить аккаунт',
-        'delete_members_warning' => '{1}:count другой участник потеряет доступ. Участники без другого workspace в TryPost будут удалены навсегда.|[2,*]:count других участников потеряют доступ. Участники без другого workspace в TryPost будут удалены навсегда.',
+        'delete_members_warning' => '{1}:count другой участник потеряет доступ. Участники без другого workspace в Social HQ будут удалены навсегда.|[2,*]:count других участников потеряют доступ. Участники без другого workspace в Social HQ будут удалены навсегда.',
         'delete_action' => 'Удалить workspace',
         'delete_cancel' => 'Отмена',
         'delete_confirm_title' => 'Удалить workspace?',
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => 'Для этого e-mail уже существует приглашение.',
-            'email_belongs_to_account' => 'Этот e-mail уже принадлежит другому аккаунту TryPost. Попросите выделенный рабочий e-mail.',
+            'email_belongs_to_account' => 'Этот e-mail уже принадлежит другому аккаунту Social HQ. Попросите выделенный рабочий e-mail.',
             'cannot_remove_self' => 'Вы не можете удалить себя.',
             'cannot_remove_owner' => 'Вы не можете удалить владельца аккаунта.',
             'cannot_change_own_access' => 'Вы не можете изменить свой доступ.',

@@ -99,7 +99,7 @@ return [
             ],
             'permissions' => [
                 'lead' => 'Toutes les autorisations sélectionnées pour toutes les pages et tous les comptes Instagram',
-                'rest' => 'lors de la connexion, même ceux que vous ne connecterez pas à TryPost.',
+                'rest' => 'lors de la connexion, même ceux que vous ne connecterez pas à Social HQ.',
             ],
         ],
         'learn_how' => 'Découvrir comment.',
@@ -121,8 +121,8 @@ return [
         'close' => 'Fermer',
         'title_single' => 'Connectez votre compte',
         'title_select' => 'Choisissez les comptes',
-        'subtitle_single' => 'Choisissez le compte sur lequel TryPost publiera sur :network.',
-        'subtitle_select' => 'Choisissez les comptes sur lesquels TryPost publiera sur :network.',
+        'subtitle_single' => 'Choisissez le compte sur lequel Social HQ publiera sur :network.',
+        'subtitle_select' => 'Choisissez les comptes sur lesquels Social HQ publiera sur :network.',
         'selected' => ':count sélectionnés',
         'select_all' => 'Tout choisir',
         'connected' => 'Connecté',
@@ -153,7 +153,7 @@ return [
             ],
             'missing_permission' => [
                 'title' => 'Autorisation requise',
-                'description' => 'TryPost a besoin de l\'autorisation de publier vos publications. Reconnectez-vous et gardez cette autorisation cochée.',
+                'description' => 'Social HQ a besoin de l\'autorisation de publier vos publications. Reconnectez-vous et gardez cette autorisation cochée.',
             ],
             'expired' => [
                 'title' => 'Cette connexion a expiré',
@@ -170,7 +170,7 @@ return [
             'start_again' => 'Recommencer',
         ],
         'errors' => [
-            'bluesky_email_unconfirmed' => 'Confirmez votre adresse e-mail dans les paramètres de Bluesky, puis reconnectez votre compte. TryPost exige une adresse confirmée pour publier des vidéos.',
+            'bluesky_email_unconfirmed' => 'Confirmez votre adresse e-mail dans les paramètres de Bluesky, puis reconnectez votre compte. Social HQ exige une adresse confirmée pour publier des vidéos.',
             'error_connecting' => 'Erreur lors de la connexion du compte. Veuillez réessayer.',
             'network_taken' => 'Cet espace de travail a déjà un compte pour ce réseau. Déconnectez-le d\'abord.',
             'wrong_account' => 'C\'est un autre compte. Autorisez celui que vous reconnectez.',
@@ -185,7 +185,7 @@ return [
             'page_not_found' => 'Page introuvable.',
             'channel_not_found' => 'Chaîne introuvable.',
             'pages_read_incomplete' => 'Nous n\'avons pas pu finir de lire vos Pages. Réessayez dans un instant.',
-            'publish_permission_missing' => 'TryPost a besoin de l\'autorisation de publier vos publications. Reconnectez-vous et gardez cette autorisation cochée.',
+            'publish_permission_missing' => 'Social HQ a besoin de l\'autorisation de publier vos publications. Reconnectez-vous et gardez cette autorisation cochée.',
             'cancelled' => 'Connexion annulée.',
             'pages_missing_permission' => 'Nous avons trouvé des Pages, mais aucune où publier. Il vous faut un rôle sur la Page elle-même et toutes les autorisations acceptées.',
             'no_facebook_pages' => 'Aucune page Facebook trouvée. Vous devez être administrateur d\'au moins une page.',

@@ -20,7 +20,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly(false)]
 #[IsDestructive(true)]
 #[IsOpenWorld(false)]
-#[Description('Delete a post from TryPost permanently; this cannot be undone. A post is never removed from the network where it was published. Posts that are publishing, published or failed cannot be changed or deleted. A member who needs approval may delete only posts they wrote, or requests they made that are still pending approval.')]
+#[Description('Delete a post from Social HQ permanently; this cannot be undone. A post is never removed from the network where it was published. Posts that are publishing, published or failed cannot be changed or deleted. A member who needs approval may delete only posts they wrote, or requests they made that are still pending approval.')]
 class DeletePostTool extends Tool
 {
     use AuthorizesMcpTool;

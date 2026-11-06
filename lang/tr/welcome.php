@@ -52,10 +52,10 @@ return [
     'plan_cancel_anytime' => 'İstediğin zaman iptal et',
     'mcp' => [
         'title' => 'Sosyal medyanı sohbetle yönet',
-        'description' => 'TryPost’ta gönderilerini favori yapay zekânla oluştur, planla ve analiz et.',
+        'description' => 'Social HQ’ta gönderilerini favori yapay zekânla oluştur, planla ve analiz et.',
         'connect_with' => ':client ile bağlan',
         'connect_ai' => 'Yapay zekânı bağla',
-        'pick_ai' => 'TryPost’u nerede kullanmak istersin?',
+        'pick_ai' => 'Social HQ’u nerede kullanmak istersin?',
         'connect_other' => 'Başka uygulama bağla',
         'connected' => ':client bağlandı',
         'benefits' => [

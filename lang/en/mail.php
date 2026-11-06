@@ -8,7 +8,7 @@ return [
         'tagline' => 'Sent by the :brand team',
         'manage_notifications' => 'Manage notifications',
         'signoff' => 'Best regards,',
-        'team' => 'The TryPost Team',
+        'team' => 'The Social HQ Team',
     ],
 
     'account_disconnected' => [
@@ -19,7 +19,7 @@ return [
         'intro' => 'The following account was disconnected from the :workspace workspace.',
         'reasons_title' => 'This may have happened because:',
         'reason_expired' => 'Your access token expired',
-        'reason_revoked' => 'You revoked access to TryPost',
+        'reason_revoked' => 'You revoked access to Social HQ',
         'reason_error' => 'There was an authentication error',
         'reconnect_cta' => 'Please reconnect your account to continue scheduling and publishing posts.',
         'button' => 'Reconnect Account',
@@ -120,7 +120,7 @@ return [
         'heading' => 'Your post was published',
         'body' => 'Your post in the :workspace workspace has been published successfully.',
         'button' => 'View on social network',
-        'open_in_app' => 'Open in TryPost',
+        'open_in_app' => 'Open in Social HQ',
     ],
 
     'webhook_paused' => [
@@ -140,7 +140,7 @@ return [
         'intro' => 'The following social accounts in your <strong>:workspace</strong> workspace have been disconnected and need to be reconnected:',
         'reasons_title' => 'This may have happened because:',
         'reason_expired' => 'Access tokens expired',
-        'reason_revoked' => 'You revoked access to TryPost on the platform',
+        'reason_revoked' => 'You revoked access to Social HQ on the platform',
         'reason_changed' => 'The platform changed their authentication requirements',
         'reconnect_cta' => 'Please reconnect these accounts to continue scheduling and publishing posts.',
         'button' => 'Reconnect accounts',

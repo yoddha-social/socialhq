@@ -102,7 +102,7 @@ return [
             'subtitle' => 'Starte mit den Formaten, die für die meisten Konten funktionieren.',
         ],
         'see_all' => 'Alle anzeigen',
-        'by_trypost' => 'Von TryPost',
+        'by_trypost' => 'Von Social HQ',
         'by_author' => 'Von :name',
         'copy' => 'Vorlage kopieren',
         'copied' => 'Kopiert',

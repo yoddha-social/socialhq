@@ -9,6 +9,8 @@ import { getActiveLanguage, trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, ref, type Component } from 'vue';
 import { toast } from 'vue-sonner';
 
+import AiGraphicDialog from '@/components/socialhq/AiGraphicDialog.vue';
+import AiGraphicMenuItem from '@/components/socialhq/AiGraphicMenuItem.vue';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -179,6 +181,7 @@ const sources = computed<MediaSourceOption[]>(() =>
 );
 
 const menuOpen = ref(false);
+const aiGraphicOpen = ref(false);
 
 const preload = (options: MediaSourceOption[]): void =>
     options.forEach((option) => preloaders[option.source]?.(option));
@@ -256,6 +259,7 @@ const pickCanvaPreset = (
                 <IconUpload class="text-foreground" />
                 {{ $t('posts.composer.media_sources.upload') }}
             </DropdownMenuItem>
+            <AiGraphicMenuItem @select="aiGraphicOpen = true" />
             <DropdownMenuSeparator v-if="sources.length" />
                 <template v-for="option in sources" :key="option.source">
                     <DropdownMenuSub v-if="option.source === 'canva'">
@@ -318,4 +322,9 @@ const pickCanvaPreset = (
                 </template>
         </DropdownMenuContent>
     </DropdownMenu>
+    <AiGraphicDialog
+        v-if="!disabled"
+        v-model:open="aiGraphicOpen"
+        @started="emit('import-started', $event)"
+    />
 </template>

@@ -422,7 +422,7 @@ return [
         'copy' => 'Afbeelding kopiëren',
         'copied' => 'Afbeelding gekopieerd',
         'create_post' => 'Post maken',
-        'mark' => 'Gemaakt met TryPost',
+        'mark' => 'Gemaakt met Social HQ',
         'copy_failed' => 'Kan de afbeelding niet kopiëren. Download hem in plaats daarvan.',
         'post_failed' => 'Kan de post niet voorbereiden. Probeer het opnieuw.',
         'caption_workspace' => ':metric op onze kanalen: :value (:range) 📈',

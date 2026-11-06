@@ -52,10 +52,10 @@ return [
     'plan_cancel_anytime' => 'Disdici quando vuoi',
     'mcp' => [
         'title' => 'Gestisci i social dalla chat',
-        'description' => 'Crea, programma e analizza i post su TryPost con la tua IA preferita.',
+        'description' => 'Crea, programma e analizza i post su Social HQ con la tua IA preferita.',
         'connect_with' => 'Collega :client',
         'connect_ai' => 'Collega la tua IA',
-        'pick_ai' => 'Dove vuoi usare TryPost?',
+        'pick_ai' => 'Dove vuoi usare Social HQ?',
         'connect_other' => 'Collega un\'altra app',
         'connected' => ':client è collegato',
         'benefits' => [

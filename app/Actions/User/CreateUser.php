@@ -14,6 +14,7 @@ use App\Jobs\PostHog\SyncUser;
 use App\Models\Account;
 use App\Models\User;
 use App\Services\PostHogService;
+use App\SocialHq\Companies\CompanySignup;
 use App\SocialHq\Signup\AccessRequests;
 use App\SocialHq\Signup\SignupRules;
 use App\Support\Timezone;
@@ -22,7 +23,7 @@ use Illuminate\Support\Facades\DB;
 class CreateUser
 {
     /**
-     * @param  array{name: string, email: string, password?: string, google_id?: string, github_id?: string, email_verified_at?: \DateTimeInterface|null, is_invite?: bool, registration_ip?: string|null, locale?: string|null, timezone?: string|null, week_starts_on?: string|null, time_format?: string|null}  $data
+     * @param  array{name: string, email: string, password?: string, company_name?: string, google_id?: string, github_id?: string, email_verified_at?: \DateTimeInterface|null, is_invite?: bool, registration_ip?: string|null, locale?: string|null, timezone?: string|null, week_starts_on?: string|null, time_format?: string|null}  $data
      * @param  array<string, string>  $attributionParameters  UTM parameters and ad click IDs (gclid, fbclid, etc.) captured before signup
      */
     public static function execute(array $data, array $attributionParameters = []): User
@@ -68,6 +69,13 @@ class CreateUser
             }
 
             $account->update(['owner_id' => $user->id]);
+
+            // Social HQ: anyone else asks to start a company, and gets no workspace until it is approved.
+            if (($companyName = CompanySignup::companyToRequest($data, $isInviteRegistration)) !== null) {
+                CompanySignup::open($user, $account, $companyName);
+
+                return $user;
+            }
 
             if (! $isInviteRegistration) {
                 CreateWorkspace::execute($user, ['name' => data_get($data, 'name')."'s Workspace"]);

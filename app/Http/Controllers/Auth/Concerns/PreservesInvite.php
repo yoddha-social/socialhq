@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth\Concerns;
 
 use App\Models\Invite;
+use App\SocialHq\Companies\CompanyRequests;
 use App\SocialHq\Signup\SignupRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -34,7 +35,7 @@ trait PreservesInvite
     {
         $invite = Invite::fromId($this->retrieveInvite());
 
-        if ((bool) config('trypost.self_hosted') && ! $invite && ! SignupRules::isOpen()) {
+        if ((bool) config('trypost.self_hosted') && ! $invite && ! SignupRules::isOpen() && ! CompanyRequests::enabled()) {
             throw new NotFoundHttpException;
         }
 
@@ -49,7 +50,8 @@ trait PreservesInvite
             ]);
         }
 
-        if (! $invite && (bool) config('trypost.self_hosted') && ! SignupRules::allows($oauthEmail)) {
+        // Social HQ: with company requests on, anyone else asks to start a company (CreateUser).
+        if (! $invite && (bool) config('trypost.self_hosted') && ! SignupRules::allows($oauthEmail) && ! CompanyRequests::enabled()) {
             return redirect()->route('login')->withErrors(['email' => __('socialhq.signup.not_allowed')]);
         }
 

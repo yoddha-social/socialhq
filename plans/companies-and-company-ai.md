@@ -17,6 +17,13 @@ company brings its own AI provider keys; ours keeps the platform keys.
   approve / decline (note) / suspend / restore, allow platform AI.
 - Only an approved company's owner creates workspaces; suspended companies can't
   work (a page says so). Invited people's empty accounts are not companies.
+- Built (lane `companies`), with these choices: the email path of "ask for a
+  company" never logs in and ends on "check your email" either way (an email
+  with an account gets a reset link), so the form can't reveal accounts;
+  Google/GitHub create the pending company at once named after the person
+  (renamed on the waiting page); declined companies may ask again after 24
+  hours; a paused company's API keys and MCP grants stop too, its scheduled
+  posts don't (follow-up). Details in SOCIALHQ.md "Sign-up".
 
 ## Step 2: company AI (lane `company-ai`)
 - Each company is a LiteLLM team with its own virtual key and budget. Provider keys

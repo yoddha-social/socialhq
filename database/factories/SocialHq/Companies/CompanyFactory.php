@@ -32,6 +32,16 @@ class CompanyFactory extends Factory
         return $this->state(fn (): array => ['status' => CompanyStatus::Pending, 'decided_at' => null]);
     }
 
+    public function declined(?string $note = 'Not a fit.'): static
+    {
+        return $this->state(fn (): array => ['status' => CompanyStatus::Declined, 'decision_note' => $note, 'decided_at' => now()]);
+    }
+
+    public function suspended(?string $note = 'Unpaid invoice.'): static
+    {
+        return $this->state(fn (): array => ['status' => CompanyStatus::Suspended, 'decision_note' => $note, 'decided_at' => now()]);
+    }
+
     public function usingPlatformAi(): static
     {
         return $this->state(fn (): array => ['uses_platform_ai' => true]);

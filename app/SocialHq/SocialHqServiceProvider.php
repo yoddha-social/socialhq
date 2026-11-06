@@ -12,10 +12,13 @@ use App\SocialHq\Ai\ApprovedProvidersGuard;
 use App\SocialHq\AiGraphics\AiGraphics;
 use App\SocialHq\Approval\ApprovalRules;
 use App\SocialHq\Approval\RecordApprovalEvents;
+use App\SocialHq\Companies\CompanyRequests;
+use App\SocialHq\Companies\CompanySignup;
 use App\SocialHq\Companies\PlatformAdminCommand;
 use App\SocialHq\Companies\PlatformAdmins;
 use App\SocialHq\Events\ImportEventsCommand;
 use App\SocialHq\Http\Controllers\Plan\PlanGenerationController;
+use App\SocialHq\Http\Middleware\EnsureCompanyApproved;
 use App\SocialHq\Http\Middleware\RedirectWhileAwaitingAccess;
 use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\Calendars\CalendarStorage;
@@ -79,10 +82,17 @@ class SocialHqServiceProvider extends ServiceProvider
         // People who signed up wait on one page until an admin lets them in.
         $this->app->make(Kernel::class)->appendMiddlewareToGroup('web', RedirectWhileAwaitingAccess::class);
 
+        // Only approved companies work: owners of waiting companies wait, suspended companies pause.
+        $this->app->make(Kernel::class)->appendMiddlewareToGroup('web', EnsureCompanyApproved::class);
+
         // Admins hear about a sign-up once its email is confirmed (Google and
         // GitHub sign-ups arrive confirmed).
         Event::listen(Registered::class, fn (Registered $event) => $event->user instanceof User ? AccessRequests::notifyAdmins($event->user) : null);
         Event::listen(Verified::class, fn (Verified $event) => $event->user instanceof User ? AccessRequests::notifyAdmins($event->user) : null);
+
+        // Platform admins hear about a company request the same way.
+        Event::listen(Registered::class, fn (Registered $event) => $event->user instanceof User ? CompanyRequests::notifyPlatformAdmins($event->user) : null);
+        Event::listen(Verified::class, fn (Verified $event) => $event->user instanceof User ? CompanyRequests::notifyPlatformAdmins($event->user) : null);
         Event::listen(PasswordReset::class, fn (PasswordReset $event) => $event->user instanceof User ? PasswordResetProof::handle($event->user) : null);
 
         // Someone waiting for access who gets a workspace another way (an invite) is let in.
@@ -148,10 +158,21 @@ class SocialHqServiceProvider extends ServiceProvider
                 'maxReferenceKilobytes' => (int) config('socialhq.ai_graphics.max_reference_kilobytes', 10240),
             ],
             'signup' => [
-                'open' => SignupRules::isOpen(),
+                // The login page's "Sign up": the company lists, or asking to start a company.
+                'open' => SignupRules::isOpen() || CompanyRequests::enabled(),
+                // Whether a work email joins its team's company (the company name field then says it may stay empty).
+                'joinsByEmail' => SignupRules::isOpen(),
+                // The register page's company name field (the server still decides on submit).
+                'companyRequests' => CompanySignup::showsCompanyField(),
                 // One query, 0 for anyone who can't decide (the workspace menu and the Members banner read it).
                 'pendingRequests' => auth()->user() instanceof User ? AccessRequests::pendingCountFor(auth()->user()) : 0,
             ],
+            // The platform admin link in the user menu, with the requests waiting for a decision.
+            'platform' => (function (): array {
+                $isAdmin = PlatformAdmins::is(auth()->user());
+
+                return ['admin' => $isAdmin, 'pendingCompanies' => $isAdmin ? CompanyRequests::awaitingDecisionCount() : 0];
+            })(),
         ]);
     }
 }

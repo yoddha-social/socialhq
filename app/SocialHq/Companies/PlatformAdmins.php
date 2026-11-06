@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\SocialHq\Companies;
 
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -19,6 +20,14 @@ final class PlatformAdmins
     public static function is(?User $user): bool
     {
         return $user !== null && DB::table('shq_platform_admins')->where('user_id', $user->id)->exists();
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    public static function users(): Collection
+    {
+        return User::query()->whereIn('id', DB::table('shq_platform_admins')->select('user_id'))->get();
     }
 
     public static function grant(User $user): void

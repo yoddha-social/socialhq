@@ -204,4 +204,27 @@ return [
         'account_owner' => env('SOCIALHQ_SIGNUP_ACCOUNT_OWNER'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Companies (self-hosted)
+    |--------------------------------------------------------------------------
+    |
+    | A company is an account a platform admin approved; its owner creates
+    | the workspaces (brands). Someone whose email isn't on the sign-up lists
+    | may ask to start a company (requests), and waits until a platform admin
+    | approves it. With `required`, only an approved company's owner creates
+    | workspaces (the test run turns it off: upstream's tests have no
+    | companies). `contact_email` is who a paused company's owner writes to;
+    | without it, the platform admin who paused it.
+    |
+    */
+
+    'companies' => [
+        'requests' => (bool) env('SOCIALHQ_COMPANY_REQUESTS', true),
+        'required' => (bool) env('SOCIALHQ_COMPANIES_REQUIRED', true),
+        'contact_email' => env('SOCIALHQ_PLATFORM_CONTACT_EMAIL'),
+        // A declined company may ask again once this many hours have passed.
+        'ask_again_after_hours' => 24,
+    ],
+
 ];

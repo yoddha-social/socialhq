@@ -8,6 +8,7 @@ use App\Actions\User\CreateUser;
 use App\Http\Controllers\Auth\Concerns\PreservesAttributionParameters;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Auth\RegisterRequest;
+use App\SocialHq\Companies\CompanySignup;
 use App\Support\Auth\PasswordRequirements;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -34,6 +35,12 @@ class RegisteredUserController extends Controller
     public function store(RegisterRequest $request): RedirectResponse
     {
         $attributionParameters = $this->retrieveAttributionParameters();
+
+        // Social HQ: asking to start a company never logs in, so the form can't tell whether the email has an account.
+        if ($request->asksForCompany()) {
+            return CompanySignup::register([...$request->validated(), 'registration_ip' => $request->ip()], $attributionParameters);
+        }
+
         $invite = $request->invite();
 
         $user = CreateUser::execute([

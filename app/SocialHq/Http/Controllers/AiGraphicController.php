@@ -14,11 +14,14 @@ use App\SocialHq\AiGraphics\GraphicFormat;
 use App\SocialHq\AiGraphics\RecentAiGraphics;
 use App\SocialHq\AiGraphics\VisionCheck;
 use App\SocialHq\Http\Requests\StoreAiGraphicRequest;
+use App\SocialHq\Knowledge\Look\BrandLook;
+use App\SocialHq\Knowledge\Look\LogoStorage;
 use App\Support\MediaImportStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as ImageResponse;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Ai\Files\Image;
@@ -46,7 +49,17 @@ class AiGraphicController extends Controller
         /** @var list<UploadedFile> $files */
         $files = array_values($request->file('references', []));
 
-        $blocked = VisionCheck::review($prompt, array_map(fn (UploadedFile $file): Image => Image::fromUpload($file), $files));
+        // Brand look: the logo (a bitmap) as the first reference, the colours, fonts and style in the prompt.
+        $look = BrandLook::of($workspace);
+        $withLogo = $request->boolean('use_brand_logo') && $look?->hasRasterLogo() && LogoStorage::disk()->exists((string) $look->logo_path);
+        $brandLook = $request->boolean('use_brand_look') ? ($look?->promptText() ?: null) : null;
+        $images = array_map(fn (UploadedFile $file): Image => Image::fromUpload($file), $files);
+
+        if ($withLogo) {
+            array_unshift($images, Image::fromStorage((string) $look->logo_path, LogoStorage::DISK));
+        }
+
+        $blocked = VisionCheck::review($prompt, $images, brandLogo: $withLogo);
 
         $route = AiRouter::route(AiTask::Image);
 
@@ -56,7 +69,9 @@ class AiGraphicController extends Controller
             'import_id' => (string) Str::uuid(),
             'prompt' => $prompt,
             'format' => GraphicFormat::from((string) $request->validated('format')),
-            'reference_count' => count($files),
+            'reference_count' => count($images),
+            'brand_look' => $brandLook,
+            'brand_logo' => $withLogo,
             'provider' => (string) array_key_first($route),
             'model' => $route[array_key_first($route)],
             'status' => $blocked === null ? AiGraphic::PENDING : AiGraphic::BLOCKED,
@@ -68,6 +83,13 @@ class AiGraphicController extends Controller
         }
 
         $paths = array_map(fn (UploadedFile $file): string => $file->store('socialhq/ai-graphics/references', 'local'), $files);
+
+        if ($withLogo) {
+            // A copy, which the job deletes with the other references.
+            $logoCopy = 'socialhq/ai-graphics/references/'.Str::uuid()->toString().'.'.pathinfo((string) $look->logo_path, PATHINFO_EXTENSION);
+            Storage::disk('local')->put($logoCopy, (string) LogoStorage::disk()->get((string) $look->logo_path));
+            array_unshift($paths, $logoCopy);
+        }
 
         MediaImportStatus::pending($graphic->import_id, $user->id, $workspace->id);
         GenerateAiGraphic::dispatch($graphic->id, $paths);
@@ -85,7 +107,15 @@ class AiGraphicController extends Controller
 
         abort_unless($workspace !== null && $user->can('createPost', $workspace), Response::HTTP_FORBIDDEN);
 
+        $look = BrandLook::of($workspace);
+
         return response()->json([
+            // What "Use our brand look" and "Add our logo" can offer.
+            'brand' => [
+                'look' => filled($look?->promptText()),
+                'logo' => $look?->hasRasterLogo() ? route('socialhq.brand.look.logo.show', ['v' => $look->updated_at?->timestamp]) : null,
+                'vectorLogo' => $look?->hasLogo() && ! $look->hasRasterLogo(),
+            ],
             'graphics' => RecentAiGraphics::for($user, $workspace)->map(fn (AiGraphic $graphic): array => [
                 'import_id' => $graphic->import_id,
                 'prompt' => $graphic->prompt,

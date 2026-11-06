@@ -31,6 +31,7 @@ class AiGraphic extends Model
     {
         return [
             'format' => GraphicFormat::class,
+            'brand_logo' => 'boolean',
         ];
     }
 

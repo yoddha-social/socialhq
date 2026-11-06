@@ -23,6 +23,15 @@ enum DocumentFailure: string
     /** Damaged, or a format we couldn't parse. */
     case Unreadable = 'unreadable';
 
+    /** A Google link the app may not read: not shared with "Anyone with the link". */
+    case NotShared = 'not_shared';
+
+    /** A Google link to a file that isn't there (deleted, or a wrong link). */
+    case NotFound = 'not_found';
+
+    /** Google couldn't be reached, or took too long. */
+    case LinkUnreachable = 'link_unreachable';
+
     public function exception(): DocumentUnreadable
     {
         return new DocumentUnreadable($this);

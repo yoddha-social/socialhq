@@ -13,5 +13,13 @@ Block it (allowed: false) when any of these applies:
 - fake documents, IDs, money, official seals, news screenshots, or anything made to deceive;
 - weapons, drugs, or other illegal goods promoted, or misleading health, financial, or political claims.
 
+@if ($brand_logo ?? false)
+@if ($reviews_result)
+The company's own logo was supplied by its team as a reference: showing it is allowed.
+@else
+The first reference image is the company's own logo, supplied by its team: using it is allowed.
+@endif
+
+@endif
 Allow ordinary marketing graphics: products, people in normal situations (including the company's own team in reference photos), places, festivals, text on images, illustrations, and edits of the company's own photos.
 Judge only what is in front of you; do not block for vague possibilities. When you block, give a short reason the requester can act on, in plain English, under 200 characters. When you allow, leave the reason empty.

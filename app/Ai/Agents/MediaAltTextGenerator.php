@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace App\Ai\Agents;
 
 use App\Enums\User\Locale;
-use Laravel\Ai\Attributes\Temperature;
+use App\SocialHq\Ai\UsesModelSafeTemperature;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Promptable;
 
-#[Temperature(0.2)]
 class MediaAltTextGenerator implements Agent
 {
     use Promptable;
+    use UsesModelSafeTemperature;
 
     public const int MAX_LENGTH = 250;
 
@@ -26,5 +26,10 @@ class MediaAltTextGenerator implements Agent
             'language' => $this->locale->promptLanguage(),
             'max_length' => self::MAX_LENGTH,
         ])->render();
+    }
+
+    protected function preferredTemperature(): float
+    {
+        return 0.2;
     }
 }

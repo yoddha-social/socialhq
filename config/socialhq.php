@@ -19,6 +19,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | AI models without a temperature setting
+    |--------------------------------------------------------------------------
+    |
+    | Models that reject the `temperature` parameter, as regular expressions.
+    | TryPost's AI agents send their preferred temperature to every other model.
+    | The Claude 5 family rejects it (claude-sonnet-5-5, claude-opus-5-5, ...);
+    | Claude 4.x accepts it (claude-sonnet-4-5, claude-sonnet-4-5-20250929).
+    |
+    */
+
+    'ai' => [
+        'models_without_temperature' => [
+            '/^claude-[a-z]+-5(-\d{1,2})?(-\d{8})?$/',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | AI graphics
     |--------------------------------------------------------------------------
     |

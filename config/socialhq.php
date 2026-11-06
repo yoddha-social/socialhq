@@ -359,6 +359,28 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Events: public holidays by country (Nager.Date)
+    |--------------------------------------------------------------------------
+    |
+    | "Add a country" on the events page imports a country's public holidays
+    | from Nager.Date (free, no key), unconfirmed. Nepal's dates come from our
+    | official list instead. Each (country, year) answer is cached for
+    | cache_hours and the country list for a day; failures are not cached.
+    | At most max_countries per import, for this year and the next.
+    |
+    */
+
+    'events' => [
+        'nager' => [
+            'host' => rtrim((string) env('SOCIALHQ_NAGER_HOST', 'https://date.nager.at'), '/'),
+            'timeout_seconds' => (int) env('SOCIALHQ_NAGER_TIMEOUT', 10),
+            'cache_hours' => (int) env('SOCIALHQ_NAGER_CACHE_HOURS', 12),
+            'max_countries' => 5,
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Companies (self-hosted)
     |--------------------------------------------------------------------------
     |

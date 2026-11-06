@@ -4,6 +4,7 @@ import { computed } from 'vue';
 
 import {
     categoryBadgeClass,
+    countryName,
     NEEDS_CHECK_CLASS,
     type CalendarEventRow,
 } from '@/components/socialhq/plan/eventStyles';
@@ -16,6 +17,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { activeLocale } from '@/language';
 
 /**
  * One event on the events page: names, kind, holiday, source and who
@@ -52,6 +54,13 @@ const sourceLabel = computed((): string | null => {
     }
 });
 
+/** The event's country, named in the interface language. */
+const country = computed((): string | null =>
+    props.event.country_code
+        ? countryName(props.event.country_code, activeLocale.value)
+        : null,
+);
+
 const confirm = (): void => emit('confirm', props.event);
 const unconfirm = (): void => emit('unconfirm', props.event);
 const edit = (): void => emit('edit', props.event);
@@ -76,7 +85,11 @@ const remove = (): void => emit('delete', props.event);
                 </p>
                 <p
                     v-if="event.name_ne"
-                    lang="ne"
+                    :lang="
+                        event.country_code && event.country_code !== 'NP'
+                            ? undefined
+                            : 'ne'
+                    "
                     class="text-sm text-muted-foreground"
                 >
                     {{ event.name_ne }}
@@ -104,7 +117,25 @@ const remove = (): void => emit('delete', props.event);
                 <Badge v-if="event.brand_only" variant="outline" class="px-1.5">
                     {{ $t('socialhq_events.badges.brand_only') }}
                 </Badge>
-                <span v-else class="text-xs text-muted-foreground">
+                <span
+                    v-if="event.country_code"
+                    class="inline-flex items-center gap-1 text-xs text-muted-foreground"
+                    :data-testid="`socialhq-event-country-${event.id}`"
+                >
+                    <Badge
+                        variant="outline"
+                        class="px-1 font-mono text-[0.625rem] tracking-wide"
+                        :title="country"
+                        aria-hidden="true"
+                    >
+                        {{ event.country_code }}
+                    </Badge>
+                    {{ country }}
+                </span>
+                <span
+                    v-else-if="!event.brand_only"
+                    class="text-xs text-muted-foreground"
+                >
                     {{ $t(`socialhq_events.regions.${event.region}`) }}
                 </span>
                 <span v-if="until" class="text-xs text-muted-foreground">

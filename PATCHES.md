@@ -8,8 +8,11 @@ whenever you touch an upstream file; keep each edit as small as possible.
 | # | File | Change | Why |
 |---|---|---|---|
 | 1 | `bootstrap/providers.php` | Registers `App\SocialHq\SocialHqServiceProvider` (2 lines) | Loads the Social HQ module |
-| 2 | `resources/js/components/AppSidebar.vue` | Imports and renders `socialhq/SourceLink.vue` in the sidebar footer (2 lines) | AGPL-3.0 §13: users of the modified version can get its source |
+| 2 | `resources/js/components/AppSidebar.vue` | Imports and renders `socialhq/SourceLink.vue` in the sidebar footer and `socialhq/WorkspaceSwitcher.vue` at the top of the sidebar content (4 lines) | AGPL-3.0 §13: users of the modified version can get its source. Upstream hides the workspace switcher in a submenu of the user menu |
 | 3 | `README.md` | Short Social HQ note at the top | Says what this fork is and where our docs are |
+| 6 | `resources/js/types/command-palette.ts` | Adds the `workspaces` group (1 line) | Command palette entries to switch workspace |
+| 7 | `resources/js/components/command-palette/CommandPaletteContent.vue` | Adds `socialhq/workspaceCommandEntries.ts` entries to the palette, shown while searching (5 lines) | Same |
+| 90 | `app/Models/Traits/HasWorkspace.php` | `switchWorkspace()` also sets the `currentWorkspace` relation (1 line) | The relation stayed on the old workspace for the rest of the request; browser tests reuse the signed-in user across requests, so the sidebar kept the old name |
 | 91 | `.github/workflows/tests.yml` | Runs on every PR and on pushes to `main` only; read-only token; job timeouts; failed browser test files get one retry, reported as a flaky warning | Stacked PRs got no CI; random browser failures kept every run red |
 | 92 | `.github/workflows/lint.yml` | Checks instead of fixing: Pint, ESLint and `vue-tsc` on the whole repo (after generating Wayfinder routes), Prettier on the files a change touches unless they weren't clean before; every PR; read-only token | The old job ran the fixers, so it could never fail; much of the TryPost base isn't Prettier-clean |
 | 93 | `.github/workflows/release-docker.yml` | Deleted | TryPost's own image release; ours is `socialhq-image.yml` |

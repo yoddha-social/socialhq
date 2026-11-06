@@ -14,7 +14,8 @@ export type CommandPaletteGroup =
     | 'channels'
     | 'connect'
     | 'settings'
-    | 'insights';
+    | 'insights'
+    | 'workspaces';
 
 export interface CommandPaletteEntry {
     id: string;

@@ -46,6 +46,7 @@ Route::middleware('auth')->prefix('socialhq')->name('socialhq.')->group(function
         Route::post('brand/entries', [BrandKnowledgeController::class, 'store'])->name('brand.entries.store');
         Route::put('brand/entries/{entry}', [BrandKnowledgeController::class, 'update'])->whereNumber('entry')->name('brand.entries.update');
         Route::delete('brand/entries/{entry}', [BrandKnowledgeController::class, 'destroy'])->whereNumber('entry')->name('brand.entries.destroy');
+        require __DIR__.'/socialhq/knowledge.php';
     });
 });
 

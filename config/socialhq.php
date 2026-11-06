@@ -115,11 +115,36 @@ return [
     | costs more tokens per character, so the same budget holds less of it.
     | A rough guard for free models' limits, not a token count.
     |
+    | When the caller says what the prompt is about (the focus), the entries
+    | and document excerpts that match it go in right after the pinned ones,
+    | and the budget is prompt_characters_focused (8000, about 2,000 tokens):
+    | the extra room holds text picked for the request, not filler. Matches
+    | scoring under min_relevance of the best one are left out.
+    |
+    | Documents: PDF, Word, PowerPoint, text and Markdown files, read into
+    | excerpts of about chunk_characters. Zip parts are capped before reading
+    | (max_expanded_bytes in all, max_part_bytes per part) against zip bombs.
+    |
     */
 
     'knowledge' => [
         'prompt_characters' => (int) env('SOCIALHQ_KNOWLEDGE_PROMPT_CHARACTERS', 6000),
+        'prompt_characters_focused' => (int) env('SOCIALHQ_KNOWLEDGE_PROMPT_CHARACTERS_FOCUSED', 8000),
         'max_entries' => (int) env('SOCIALHQ_KNOWLEDGE_MAX_ENTRIES', 300),
+        'search' => [
+            'min_relevance' => (float) env('SOCIALHQ_KNOWLEDGE_MIN_RELEVANCE', 0.25),
+        ],
+        'documents' => [
+            'max_documents' => (int) env('SOCIALHQ_KNOWLEDGE_MAX_DOCUMENTS', 30),
+            'max_kilobytes' => (int) env('SOCIALHQ_KNOWLEDGE_DOCUMENT_KILOBYTES', 10240),
+            'max_characters' => (int) env('SOCIALHQ_KNOWLEDGE_DOCUMENT_CHARACTERS', 300000),
+            'chunk_characters' => 900,
+            'max_chunks' => 400,
+            'prompt_excerpts' => (int) env('SOCIALHQ_KNOWLEDGE_PROMPT_EXCERPTS', 6),
+            'max_expanded_bytes' => 100 * 1024 * 1024,
+            'max_part_bytes' => 20 * 1024 * 1024,
+            'pdf_decode_bytes' => 32 * 1024 * 1024,
+        ],
     ],
 
     /*

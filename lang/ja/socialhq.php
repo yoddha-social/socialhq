@@ -102,7 +102,7 @@ return [
         ],
         'entries' => [
             'title' => 'Knowledge',
-            'description' => 'Products, projects, past campaigns, facts and example posts. The AI reads pinned entries first, then the newest.',
+            'description' => 'Products, projects, past campaigns, facts and example posts. The AI reads pinned entries first, then the ones that match what it writes about, then the newest.',
             'add' => 'Add knowledge',
             'empty' => 'No knowledge yet. Add your products, projects and key facts so the AI gets them right.',
             'empty_member' => 'No knowledge yet. Workspace admins add products, projects and key facts here for the AI.',

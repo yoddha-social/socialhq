@@ -6,11 +6,16 @@ namespace App\SocialHq\Knowledge;
 
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Knowledge\Documents\KnowledgeChunk;
+use App\SocialHq\Knowledge\Search\KnowledgeMatch;
+use App\SocialHq\Knowledge\Search\KnowledgeSearch;
+use Illuminate\Support\Collection;
 
 /**
  * What the AI is told about a workspace's brand: its profile, then the
- * entries marked for AI (pinned first, then newest), until the budget is
- * spent.
+ * entries marked for AI (pinned first; with a focus, the entries and
+ * document excerpts that match the request next; then newest), until the
+ * budget is spent.
  *
  * Every AI feature that writes for a brand calls forPrompt() with the
  * workspace it works for, passed explicitly. The profile gets at most half
@@ -29,6 +34,8 @@ final class BrandKnowledge
 
     private const ENTRIES_HEADING = 'What to know:';
 
+    private const DOCUMENTS_HEADING = 'From documents:';
+
     private const EXAMPLES_HEADING = "Example posts in the brand's voice (match their tone and style; don't reuse their facts, prices or dates):";
 
     private const ELLIPSIS = '…';
@@ -46,8 +53,9 @@ final class BrandKnowledge
     /**
      * The brand knowledge block for one AI prompt.
      *
-     * @param  string|null  $focus  What the prompt is about (the request). Not used yet: it
-     *                              will pick the entries that match once embeddings land.
+     * @param  string|null  $focus  What the prompt is about (the request): the entries and
+     *                              document excerpts that match it come right after the pinned
+     *                              entries. Without it, documents are left out.
      */
     public static function forPrompt(Workspace $workspace, ?string $focus = null): string
     {
@@ -55,41 +63,70 @@ final class BrandKnowledge
     }
 
     /**
-     * The prompt text plus what made it in: which entries, the space used.
+     * The prompt text plus what made it in: which entries and excerpts, the space used.
+     *
+     * Order: the profile (at most half), pinned entries, then with a focus
+     * the entries and excerpts that match it (best first), then the other
+     * entries, newest first, until the budget is spent.
      */
     public static function assemble(Workspace $workspace, ?string $focus = null): KnowledgePrompt
     {
-        $budget = self::budget();
+        $focus = trim((string) $focus);
+        $focused = $focus !== '';
+        $budget = self::budget($focused);
         [$profileText, $profileTrimmed] = self::profileSection($workspace, intdiv($budget, 2));
         $used = self::size($profileText);
 
-        // Both headings, and the blank lines between sections, come out of the entries' room.
+        // The headings, and the blank lines between sections, come out of the entries' room.
         $room = $budget - $used - self::size(self::ENTRIES_HEADING) - self::size(self::EXAMPLES_HEADING) - 4;
+
+        if ($focused) {
+            $room -= self::size(self::DOCUMENTS_HEADING) + 2;
+        }
 
         $entries = KnowledgeEntry::query()
             ->where('workspace_id', $workspace->id)
             ->usedInAi()
             ->inPromptOrder()
-            ->get(['id', 'kind', 'title', 'body']);
+            ->get(['id', 'kind', 'title', 'body', 'pinned']);
+
+        [$queue, $matched] = $focused ? self::focusedOrder($workspace, $focus, $entries) : [$entries->all(), []];
 
         $facts = [];
         $examples = [];
+        $documents = [];
         $fits = [];
+        $parts = [];
         $left = $room;
 
-        foreach ($entries as $entry) {
-            $fact = self::fact($entry);
+        foreach ($queue as $item) {
+            if ($item instanceof KnowledgeChunk) {
+                $title = (string) $item->getAttribute('document_title');
+                $fact = self::excerpt($title, $item->text);
+                $cost = self::size($fact) + 1;
+
+                if ($cost <= $left) {
+                    $left -= $cost;
+                    $documents[] = $fact;
+                    $parts[] = ['type' => 'excerpt', 'id' => $item->id, 'document_id' => $item->document_id, 'title' => $title, 'kind' => null, 'text' => $item->text, 'size' => $cost, 'matched' => true, 'pinned' => false];
+                }
+
+                continue;
+            }
+
+            $fact = self::fact($item);
             $cost = self::size($fact) + 1;
 
             if ($cost > $room) {
-                $fits[$entry->id] = PromptFit::TooLong;
+                $fits[$item->id] = PromptFit::TooLong;
             } elseif ($cost > $left) {
-                $fits[$entry->id] = PromptFit::NoRoom;
+                $fits[$item->id] = PromptFit::NoRoom;
             } else {
-                $fits[$entry->id] = PromptFit::Included;
+                $fits[$item->id] = PromptFit::Included;
                 $left -= $cost;
+                $parts[] = ['type' => 'entry', 'id' => $item->id, 'document_id' => null, 'title' => $item->title, 'kind' => $item->kind->value, 'text' => $item->body, 'size' => $cost, 'matched' => isset($matched[$item->id]), 'pinned' => (bool) $item->pinned];
 
-                if ($entry->kind->isExample()) {
+                if ($item->kind->isExample()) {
                     $examples[] = $fact;
                 } else {
                     $facts[] = $fact;
@@ -100,11 +137,64 @@ final class BrandKnowledge
         $sections = array_filter([
             $profileText,
             $facts === [] ? '' : self::ENTRIES_HEADING."\n".implode("\n", $facts),
+            $documents === [] ? '' : self::DOCUMENTS_HEADING."\n".implode("\n", $documents),
             $examples === [] ? '' : self::EXAMPLES_HEADING."\n".implode("\n", $examples),
         ]);
         $text = implode("\n\n", $sections);
 
-        return new KnowledgePrompt($text, self::size($text), $budget, $profileTrimmed, $fits);
+        return new KnowledgePrompt($text, self::size($text), $budget, $profileTrimmed, $fits, self::size($profileText), $parts);
+    }
+
+    /**
+     * The order a focused prompt fills in: pinned entries, then the matches
+     * (entries, and excerpts up to the limit, each scoring at least a share
+     * of the best), then the other entries newest first.
+     *
+     * @param  Collection<int, KnowledgeEntry>  $entries  In prompt order
+     * @return array{0: list<KnowledgeEntry|KnowledgeChunk>, 1: array<int, true>} The queue, and the matched entry ids
+     */
+    private static function focusedOrder(Workspace $workspace, string $focus, Collection $entries): array
+    {
+        $matches = app(KnowledgeSearch::class)->search($workspace, $focus);
+        $floor = ($matches[0]->score ?? 0.0) * (float) config('socialhq.knowledge.search.min_relevance', 0.25);
+        $relevant = array_values(array_filter($matches, fn (KnowledgeMatch $match): bool => $match->score >= $floor));
+
+        $chunkIds = array_slice(array_map(
+            fn (KnowledgeMatch $match): int => $match->id,
+            array_values(array_filter($relevant, fn (KnowledgeMatch $match): bool => ! $match->isEntry())),
+        ), 0, max(0, (int) config('socialhq.knowledge.documents.prompt_excerpts', 6)));
+
+        $chunks = $chunkIds === [] ? collect() : KnowledgeChunk::query()
+            ->whereIn('shq_knowledge_chunks.id', $chunkIds)
+            ->where('shq_knowledge_chunks.workspace_id', $workspace->id)
+            ->join('shq_knowledge_documents', 'shq_knowledge_documents.id', '=', 'shq_knowledge_chunks.document_id')
+            ->get(['shq_knowledge_chunks.id', 'shq_knowledge_chunks.document_id', 'shq_knowledge_chunks.text', 'shq_knowledge_documents.title as document_title'])
+            ->keyBy('id');
+
+        $byId = $entries->keyBy('id');
+        $queue = $entries->filter(fn (KnowledgeEntry $entry): bool => $entry->pinned)->values()->all();
+        $matched = [];
+
+        foreach ($relevant as $match) {
+            if ($match->isEntry()) {
+                $entry = $byId->get($match->id);
+
+                if ($entry !== null && ! $entry->pinned) {
+                    $queue[] = $entry;
+                    $matched[$entry->id] = true;
+                }
+            } elseif ($chunks->has($match->id)) {
+                $queue[] = $chunks->get($match->id);
+            }
+        }
+
+        foreach ($entries as $entry) {
+            if (! $entry->pinned && ! isset($matched[$entry->id])) {
+                $queue[] = $entry;
+            }
+        }
+
+        return [$queue, $matched];
     }
 
     /**
@@ -117,9 +207,15 @@ final class BrandKnowledge
         return mb_strlen($text) + (int) preg_match_all('/[^\x{0000}-\x{00FF}]/u', $text);
     }
 
-    public static function budget(): int
+    /**
+     * The prompt's room. A focused prompt gets more (prompt_characters_focused):
+     * what fills it was picked for the request, so it is worth the tokens.
+     */
+    public static function budget(bool $focused = false): int
     {
-        return max(500, (int) config('socialhq.knowledge.prompt_characters', 6000));
+        $budget = max(500, (int) config('socialhq.knowledge.prompt_characters', 6000));
+
+        return $focused ? max($budget, (int) config('socialhq.knowledge.prompt_characters_focused', 8000)) : $budget;
     }
 
     /**
@@ -226,6 +322,18 @@ final class BrandKnowledge
         }
 
         return rtrim($kept).self::ELLIPSIS;
+    }
+
+    /**
+     * A document excerpt as a fact: the document's title, then the text on
+     * one indented block (blank lines dropped).
+     */
+    private static function excerpt(string $documentTitle, string $text): string
+    {
+        $title = self::clean($documentTitle);
+        $body = str_replace("\n", "\n  ", self::clean((string) preg_replace('/\n{2,}/', "\n", $text)));
+
+        return "- {$title}\n  {$body}";
     }
 
     private static function fact(KnowledgeEntry $entry): string

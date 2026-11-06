@@ -32,6 +32,13 @@ use Throwable;
  */
 class CompanyAiManager
 {
+    /**
+     * A change may re-add every deployment (providers × tasks admin calls of
+     * up to 20 s each), so the lock outlives the worst case; it is released
+     * as soon as the change ends.
+     */
+    private const LOCK_SECONDS = 900;
+
     public function __construct(private readonly LiteLlmAdmin $gateway) {}
 
     /**
@@ -81,8 +88,10 @@ class CompanyAiManager
                 $this->syncDeployments($account, $ai);
             } catch (Throwable $exception) {
                 isset($credential) && $credential->delete();
-                $this->removeDeployments((string) $ai->litellm_team_id, $provider->id);
+                rescue(fn () => $this->removeDeployments((string) $ai->litellm_team_id, $provider->id), report: false);
                 rescue(fn () => $this->gateway->deleteCredential($name), report: false);
+                // The failed sync may have removed other providers' deployments: put them back.
+                rescue(fn () => $this->syncDeployments($account, $ai));
 
                 throw $exception;
             }
@@ -308,6 +317,37 @@ class CompanyAiManager
         CompanyRouting::forget($account);
     }
 
+    /**
+     * Removes everything LiteLLM holds for a company that is gone: its key,
+     * deployments, credentials (its provider keys) and team.
+     *
+     * @param  list<string>  $providers
+     *
+     * @throws GatewayException
+     */
+    public function tearDown(string $teamId, array $providers): void
+    {
+        $this->gateway->deleteKeyByAlias("socialhq-{$teamId}");
+
+        foreach ($providers as $provider) {
+            $this->removeDeployments($teamId, $provider);
+            $this->gateway->deleteCredential(self::credentialName($teamId, $provider));
+        }
+
+        $this->gateway->deleteTeam($teamId);
+    }
+
+    /**
+     * Blocks or unblocks the company's team in LiteLLM, so a paused
+     * company's key stops working there too, not only in the app.
+     *
+     * @throws GatewayException
+     */
+    public function setBlocked(string $teamId, bool $blocked): void
+    {
+        $this->gateway->updateTeam($teamId, ['blocked' => $blocked]);
+    }
+
     public static function credentialName(string $teamId, string $provider): string
     {
         return "{$teamId}-{$provider}";
@@ -373,7 +413,7 @@ class CompanyAiManager
     private function locked(Account $account, Closure $callback): mixed
     {
         try {
-            return Cache::lock("socialhq:company-ai:{$account->id}", 120)->block(15, $callback);
+            return Cache::lock("socialhq:company-ai:{$account->id}", self::LOCK_SECONDS)->block(15, $callback);
         } finally {
             CompanyRouting::forget($account);
         }

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\SocialHq\Ai;
 
+use App\Models\Account;
 use App\SocialHq\Ai\Company\CompanyRoute;
 use App\SocialHq\Ai\Company\CompanyRouting;
+use App\SocialHq\Companies\Company;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Laravel\Ai\AiManager;
@@ -91,7 +93,7 @@ final class AiRouter
     {
         $targets = self::approvedTargets($task);
 
-        if ($targets === [] && self::usesGateway() && CompanyRouting::current()->kind === CompanyRoute::NONE) {
+        if ($targets === [] && (self::usesGateway() || self::companiesEnforced()) && CompanyRouting::current()->kind === CompanyRoute::NONE) {
             throw AiUnavailableException::needsSetup(CompanyRouting::current());
         }
 
@@ -192,6 +194,37 @@ final class AiRouter
     }
 
     /**
+     * Whether companies decide whose AI a call uses (self-hosted, with
+     * SOCIALHQ_COMPANIES_REQUIRED on).
+     */
+    private static function companiesEnforced(): bool
+    {
+        return (bool) config('trypost.self_hosted') && (bool) config('socialhq.companies.required', true);
+    }
+
+    /**
+     * In direct mode every call uses the platform's keys, so only the
+     * platform or an approved company allowed the platform's AI may make
+     * one. Without a tenant (a job that set none) nothing runs.
+     */
+    private static function directModeAllowed(): bool
+    {
+        if (! self::companiesEnforced()) {
+            return true;
+        }
+
+        $tenant = AiTenant::current();
+
+        if ($tenant === AiTenant::PLATFORM) {
+            return true;
+        }
+
+        $company = $tenant instanceof Account ? Company::forAccount($tenant) : null;
+
+        return $company !== null && $company->isApproved() && $company->uses_platform_ai;
+    }
+
+    /**
      * The task's route as written. With the gateway: the company's own
      * group, or for the platform SOCIALHQ_AI_ROUTE_<TASK> when set, else the
      * platform's group, or nothing. Direct: SOCIALHQ_AI_ROUTE_<TASK> when set,
@@ -214,6 +247,12 @@ final class AiRouter
                     : (self::gatewayServes($task) ? [$task->litellmProvider() => $task->litellmGroup()] : []),
                 default => [],
             };
+        }
+
+        // Direct mode calls the platform's own provider keys: only for the
+        // platform or a company allowed to use them.
+        if (! self::directModeAllowed()) {
+            return [];
         }
 
         if (filled($written)) {

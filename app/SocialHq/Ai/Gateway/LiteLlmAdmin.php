@@ -68,6 +68,17 @@ class LiteLlmAdmin
         $this->expectSuccess($this->send('post', '/team/update', ['team_id' => $teamId, ...$changes]), '/team/update');
     }
 
+    public function deleteTeam(string $teamId): void
+    {
+        $response = $this->send('post', '/team/delete', ['team_ids' => [$teamId]]);
+
+        if ($response->successful() || in_array($response->status(), [HttpStatus::HTTP_NOT_FOUND, HttpStatus::HTTP_BAD_REQUEST], true)) {
+            return;
+        }
+
+        $this->fail($response, '/team/delete');
+    }
+
     /**
      * A new virtual key for the team. The caller encrypts it at once.
      */

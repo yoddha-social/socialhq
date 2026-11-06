@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\SocialHq;
 
+use App\Models\Account;
 use App\Models\Post;
 use App\Models\User;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiRoutesCommand;
 use App\SocialHq\Ai\ApprovedProvidersGuard;
+use App\SocialHq\Ai\Company\CompanyAi;
 use App\SocialHq\Ai\Company\CompanyAiAccess;
 use App\SocialHq\Ai\Company\CompanyRouting;
+use App\SocialHq\Ai\Company\Jobs\TearDownCompanyAi;
+use App\SocialHq\Ai\Company\ProviderCredential;
 use App\SocialHq\AiGraphics\AiGraphics;
 use App\SocialHq\Approval\ApprovalRules;
 use App\SocialHq\Approval\RecordApprovalEvents;
@@ -78,6 +82,15 @@ class SocialHqServiceProvider extends ServiceProvider
 
         // Platform admins run this server: they let companies in.
         Gate::define(PlatformAdmins::GATE, fn (User $user): bool => PlatformAdmins::is($user));
+
+        // A deleted company's team, key and provider keys leave LiteLLM too.
+        Account::deleting(function (Account $account): void {
+            $teamId = CompanyAi::query()->where('account_id', $account->id)->value('litellm_team_id');
+
+            if (filled($teamId)) {
+                TearDownCompanyAi::dispatch((string) $teamId, ProviderCredential::query()->forAccount($account)->pluck('provider')->all())->afterCommit();
+            }
+        });
 
         // No SDK request reaches a provider outside SOCIALHQ_AI_APPROVED_PROVIDERS, whoever makes it.
         Event::listen(ApprovedProvidersGuard::EVENTS, [ApprovedProvidersGuard::class, 'handle']);

@@ -166,8 +166,10 @@ test('only the owner of an approved company manages its AI', function () {
     $this->actingAs($member)->get(route('socialhq.ai-settings.show'))->assertForbidden();
     $this->actingAs($member)->post(route('socialhq.ai-settings.providers.store'), ['provider' => 'groq', 'provider_key' => COMPANY_AI_PROVIDER_KEY])->assertForbidden();
 
+    // A paused company's owner is sent to the paused page before anything else.
+    config(['trypost.self_hosted' => true, 'socialhq.companies.required' => true]);
     $this->company->update(['status' => 'suspended']);
-    $this->actingAs($this->owner)->get(route('socialhq.ai-settings.show'))->assertForbidden();
+    $this->actingAs($this->owner)->get(route('socialhq.ai-settings.show'))->assertRedirect(route('socialhq.company.paused'));
 
     Http::assertNothingSent();
 });

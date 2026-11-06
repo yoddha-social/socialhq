@@ -7,6 +7,8 @@ namespace App\SocialHq\Companies;
 use App\Enums\Notification\Type;
 use App\Jobs\SendNotification;
 use App\Models\User;
+use App\SocialHq\Ai\Company\CompanyAi;
+use App\SocialHq\Ai\Company\Jobs\BlockCompanyAi;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\DB;
 
@@ -49,12 +51,30 @@ final class CompanyDecisions
      */
     public static function suspend(Company $company, User $admin, string $note): bool
     {
-        return self::decide($company, $admin, CompanyStatus::Approved, CompanyStatus::Suspended, CompanyEvent::SUSPENDED, $note) !== null;
+        $decided = self::decide($company, $admin, CompanyStatus::Approved, CompanyStatus::Suspended, CompanyEvent::SUSPENDED, $note);
+        $decided !== null && self::blockAi($decided, true);
+
+        return $decided !== null;
     }
 
     public static function restore(Company $company, User $admin): bool
     {
-        return self::decide($company, $admin, CompanyStatus::Suspended, CompanyStatus::Approved, CompanyEvent::RESTORED, null) !== null;
+        $decided = self::decide($company, $admin, CompanyStatus::Suspended, CompanyStatus::Approved, CompanyEvent::RESTORED, null);
+        $decided !== null && self::blockAi($decided, false);
+
+        return $decided !== null;
+    }
+
+    /**
+     * A paused company's own LiteLLM key stops working there too.
+     */
+    private static function blockAi(Company $company, bool $blocked): void
+    {
+        $teamId = CompanyAi::query()->where('account_id', $company->account_id)->value('litellm_team_id');
+
+        if (filled($teamId)) {
+            BlockCompanyAi::dispatch((string) $teamId, $blocked)->afterCommit();
+        }
     }
 
     /**

@@ -56,6 +56,8 @@ final class PlannerContext
         $profile = PlanOptions::profile($workspace);
         $channels = PlanOptions::channels($workspace);
         $cadence = PlanOptions::cadence($profile, $channels);
+        $events = PlanOptions::events($workspace, $month, $end);
+        $pillars = PlanOptions::pillars($profile);
 
         return [
             'month' => PlanMonth::key($month),
@@ -65,8 +67,8 @@ final class PlannerContext
                 ->values()
                 ->all(),
             'goals' => filled($plan->goals) ? trim((string) $plan->goals) : null,
-            'brand' => BrandKnowledge::forPrompt($workspace),
-            'pillars' => PlanOptions::pillars($profile),
+            'brand' => BrandKnowledge::forPrompt($workspace, self::focus($plan, $pillars, $events, $channels)),
+            'pillars' => $pillars,
             'channels' => $channels->map(fn (SocialAccount $channel): array => [
                 'key' => $channel->id,
                 'platform' => $channel->platform->value,
@@ -74,7 +76,7 @@ final class PlannerContext
                 'posts_per_week' => data_get($cadence, $channel->id),
                 'content_types' => array_map(fn (ContentType $type): string => $type->value, PlanOptions::contentTypesFor($channel->platform)),
             ])->values()->all(),
-            'events' => PlanOptions::events($workspace, $month, $end)->map(fn (CalendarEvent $event): array => [
+            'events' => $events->map(fn (CalendarEvent $event): array => [
                 'key' => $event->key,
                 'name' => $event->name,
                 'category' => $event->category->value,
@@ -96,6 +98,24 @@ final class PlannerContext
                 ->all(),
             'past_posts' => self::pastPosts($workspace->id),
         ];
+    }
+
+    /**
+     * What the month is about, for picking brand knowledge: the team's goals,
+     * the pillars, the confirmed events and the channels' networks.
+     *
+     * @param  list<string>  $pillars
+     * @param  Collection<int, CalendarEvent>  $events
+     * @param  Collection<int, SocialAccount>  $channels
+     */
+    public static function focus(ContentPlan $plan, array $pillars, Collection $events, Collection $channels): string
+    {
+        return collect([
+            trim((string) $plan->goals),
+            implode(', ', $pillars),
+            $events->filter(fn (CalendarEvent $event): bool => $event->isVerified())->pluck('name')->implode(', '),
+            $channels->map(fn (SocialAccount $channel): string => $channel->platform->label())->unique()->implode(', '),
+        ])->filter()->implode("\n");
     }
 
     /**

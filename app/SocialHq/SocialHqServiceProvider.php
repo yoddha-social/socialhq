@@ -9,6 +9,8 @@ use App\Models\User;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiRoutesCommand;
 use App\SocialHq\Ai\ApprovedProvidersGuard;
+use App\SocialHq\Ai\Company\CompanyAiAccess;
+use App\SocialHq\Ai\Company\CompanyRouting;
 use App\SocialHq\AiGraphics\AiGraphics;
 use App\SocialHq\Approval\ApprovalRules;
 use App\SocialHq\Approval\RecordApprovalEvents;
@@ -28,6 +30,7 @@ use App\SocialHq\Knowledge\Search\KnowledgeSearch;
 use App\SocialHq\Knowledge\Search\LexicalKnowledgeSearch;
 use App\SocialHq\Knowledge\TryPostPromptFocus;
 use App\SocialHq\Production\BriefStorage;
+use App\SocialHq\Secrets\SecretsKeyCommand;
 use App\SocialHq\Signup\AccessRequests;
 use App\SocialHq\Signup\PasswordResetProof;
 use App\SocialHq\Signup\SignupRules;
@@ -36,7 +39,9 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Http\Kernel;
+use Illuminate\Foundation\Exceptions\Handler;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -45,6 +50,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
+use Laravel\Telescope\Telescope;
 
 /**
  * Entry point of the Social HQ module: our features on top of TryPost.
@@ -58,6 +64,9 @@ class SocialHqServiceProvider extends ServiceProvider
     public function register(): void
     {
         AiRouter::registerGateway();
+
+        // Which company's LiteLLM key AI calls use: decided once per request or job.
+        $this->app->scoped(CompanyRouting::class);
 
         // Words today; an embeddings search would be bound here instead (see LexicalKnowledgeSearch).
         $this->app->bind(KnowledgeSearch::class, LexicalKnowledgeSearch::class);
@@ -74,8 +83,24 @@ class SocialHqServiceProvider extends ServiceProvider
         Event::listen(ApprovedProvidersGuard::EVENTS, [ApprovedProvidersGuard::class, 'handle']);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiRoutesCommand::class, ImportEventsCommand::class, PruneCalendarUploadsCommand::class, PlatformAdminCommand::class]);
+            $this->commands([AiRoutesCommand::class, ImportEventsCommand::class, PruneCalendarUploadsCommand::class, PlatformAdminCommand::class, SecretsKeyCommand::class]);
         }
+
+        // Provider keys are write-only: never flashed back as old input after a
+        // validation error, and hidden from Telescope's request records.
+        $this->callAfterResolving(ExceptionHandler::class, function (ExceptionHandler $handler): void {
+            if ($handler instanceof Handler) {
+                $handler->dontFlash(['provider_key']);
+            }
+        });
+
+        if (class_exists(Telescope::class)) {
+            Telescope::hideRequestParameters(['provider_key', 'credential_values', 'litellm_params.api_key']);
+            Telescope::hideResponseParameters(['key', 'token']);
+        }
+
+        // Settings › AI: adding or testing a key calls the provider. 20 a minute per person.
+        RateLimiter::for('socialhq-company-ai', fn (Request $request): Limit => Limit::perMinute(20)->by((string) $request->user()?->id));
 
         Route::middleware('web')->group(base_path('routes/socialhq.php'));
 
@@ -156,6 +181,10 @@ class SocialHqServiceProvider extends ServiceProvider
                 })(),
                 'maxReferences' => (int) config('socialhq.ai_graphics.max_reference_images', 3),
                 'maxReferenceKilobytes' => (int) config('socialhq.ai_graphics.max_reference_kilobytes', 10240),
+            ],
+            'companyAi' => [
+                // Settings › AI is the account owner's, for an approved company only.
+                'canManage' => CompanyAiAccess::canManage(auth()->user() instanceof User ? auth()->user() : null),
             ],
             'signup' => [
                 // The login page's "Sign up": the company lists, or asking to start a company.

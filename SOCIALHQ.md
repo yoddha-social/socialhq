@@ -67,9 +67,33 @@ TryPost's four agents carry it too (PATCHES.md row 15). Code:
   `write,structured,vision`): the gateway serves only these. `image` and
   `embed` have only paid Gemini in LiteLLM, so they stay off (and "Generate
   with AI" stays hidden) until its key is set and they are listed.
+- **Per company** (gateway only; `app/SocialHq/Ai/Company/`). Each call
+  runs for a company (`AiTenant`): on the web the user's current workspace's
+  account, in a job the workspace it carries (`AiTenant::run($workspace,
+  ...)`; a job without one fails closed). `CompanyRouting` decides once per
+  request or job: a company with its own provider keys calls
+  `shq-<task>@shq-co-<account>` with its own LiteLLM team key (SDK entry
+  `litellm-co-<account>`, so no key carries over between companies or
+  Horizon jobs); one without keys uses the platform groups above only when
+  a platform admin allowed it (`uses_platform_ai`); otherwise AI buttons
+  hide and a call says "add an AI provider in Settings › AI". Written
+  routes (`SOCIALHQ_AI_ROUTE_<TASK>`) apply to the platform only.
+- **Settings › AI** (owner of an approved company): add a key from the
+  catalogue (`socialhq.company_ai.providers`: Groq, Cloudflare Workers AI,
+  Mistral with its training opt-out ticked, paid Gemini with billing
+  ticked, OpenAI, Anthropic), tested through LiteLLM before anything is
+  saved; Test, Replace, Remove, order (LiteLLM's deployment `order`),
+  monthly budget (the team's `max_budget`) and spend. Provider keys live
+  only in LiteLLM (credentials, encrypted with its salt key); the app keeps
+  the last 4 characters. The team key is encrypted with
+  `SOCIALHQ_SECRETS_KEY` (`SecretBox`, never APP_KEY). Every change is in
+  `shq_company_ai_events`. The app calls LiteLLM's admin API with
+  `LITELLM_ADMIN_KEY` (`Gateway\LiteLlmAdmin`), which needs
+  `store_model_in_db`. Team-scoped model names are LiteLLM Enterprise, so
+  each company's groups are global names its team key alone may call.
 - `php artisan socialhq:ai-routes` shows each task's targets and why one is
   unused; `--live` sends a small request through each (`--images` adds one
-  image).
+  image); `--account=<id>` routes as that company.
 - Per-call records are LiteLLM's spend logs (its admin UI on port 4000), not
   a table in the app: AGENTS.md keeps TryPost free of AI usage recording.
 

@@ -17,6 +17,8 @@ whenever you touch an upstream file; keep each edit as small as possible.
 | 10 | `app/Actions/Post/Approval/NotifyApprovalRequested.php` | Emails the requester too when an agent made the request (1 line + import) | An admin's own agent posts reach the admin's inbox |
 | 11 | `resources/js/components/members/MemberAccessFields.vue` | Shows `socialhq/MembersReviewedNote.vue` instead of the publishing choice when members are always reviewed (about 8 lines) | The choice no longer applies |
 | 12 | `phpunit.xml` | Turns our approval rules off for the test run (2 lines) | Upstream's tests expect TryPost's rules; ours switch them on |
+| 90 | `app/Models/Traits/HasWorkspace.php` | `switchWorkspace()` also sets the `currentWorkspace` relation (1 line) | The relation stayed on the old workspace for the rest of the request; browser tests reuse the signed-in user across requests, so the sidebar kept the old name |
+| 5 | `app/Support/Timezone.php` | `normalize()` asks ICU for an alias's canonical name without first requiring it in PHP's legacy tz list | Without the legacy tz database (Ubuntu's tzdata-legacy), every legacy alias became UTC; this also kept CI red. Proposed upstream (trypostit/trypost#478) |
 
 Files we **added** (no merge risk) aren't listed here; they're under the
 module paths in SOCIALHQ.md, plus `config/socialhq.php`,

@@ -45,6 +45,25 @@ final class CompanyAccess
     }
 
     /**
+     * The workspaces of paused companies, in one query (the scheduler checks
+     * every due post against it). Self-hosted only.
+     *
+     * @return array<string, true> workspace id => true
+     */
+    public static function pausedWorkspaceIds(): array
+    {
+        if (! config('trypost.self_hosted')) {
+            return [];
+        }
+
+        return Workspace::query()
+            ->whereIn('account_id', Company::query()->where('status', CompanyStatus::Suspended)->select('account_id'))
+            ->pluck('id')
+            ->mapWithKeys(fn (string $id): array => [$id => true])
+            ->all();
+    }
+
+    /**
      * Only an approved company's owner creates workspaces. An account with
      * no company row (an invited person's own empty account) creates none.
      */

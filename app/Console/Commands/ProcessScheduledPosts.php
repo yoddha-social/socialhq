@@ -21,12 +21,14 @@ class ProcessScheduledPosts extends Command
 
     public function handle(): void
     {
+        // Social HQ: a paused company's posts wait until it is restored.
+        $paused = CompanyAccess::pausedWorkspaceIds();
+
         Post::query()
             ->due()
-            ->each(function (Post $post) {
+            ->each(function (Post $post) use ($paused) {
                 try {
-                    // Social HQ: a paused company's posts wait until it is restored.
-                    if ($post->workspace !== null && CompanyAccess::isPaused($post->workspace)) {
+                    if (isset($paused[$post->workspace_id])) {
                         return;
                     }
 
@@ -42,7 +44,7 @@ class ProcessScheduledPosts extends Command
                 }
             });
 
-        $this->dispatchDueLimitRetries();
+        $this->dispatchDueLimitRetries($paused);
     }
 
     /**
@@ -50,13 +52,16 @@ class ProcessScheduledPosts extends Command
      * delayed job, so a worker restart never loses them. Clearing retry_at
      * claims the post, so each retry is dispatched once.
      */
-    private function dispatchDueLimitRetries(): void
+    /**
+     * @param  array<string, true>  $paused
+     */
+    private function dispatchDueLimitRetries(array $paused): void
     {
         Post::query()
             ->dueForLimitRetry()
-            ->each(function (Post $post): void {
+            ->each(function (Post $post) use ($paused): void {
                 try {
-                    if ($post->workspace !== null && CompanyAccess::isPaused($post->workspace)) {
+                    if (isset($paused[$post->workspace_id])) {
                         return;
                     }
 

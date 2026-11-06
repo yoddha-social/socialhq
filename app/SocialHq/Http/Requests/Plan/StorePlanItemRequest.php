@@ -10,6 +10,7 @@ use App\SocialHq\Plan\CreativeKind;
 use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Plan\PlanMonth;
 use App\SocialHq\Plan\PlanOptions;
+use App\SocialHq\Plan\SuggestedTime;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -45,6 +46,8 @@ class StorePlanItemRequest extends FormRequest
             'angle' => ['nullable', 'string', 'max:2000'],
             'event_id' => ['nullable', 'integer', Rule::in($this->monthEventIds())],
             'owner_id' => ['nullable', 'string', Rule::in($this->ownerIds())],
+            'suggested_time' => ['nullable', 'string', 'regex:'.SuggestedTime::PATTERN],
+            'suggested_timezone' => ['nullable', 'string', 'timezone:all'],
         ];
     }
 
@@ -75,6 +78,8 @@ class StorePlanItemRequest extends FormRequest
             'pillar.in' => __('socialhq_plan.validation.pillar'),
             'event_id.in' => __('socialhq_plan.validation.event'),
             'owner_id.in' => __('socialhq_plan.validation.owner'),
+            'suggested_time.regex' => __('socialhq_plan.validation.time'),
+            'suggested_timezone.timezone' => __('socialhq_plan.validation.timezone'),
         ];
     }
 }

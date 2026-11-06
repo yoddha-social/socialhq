@@ -8,6 +8,7 @@ import {
     copyStatusLabelKey,
 } from '@/components/socialhq/plan/copyStatus';
 import { pillarColor } from '@/components/socialhq/plan/pillarColors';
+import PlanItemTime from '@/components/socialhq/plan/PlanItemTime.vue';
 import type { PlanItem, PlanLookups } from '@/components/socialhq/plan/types';
 import { Avatar } from '@/components/ui/avatar';
 
@@ -125,6 +126,10 @@ const dropItem = (): void => emit('drop', props.item);
                     {{ item.title }}
                 </span>
             </span>
+            <PlanItemTime
+                :item="item"
+                class="text-[11px] leading-4 text-muted-foreground"
+            />
         </button>
 
         <div

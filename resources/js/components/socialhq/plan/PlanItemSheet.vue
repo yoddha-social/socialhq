@@ -8,6 +8,7 @@ import {
     toastFirstError,
     toastRequestFailed,
 } from '@/components/socialhq/plan/planRequests';
+import { placeOfZone } from '@/components/socialhq/plan/postingTime';
 import type {
     PlanChannel,
     PlanEvent,
@@ -31,8 +32,10 @@ import {
     SheetTitle,
 } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
+import date from '@/date';
 import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
+import { userTimezone } from '@/preferences';
 import {
     destroy as destroyItem,
     drop as dropItem,
@@ -52,6 +55,8 @@ const props = defineProps<{
     pillars: string[];
     creatives: string[];
     canWork: boolean;
+    /** The zone a new posting time is written in (the main audience zone). */
+    mainTimezone: string;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -70,7 +75,60 @@ const form = useForm({
     angle: '',
     event_id: '',
     owner_id: '',
+    time_hour: '',
+    time_minute: '00',
 });
+
+const HOURS = Array.from({ length: 24 }, (_, hour) =>
+    String(hour).padStart(2, '0'),
+);
+const STEP_MINUTES = Array.from({ length: 12 }, (_, step) =>
+    String(step * 5).padStart(2, '0'),
+);
+
+/** Every 5 minutes, plus the item's own minute when it is not on that step. */
+const minuteOptions = computed(() =>
+    STEP_MINUTES.includes(form.time_minute)
+        ? STEP_MINUTES
+        : [...STEP_MINUTES, form.time_minute].sort(),
+);
+
+/** The item's own zone for a time it already has, else the main audience zone. */
+const timeZone = computed(
+    () => props.item?.suggested_timezone ?? props.mainTimezone,
+);
+
+/** The picked time in the viewer's zone, when that zone is another one. */
+const viewerTime = computed(() => {
+    if (
+        !form.time_hour ||
+        !form.scheduled_on ||
+        timeZone.value === userTimezone.value
+    ) {
+        return null;
+    }
+
+    const instant = dayjs
+        .tz(
+            `${form.scheduled_on} ${form.time_hour}:${form.time_minute}`,
+            timeZone.value,
+        )
+        .toISOString();
+
+    return date.formatTimeInTimezone(instant, userTimezone.value);
+});
+
+/** The time is sent as suggested_time and suggested_timezone, which are not form fields. */
+const timeError = computed(() => {
+    const errors = form.errors as Record<string, string | undefined>;
+
+    return errors.suggested_time ?? errors.suggested_timezone ?? null;
+});
+
+const clearTime = (): void => {
+    form.time_hour = '';
+    form.time_minute = '00';
+};
 
 const days = computed(() => {
     const start = dayjs(`${props.month}-01`).locale(
@@ -144,6 +202,8 @@ const fill = (): void => {
     form.angle = item?.angle ?? '';
     form.event_id = item?.event_id ? String(item.event_id) : '';
     form.owner_id = item?.owner_id ?? '';
+    form.time_hour = item?.suggested_time?.slice(0, 2) ?? '';
+    form.time_minute = item?.suggested_time?.slice(3, 5) ?? '00';
 };
 
 watch(open, (isOpen) => {
@@ -165,8 +225,10 @@ const close = (): void => {
 const save = (): void => {
     const options = { preserveScroll: true, onSuccess: close };
 
-    form.transform((data) => ({
+    form.transform(({ time_hour, time_minute, ...data }) => ({
         ...data,
+        suggested_time: time_hour ? `${time_hour}:${time_minute}` : null,
+        suggested_timezone: time_hour ? timeZone.value : null,
         pillar: data.pillar || null,
         objective: data.objective || null,
         angle: data.angle || null,
@@ -313,6 +375,95 @@ const askDelete = (): void => {
                                     {{ form.errors.scheduled_on }}
                                 </p>
                             </div>
+
+                            <fieldset
+                                class="col-span-2 flex flex-col gap-2"
+                                aria-describedby="plan-item-time-help"
+                            >
+                                <legend class="mb-2 text-sm font-medium">
+                                    {{ $t('socialhq_plan.sheet.time') }}
+                                </legend>
+                                <div class="flex items-center gap-2">
+                                    <NativeSelect
+                                        v-model="form.time_hour"
+                                        class="w-28"
+                                        :aria-label="
+                                            $t('socialhq_plan.sheet.time')
+                                        "
+                                        data-testid="plan-item-time-hour"
+                                    >
+                                        <NativeSelectOption value="">{{
+                                            $t('socialhq_plan.list.no_time')
+                                        }}</NativeSelectOption>
+                                        <NativeSelectOption
+                                            v-for="hour in HOURS"
+                                            :key="hour"
+                                            :value="hour"
+                                        >
+                                            {{ date.formatHourOption(hour) }}
+                                        </NativeSelectOption>
+                                    </NativeSelect>
+                                    <span aria-hidden="true">:</span>
+                                    <NativeSelect
+                                        v-model="form.time_minute"
+                                        class="w-20"
+                                        :disabled="!form.time_hour"
+                                        :aria-label="
+                                            $t('socialhq_plan.sheet.time')
+                                        "
+                                        data-testid="plan-item-time-minute"
+                                    >
+                                        <NativeSelectOption
+                                            v-for="minute in minuteOptions"
+                                            :key="minute"
+                                            :value="minute"
+                                        >
+                                            {{ minute }}
+                                        </NativeSelectOption>
+                                    </NativeSelect>
+                                    <Button
+                                        v-if="form.time_hour && canWork"
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        data-testid="plan-item-time-clear"
+                                        @click="clearTime"
+                                    >
+                                        {{
+                                            $t('socialhq_plan.sheet.clear_time')
+                                        }}
+                                    </Button>
+                                </div>
+                                <p
+                                    id="plan-item-time-help"
+                                    class="text-xs text-muted-foreground"
+                                >
+                                    {{
+                                        $t('socialhq_plan.sheet.time_help', {
+                                            place: placeOfZone(timeZone),
+                                        })
+                                    }}
+                                    <template v-if="viewerTime">
+                                        {{
+                                            $t(
+                                                'socialhq_plan.sheet.time_viewer',
+                                                {
+                                                    time: viewerTime,
+                                                    place: placeOfZone(
+                                                        userTimezone,
+                                                    ),
+                                                },
+                                            )
+                                        }}
+                                    </template>
+                                </p>
+                                <p
+                                    v-if="timeError"
+                                    class="text-sm text-destructive"
+                                >
+                                    {{ timeError }}
+                                </p>
+                            </fieldset>
 
                             <div class="col-span-2 flex flex-col gap-2">
                                 <Label for="plan-item-channel">{{

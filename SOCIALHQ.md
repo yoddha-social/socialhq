@@ -209,6 +209,27 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   format, confirmed event around its dates, paused channels, duplicates) before
   they show, dashed, to accept or drop. "Approve plan" waits until no
   suggestion is open; any change sends an approved plan back to review.
+  The dialog's options (`PlannerOptions`, saved on the plan as
+  `generation_options`; the switches remembered per brand in the profile's
+  `planner_options`): the days to plan, any range inside the plan's month (a
+  plan stays one month, so items never leave it; suggestions outside the range
+  are kept), old calendars and recent posts on or off (left out of the prompt
+  when off), and events only for the audience's countries (`country_code` in
+  them, or null for international days).
+- **Audience** (Brand knowledge, "Where your audience is"; admins edit,
+  members read). Up to 10 places on the brand profile (`audience_locations`:
+  country, city or none, IANA zone prefilled from the country's main zone,
+  share %, at most 100 in all). The main zone is the largest share's, else the
+  zone of whoever plans. The planner gets the places and the main zone, and
+  each item a `suggested_time` ("HH:MM", checked in code; an unreadable one is
+  dropped, not the item) with `suggested_timezone` set by the code. Cards, the
+  list and the side sheet show it in that zone and the viewer's ("9:00 in
+  Sydney · 4:45 in Kathmandu"); "Create post" hands the composer that instant
+  as a wall clock in the user's zone (`SuggestedTime`), else 09:00 of the day.
+- **List view**: grouped by week (the user's start of week) with sticky week
+  headers, sortable by day, channel, pillar, owner and status (kept per
+  browser), inline accept, drop and restore, time and event columns; stacked
+  cards below `md`.
 - **Item** (`/socialhq/plan/items/{id}`). Copy (caption, hashtags, script for
   video, notes) saved as numbered versions, never edited in place; AI writes or
   rewrites a version (`CopyWriter`). Review thread: send for review, request

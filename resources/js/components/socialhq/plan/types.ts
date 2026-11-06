@@ -45,6 +45,11 @@ export interface PlanItem {
     angle: string | null;
     event_id: number | null;
     owner_id: string | null;
+    /** "HH:MM" on the item's day in suggested_timezone, or null. */
+    suggested_time: string | null;
+    suggested_timezone: string | null;
+    /** That time as a UTC instant. */
+    suggested_at: string | null;
     status: ItemStatus;
     source: 'ai' | 'manual';
     copy_status: CopyStatus;
@@ -80,6 +85,21 @@ export interface PlanAbilities {
     canApprove: boolean;
     canManageBrand: boolean;
     canGenerate: boolean;
+}
+
+/** Where the brand's audience is, as the plan page needs it. */
+export interface PlanAudience {
+    mainTimezone: string;
+    countries: { code: string; name: string }[];
+}
+
+/** What "Generate with AI" opens with (PlannerOptions). */
+export interface PlanGenerateOptions {
+    from: string;
+    to: string;
+    old_calendars: boolean;
+    past_posts: boolean;
+    audience_events: boolean;
 }
 
 /** Everything a card or row needs to draw an item, looked up once per page. */

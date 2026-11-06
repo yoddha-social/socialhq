@@ -11,6 +11,7 @@ use App\Models\User;
 use App\SocialHq\Ai\AiTenant;
 use App\SocialHq\Ai\AiUnavailableException;
 use App\SocialHq\Events\CalendarEvent;
+use App\SocialHq\Knowledge\Audience\Audience;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\CreativeKind;
 use App\SocialHq\Plan\GenerationStatus;
@@ -19,10 +20,13 @@ use App\SocialHq\Plan\ItemStatus;
 use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Plan\PlanMonth;
+use App\SocialHq\Plan\PlannerOptions;
 use App\SocialHq\Plan\PlanOptions;
+use App\SocialHq\Plan\SuggestedTime;
 use App\Support\Timezone;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -78,7 +82,7 @@ class GeneratePlanSuggestions implements ShouldQueue
         try {
             // The job has no signed-in user: the plan's workspace decides whose AI it uses.
             $response = AiTenant::run($plan->workspace, fn () => (new ContentPlanner($user->locale ?? Locale::DEFAULT))
-                ->prompt(json_encode(PlannerContext::build($plan, $today), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)));
+                ->prompt(json_encode(PlannerContext::build($plan, $today, $user->timezone), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)));
         } catch (AiUnavailableException $exception) {
             report($exception);
             $this->markFailed('ai_unavailable');
@@ -100,7 +104,7 @@ class GeneratePlanSuggestions implements ShouldQueue
             return;
         }
 
-        DB::transaction(function () use ($items, $response, $today): void {
+        DB::transaction(function () use ($items, $response, $today, $user): void {
             // Read again under a lock: an approval, an item change or a newer run may have come while the AI worked.
             $plan = ContentPlan::query()->with('workspace')->lockForUpdate()->find($this->planId);
 
@@ -108,11 +112,12 @@ class GeneratePlanSuggestions implements ShouldQueue
                 return;
             }
 
-            [$accepted, $rejections] = $this->check($plan, array_slice(array_values($items), 0, ContentPlanner::MAX_ITEMS), $today);
+            $options = PlannerOptions::forPlan($plan, PlanOptions::profile($plan->workspace));
+            [$accepted, $rejections] = $this->check($plan, $options, array_slice(array_values($items), 0, ContentPlanner::MAX_ITEMS), $today, $user->timezone);
 
-            // Only untouched suggestions are replaced; one with copy or a brief keeps its work
-            // (starting work accepts it, but older rows may predate that).
-            $plan->items()->where('status', ItemStatus::Suggested)->whereDoesntHave('versions')->whereDoesntHave('brief')->delete();
+            // Only untouched suggestions inside the run's days are replaced; one with copy or a brief
+            // keeps its work (starting work accepts it, but older rows may predate that).
+            self::replaceableSuggestions($plan, $options)->delete();
 
             $positions = [];
 
@@ -152,7 +157,7 @@ class GeneratePlanSuggestions implements ShouldQueue
      * @param  list<mixed>  $items
      * @return array{0: list<array<string, mixed>>, 1: list<array{title: string, date: string, channel: string, reason: string}>}
      */
-    private function check(ContentPlan $plan, array $items, CarbonImmutable $today): array
+    private function check(ContentPlan $plan, PlannerOptions $options, array $items, CarbonImmutable $today, ?string $userZone): array
     {
         $month = CarbonImmutable::createFromFormat('!Y-m-d', $plan->month->toDateString(), 'UTC');
         $end = PlanMonth::end($month);
@@ -162,11 +167,15 @@ class GeneratePlanSuggestions implements ShouldQueue
         $channelList = PlanOptions::channels($workspace);
         $channels = $channelList->keyBy('id');
         $cadence = PlanOptions::cadence($profile, $channelList);
-        $events = PlanOptions::events($workspace, $month, $end)->groupBy('key');
-        // Planned items, plus suggestions someone started work on (they survive a new draft).
+        // The same events the planner was shown: the run's days, the audience's countries when asked.
+        $events = PlanOptions::events($workspace, $options->from, $options->to, $options->eventCountries($profile))->groupBy('key');
+        $zone = Audience::mainZone($profile, $userZone);
+        $replaceable = self::replaceableSuggestions($plan, $options)->pluck('id')->all();
+        // Everything that survives this draft: planned items, suggestions someone started
+        // work on, and suggestions outside the run's days.
         $planned = $plan->items()
-            ->where(fn ($query) => $query->where('status', ItemStatus::Planned)
-                ->orWhere(fn ($query) => $query->where('status', ItemStatus::Suggested)->where(fn ($query) => $query->has('versions')->orHas('brief'))))
+            ->where('status', '!=', ItemStatus::Dropped)
+            ->whereKeyNot($replaceable)
             ->get(['social_account_id', 'scheduled_on', 'title']);
 
         /** @var array<string, true> $taken channel id + day already holding an item */
@@ -200,6 +209,7 @@ class GeneratePlanSuggestions implements ShouldQueue
                 $title === '' => 'missing_title',
                 $date === null || $date->toDateString() !== $dateText || $date->lessThan($month) || $date->greaterThan($end) => 'date_outside_month',
                 $date->lessThan($today) => 'date_in_past',
+                $date->lessThan($options->from) || $date->greaterThan($options->to) => 'date_outside_range',
                 $channel === null => 'unknown_channel',
                 data_get($cadence, $channel->id) === 0 => 'channel_paused',
                 $contentType === null || ! PlanOptions::fitsChannel($contentType, $channel->platform) => 'content_type_not_for_channel',
@@ -226,6 +236,7 @@ class GeneratePlanSuggestions implements ShouldQueue
             $taken[$slot] = true;
             $titles[self::titleKey($title)] = true;
             $pillar = trim((string) data_get($item, 'pillar'));
+            $time = SuggestedTime::normalize(data_get($item, 'suggested_time'));
 
             $accepted[] = [
                 'workspace_id' => $workspace->id,
@@ -239,6 +250,9 @@ class GeneratePlanSuggestions implements ShouldQueue
                 'objective' => Str::limit(trim((string) data_get($item, 'objective')), 300, '') ?: null,
                 'angle' => Str::limit(trim((string) data_get($item, 'angle')), 600, '') ?: null,
                 'event_id' => $event?->id,
+                // A time the code can't read is dropped, not the item: the team sets one by hand.
+                'suggested_time' => $time,
+                'suggested_timezone' => $time === null ? null : $zone,
                 'status' => ItemStatus::Suggested,
                 'source' => ItemSource::Ai,
                 'created_by' => $plan->generation_requested_by,
@@ -246,6 +260,21 @@ class GeneratePlanSuggestions implements ShouldQueue
         }
 
         return [$accepted, $rejections];
+    }
+
+    /**
+     * Suggestions a new draft replaces: untouched ones (no copy, no brief) inside the run's days.
+     *
+     * @return HasMany<PlanItem, ContentPlan>
+     */
+    private static function replaceableSuggestions(ContentPlan $plan, PlannerOptions $options): HasMany
+    {
+        return $plan->items()
+            ->where('status', ItemStatus::Suggested)
+            ->whereDate('scheduled_on', '>=', $options->from->toDateString())
+            ->whereDate('scheduled_on', '<=', $options->to->toDateString())
+            ->whereDoesntHave('versions')
+            ->whereDoesntHave('brief');
     }
 
     /**

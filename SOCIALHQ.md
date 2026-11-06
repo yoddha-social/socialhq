@@ -258,6 +258,41 @@ empty sign-up stays invites only. Code: `app/SocialHq/Signup/`.
    workspace their request closes by itself (`note` `joined_by_invite`).
    Declining an invite leaves them waiting.
 
+**Companies** (`app/SocialHq/Companies/`). A company is an account a
+platform admin approved; only its owner creates workspaces
+(`SOCIALHQ_COMPANIES_REQUIRED`, default on). Platform admins are granted
+with `php artisan socialhq:platform-admin <email>` only; on a new server the
+first person asks for a company, is granted, and approves it.
+
+1. Anyone off the lists may ask to start a company
+   (`SOCIALHQ_COMPANY_REQUESTS`, default on; off brings back "can't sign up
+   here"). The register form adds "Company name"; the server decides on
+   submit (`CompanySignup`). That path never logs in and always ends on
+   "Check your email": a new email gets its account, a pending company and
+   the confirmation link; an email that has an account gets a password reset
+   link, so the form never says which. Google and GitHub prove the email, so
+   they create the pending company at once, named after the person; the
+   owner renames it while it waits.
+2. Platform admins are emailed once the owner's email is confirmed (once an
+   hour per address). The owner waits on one page (resend, rename, log
+   out). Declined: the page shows the note, and "Ask again" puts it back to
+   pending after 24 hours.
+3. `/socialhq/platform/companies` ("Platform: companies" in the user menu,
+   404 for others): Requests (approve once the email is confirmed, decline
+   with a note) and Companies (pause with a note, restore, "May use Social
+   HQ's AI keys"). Decisions lock the row: the first admin wins, the second
+   is told. Every request and decision is in `shq_company_events`; the owner
+   is emailed when approved or declined.
+4. `EnsureCompanyApproved` (web group): a waiting company's owner sees the
+   waiting page; everyone in a paused company sees the paused page (who to
+   contact: `SOCIALHQ_PLATFORM_CONTACT_EMAIL`, else the admin who paused it,
+   and for members the owner), and its API keys and MCP grants get a 403.
+   Someone with no workspace who can't create one (an invited person's
+   empty account) gets a page that says to ask for an invite or, if their
+   account is empty, to ask for a company. Platform admins follow their own
+   company's rules but always reach the platform pages. Scheduled posts of
+   a paused company still publish.
+
 Google or GitHub sign-in to an account whose email isn't confirmed yet
 (someone registered the address with a password and never confirmed it)
 takes the account over for the address's owner: the password is replaced,
@@ -270,8 +305,9 @@ nothing and creates nothing.
 Our screens use the `socialhq.*` keys in `lang/en/socialhq.php`, in English
 only. Email copy follows AGENTS.md instead: one `mail.<slug>` block per
 template in every `lang/*/mail.php` (the sign-up emails are
-`socialhq_access_requested` and `socialhq_access_approved`, English in every
-locale for now). Upstream's parity test wants every locale to have the same keys, so
+`socialhq_access_requested` and `socialhq_access_approved`, and the company
+emails `socialhq_company_requested`, `_approved` and `_declined`, English in
+every locale for now). Upstream's parity test wants every locale to have the same keys, so
 after changing that file run `bin/socialhq-sync-lang`, which copies it to the
 other 15 locales.
 

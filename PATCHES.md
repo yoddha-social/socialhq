@@ -14,6 +14,7 @@ whenever you touch an upstream file; keep each edit as small as possible.
 | 92 | `.github/workflows/lint.yml` | Checks instead of fixing: Pint, ESLint and `vue-tsc` on the whole repo (after generating Wayfinder routes), Prettier on the files a change touches unless they weren't clean before; every PR; read-only token | The old job ran the fixers, so it could never fail; much of the TryPost base isn't Prettier-clean |
 | 93 | `.github/workflows/release-docker.yml` | Deleted | TryPost's own image release; ours is `socialhq-image.yml` |
 | 94 | `tests/Browser/CalendarDragAndDropTest.php` | "The hour under way" test uses the app's five-minute rule and accepts either outcome in the minute when the page's clock may differ (8 lines) | It used six minutes, so it failed whenever it ran in minute :54 of an hour |
+| 4 | `app/Ai/Agents/{IdeaGenerator,MediaAltTextGenerator,PostContentShortener,PostWritingAssistant}.php` | `#[Temperature(x)]` replaced by `use UsesModelSafeTemperature` plus `preferredTemperature()` returning the same value | Claude 5 models reject `temperature`, which broke every AI feature. Candidate for an upstream PR |
 | 5 | `app/Support/Timezone.php` | `normalize()` asks ICU for an alias's canonical name without first requiring it in PHP's legacy tz list | Without the legacy tz database (Ubuntu's tzdata-legacy), every legacy alias became UTC; this also kept CI red. Proposed upstream (trypostit/trypost#478) |
 
 Files we **added** (no merge risk) aren't listed here; they're under the

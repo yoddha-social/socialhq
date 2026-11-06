@@ -26,11 +26,13 @@ adds the planning and AI layer:
 | Tests (Pest) | `tests/Feature/SocialHq/`, `tests/Unit/SocialHq/`, `tests/Browser/SocialHq/` |
 | Interface copy | `lang/en/socialhq.php` (see below) |
 | Image build | `.github/workflows/socialhq-image.yml` (tags `shq-v*`) |
+| Dependency audit | `.github/workflows/socialhq-audit.yml` (PRs and weekly) |
+| Claude Code setup | `CLAUDE.md`, `.claude/settings.json`, `.claude/hooks/`, `.claude/rules/`; skills in `.ai/skills/socialhq-*` (linked into `.claude/skills/` and `.agents/skills/`), checked by `bin/socialhq-lint-skills` |
 
-Edits to upstream files are kept to a minimum and listed in
-[PATCHES.md](PATCHES.md), which also explains how to merge an upstream release.
-Follow the upstream conventions in [AGENTS.md](AGENTS.md) (Laravel Boost,
-Pest, Pint, Inertia v3, Wayfinder).
+Changes to files that came with TryPost are listed in [PATCHES.md](PATCHES.md),
+which also logs the monthly security intake (we take TryPost's security fixes,
+not its feature releases). Follow the conventions in [AGENTS.md](AGENTS.md)
+(Laravel Boost, Pest, Pint, Inertia v3, Wayfinder).
 
 ## AI graphics
 

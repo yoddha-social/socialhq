@@ -19,6 +19,8 @@ Notes:
 """
 @endif
 
+@include('prompts.socialhq.brand_knowledge')
+
 Rules:
 - The idea has a title of at most 80 characters and a body of 2 to 5 sentences describing the angle and why it works for this audience. The body is not a finished caption.
 - Pick a specific, unexpected angle rather than the most obvious one.

@@ -14,6 +14,7 @@ declare(strict_types=1);
 */
 
 use App\SocialHq\Http\Controllers\AiGraphicController;
+use App\SocialHq\Http\Controllers\BrandKnowledgeController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth')->prefix('socialhq')->name('socialhq.')->group(function () {
@@ -27,4 +28,10 @@ Route::middleware('auth')->prefix('socialhq')->name('socialhq.')->group(function
         ->whereUuid('import')
         ->middleware('throttle:media-imports')
         ->name('ai-graphics.attach');
+
+    Route::get('brand', [BrandKnowledgeController::class, 'index'])->name('brand.index');
+    Route::put('brand/profile', [BrandKnowledgeController::class, 'updateProfile'])->name('brand.profile.update');
+    Route::post('brand/entries', [BrandKnowledgeController::class, 'store'])->name('brand.entries.store');
+    Route::put('brand/entries/{entry}', [BrandKnowledgeController::class, 'update'])->whereNumber('entry')->name('brand.entries.update');
+    Route::delete('brand/entries/{entry}', [BrandKnowledgeController::class, 'destroy'])->whereNumber('entry')->name('brand.entries.destroy');
 });

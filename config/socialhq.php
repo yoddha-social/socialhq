@@ -75,6 +75,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Brand knowledge
+    |--------------------------------------------------------------------------
+    |
+    | Each workspace's brand profile and knowledge entries, read by the
+    | caption assistant and the idea generator. prompt_characters caps what
+    | goes into one prompt (about 1,500 tokens): the profile plus the newest
+    | entries marked for AI that fit, small enough for free models' limits.
+    |
+    */
+
+    'knowledge' => [
+        'prompt_characters' => (int) env('SOCIALHQ_KNOWLEDGE_PROMPT_CHARACTERS', 6000),
+        'max_entries' => (int) env('SOCIALHQ_KNOWLEDGE_MAX_ENTRIES', 300),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | AI graphics
     |--------------------------------------------------------------------------
     |

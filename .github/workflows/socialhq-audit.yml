@@ -1,10 +1,18 @@
-# Dependency advisories for Social HQ: composer audit and npm audit on every PR
-# and weekly. A red run is the cue for the socialhq-security-intake skill.
+# Dependency advisories for Social HQ: composer audit and npm audit weekly and on
+# PRs that change dependencies or skills (a new advisory shouldn't block unrelated
+# PRs). A red run is the cue for the socialhq-security-intake skill.
 name: socialhq audit
 
 on:
   pull_request:
-    branches: [main]
+    paths:
+      - composer.json
+      - composer.lock
+      - package.json
+      - package-lock.json
+      - .ai/skills/**
+      - bin/socialhq-lint-skills
+      - .github/workflows/socialhq-audit.yml
   schedule:
     - cron: '0 3 * * 1'
   workflow_dispatch:
@@ -12,9 +20,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 
@@ -22,6 +35,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
+          coverage: none
 
       - name: composer audit
         run: composer audit --locked --no-interaction

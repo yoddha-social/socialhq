@@ -13,6 +13,7 @@ whenever you touch an upstream file; keep each edit as small as possible.
 | 91 | `.github/workflows/tests.yml` | Runs on every PR and on pushes to `main` only; read-only token; job timeouts; failed browser test files get one retry, reported as a flaky warning | Stacked PRs got no CI; random browser failures kept every run red |
 | 92 | `.github/workflows/lint.yml` | Checks instead of fixing (`pint --test`, `prettier --check`, `eslint` without `--fix`); Prettier and ESLint only on the files a PR changes; every PR; read-only token | The old job ran the fixers, so it could never fail; much of the TryPost base isn't Prettier/ESLint clean |
 | 93 | `.github/workflows/release-docker.yml` | Deleted | TryPost's own image release; ours is `socialhq-image.yml` |
+| 5 | `app/Support/Timezone.php` | `normalize()` asks ICU for an alias's canonical name without first requiring it in PHP's legacy tz list | Without the legacy tz database (Ubuntu's tzdata-legacy), every legacy alias became UTC; this also kept CI red. Proposed upstream (trypostit/trypost#478) |
 
 Files we **added** (no merge risk) aren't listed here; they're under the
 module paths in SOCIALHQ.md, plus `config/socialhq.php`,

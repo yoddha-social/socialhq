@@ -9,6 +9,7 @@ use App\Jobs\SendNotification;
 use App\Mail\PostApprovalRequested;
 use App\Models\Post;
 use App\Models\User;
+use App\SocialHq\Approval\ApprovalRules;
 use Illuminate\Support\Collection;
 
 final class NotifyApprovalRequested
@@ -16,7 +17,7 @@ final class NotifyApprovalRequested
     /**
      * One email per post for every approver: posts created together for
      * several channels are separate posts, each approved on its own. Never
-     * emails the requester.
+     * emails the requester, unless an agent (API key, MCP) made the request.
      *
      * @param  Collection<int, Post>  $posts
      */
@@ -28,7 +29,7 @@ final class NotifyApprovalRequested
             return;
         }
 
-        $approvers = $workspace->approvers()->reject(fn (User $approver): bool => $approver->id === $requester->id);
+        $approvers = $workspace->approvers()->reject(fn (User $approver): bool => $approver->id === $requester->id && ! ApprovalRules::actsAsAgent($requester));
 
         $posts->each(fn (Post $post) => $approvers->each(fn (User $approver) => SendNotification::dispatch(
             $approver,

@@ -14,6 +14,8 @@ use App\Jobs\PostHog\SyncUser;
 use App\Models\Account;
 use App\Models\User;
 use App\Services\PostHogService;
+use App\SocialHq\Signup\AccessRequests;
+use App\SocialHq\Signup\SignupRules;
 use App\Support\Timezone;
 use Illuminate\Support\Facades\DB;
 
@@ -37,7 +39,9 @@ class CreateUser
                 $accountAttributes['lifecycle_stage_changed_at'] = now();
             }
 
-            $account = Account::query()->forceCreate($accountAttributes);
+            // Social HQ: self sign-up joins the team's account (SignupRules).
+            $joinAccount = SignupRules::accountToJoin(data_get($data, 'email'), $isInviteRegistration);
+            $account = $joinAccount ?? Account::query()->forceCreate($accountAttributes);
 
             $locale = Locale::tryFrom((string) data_get($data, 'locale')) ?? Locale::DEFAULT;
 
@@ -55,6 +59,13 @@ class CreateUser
                 'week_starts_on' => WeekStart::tryFrom((string) data_get($data, 'week_starts_on')) ?? WeekStart::DEFAULT,
                 'timezone' => Timezone::normalize(data_get($data, 'timezone')),
             ], $attributionParameters));
+
+            if ($joinAccount !== null) {
+                AccessRequests::open($user, $account);
+                AccessRequests::notifyAdmins($user);
+
+                return $user;
+            }
 
             $account->update(['owner_id' => $user->id]);
 

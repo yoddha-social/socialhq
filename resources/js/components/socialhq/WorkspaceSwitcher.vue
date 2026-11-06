@@ -6,10 +6,13 @@ import {
     IconPlus,
     IconSelector,
     IconSettings,
+    IconUserPlus,
 } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
+import { usePendingAccessRequests } from '@/components/socialhq/signup';
 import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -27,6 +30,7 @@ import {
     switchMethod,
     index as workspacesIndex,
 } from '@/routes/app/workspaces';
+import { index as accessRequestsIndex } from '@/routes/socialhq/access-requests';
 
 // Social HQ: the workspace (brand) switcher at the top of the sidebar.
 // Upstream keeps it in a submenu of the user menu, where it is hard to find.
@@ -49,6 +53,7 @@ const { canCreateWorkspace, canManageWorkspace } = useWorkspaceAbilities();
 const { createOrUpgrade } = useWorkspaceLimit(() => workspaces.value.length);
 
 const upgradeDialogOpen = ref(false);
+const pendingAccessRequests = usePendingAccessRequests();
 
 const switchWorkspace = (workspaceId: string): void => {
     if (workspaceId === currentWorkspace.value?.id) {
@@ -159,6 +164,24 @@ const createWorkspace = (): void => {
                     >
                         <IconSettings class="size-4" />
                         {{ $t('socialhq.workspace_switcher.settings') }}
+                    </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    v-if="pendingAccessRequests > 0"
+                    :as-child="true"
+                >
+                    <Link
+                        class="flex w-full cursor-pointer items-center gap-2"
+                        :href="accessRequestsIndex.url()"
+                        data-testid="socialhq-access-requests-link"
+                    >
+                        <IconUserPlus class="size-4" />
+                        <span class="flex-1">{{
+                            $t('socialhq.signup.requests.menu_item')
+                        }}</span>
+                        <Badge variant="secondary">{{
+                            pendingAccessRequests
+                        }}</Badge>
                     </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem

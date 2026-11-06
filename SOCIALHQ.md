@@ -32,6 +32,30 @@ Edits to upstream files are kept to a minimum and listed in
 Follow the upstream conventions in [AGENTS.md](AGENTS.md) (Laravel Boost,
 Pest, Pint, Inertia v3, Wayfinder).
 
+## AI graphics
+
+"Generate with AI" in the media menu of ideas and posts makes a still graphic
+(no video) from a prompt and up to 3 reference images, with an image model
+(`SOCIALHQ_AI_GRAPHICS_PROVIDER`, default `gemini`; needs `GEMINI_API_KEY`).
+The finished graphic arrives through TryPost's media import, like an
+Unsplash pick. Code: `app/SocialHq/AiGraphics/`.
+
+The vision gate, which fails closed:
+
+1. Reference images must be real JPEG, PNG or WebP bitmaps, checked by
+   content (SVG is refused), 64 to 8192 px, up to 10 MB, at most 3.
+2. A vision model (the default text provider, or
+   `SOCIALHQ_AI_GRAPHICS_VISION_PROVIDER`) reviews the prompt and the
+   reference images before anything is generated, and the generated
+   graphic before it is stored. It blocks misleading use of real people,
+   other brands' logos, fake documents, sexual or violent content and the
+   like, and says why. If the check can't run, nothing is generated.
+3. Limits: 20 per person per hour, 100 per workspace per day (env).
+4. Only people who can create posts in the workspace can use it, and posts
+   with AI graphics still go through approvals.
+5. Every attempt is logged in `shq_ai_graphics`: who, prompt, provider,
+   status (generated, blocked, failed) and reason.
+
 ## Interface copy
 
 Our screens use the `socialhq.*` keys in `lang/en/socialhq.php`, in English

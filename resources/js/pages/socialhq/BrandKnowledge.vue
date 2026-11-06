@@ -6,6 +6,10 @@ import { computed, ref } from 'vue';
 import EmptyState from '@/components/EmptyState.vue';
 import SettingsListRow from '@/components/settings/SettingsListRow.vue';
 import BrandPlanningSection from '@/components/socialhq/BrandPlanningSection.vue';
+import KnowledgeCheckBox from '@/components/socialhq/KnowledgeCheckBox.vue';
+import KnowledgeDocumentsSection, {
+    type KnowledgeDocumentsProp,
+} from '@/components/socialhq/KnowledgeDocumentsSection.vue';
 import KnowledgeEntryDialog, {
     type KnowledgeEntryRow,
 } from '@/components/socialhq/KnowledgeEntryDialog.vue';
@@ -44,6 +48,7 @@ const props = defineProps<{
     cadence: Record<string, number | null>;
     planChannels: PlanChannel[];
     canEdit: boolean;
+    documents: KnowledgeDocumentsProp;
 }>();
 
 const profileFields: { field: ProfileField; rows: number; hint: boolean }[] = [
@@ -56,10 +61,11 @@ const profileFields: { field: ProfileField; rows: number; hint: boolean }[] = [
 
 const profileForm = useForm({ ...props.profile });
 
-/** Nothing written yet: no profile field and no entry. */
+/** Nothing written yet: no profile field, no entry and no document. */
 const isEmpty = computed(
     () =>
         props.entries.length === 0 &&
+        props.documents.items.length === 0 &&
         Object.values(props.profile).every((value) => value.trim() === ''),
 );
 
@@ -418,6 +424,13 @@ const confirmDelete = (): void => {
                         </SettingsListRow>
                     </ul>
                 </section>
+
+                <KnowledgeDocumentsSection
+                    :documents="documents"
+                    :can-edit="canEdit"
+                />
+
+                <KnowledgeCheckBox v-if="!isEmpty" />
             </template>
         </div>
     </SettingsLayout>

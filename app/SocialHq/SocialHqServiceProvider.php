@@ -12,6 +12,8 @@ use App\SocialHq\Ai\ApprovedProvidersGuard;
 use App\SocialHq\AiGraphics\AiGraphics;
 use App\SocialHq\Approval\ApprovalRules;
 use App\SocialHq\Approval\RecordApprovalEvents;
+use App\SocialHq\Companies\PlatformAdminCommand;
+use App\SocialHq\Companies\PlatformAdmins;
 use App\SocialHq\Events\ImportEventsCommand;
 use App\SocialHq\Http\Controllers\Plan\PlanGenerationController;
 use App\SocialHq\Http\Middleware\RedirectWhileAwaitingAccess;
@@ -34,6 +36,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
@@ -61,11 +64,14 @@ class SocialHqServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(database_path('migrations/socialhq'));
 
+        // Platform admins run this server: they let companies in.
+        Gate::define(PlatformAdmins::GATE, fn (User $user): bool => PlatformAdmins::is($user));
+
         // No SDK request reaches a provider outside SOCIALHQ_AI_APPROVED_PROVIDERS, whoever makes it.
         Event::listen(ApprovedProvidersGuard::EVENTS, [ApprovedProvidersGuard::class, 'handle']);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiRoutesCommand::class, ImportEventsCommand::class, PruneCalendarUploadsCommand::class]);
+            $this->commands([AiRoutesCommand::class, ImportEventsCommand::class, PruneCalendarUploadsCommand::class, PlatformAdminCommand::class]);
         }
 
         Route::middleware('web')->group(base_path('routes/socialhq.php'));

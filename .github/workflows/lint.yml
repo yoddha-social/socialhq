@@ -44,22 +44,34 @@ jobs:
       - name: Pint
         run: composer test:lint
 
-      # Much of the TryPost base isn't Prettier/ESLint clean, so the frontend checks
-      # cover the files this PR (or push) changes.
-      - name: Changed frontend files
-        id: changed
+      # ESLint and vue-tsc resolve @/routes and @/actions, which Wayfinder generates.
+      - name: Generate Wayfinder routes
+        run: |
+          cp .env.ci .env
+          php artisan wayfinder:generate --with-form
+
+      - name: ESLint
+        run: npx eslint .
+
+      - name: Type check
+        run: npx vue-tsc --noEmit
+
+      # Much of the TryPost base isn't Prettier-clean, and reformatting it would make
+      # security cherry-picks conflict. Check the files this change touches, except
+      # those that weren't clean before it.
+      - name: Prettier (changed files)
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
           if ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then BASE=HEAD^; fi
-          git diff --name-only --diff-filter=ACMR "$BASE" HEAD -- 'resources/*.vue' 'resources/*.ts' 'resources/*.js' 'resources/*.css' > changed.txt
-          echo "count=$(wc -l < changed.txt)" >> "$GITHUB_OUTPUT"
-          cat changed.txt
-
-      - name: Prettier
-        if: steps.changed.outputs.count != '0'
-        run: xargs -a changed.txt npx prettier --check
-
-      - name: ESLint
-        if: steps.changed.outputs.count != '0'
-        run: grep -vE '\.css$' changed.txt | xargs -r npx eslint --no-warn-ignored
+          : > check.txt
+          git diff --name-only --diff-filter=ACMR "$BASE" HEAD -- 'resources/*.vue' 'resources/*.ts' 'resources/*.js' 'resources/*.css' |
+            while read -r f; do
+              if git cat-file -e "$BASE:$f" 2>/dev/null &&
+                ! git show "$BASE:$f" | npx prettier --check --stdin-filepath "$f" >/dev/null 2>&1; then
+                echo "Skipped (not Prettier-clean before this change): $f"
+              else
+                echo "$f" >> check.txt
+              fi
+            done
+          if [ -s check.txt ]; then xargs -a check.txt npx prettier --check; fi

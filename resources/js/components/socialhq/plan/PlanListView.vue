@@ -141,14 +141,16 @@ const COLUMNS: {
     class: string;
 }[] = [
     { key: 'date', label: 'socialhq_plan.list.date', class: 'w-24' },
-    { key: null, label: 'socialhq_plan.list.time', class: 'w-44' },
-    { key: 'channel', label: 'socialhq_plan.list.channel', class: 'w-48' },
+    // The title comes right after the day and takes the width the others
+    // leave (the table's min width keeps at least 16rem for it).
     { key: null, label: 'socialhq_plan.list.title', class: '' },
+    { key: null, label: 'socialhq_plan.list.time', class: 'w-40' },
+    { key: 'channel', label: 'socialhq_plan.list.channel', class: 'w-44' },
     { key: 'pillar', label: 'socialhq_plan.list.pillar', class: 'w-32' },
     { key: 'owner', label: 'socialhq_plan.list.owner', class: 'w-36' },
-    { key: null, label: 'socialhq_plan.list.event', class: 'w-36' },
-    { key: null, label: 'socialhq_plan.list.copy', class: 'w-36' },
-    { key: 'status', label: 'socialhq_plan.list.status', class: 'w-44' },
+    { key: null, label: 'socialhq_plan.list.event', class: 'w-32' },
+    { key: null, label: 'socialhq_plan.list.copy', class: 'w-28' },
+    { key: 'status', label: 'socialhq_plan.list.status', class: 'w-40' },
 ];
 
 const actionClass =
@@ -162,7 +164,7 @@ const actionClass =
     >
         <table
             v-if="isWide"
-            class="w-full min-w-[1080px] table-fixed border-separate border-spacing-0 text-sm"
+            class="w-full min-w-[1360px] table-fixed border-separate border-spacing-0 text-sm"
         >
             <thead>
                 <tr>
@@ -257,6 +259,32 @@ const actionClass =
                     >
                         {{ dayLabel(item.scheduled_on) }}
                     </td>
+                    <td class="border-b px-2">
+                        <span class="flex min-w-0 items-center gap-1.5">
+                            <IconSparkles
+                                v-if="item.source === 'ai'"
+                                class="size-3.5 shrink-0 text-primary-text"
+                                aria-hidden="true"
+                            />
+                            <!-- The row opens on click; this button is how a keyboard or screen reader opens it. -->
+                            <button
+                                type="button"
+                                class="min-w-0 truncate rounded-sm text-start font-medium hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                :class="{
+                                    'line-through': item.status === 'dropped',
+                                }"
+                                :aria-label="
+                                    $t('socialhq_plan.list.open_row', {
+                                        title: item.title,
+                                    })
+                                "
+                                :data-testid="`plan-row-open-${item.id}`"
+                                @click.stop="openItem(item)"
+                            >
+                                {{ item.title }}
+                            </button>
+                        </span>
+                    </td>
                     <td
                         class="border-b px-2 text-xs whitespace-nowrap text-muted-foreground"
                     >
@@ -284,32 +312,6 @@ const actionClass =
                                     >· {{ item.content_type_label }}</span
                                 >
                             </span>
-                        </span>
-                    </td>
-                    <td class="border-b px-2">
-                        <span class="flex min-w-0 items-center gap-1.5">
-                            <IconSparkles
-                                v-if="item.source === 'ai'"
-                                class="size-3.5 shrink-0 text-primary-text"
-                                aria-hidden="true"
-                            />
-                            <!-- The row opens on click; this button is how a keyboard or screen reader opens it. -->
-                            <button
-                                type="button"
-                                class="min-w-0 truncate rounded-sm text-start font-medium hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                                :class="{
-                                    'line-through': item.status === 'dropped',
-                                }"
-                                :aria-label="
-                                    $t('socialhq_plan.list.open_row', {
-                                        title: item.title,
-                                    })
-                                "
-                                :data-testid="`plan-row-open-${item.id}`"
-                                @click.stop="openItem(item)"
-                            >
-                                {{ item.title }}
-                            </button>
                         </span>
                     </td>
                     <td class="border-b px-2">

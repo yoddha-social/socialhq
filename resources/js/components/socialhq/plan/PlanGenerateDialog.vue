@@ -172,7 +172,7 @@ const start = (): void => {
     <Dialog v-model:open="open">
         <DialogContent class="sm:max-w-lg" data-testid="plan-generate-dialog">
             <form
-                class="flex max-h-[80vh] flex-col gap-5 overflow-y-auto"
+                class="flex max-h-[80vh] flex-col gap-5 overflow-x-hidden overflow-y-auto px-1"
                 @submit.prevent="start"
             >
                 <DialogHeader>

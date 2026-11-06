@@ -37,7 +37,7 @@ const openDialog = (): void => {
     <section
         id="audience"
         class="flex flex-col gap-4"
-        data-testid="socialhq-brand-audience"
+        data-testid="socialhq-brand-audience-places"
     >
         <div class="flex items-start justify-between gap-4">
             <div class="flex flex-col gap-1">

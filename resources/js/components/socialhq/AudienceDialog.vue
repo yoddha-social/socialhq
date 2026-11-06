@@ -102,8 +102,9 @@ watch(open, (isOpen) => {
 });
 
 /** A new country brings its main time zone; the zone stays editable. */
-const onCountryChange = (row: Row): void => {
-    row.timezone = zoneOf.value.get(row.country) ?? row.timezone;
+/** Picking a country fills in its main time zone (still editable). */
+const onCountryChange = (row: Row, country: unknown): void => {
+    row.timezone = zoneOf.value.get(String(country)) ?? row.timezone;
 };
 
 const close = (): void => {
@@ -132,7 +133,7 @@ const save = (): void => {
             data-testid="socialhq-audience-dialog"
         >
             <form
-                class="flex max-h-[80vh] flex-col gap-5 overflow-y-auto"
+                class="flex max-h-[80vh] flex-col gap-5 overflow-x-hidden overflow-y-auto px-1"
                 @submit.prevent="save"
             >
                 <DialogHeader>
@@ -148,7 +149,7 @@ const save = (): void => {
                     <li
                         v-for="(row, index) in form.locations"
                         :key="index"
-                        class="grid grid-cols-2 gap-2 rounded-lg border p-3 sm:grid-cols-[1.3fr_1fr_1.3fr_5rem_auto] sm:items-end sm:border-0 sm:p-0 [&_[data-slot=native-select-wrapper]]:w-full"
+                        class="grid grid-cols-2 gap-2 rounded-lg border p-3 sm:grid-cols-[1.3fr_1fr_1.3fr_5rem_auto] sm:items-end sm:border-0 sm:p-0 [&_[data-slot=native-select-wrapper]]:w-full [&>*]:min-w-0"
                         :aria-label="
                             $t('socialhq_audience.dialog.place', {
                                 number: String(index + 1),
@@ -173,7 +174,9 @@ const save = (): void => {
                                     !!rowError(index, 'country') || undefined
                                 "
                                 :data-testid="`socialhq-audience-country-${index}`"
-                                @change="onCountryChange(row)"
+                                @update:model-value="
+                                    onCountryChange(row, $event)
+                                "
                             >
                                 <NativeSelectOption value="" disabled>{{
                                     $t(

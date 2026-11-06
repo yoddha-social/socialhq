@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\Status as PostStatus;
+use App\Jobs\PublishPost;
 use App\Jobs\SendNotification;
 use App\Models\Account;
+use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Companies\Company;
@@ -260,4 +263,25 @@ test('the company emails render', function () {
     expect((new CompanyDeclined($this->company->id))->render())
         ->toContain('Tell us about your brands.')
         ->toContain('You can ask again after 24 hours.');
+});
+
+test('a paused company\'s scheduled posts wait until it is restored', function () {
+    Bus::fake([PublishPost::class]);
+    [$company, $owner] = approvedCompanyWithMember();
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $owner->current_workspace_id,
+        'user_id' => $owner->id,
+        'scheduled_at' => now()->subMinute(),
+    ]);
+
+    CompanyDecisions::suspend($company, $this->admin, 'Unpaid invoice.');
+    $this->artisan('posts:process-scheduled')->assertSuccessful();
+
+    Bus::assertNotDispatched(PublishPost::class);
+    expect($post->fresh()->status)->toBe(PostStatus::Scheduled);
+
+    CompanyDecisions::restore($company->fresh(), $this->admin);
+    $this->artisan('posts:process-scheduled')->assertSuccessful();
+
+    Bus::assertDispatched(PublishPost::class);
 });

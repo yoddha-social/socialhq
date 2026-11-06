@@ -8,6 +8,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Jobs\PublishPost;
 use App\Jobs\PublishToSocialPlatform;
 use App\Models\Post;
+use App\SocialHq\Companies\CompanyAccess;
 use App\Support\Social\LimitRetryPolicy;
 use Illuminate\Console\Command;
 use Throwable;
@@ -24,6 +25,11 @@ class ProcessScheduledPosts extends Command
             ->due()
             ->each(function (Post $post) {
                 try {
+                    // Social HQ: a paused company's posts wait until it is restored.
+                    if ($post->workspace !== null && CompanyAccess::isPaused($post->workspace)) {
+                        return;
+                    }
+
                     $claimed = Post::where('id', $post->id)
                         ->where('status', PostStatus::Scheduled)
                         ->update(['status' => PostStatus::Publishing]);
@@ -50,6 +56,10 @@ class ProcessScheduledPosts extends Command
             ->dueForLimitRetry()
             ->each(function (Post $post): void {
                 try {
+                    if ($post->workspace !== null && CompanyAccess::isPaused($post->workspace)) {
+                        return;
+                    }
+
                     $claimed = Post::query()
                         ->whereKey($post->id)
                         ->dueForLimitRetry()

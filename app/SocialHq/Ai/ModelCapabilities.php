@@ -31,6 +31,29 @@ final class ModelCapabilities
         return true;
     }
 
+    /**
+     * Whether every model the task's route may reach accepts a temperature.
+     * A target without a model uses its provider's default text model.
+     */
+    public static function acceptsTemperatureFor(AiTask $task): bool
+    {
+        try {
+            $route = AiRouter::route($task);
+        } catch (AiUnavailableException) {
+            return true;
+        }
+
+        foreach ($route as $provider => $model) {
+            $model ??= config("ai.providers.{$provider}.models.text.default");
+
+            if (is_string($model) && $model !== '' && ! self::acceptsTemperature($model)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public static function defaultTextModel(): ?string
     {
         $provider = config('ai.default');

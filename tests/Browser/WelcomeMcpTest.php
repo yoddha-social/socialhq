@@ -342,7 +342,7 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
         ->assertCount('[data-sonner-toast]', 0)
         ->assertAttribute('@mcp-dialog-open', 'target', '_blank');
 
-    expect(welcomeMcpCopied($page))->toBe(['TryPost', route('mcp.trypost')])
+    expect(welcomeMcpCopied($page))->toBe(['Social HQ', route('mcp.trypost')])
         ->and($page->attribute('@mcp-dialog-open', 'href'))->toStartWith('https://claude.ai/');
 
     $page->assertSeeIn('@mcp-dialog-open', 'Open Claude')

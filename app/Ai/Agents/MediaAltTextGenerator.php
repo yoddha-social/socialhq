@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Ai\Agents;
 
 use App\Enums\User\Locale;
+use App\SocialHq\Ai\AiTask;
+use App\SocialHq\Ai\UsesAiTask;
 use App\SocialHq\Ai\UsesModelSafeTemperature;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Promptable;
@@ -12,6 +14,7 @@ use Laravel\Ai\Promptable;
 class MediaAltTextGenerator implements Agent
 {
     use Promptable;
+    use UsesAiTask;
     use UsesModelSafeTemperature;
 
     public const int MAX_LENGTH = 250;
@@ -19,6 +22,14 @@ class MediaAltTextGenerator implements Agent
     public function __construct(
         public Locale $locale,
     ) {}
+
+    /**
+     * Social HQ: where AiRouter sends this agent's calls.
+     */
+    public function aiTask(): AiTask
+    {
+        return AiTask::Vision;
+    }
 
     public function instructions(): string
     {

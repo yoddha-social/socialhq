@@ -33,5 +33,7 @@
         <env name="FILESYSTEM_DISK" value="local"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="SOCIALHQ_AI_GATEWAY" value="direct"/>
+        <env name="SOCIALHQ_AI_APPROVED_PROVIDERS" value="openai,anthropic,gemini"/>
     </php>
 </phpunit>

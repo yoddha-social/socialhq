@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\SocialHq\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\SocialHq\Ai\AiRouter;
+use App\SocialHq\Ai\AiTask;
 use App\SocialHq\AiGraphics\AiGraphic;
 use App\SocialHq\AiGraphics\AiGraphics;
 use App\SocialHq\AiGraphics\GenerateAiGraphic;
@@ -46,6 +48,8 @@ class AiGraphicController extends Controller
 
         $blocked = VisionCheck::review($prompt, array_map(fn (UploadedFile $file): Image => Image::fromUpload($file), $files));
 
+        $route = AiRouter::route(AiTask::Image);
+
         $graphic = AiGraphic::query()->create([
             'workspace_id' => $workspace->id,
             'user_id' => $user->id,
@@ -53,8 +57,8 @@ class AiGraphicController extends Controller
             'prompt' => $prompt,
             'format' => GraphicFormat::from((string) $request->validated('format')),
             'reference_count' => count($files),
-            'provider' => AiGraphics::provider(),
-            'model' => AiGraphics::model(),
+            'provider' => (string) array_key_first($route),
+            'model' => $route[array_key_first($route)],
             'status' => $blocked === null ? AiGraphic::PENDING : AiGraphic::BLOCKED,
             'reason' => $blocked,
         ]);

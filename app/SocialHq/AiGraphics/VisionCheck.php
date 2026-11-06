@@ -28,8 +28,6 @@ final class VisionCheck
             $response = (new GraphicSafetyReviewer($reviewsResult))->prompt(
                 "Prompt:\n".$prompt,
                 attachments: $images,
-                provider: AiGraphics::visionProvider(),
-                model: AiGraphics::visionModel(),
                 timeout: 60,
             );
         } catch (Throwable $exception) {

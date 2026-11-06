@@ -48,7 +48,7 @@ test('the shared email layout keeps the action and the appropriate footer', func
 
     expect($document->filter('h1')->count())->toBe(1)
         ->and($document->filter('a[href="https://example.test/email-action"]')->count())->toBe(1)
-        ->and($document->filter('a[href="https://www.instagram.com/trypost.it"]')->count())->toBe(1)
+        ->and($document->filter('a[href="'.config('app.url').'"]')->count())->toBe(2)
         ->and($document->filter('a[href="'.route('app.notifications.preferences').'"]')->count())->toBe($hasPreferences ? 1 : 0)
         ->and($document->filter('html')->attr('dir'))->toBe($locale->direction())
         ->and($document->filter('h1')->ancestors()->first()->attr('align'))->toBe($locale->direction() === 'rtl' ? 'right' : 'left')

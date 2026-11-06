@@ -68,7 +68,7 @@ class UpdateRepurposeTool extends Tool
             'repurpose_id' => $schema->string()->required()->description('The repurpose to update.'),
             'source_social_account_id' => $schema->string()->description('Move the repurpose to another source account.'),
             'source_format' => $schema->string()->enum(array_column(SourceFormat::cases(), 'value'))->description('Which video format to watch: reel, video or story.'),
-            'publish_mode' => $schema->string()->enum(array_column(PublishMode::cases(), 'value'))->description('publish to schedule each replicated video straight away, or draft to leave it in TryPost for review.'),
+            'publish_mode' => $schema->string()->enum(array_column(PublishMode::cases(), 'value'))->description('publish to schedule each replicated video straight away, or draft to leave it in Social HQ for review.'),
             'destinations' => $schema->array()
                 ->items($schema->object(fn (JsonSchema $destination): array => [
                     'social_account_id' => $destination->string()->required()->description('UUID of a connected account of this workspace (not Google Business, not the source account).'),

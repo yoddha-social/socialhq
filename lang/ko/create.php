@@ -102,7 +102,7 @@ return [
             'subtitle' => '대부분의 계정에서 효과적인 형식으로 시작하세요.',
         ],
         'see_all' => '모두 보기',
-        'by_trypost' => 'TryPost 제공',
+        'by_trypost' => 'Social HQ 제공',
         'by_author' => '작성자: :name',
         'copy' => '템플릿 복사',
         'copied' => '복사됨',

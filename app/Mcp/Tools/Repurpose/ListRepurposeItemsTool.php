@@ -24,7 +24,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly(true)]
 #[IsDestructive(false)]
 #[IsOpenWorld(false)]
-#[Description('List every source video a repurpose has seen, with why each was skipped when it was: already published through TryPost, no downloadable file, or a failed download. This is where to look when a video was not replicated.')]
+#[Description('List every source video a repurpose has seen, with why each was skipped when it was: already published through Social HQ, no downloadable file, or a failed download. This is where to look when a video was not replicated.')]
 class ListRepurposeItemsTool extends Tool
 {
     use AuthorizesMcpTool, ResolvesWorkspaceRepurpose;

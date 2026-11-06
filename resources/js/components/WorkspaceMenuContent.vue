@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import { Link, router, usePage } from '@inertiajs/vue3';
 import {
-    IconBrandDiscord,
     IconBrandGithub,
     IconBulb,
     IconCheck,
     IconCoin,
+    IconDeviceDesktop,
     IconHelpCircle,
+    IconLanguage,
     IconLayoutGrid,
     IconLifebuoy,
-    IconMessageChatbot,
-    IconDeviceDesktop,
-    IconLanguage,
     IconLogout,
+    IconMessageChatbot,
     IconMoon,
     IconPlus,
     IconSettings,
@@ -73,9 +72,7 @@ const page = usePage();
 const { canManageBilling, canManageTeam, canManageWorkspace } =
     useWorkspaceAbilities();
 const selfHosted = computed(() => Boolean(page.props.selfHosted));
-const showBilling = computed(
-    () => canManageBilling.value && !selfHosted.value,
-);
+const showBilling = computed(() => canManageBilling.value && !selfHosted.value);
 const showChannels = computed(() => canManageWorkspace.value);
 const planName = computed(() =>
     showBilling.value ? (page.props.auth.plan?.name ?? null) : null,
@@ -102,8 +99,7 @@ const themes = [
 const currentTheme = ref<Theme>(props.user.theme);
 const currentThemeOption = computed(
     () =>
-        themes.find((theme) => theme.value === currentTheme.value) ??
-        themes[2],
+        themes.find((theme) => theme.value === currentTheme.value) ?? themes[2],
 );
 
 const switchTheme = (theme: Theme): void => {
@@ -156,6 +152,10 @@ const statusTheme = computed(() =>
         : 'light',
 );
 
+const sourceUrl =
+    import.meta.env.VITE_SOCIALHQ_SOURCE_URL ||
+    'https://github.com/yoddha-social/socialhq';
+
 const supportLinks = [
     {
         key: 'help-center',
@@ -164,21 +164,15 @@ const supportLinks = [
         icon: IconLifebuoy,
     },
     {
-        key: 'discord',
-        label: 'sidebar.support.discord',
-        href: 'https://trypost.it/discord',
-        icon: IconBrandDiscord,
-    },
-    {
         key: 'feature-requests',
         label: 'sidebar.support.feature_requests',
-        href: 'https://github.com/orgs/trypostit/discussions/categories/feature-requests',
+        href: `${sourceUrl}/issues`,
         icon: IconBulb,
     },
     {
         key: 'github',
         label: 'sidebar.support.github',
-        href: 'https://github.com/trypostit',
+        href: sourceUrl,
         icon: IconBrandGithub,
     },
 ];
@@ -248,7 +242,9 @@ const supportLinks = [
                     class="size-4 shrink-0 rounded-sm"
                     fallback-class="text-[8px] bg-primary-subtle text-primary-text font-bold"
                 />
-                <span class="min-w-0 truncate">{{ currentWorkspace?.name }}</span>
+                <span class="min-w-0 truncate">{{
+                    currentWorkspace?.name
+                }}</span>
             </DropdownMenuSubTrigger>
             <DropdownMenuPortal>
                 <DropdownMenuSubContent class="w-64">
@@ -515,7 +511,6 @@ const supportLinks = [
             </DropdownMenuPortal>
         </DropdownMenuSub>
     </DropdownMenuGroup>
-
 
     <DropdownMenuSeparator />
 

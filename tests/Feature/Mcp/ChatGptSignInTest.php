@@ -77,11 +77,11 @@ function chatGptSignInAssertChatGptChallenge(TestResponse $response): void
 
     expect($response->json('id'))->toBe(7)
         ->and($response->json('result.isError'))->toBeTrue()
-        ->and($response->json('result.content.0.text'))->toBe('Sign in to TryPost to continue.')
+        ->and($response->json('result.content.0.text'))->toBe('Sign in to Social HQ to continue.')
         ->and($challenge)->toStartWith('Bearer ')
         ->toContain('resource_metadata="'.route('mcp.oauth.protected-resource.nested', ['path' => 'mcp/trypost']).'"')
         ->toContain('error="insufficient_scope"')
-        ->toContain('error_description="Sign in to TryPost to continue."');
+        ->toContain('error_description="Sign in to Social HQ to continue."');
 }
 
 function chatGptSignInRangeReads(): int
@@ -125,7 +125,7 @@ describe('Claude keeps the plain OAuth flow', function () {
 
 describe('ChatGPT connects without a token and signs in from the conversation', function () {
     test('connecting and listing tools answer without a token, with the OAuth security scheme', function () {
-        chatGptSignInRequest($this, 'initialize', chatGptSignInInitializeParams(), CHATGPT_SIGN_IN_CHATGPT_IP)->assertOk()->assertJsonPath('result.serverInfo.name', 'TryPost');
+        chatGptSignInRequest($this, 'initialize', chatGptSignInInitializeParams(), CHATGPT_SIGN_IN_CHATGPT_IP)->assertOk()->assertJsonPath('result.serverInfo.name', 'Social HQ');
         chatGptSignInRequest($this, 'notifications/initialized', ip: CHATGPT_SIGN_IN_CHATGPT_IP, notification: true)->assertAccepted();
         chatGptSignInRequest($this, 'ping', ip: CHATGPT_SIGN_IN_CHATGPT_IP)->assertOk();
 

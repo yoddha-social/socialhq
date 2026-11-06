@@ -52,10 +52,10 @@ return [
     'plan_cancel_anytime' => '언제든지 해지 가능',
     'mcp' => [
         'title' => 'AI와 대화하며 SNS를 관리하세요',
-        'description' => '좋아하는 AI로 TryPost 게시물을 만들고, 예약하고, 분석하세요.',
+        'description' => '좋아하는 AI로 Social HQ 게시물을 만들고, 예약하고, 분석하세요.',
         'connect_with' => ':client 연결',
         'connect_ai' => 'AI 연결하기',
-        'pick_ai' => '어디에서 TryPost를 사용할까요?',
+        'pick_ai' => '어디에서 Social HQ를 사용할까요?',
         'connect_other' => '다른 앱 연결',
         'connected' => ':client 연결됨',
         'benefits' => [

@@ -51,14 +51,14 @@ return [
         'title' => 'Уподобання',
         'theme' => [
             'heading' => 'Вигляд',
-            'description' => 'Оберіть, як виглядає TryPost.',
+            'description' => 'Оберіть, як виглядає Social HQ.',
             'light' => 'Світла',
             'dark' => 'Темна',
             'system' => 'Системна',
         ],
         'language' => [
             'heading' => 'Мова',
-            'description' => 'Мова інтерфейсу TryPost.',
+            'description' => 'Мова інтерфейсу Social HQ.',
             'search' => 'Пошук мов',
             'empty' => 'Мову не знайдено',
             'suggestions' => 'Пропозиції',
@@ -179,7 +179,7 @@ return [
         'delete_only_description' => 'Ви не можете видалити свій єдиний workspace. Скасуйте підписку в розділі оплати, щоб перестати платити, або видаліть обліковий запис в Автентифікації, щоб скасувати оплату та назавжди видалити все.',
         'delete_go_to_billing' => 'Перейти до оплати',
         'delete_go_to_delete_account' => 'Видалити обліковий запис',
-        'delete_members_warning' => '{1}:count інший учасник втратить доступ. Учасники без іншого workspace у TryPost будуть назавжди видалені.|[2,*]:count інших учасників втратять доступ. Учасники без іншого workspace у TryPost будуть назавжди видалені.',
+        'delete_members_warning' => '{1}:count інший учасник втратить доступ. Учасники без іншого workspace у Social HQ будуть назавжди видалені.|[2,*]:count інших учасників втратять доступ. Учасники без іншого workspace у Social HQ будуть назавжди видалені.',
         'delete_action' => 'Видалити workspace',
         'delete_cancel' => 'Скасувати',
         'delete_confirm_title' => 'Видалити workspace?',
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => 'Запрошення для цієї адреси email уже існує.',
-            'email_belongs_to_account' => 'Цей email уже належить іншому обліковому запису TryPost. Попросіть робочу адресу email.',
+            'email_belongs_to_account' => 'Цей email уже належить іншому обліковому запису Social HQ. Попросіть робочу адресу email.',
             'cannot_remove_self' => 'Ви не можете видалити себе.',
             'cannot_remove_owner' => 'Ви не можете видалити власника акаунта.',
             'cannot_change_own_access' => 'Ви не можете змінити свій доступ.',

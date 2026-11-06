@@ -23,7 +23,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly(true)]
 #[IsDestructive(false)]
 #[IsOpenWorld(false)]
-#[Description('List the repurposes of the current workspace. A repurpose watches one source account for one video format and republishes every new video to its destinations. Videos published through TryPost are never replicated.')]
+#[Description('List the repurposes of the current workspace. A repurpose watches one source account for one video format and republishes every new video to its destinations. Videos published through Social HQ are never replicated.')]
 class ListRepurposesTool extends Tool
 {
     use AuthorizesMcpTool;

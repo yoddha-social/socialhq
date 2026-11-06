@@ -57,8 +57,8 @@ return [
             'edit_in_canva' => 'Edit :name in Canva',
             'errors' => [
                 'import_failed' => 'The file could not be imported. Please try again.',
-                'popup_blocked' => 'Your browser blocked the window. Allow pop-ups for TryPost and try again.',
-                'scope_not_granted' => 'TryPost needs access to the file you pick. Try again and allow it.',
+                'popup_blocked' => 'Your browser blocked the window. Allow pop-ups for Social HQ and try again.',
+                'scope_not_granted' => 'Social HQ needs access to the file you pick. Try again and allow it.',
                 'session_expired' => 'Your session expired. Open the source again.',
                 'video_not_ready' => 'Google Photos is still processing this video. Try again in a few minutes.',
                 'google_connect_failed' => 'Could not connect to Google. Please try again.',
@@ -360,7 +360,7 @@ return [
                 'play' => 'Play preview',
                 'pause' => 'Pause preview',
                 'remove' => 'Remove music',
-                'part_hint' => 'Instagram doesn\'t let TryPost choose which part of a track plays.',
+                'part_hint' => 'Instagram doesn\'t let Social HQ choose which part of a track plays.',
                 'volume' => 'Volume',
                 'video_volume' => 'Video',
                 'audio_volume' => 'Music',
@@ -1017,7 +1017,7 @@ return [
         ],
         'created_by' => 'Created by :name :when',
         'welcome' => [
-            'title' => 'Welcome to TryPost 👋',
+            'title' => 'Welcome to Social HQ 👋',
             'description' => 'Connect a channel to start planning and publishing your posts.',
             'invite' => 'Invite your team',
             'connect_more' => 'Connect more channels',

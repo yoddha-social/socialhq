@@ -52,10 +52,10 @@ return [
     'plan_cancel_anytime' => 'Anuluj w dowolnym momencie',
     'mcp' => [
         'title' => 'Zarządzaj social mediami w czacie',
-        'description' => 'Twórz, planuj i analizuj posty w TryPost z ulubioną AI.',
+        'description' => 'Twórz, planuj i analizuj posty w Social HQ z ulubioną AI.',
         'connect_with' => 'Połącz z :client',
         'connect_ai' => 'Połącz swoją AI',
-        'pick_ai' => 'Gdzie chcesz używać TryPost?',
+        'pick_ai' => 'Gdzie chcesz używać Social HQ?',
         'connect_other' => 'Połącz inną aplikację',
         'connected' => ':client jest połączony',
         'benefits' => [

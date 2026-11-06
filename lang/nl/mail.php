@@ -8,7 +8,7 @@ return [
         'tagline' => 'Verzonden door het :brand-team',
         'manage_notifications' => 'Meldingen beheren',
         'signoff' => 'Met vriendelijke groet,',
-        'team' => 'Het TryPost-team',
+        'team' => 'Het Social HQ-team',
     ],
 
     'account_disconnected' => [
@@ -19,7 +19,7 @@ return [
         'intro' => 'Het onderstaande account is losgekoppeld van de werkruimte :workspace.',
         'reasons_title' => 'Dit kan zijn gebeurd omdat:',
         'reason_expired' => 'Je toegangstoken is verlopen',
-        'reason_revoked' => 'Je hebt de toegang van TryPost ingetrokken',
+        'reason_revoked' => 'Je hebt de toegang van Social HQ ingetrokken',
         'reason_error' => 'Er was een authenticatiefout',
         'reconnect_cta' => 'Verbind je account opnieuw om te blijven inplannen en publiceren.',
         'button' => 'Account opnieuw verbinden',
@@ -120,7 +120,7 @@ return [
         'heading' => 'Je post is gepubliceerd',
         'body' => 'Je post in de werkruimte :workspace is succesvol gepubliceerd.',
         'button' => 'Bekijk op social media',
-        'open_in_app' => 'Open in TryPost',
+        'open_in_app' => 'Open in Social HQ',
     ],
 
     'webhook_paused' => [
@@ -140,7 +140,7 @@ return [
         'intro' => 'De volgende social accounts in je workspace <strong>:workspace</strong> zijn losgekoppeld en moeten opnieuw worden gekoppeld:',
         'reasons_title' => 'Dit kan gebeurd zijn omdat:',
         'reason_expired' => 'Toegangstokens zijn verlopen',
-        'reason_revoked' => 'Je hebt de toegang van TryPost op het platform ingetrokken',
+        'reason_revoked' => 'Je hebt de toegang van Social HQ op het platform ingetrokken',
         'reason_changed' => 'Het platform heeft zijn authenticatievereisten gewijzigd',
         'reconnect_cta' => 'Koppel deze accounts opnieuw om posts te blijven plannen en publiceren.',
         'button' => 'Accounts opnieuw koppelen',

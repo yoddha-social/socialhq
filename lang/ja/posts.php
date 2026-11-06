@@ -57,8 +57,8 @@ return [
             'edit_in_canva' => ':name をCanvaで編集',
             'errors' => [
                 'import_failed' => 'ファイルをインポートできませんでした。もう一度お試しください。',
-                'popup_blocked' => 'ブラウザーがウィンドウをブロックしました。TryPost のポップアップを許可して、もう一度お試しください。',
-                'scope_not_granted' => 'TryPost には選択したファイルへのアクセスが必要です。もう一度お試しのうえ、アクセスを許可してください。',
+                'popup_blocked' => 'ブラウザーがウィンドウをブロックしました。Social HQ のポップアップを許可して、もう一度お試しください。',
+                'scope_not_granted' => 'Social HQ には選択したファイルへのアクセスが必要です。もう一度お試しのうえ、アクセスを許可してください。',
                 'session_expired' => 'セッションの有効期限が切れました。ソースをもう一度開いてください。',
                 'video_not_ready' => 'Google Photos はこの動画をまだ処理中です。数分後にもう一度お試しください。',
                 'google_connect_failed' => 'Google に接続できませんでした。もう一度お試しください。',
@@ -360,7 +360,7 @@ return [
                 'play' => '試聴',
                 'pause' => '一時停止',
                 'remove' => '音楽を削除',
-                'part_hint' => 'Instagramでは、曲のどの部分を再生するかをTryPostで選べません。',
+                'part_hint' => 'Instagramでは、曲のどの部分を再生するかをSocial HQで選べません。',
                 'volume' => '音量',
                 'video_volume' => '動画',
                 'audio_volume' => '音楽',
@@ -1017,7 +1017,7 @@ return [
         ],
         'created_by' => '作成者: :name :when',
         'welcome' => [
-            'title' => 'TryPostへようこそ 👋',
+            'title' => 'Social HQへようこそ 👋',
             'description' => 'チャンネルを接続して、投稿の計画と公開を始めましょう。',
             'invite' => 'チームを招待',
             'connect_more' => 'チャンネルを追加接続',

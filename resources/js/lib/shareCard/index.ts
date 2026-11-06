@@ -103,10 +103,10 @@ export const drawShareCard = (
     paintMark(context, options.mark);
 };
 
-/** The card at download resolution, off screen, as a PNG named after its metric and today: `trypost-followers-2026-10-31.png`. */
+/** The card at download resolution, off screen, as a PNG named after its metric and today: `socialhq-followers-2026-10-31.png`. */
 export const shareCardFile = async (options: ShareCardOptions): Promise<File> => {
     const canvas = document.createElement('canvas');
-    const name = `trypost-${options.key.replaceAll('_', '-')}-${date.userNow().format('YYYY-MM-DD')}.png`;
+    const name = `socialhq-${options.key.replaceAll('_', '-')}-${date.userNow().format('YYYY-MM-DD')}.png`;
 
     drawShareCard(canvas, options, await prepareShareCard(options));
 

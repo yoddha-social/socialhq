@@ -8,7 +8,7 @@ return [
         'tagline' => 'أُرسل بواسطة فريق :brand',
         'manage_notifications' => 'إدارة الإشعارات',
         'signoff' => 'مع التحية،',
-        'team' => 'فريق TryPost',
+        'team' => 'فريق Social HQ',
     ],
 
     'account_disconnected' => [
@@ -19,7 +19,7 @@ return [
         'intro' => 'تم فصل الحساب التالي عن مساحة العمل :workspace.',
         'reasons_title' => 'قد يكون هذا حدث للأسباب التالية:',
         'reason_expired' => 'انتهت صلاحية رمز الوصول',
-        'reason_revoked' => 'قمت بإلغاء وصول TryPost',
+        'reason_revoked' => 'قمت بإلغاء وصول Social HQ',
         'reason_error' => 'حدث خطأ في المصادقة',
         'reconnect_cta' => 'أعد ربط حسابك لمتابعة الجدولة والنشر.',
         'button' => 'إعادة ربط الحساب',
@@ -120,7 +120,7 @@ return [
         'heading' => 'تم نشر منشورك',
         'body' => 'تم نشر منشورك في مساحة العمل :workspace بنجاح.',
         'button' => 'عرض على الشبكة',
-        'open_in_app' => 'فتح في TryPost',
+        'open_in_app' => 'فتح في Social HQ',
     ],
 
     'webhook_paused' => [
@@ -140,7 +140,7 @@ return [
         'intro' => 'تم فصل الحسابات الاجتماعية التالية في مساحة العمل <strong>:workspace</strong> وتحتاج إلى إعادة الربط:',
         'reasons_title' => 'قد يكون هذا قد حدث بسبب:',
         'reason_expired' => 'انتهاء صلاحية رموز الوصول',
-        'reason_revoked' => 'قيامك بإلغاء وصول TryPost على المنصة',
+        'reason_revoked' => 'قيامك بإلغاء وصول Social HQ على المنصة',
         'reason_changed' => 'قيام المنصة بتغيير متطلبات المصادقة الخاصة بها',
         'reconnect_cta' => 'يرجى إعادة ربط هذه الحسابات لمواصلة جدولة المنشورات ونشرها.',
         'button' => 'إعادة ربط الحسابات',

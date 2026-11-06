@@ -8,7 +8,7 @@ return [
         'tagline' => 'Gesendet vom :brand-Team',
         'manage_notifications' => 'Benachrichtigungen verwalten',
         'signoff' => 'Viele Grüße,',
-        'team' => 'Das TryPost-Team',
+        'team' => 'Das Social HQ-Team',
     ],
 
     'account_disconnected' => [
@@ -19,7 +19,7 @@ return [
         'intro' => 'Das folgende Konto wurde vom Workspace :workspace getrennt.',
         'reasons_title' => 'Mögliche Gründe:',
         'reason_expired' => 'Dein Zugriffstoken ist abgelaufen',
-        'reason_revoked' => 'Du hast den Zugriff von TryPost widerrufen',
+        'reason_revoked' => 'Du hast den Zugriff von Social HQ widerrufen',
         'reason_error' => 'Es gab einen Authentifizierungsfehler',
         'reconnect_cta' => 'Verbinde dein Konto neu, um weiter zu planen und zu veröffentlichen.',
         'button' => 'Konto neu verbinden',
@@ -120,7 +120,7 @@ return [
         'heading' => 'Dein Beitrag wurde veröffentlicht',
         'body' => 'Dein Beitrag im Workspace :workspace wurde erfolgreich veröffentlicht.',
         'button' => 'Im Netzwerk ansehen',
-        'open_in_app' => 'In TryPost öffnen',
+        'open_in_app' => 'In Social HQ öffnen',
     ],
 
     'webhook_paused' => [
@@ -140,7 +140,7 @@ return [
         'intro' => 'Die folgenden Social-Media-Konten in deinem Workspace <strong>:workspace</strong> wurden getrennt und müssen erneut verbunden werden:',
         'reasons_title' => 'Das kann folgende Gründe haben:',
         'reason_expired' => 'Zugriffstokens sind abgelaufen',
-        'reason_revoked' => 'Du hast den Zugriff von TryPost auf der Plattform widerrufen',
+        'reason_revoked' => 'Du hast den Zugriff von Social HQ auf der Plattform widerrufen',
         'reason_changed' => 'Die Plattform hat ihre Authentifizierungsanforderungen geändert',
         'reconnect_cta' => 'Bitte verbinde diese Konten erneut, um weiterhin Beiträge zu planen und zu veröffentlichen.',
         'button' => 'Konten erneut verbinden',

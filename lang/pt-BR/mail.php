@@ -8,7 +8,7 @@ return [
         'tagline' => 'Enviado pela equipe :brand',
         'manage_notifications' => 'Gerenciar notificações',
         'signoff' => 'Atenciosamente,',
-        'team' => 'A equipe TryPost',
+        'team' => 'A equipe Social HQ',
     ],
 
     'account_disconnected' => [
@@ -19,7 +19,7 @@ return [
         'intro' => 'A conta abaixo foi desconectada da área de trabalho :workspace.',
         'reasons_title' => 'Isso pode ter acontecido porque:',
         'reason_expired' => 'Seu token de acesso expirou',
-        'reason_revoked' => 'Você revogou o acesso do TryPost',
+        'reason_revoked' => 'Você revogou o acesso do Social HQ',
         'reason_error' => 'Ocorreu um erro de autenticação',
         'reconnect_cta' => 'Reconecte sua conta para continuar agendando e publicando.',
         'button' => 'Reconectar conta',
@@ -120,7 +120,7 @@ return [
         'heading' => 'Sua publicação foi ao ar',
         'body' => 'Sua publicação na área de trabalho :workspace foi publicada com sucesso.',
         'button' => 'Ver na rede social',
-        'open_in_app' => 'Abrir no TryPost',
+        'open_in_app' => 'Abrir no Social HQ',
     ],
 
     'webhook_paused' => [
@@ -140,7 +140,7 @@ return [
         'intro' => 'As seguintes contas de redes sociais no seu workspace <strong>:workspace</strong> foram desconectadas e precisam ser reconectadas:',
         'reasons_title' => 'Isso pode ter acontecido porque:',
         'reason_expired' => 'Os tokens de acesso expiraram',
-        'reason_revoked' => 'Você revogou o acesso ao TryPost na plataforma',
+        'reason_revoked' => 'Você revogou o acesso ao Social HQ na plataforma',
         'reason_changed' => 'A plataforma mudou os requisitos de autenticação',
         'reconnect_cta' => 'Por favor, reconecte essas contas para continuar agendando e publicando posts.',
         'button' => 'Reconectar Contas',

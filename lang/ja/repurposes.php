@@ -35,7 +35,7 @@ return [
 
     'source' => [
         'title' => 'ソース',
-        'description' => 'TryPost がこのアカウントを見張り、下で選んだ形式の新しい投稿を探します。',
+        'description' => 'Social HQ がこのアカウントを見張り、下で選んだ形式の新しい投稿を探します。',
         'watch_label' => '監視する形式',
         'watch_description' => 'リポストのきっかけになる投稿の種類。',
         'needs_reconnect' => '再接続が必要',
@@ -49,7 +49,7 @@ return [
 
     'empty' => [
         'title' => 'Repurpose はまだ設定されていません',
-        'description' => 'TryPost は選んだアカウントを監視し、新しい投稿を指定したネットワークに再投稿します。',
+        'description' => 'Social HQ は選んだアカウントを監視し、新しい投稿を指定したネットワークに再投稿します。',
     ],
 
     'table' => [
@@ -66,7 +66,7 @@ return [
 
     'create' => [
         'title' => '新しい Repurpose',
-        'description' => 'TryPost が見張るアカウントを選んでください。配信先は次の画面で選びます。',
+        'description' => 'Social HQ が見張るアカウントを選んでください。配信先は次の画面で選びます。',
         'source_label' => 'ソースアカウント',
         'source_placeholder' => 'アカウントを選択',
         'source_search' => 'アカウントを検索',
@@ -106,7 +106,7 @@ return [
         'watermark' => '監視開始',
         'last_polled' => '最終チェック',
         'draft_hint' => '宛先を1つ以上選んでから有効にしてください。有効化した後の投稿だけが複製されます。',
-        'active_hint' => 'TryPost はこのアカウントを定期的に確認し、新しい投稿をすべて複製します。',
+        'active_hint' => 'Social HQ はこのアカウントを定期的に確認し、新しい投稿をすべて複製します。',
         'paused_hint' => 'チェックを停止中です。再開すると止まった時点から続き、その間の投稿も失われません。',
         'disabled_hint' => 'オフです。もう一度有効にすると最初からになり、オフの間に投稿したものは対象外のままです。',
     ],
@@ -121,7 +121,7 @@ return [
         'original_from' => '元投稿 :date',
         'empty' => [
             'title' => 'まだ何もありません',
-            'description' => 'このアカウントが TryPost の外で公開した投稿がここに表示されます。',
+            'description' => 'このアカウントが Social HQ の外で公開した投稿がここに表示されます。',
         ],
         'open_post' => '投稿を開く',
         'statuses' => [
@@ -133,7 +133,7 @@ return [
             'failed' => '失敗',
         ],
         'reasons' => [
-            'published_via_trypost' => 'すでに TryPost から投稿済み',
+            'published_via_trypost' => 'すでに Social HQ から投稿済み',
             'media_url_missing' => 'ネットワークがダウンロード可能なファイルを返しませんでした。多くは著作権付き音源が原因です',
             'download_failed' => '動画をダウンロードできませんでした',
             'post_creation_failed' => '投稿を作成できませんでした',

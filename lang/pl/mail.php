@@ -8,7 +8,7 @@ return [
         'tagline' => 'Wysłane przez zespół :brand',
         'manage_notifications' => 'Zarządzaj powiadomieniami',
         'signoff' => 'Pozdrawiamy,',
-        'team' => 'Zespół TryPost',
+        'team' => 'Zespół Social HQ',
     ],
 
     'account_disconnected' => [
@@ -19,7 +19,7 @@ return [
         'intro' => 'Poniższe konto zostało odłączone od przestrzeni roboczej :workspace.',
         'reasons_title' => 'Mogło się to stać, ponieważ:',
         'reason_expired' => 'Twój token dostępu wygasł',
-        'reason_revoked' => 'Cofnięto dostęp dla TryPost',
+        'reason_revoked' => 'Cofnięto dostęp dla Social HQ',
         'reason_error' => 'Wystąpił błąd uwierzytelniania',
         'reconnect_cta' => 'Połącz konto ponownie, aby dalej planować i publikować posty.',
         'button' => 'Połącz konto ponownie',
@@ -120,7 +120,7 @@ return [
         'heading' => 'Twój post został opublikowany',
         'body' => 'Twój post w przestrzeni roboczej :workspace został opublikowany pomyślnie.',
         'button' => 'Zobacz w serwisie',
-        'open_in_app' => 'Otwórz w TryPost',
+        'open_in_app' => 'Otwórz w Social HQ',
     ],
 
     'webhook_paused' => [
@@ -140,7 +140,7 @@ return [
         'intro' => 'Następujące konta społecznościowe w Twojej przestrzeni roboczej <strong>:workspace</strong> zostały rozłączone i wymagają ponownego połączenia:',
         'reasons_title' => 'Mogło się to zdarzyć, ponieważ:',
         'reason_expired' => 'Tokeny dostępu wygasły',
-        'reason_revoked' => 'Cofnąłeś dostęp do TryPost na danej platformie',
+        'reason_revoked' => 'Cofnąłeś dostęp do Social HQ na danej platformie',
         'reason_changed' => 'Platforma zmieniła swoje wymagania dotyczące uwierzytelniania',
         'reconnect_cta' => 'Połącz te konta ponownie, aby kontynuować planowanie i publikowanie postów.',
         'button' => 'Połącz konta ponownie',

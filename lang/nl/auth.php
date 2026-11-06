@@ -20,8 +20,8 @@ return [
     'throttle' => 'Te veel inlogpogingen. Probeer het over :seconds seconden opnieuw.',
 
     'flash' => [
-        'welcome' => 'Welkom bij TryPost!',
-        'welcome_trial' => 'Welkom bij TryPost! Je proefperiode is gestart.',
+        'welcome' => 'Welkom bij Social HQ!',
+        'welcome_trial' => 'Welkom bij Social HQ! Je proefperiode is gestart.',
     ],
 
     'legal' => 'Door door te gaan ga je akkoord met onze <a href=":terms_url" target="_blank">Servicevoorwaarden</a> en <a href=":privacy_url" target="_blank">Privacybeleid</a>.',
@@ -60,7 +60,7 @@ return [
     'github_email_unavailable' => 'Kan je e-mailadres niet ophalen van GitHub. Maak je GitHub-e-mailadres openbaar of verleen de e-mailscope en probeer het opnieuw.',
 
     'login' => [
-        'title' => 'Inloggen bij TryPost',
+        'title' => 'Inloggen bij Social HQ',
         'page_title' => 'Inloggen',
         'email' => 'E-mailadres',
         'password' => 'Wachtwoord',
@@ -74,7 +74,7 @@ return [
     ],
 
     'register' => [
-        'title' => 'Maak een TryPost-account',
+        'title' => 'Maak een Social HQ-account',
         'page_title' => 'Registreren',
         'name' => 'Naam',
         'name_placeholder' => 'Volledige naam',

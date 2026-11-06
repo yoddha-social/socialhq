@@ -55,8 +55,8 @@ $direction = Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr';
             <tr>
               <td style="padding-top: 32px; padding-bottom: 32px">
                 <div style="text-align: center">
-                  <a href="https://trypost.it" target="_blank">
-                    <img src="{{ asset('/images/emails/logo-header.png') }}" width="150" height="auto" alt="TryPost" style="max-width: 100%; vertical-align: middle; width: 150px; height: auto">
+                  <a href="{{ config('app.url') }}" target="_blank">
+                    <img src="{{ asset('/images/emails/logo-header.png') }}" width="150" height="auto" alt="Social HQ" style="max-width: 100%; vertical-align: middle; width: 150px; height: auto">
                   </a>
                 </div>
               </td>
@@ -106,44 +106,12 @@ $direction = Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr';
             <tr>
               <td align="center" style="padding: 24px; text-align: center; font-size: 12px; line-height: 20px; color: #5a5a59">
                 <p style="margin: 0 0 8px">
-                  {!! str_replace(':brand', '<a href="https://trypost.it" target="_blank" style="color: inherit; font-weight: 600; text-decoration: none;">TryPost</a>', e(__('mail.layout.tagline'))) !!}
+                  {!! str_replace(':brand', '<a href="'.e(config('app.url')).'" target="_blank" style="color: inherit; font-weight: 600; text-decoration: none;">'.e(config('app.name')).'</a>', e(__('mail.layout.tagline'))) !!}
                 </p>
                 <p style="margin: 8px 0 0">
                   <a href="{{ route('app.notifications.preferences') }}" target="_blank" style="color: #5a5a59; text-decoration: underline">
                     {{ __('mail.layout.manage_notifications') }}
                   </a>
-                </p>
-                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-left: auto; margin-right: auto; margin-top: 12px">
-                  <tr>
-                    <td style="padding-left: 4px; padding-right: 4px">
-                      <a href="https://github.com/trypostit/trypost" target="_blank">
-                        <img src="{{ asset('/images/emails/social/github.png') }}" width="20" height="20" alt="GitHub" style="max-width: 100%; vertical-align: middle">
-                      </a>
-                    </td>
-                    <td style="padding-left: 4px; padding-right: 4px">
-                      <a href="https://x.com/trypostit" target="_blank">
-                        <img src="{{ asset('/images/emails/social/x.png') }}" width="20" height="20" alt="X" style="max-width: 100%; vertical-align: middle">
-                      </a>
-                    </td>
-                    <td style="padding-left: 4px; padding-right: 4px">
-                      <a href="https://www.youtube.com/@trypostit" target="_blank">
-                        <img src="{{ asset('/images/emails/social/youtube.png') }}" width="20" height="20" alt="YouTube" style="max-width: 100%; vertical-align: middle">
-                      </a>
-                    </td>
-                    <td style="padding-left: 4px; padding-right: 4px">
-                      <a href="https://trypost.it/discord" target="_blank">
-                        <img src="{{ asset('/images/emails/social/discord.png') }}" width="20" height="20" alt="Discord" style="max-width: 100%; vertical-align: middle">
-                      </a>
-                    </td>
-                    <td style="padding-left: 4px; padding-right: 4px">
-                      <a href="https://www.instagram.com/trypost.it" target="_blank">
-                        <img src="{{ asset('/images/emails/social/instagram.png') }}" width="20" height="20" alt="Instagram" style="max-width: 100%; vertical-align: middle">
-                      </a>
-                    </td>
-                  </tr>
-                </table>
-                <p style="margin: 12px 0 0">
-                  &copy; {{ date('Y') }} TryPost.it
                 </p>
               </td>
             </tr>

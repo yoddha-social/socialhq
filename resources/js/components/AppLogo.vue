@@ -1,34 +1,70 @@
 <script setup lang="ts">
+import { useId } from 'vue';
+
+import {
+    LOGO_DOT,
+    LOGO_GRADIENT,
+    LOGO_PATH,
+    LOGO_VIEW_BOX,
+} from '@/components/socialhq/logo';
+
 withDefaults(
     defineProps<{
-        /** `full` is the mark and the "trypost.it" wordmark, `mark` the round mark alone. */
+        /** `full` is the mark and the "Social HQ" wordmark, `mark` the mark alone. */
         variant?: 'full' | 'mark';
+        /** Size class for the mark, when it should not follow the text size. */
+        markClass?: string;
     }>(),
-    { variant: 'full' },
+    { variant: 'full', markClass: undefined },
 );
+
+// Each logo on the page needs its own gradient id: a shared one breaks
+// when the first logo using it is hidden.
+const gradientId = `socialhq-mark-${useId()}`;
+const viewBox = `${LOGO_VIEW_BOX.x} ${LOGO_VIEW_BOX.y} ${LOGO_VIEW_BOX.size} ${LOGO_VIEW_BOX.size}`;
 </script>
 
 <template>
     <span
         class="inline-flex shrink-0 items-center gap-[0.32em] font-logo leading-none font-bold tracking-[-0.01em] text-foreground"
         role="img"
-        aria-label="TryPost"
+        aria-label="Social HQ"
         data-testid="app-logo"
     >
         <svg
-            viewBox="0 0 410 410"
-            class="size-[1.15em] shrink-0 [clip-path:circle(50%)]"
+            :viewBox="viewBox"
+            :class="[
+                'shrink-0',
+                markClass ??
+                    (variant === 'full' ? 'size-[1.7em]' : 'size-[1.15em]'),
+            ]"
             aria-hidden="true"
         >
-            <rect width="410" height="410" class="fill-white dark:fill-[#040000]" />
-            <path d="M410 109.736V410H128.863L410 109.736Z" fill="#3660E0" />
-            <path d="M410 0H281.138L205 81.3178L410 300.264V0Z" fill="#855ED4" />
-            <path d="M0 0V300.264L205 81.3178L281.138 0H0Z" fill="#FFCC33" />
-            <path
-                d="M0 109.736V410H128.862L205 328.682L0 109.736Z"
-                fill="#F39200"
+            <defs>
+                <linearGradient
+                    :id="gradientId"
+                    :x1="LOGO_GRADIENT.from.x"
+                    :y1="LOGO_GRADIENT.from.y"
+                    :x2="LOGO_GRADIENT.to.x"
+                    :y2="LOGO_GRADIENT.to.y"
+                    gradientUnits="userSpaceOnUse"
+                >
+                    <stop
+                        v-for="stop in LOGO_GRADIENT.stops"
+                        :key="stop.offset"
+                        :offset="stop.offset"
+                        :stop-color="stop.color"
+                    />
+                </linearGradient>
+            </defs>
+            <path :d="LOGO_PATH" :fill="`url(#${gradientId})`" />
+            <circle
+                :cx="LOGO_DOT.cx"
+                :cy="LOGO_DOT.cy"
+                :r="LOGO_DOT.r"
+                :fill="LOGO_DOT.color"
             />
         </svg>
-        <span v-if="variant === 'full'" aria-hidden="true">trypost.it</span>
+        <span v-if="variant === 'full'" aria-hidden="true">Social HQ</span>
     </span>
 </template>

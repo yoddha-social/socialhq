@@ -99,7 +99,7 @@ return [
             ],
             'permissions' => [
                 'lead' => 'すべてのページと Instagram アカウントですべての権限を選択すること',
-                'rest' => '（TryPost に接続しないものも含め、接続時に選択）。',
+                'rest' => '（Social HQ に接続しないものも含め、接続時に選択）。',
             ],
         ],
         'learn_how' => '方法を見る。',
@@ -121,8 +121,8 @@ return [
         'close' => '閉じる',
         'title_single' => 'アカウントを接続',
         'title_select' => 'アカウントを選択',
-        'subtitle_single' => 'TryPost が :network で投稿するアカウントを選んでください。',
-        'subtitle_select' => 'TryPost が :network で投稿するアカウントを選んでください。',
+        'subtitle_single' => 'Social HQ が :network で投稿するアカウントを選んでください。',
+        'subtitle_select' => 'Social HQ が :network で投稿するアカウントを選んでください。',
         'selected' => ':count件選択中',
         'select_all' => 'すべて選択',
         'connected' => '接続済み',
@@ -153,7 +153,7 @@ return [
             ],
             'missing_permission' => [
                 'title' => '権限が必要です',
-                'description' => 'TryPost が投稿を公開するには権限が必要です。もう一度接続し、その権限をオンのままにしてください。',
+                'description' => 'Social HQ が投稿を公開するには権限が必要です。もう一度接続し、その権限をオンのままにしてください。',
             ],
             'expired' => [
                 'title' => 'この接続は期限切れです',
@@ -170,7 +170,7 @@ return [
             'start_again' => '最初から',
         ],
         'errors' => [
-            'bluesky_email_unconfirmed' => 'Blueskyの設定でメールアドレスを確認してから、アカウントを再接続してください。TryPostで動画を投稿するには、メールアドレスの確認が必要です。',
+            'bluesky_email_unconfirmed' => 'Blueskyの設定でメールアドレスを確認してから、アカウントを再接続してください。Social HQで動画を投稿するには、メールアドレスの確認が必要です。',
             'error_connecting' => 'アカウントの接続中にエラーが発生しました。もう一度お試しください。',
             'network_taken' => 'このワークスペースにはすでにこのネットワークのアカウントが接続されています。先に接続を解除してください。',
             'wrong_account' => '別のアカウントです。再接続するアカウントを認証してください。',
@@ -185,7 +185,7 @@ return [
             'page_not_found' => 'ページが見つかりません。',
             'channel_not_found' => 'チャンネルが見つかりません。',
             'pages_read_incomplete' => 'ページをすべて読み取れませんでした。少し時間をおいて再度お試しください。',
-            'publish_permission_missing' => 'TryPost が投稿を公開するには権限が必要です。もう一度接続し、その権限のチェックを外さないでください。',
+            'publish_permission_missing' => 'Social HQ が投稿を公開するには権限が必要です。もう一度接続し、その権限のチェックを外さないでください。',
             'cancelled' => '接続をキャンセルしました。',
             'pages_missing_permission' => 'ページは見つかりましたが、投稿できるものがありません。ページ自体での役割と、すべての権限が必要です。',
             'no_facebook_pages' => 'Facebook ページが見つかりません。少なくとも 1 つのページの管理者である必要があります。',

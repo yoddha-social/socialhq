@@ -35,7 +35,7 @@ return [
 
     'source' => [
         'title' => 'Origine',
-        'description' => 'TryPost tiene d\'occhio questo account per i nuovi post del formato qui sotto.',
+        'description' => 'Social HQ tiene d\'occhio questo account per i nuovi post del formato qui sotto.',
         'watch_label' => 'Osserva',
         'watch_description' => 'Il tipo di post che avvia un repost.',
         'needs_reconnect' => 'Da riconnettere',
@@ -49,7 +49,7 @@ return [
 
     'empty' => [
         'title' => 'Nessun repurpose configurato',
-        'description' => 'TryPost monitora l\'account che scegli e ripubblica ogni nuovo post sulle reti selezionate.',
+        'description' => 'Social HQ monitora l\'account che scegli e ripubblica ogni nuovo post sulle reti selezionate.',
     ],
 
     'table' => [
@@ -66,7 +66,7 @@ return [
 
     'create' => [
         'title' => 'Nuovo repurpose',
-        'description' => 'Scegli l\'account che TryPost deve seguire. Le destinazioni si scelgono nella schermata successiva.',
+        'description' => 'Scegli l\'account che Social HQ deve seguire. Le destinazioni si scelgono nella schermata successiva.',
         'source_label' => 'Account di origine',
         'source_placeholder' => 'Scegli un account',
         'source_search' => 'Cerca account',
@@ -106,7 +106,7 @@ return [
         'watermark' => 'In ascolto da',
         'last_polled' => 'Ultimo controllo',
         'draft_hint' => 'Scegli almeno una destinazione, poi attiva. Vengono replicati solo i post pubblicati dopo l\'attivazione.',
-        'active_hint' => 'TryPost controlla questo account con regolarità e replica ogni nuovo post.',
+        'active_hint' => 'Social HQ controlla questo account con regolarità e replica ogni nuovo post.',
         'paused_hint' => 'I controlli sono sospesi. Riprendendo si riparte da dove si era fermato e non si perde nulla.',
         'disabled_hint' => 'Disattivato. Riattivandolo si riparte da zero: ciò che hai pubblicato mentre era spento resta fuori.',
     ],
@@ -121,7 +121,7 @@ return [
         'original_from' => 'originale del :date',
         'empty' => [
             'title' => 'Ancora niente',
-            'description' => 'I post che questo account pubblica fuori da TryPost appariranno qui.',
+            'description' => 'I post che questo account pubblica fuori da Social HQ appariranno qui.',
         ],
         'open_post' => 'Apri post',
         'statuses' => [
@@ -133,7 +133,7 @@ return [
             'failed' => 'Non riuscito',
         ],
         'reasons' => [
-            'published_via_trypost' => 'Già pubblicato tramite TryPost',
+            'published_via_trypost' => 'Già pubblicato tramite Social HQ',
             'media_url_missing' => 'La rete non ha fornito un file scaricabile, di solito per audio protetto da copyright',
             'download_failed' => 'Non è stato possibile scaricare il video',
             'post_creation_failed' => 'Impossibile creare i post',

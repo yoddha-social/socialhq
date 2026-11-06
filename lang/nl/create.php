@@ -102,7 +102,7 @@ return [
             'subtitle' => 'Begin met de formaten die voor de meeste accounts werken.',
         ],
         'see_all' => 'Alles bekijken',
-        'by_trypost' => 'Door TryPost',
+        'by_trypost' => 'Door Social HQ',
         'by_author' => 'Door :name',
         'copy' => 'Sjabloon kopiëren',
         'copied' => 'Gekopieerd',

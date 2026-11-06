@@ -51,14 +51,14 @@ return [
         'title' => 'Preferences',
         'theme' => [
             'heading' => 'Appearance',
-            'description' => 'Choose how TryPost looks for you.',
+            'description' => 'Choose how Social HQ looks for you.',
             'light' => 'Light',
             'dark' => 'Dark',
             'system' => 'System',
         ],
         'language' => [
             'heading' => 'Language',
-            'description' => 'The language TryPost\'s interface is shown in.',
+            'description' => 'The language Social HQ\'s interface is shown in.',
             'search' => 'Search languages',
             'empty' => 'No language found',
             'suggestions' => 'Suggestions',
@@ -179,7 +179,7 @@ return [
         'delete_only_description' => 'You cannot delete your only workspace. Cancel your subscription in billing to stop paying, or delete your account in Authentication settings to cancel billing and permanently remove everything.',
         'delete_go_to_billing' => 'Go to billing',
         'delete_go_to_delete_account' => 'Delete account',
-        'delete_members_warning' => '{1}:count other member will lose access. Members without another TryPost workspace are permanently deleted.|[2,*]:count other members will lose access. Members without another TryPost workspace are permanently deleted.',
+        'delete_members_warning' => '{1}:count other member will lose access. Members without another Social HQ workspace are permanently deleted.|[2,*]:count other members will lose access. Members without another Social HQ workspace are permanently deleted.',
         'delete_action' => 'Delete workspace',
         'delete_cancel' => 'Cancel',
         'delete_confirm_title' => 'Delete workspace?',
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => 'An invite already exists for this email.',
-            'email_belongs_to_account' => 'This email already belongs to another TryPost account. Ask for a dedicated work email instead.',
+            'email_belongs_to_account' => 'This email already belongs to another Social HQ account. Ask for a dedicated work email instead.',
             'cannot_remove_self' => 'You cannot remove yourself.',
             'cannot_remove_owner' => 'You cannot remove the account owner.',
             'cannot_change_own_access' => 'You cannot change your own access.',

@@ -51,14 +51,14 @@ return [
         'title' => 'Preferências',
         'theme' => [
             'heading' => 'Aparência',
-            'description' => 'Escolha como o TryPost aparece para você.',
+            'description' => 'Escolha como o Social HQ aparece para você.',
             'light' => 'Claro',
             'dark' => 'Escuro',
             'system' => 'Sistema',
         ],
         'language' => [
             'heading' => 'Idioma',
-            'description' => 'O idioma da interface do TryPost.',
+            'description' => 'O idioma da interface do Social HQ.',
             'search' => 'Buscar idiomas',
             'empty' => 'Nenhum idioma encontrado',
             'suggestions' => 'Sugestões',
@@ -179,7 +179,7 @@ return [
         'delete_only_description' => 'Você não pode excluir seu único workspace. Cancele a assinatura na cobrança para parar de pagar, ou exclua sua conta em Autenticação para cancelar a cobrança e remover tudo permanentemente.',
         'delete_go_to_billing' => 'Ir para cobrança',
         'delete_go_to_delete_account' => 'Excluir conta',
-        'delete_members_warning' => '{1}:count outro membro perderá o acesso. Membros sem outro workspace no TryPost terão a conta excluída permanentemente.|[2,*]:count outros membros perderão o acesso. Membros sem outro workspace no TryPost terão a conta excluída permanentemente.',
+        'delete_members_warning' => '{1}:count outro membro perderá o acesso. Membros sem outro workspace no Social HQ terão a conta excluída permanentemente.|[2,*]:count outros membros perderão o acesso. Membros sem outro workspace no Social HQ terão a conta excluída permanentemente.',
         'delete_action' => 'Excluir workspace',
         'delete_cancel' => 'Cancelar',
         'delete_confirm_title' => 'Excluir workspace?',
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => 'Já existe um convite para este e-mail.',
-            'email_belongs_to_account' => 'Este e-mail já pertence a outra conta TryPost. Peça um e-mail de trabalho dedicado.',
+            'email_belongs_to_account' => 'Este e-mail já pertence a outra conta Social HQ. Peça um e-mail de trabalho dedicado.',
             'cannot_remove_self' => 'Você não pode remover a si mesmo.',
             'cannot_remove_owner' => 'Você não pode remover o dono da conta.',
             'cannot_change_own_access' => 'Você não pode alterar seu próprio acesso.',

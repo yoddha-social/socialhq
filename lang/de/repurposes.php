@@ -35,7 +35,7 @@ return [
 
     'source' => [
         'title' => 'Quelle',
-        'description' => 'TryPost beobachtet dieses Konto auf neue Beiträge im unten gewählten Format.',
+        'description' => 'Social HQ beobachtet dieses Konto auf neue Beiträge im unten gewählten Format.',
         'watch_label' => 'Beobachten',
         'watch_description' => 'Die Art von Beitrag, die einen Repost auslöst.',
         'needs_reconnect' => 'Neu verbinden nötig',
@@ -49,7 +49,7 @@ return [
 
     'empty' => [
         'title' => 'Noch kein Repurpose eingerichtet',
-        'description' => 'TryPost beobachtet das gewählte Konto und veröffentlicht jeden neuen Beitrag auf den ausgewählten Netzwerken erneut.',
+        'description' => 'Social HQ beobachtet das gewählte Konto und veröffentlicht jeden neuen Beitrag auf den ausgewählten Netzwerken erneut.',
     ],
 
     'table' => [
@@ -66,7 +66,7 @@ return [
 
     'create' => [
         'title' => 'Neues Repurpose',
-        'description' => 'Wähle das Konto, das TryPost beobachten soll. Die Ziele wählst du im nächsten Schritt.',
+        'description' => 'Wähle das Konto, das Social HQ beobachten soll. Die Ziele wählst du im nächsten Schritt.',
         'source_label' => 'Quellkonto',
         'source_placeholder' => 'Konto auswählen',
         'source_search' => 'Konten suchen',
@@ -106,7 +106,7 @@ return [
         'watermark' => 'Beobachtet seit',
         'last_polled' => 'Zuletzt geprüft',
         'draft_hint' => 'Wähle mindestens ein Ziel und aktiviere dann. Nur Beiträge nach der Aktivierung werden repliziert.',
-        'active_hint' => 'TryPost prüft dieses Konto regelmäßig und repliziert jeden neuen Beitrag.',
+        'active_hint' => 'Social HQ prüft dieses Konto regelmäßig und repliziert jeden neuen Beitrag.',
         'paused_hint' => 'Die Prüfungen pausieren. Beim Fortsetzen geht es dort weiter, wo es aufgehört hat, nichts geht verloren.',
         'disabled_hint' => 'Ausgeschaltet. Beim erneuten Aktivieren beginnt es von vorn: Was du währenddessen gepostet hast, bleibt außen vor.',
     ],
@@ -121,7 +121,7 @@ return [
         'original_from' => 'Original vom :date',
         'empty' => [
             'title' => 'Noch nichts',
-            'description' => 'Beiträge, die dieses Konto außerhalb von TryPost veröffentlicht, erscheinen hier.',
+            'description' => 'Beiträge, die dieses Konto außerhalb von Social HQ veröffentlicht, erscheinen hier.',
         ],
         'open_post' => 'Beitrag öffnen',
         'statuses' => [
@@ -133,7 +133,7 @@ return [
             'failed' => 'Fehlgeschlagen',
         ],
         'reasons' => [
-            'published_via_trypost' => 'Bereits über TryPost veröffentlicht',
+            'published_via_trypost' => 'Bereits über Social HQ veröffentlicht',
             'media_url_missing' => 'Das Netzwerk hat keine herunterladbare Datei bereitgestellt, meist wegen urheberrechtlich geschütztem Audio',
             'download_failed' => 'Das Video konnte nicht heruntergeladen werden',
             'post_creation_failed' => 'Die Beiträge konnten nicht erstellt werden',

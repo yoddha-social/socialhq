@@ -52,10 +52,10 @@ return [
     'plan_cancel_anytime' => 'Jederzeit kündbar',
     'mcp' => [
         'title' => 'Social Media per Chat steuern',
-        'description' => 'Erstelle, plane und analysiere Posts in TryPost mit deiner Lieblings-KI.',
+        'description' => 'Erstelle, plane und analysiere Posts in Social HQ mit deiner Lieblings-KI.',
         'connect_with' => 'Mit :client verbinden',
         'connect_ai' => 'Deine KI verbinden',
-        'pick_ai' => 'Wo willst du TryPost nutzen?',
+        'pick_ai' => 'Wo willst du Social HQ nutzen?',
         'connect_other' => 'Andere App verbinden',
         'connected' => ':client ist verbunden',
         'benefits' => [

@@ -51,14 +51,14 @@ return [
         'title' => 'Voorkeuren',
         'theme' => [
             'heading' => 'Weergave',
-            'description' => 'Kies hoe TryPost eruitziet.',
+            'description' => 'Kies hoe Social HQ eruitziet.',
             'light' => 'Licht',
             'dark' => 'Donker',
             'system' => 'Systeem',
         ],
         'language' => [
             'heading' => 'Taal',
-            'description' => 'De taal van de TryPost-interface.',
+            'description' => 'De taal van de Social HQ-interface.',
             'search' => 'Talen zoeken',
             'empty' => 'Geen taal gevonden',
             'suggestions' => 'Suggesties',
@@ -179,7 +179,7 @@ return [
         'delete_only_description' => 'Je kunt je enige workspace niet verwijderen. Zeg je abonnement op in facturatie om te stoppen met betalen, of verwijder je account bij Authenticatie om de facturatie te annuleren en alles permanent te wissen.',
         'delete_go_to_billing' => 'Naar facturatie',
         'delete_go_to_delete_account' => 'Account verwijderen',
-        'delete_members_warning' => '{1}:count ander lid verliest toegang. Leden zonder andere TryPost-workspace worden permanent verwijderd.|[2,*]:count andere leden verliezen toegang. Leden zonder andere TryPost-workspace worden permanent verwijderd.',
+        'delete_members_warning' => '{1}:count ander lid verliest toegang. Leden zonder andere Social HQ-workspace worden permanent verwijderd.|[2,*]:count andere leden verliezen toegang. Leden zonder andere Social HQ-workspace worden permanent verwijderd.',
         'delete_action' => 'Workspace verwijderen',
         'delete_cancel' => 'Annuleren',
         'delete_confirm_title' => 'Workspace verwijderen?',
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => 'Er bestaat al een uitnodiging voor dit e-mailadres.',
-            'email_belongs_to_account' => 'Dit e-mailadres behoort al tot een ander TryPost-account. Vraag om een speciaal werk-e-mailadres.',
+            'email_belongs_to_account' => 'Dit e-mailadres behoort al tot een ander Social HQ-account. Vraag om een speciaal werk-e-mailadres.',
             'cannot_remove_self' => 'Je kunt jezelf niet verwijderen.',
             'cannot_remove_owner' => 'Je kunt de accounteigenaar niet verwijderen.',
             'cannot_change_own_access' => 'Je kunt je eigen toegang niet wijzigen.',

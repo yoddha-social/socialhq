@@ -52,10 +52,10 @@ return [
     'plan_cancel_anytime' => 'Ακύρωση οποτεδήποτε',
     'mcp' => [
         'title' => 'Διαχειριστείτε τα social μέσω chat',
-        'description' => 'Φτιάξτε, προγραμματίστε και αναλύστε posts στο TryPost με την AI σας.',
+        'description' => 'Φτιάξτε, προγραμματίστε και αναλύστε posts στο Social HQ με την AI σας.',
         'connect_with' => 'Σύνδεση με :client',
         'connect_ai' => 'Συνδέστε την AI σας',
-        'pick_ai' => 'Πού θα χρησιμοποιήσετε το TryPost;',
+        'pick_ai' => 'Πού θα χρησιμοποιήσετε το Social HQ;',
         'connect_other' => 'Σύνδεση άλλης εφαρμογής',
         'connected' => 'Το :client συνδέθηκε',
         'benefits' => [

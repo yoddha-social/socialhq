@@ -516,7 +516,7 @@ test('a failed google drive sign-in opens no picker and shows the popup message'
         }));
         true;
     JS);
-    waitForComposerMediaSourcesCondition($page, "document.body.innerText.includes('TryPost needs access to the file you pick')");
+    waitForComposerMediaSourcesCondition($page, "document.body.innerText.includes('Social HQ needs access to the file you pick')");
 
     $page->assertSee($message)
         ->assertNotPresent('@composer-media-item')

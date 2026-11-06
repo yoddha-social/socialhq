@@ -13,6 +13,15 @@ return [
         'settings' => 'Workspace settings',
         'switch_to' => 'Switch workspace',
     ],
+    'auth_panel' => [
+        'heading' => 'Plan, write and publish your social media in one place.',
+        'points' => [
+            'plan' => 'Plan each month around your campaigns and festivals.',
+            'write' => 'Write posts with AI that knows your brand.',
+            'approve' => 'Review every post before it goes out.',
+        ],
+    ],
+
     'ai_graphics' => [
         'menu_item' => 'Generate with AI',
         'title' => 'Generate a graphic with AI',

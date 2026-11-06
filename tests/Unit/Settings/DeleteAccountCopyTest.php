@@ -34,22 +34,22 @@ $accountDeleteInvitedMemberMarkers = [
  * @var array<string, string>
  */
 $workspaceDeleteConditionalMemberMarkers = [
-    'en' => 'without another TryPost workspace',
-    'uk' => 'без іншого workspace у TryPost',
-    'pt-BR' => 'sem outro workspace no TryPost',
-    'es' => 'sin otro workspace en TryPost',
-    'fr' => 'sans autre workspace TryPost',
-    'de' => 'ohne anderen TryPost-Workspace',
-    'it' => 'senza un altro workspace TryPost',
-    'nl' => 'zonder andere TryPost-workspace',
-    'pl' => 'bez innego workspace w TryPost',
-    'el' => 'χωρίς άλλο workspace στο TryPost',
-    'ja' => '別のTryPostワークスペースがない',
-    'ko' => '다른 TryPost 워크스페이스가 없는',
-    'zh' => '没有其他 TryPost 工作区',
-    'ru' => 'без другого workspace в TryPost',
-    'tr' => 'Başka bir TryPost workspace',
-    'ar' => 'مساحة عمل أخرى في TryPost',
+    'en' => 'without another Social HQ workspace',
+    'uk' => 'без іншого workspace у Social HQ',
+    'pt-BR' => 'sem outro workspace no Social HQ',
+    'es' => 'sin otro workspace en Social HQ',
+    'fr' => 'sans autre workspace Social HQ',
+    'de' => 'ohne anderen Social HQ-Workspace',
+    'it' => 'senza un altro workspace Social HQ',
+    'nl' => 'zonder andere Social HQ-workspace',
+    'pl' => 'bez innego workspace w Social HQ',
+    'el' => 'χωρίς άλλο workspace στο Social HQ',
+    'ja' => '別のSocial HQワークスペースがない',
+    'ko' => '다른 Social HQ 워크스페이스가 없는',
+    'zh' => '没有其他 Social HQ 工作区',
+    'ru' => 'без другого workspace в Social HQ',
+    'tr' => 'Başka bir Social HQ workspace',
+    'ar' => 'مساحة عمل أخرى في Social HQ',
 ];
 
 test('workspace delete members warning describes conditional permanent deletion', function () {
@@ -57,7 +57,7 @@ test('workspace delete members warning describes conditional permanent deletion'
 
     expect($warning)
         ->toContain('lose access')
-        ->toContain('without another TryPost workspace')
+        ->toContain('without another Social HQ workspace')
         ->toContain('permanently deleted')
         ->not->toContain('personal account');
 });

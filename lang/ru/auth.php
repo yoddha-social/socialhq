@@ -20,8 +20,8 @@ return [
     'throttle' => 'Слишком много попыток входа. Повторите попытку через :seconds сек.',
 
     'flash' => [
-        'welcome' => 'Добро пожаловать в TryPost!',
-        'welcome_trial' => 'Добро пожаловать в TryPost! Ваш пробный период начался.',
+        'welcome' => 'Добро пожаловать в Social HQ!',
+        'welcome_trial' => 'Добро пожаловать в Social HQ! Ваш пробный период начался.',
     ],
 
     'legal' => 'Продолжая, вы соглашаетесь с нашими <a href=":terms_url" target="_blank">Условиями использования</a> и <a href=":privacy_url" target="_blank">Политикой конфиденциальности</a>.',
@@ -60,7 +60,7 @@ return [
     'github_email_unavailable' => 'Не удалось получить ваш email из GitHub. Сделайте email в GitHub публичным или предоставьте доступ к email, затем попробуйте снова.',
 
     'login' => [
-        'title' => 'Вход в TryPost',
+        'title' => 'Вход в Social HQ',
         'page_title' => 'Вход',
         'email' => 'Адрес email',
         'password' => 'Пароль',
@@ -74,7 +74,7 @@ return [
     ],
 
     'register' => [
-        'title' => 'Создайте аккаунт TryPost',
+        'title' => 'Создайте аккаунт Social HQ',
         'page_title' => 'Регистрация',
         'name' => 'Имя',
         'name_placeholder' => 'Полное имя',

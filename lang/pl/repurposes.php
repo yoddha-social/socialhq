@@ -35,7 +35,7 @@ return [
 
     'source' => [
         'title' => 'Źródło',
-        'description' => 'TryPost obserwuje to konto w poszukiwaniu nowych postów w formacie poniżej.',
+        'description' => 'Social HQ obserwuje to konto w poszukiwaniu nowych postów w formacie poniżej.',
         'watch_label' => 'Obserwuj',
         'watch_description' => 'Rodzaj posta, który uruchamia repost.',
         'needs_reconnect' => 'Wymaga ponownego połączenia',
@@ -49,7 +49,7 @@ return [
 
     'empty' => [
         'title' => 'Nie skonfigurowano jeszcze repurpose',
-        'description' => 'TryPost obserwuje wybrane konto i publikuje każdy nowy post w zaznaczonych sieciach.',
+        'description' => 'Social HQ obserwuje wybrane konto i publikuje każdy nowy post w zaznaczonych sieciach.',
     ],
 
     'table' => [
@@ -66,7 +66,7 @@ return [
 
     'create' => [
         'title' => 'Nowy repurpose',
-        'description' => 'Wybierz konto, które TryPost ma obserwować. Cele wybierzesz na następnym ekranie.',
+        'description' => 'Wybierz konto, które Social HQ ma obserwować. Cele wybierzesz na następnym ekranie.',
         'source_label' => 'Konto źródłowe',
         'source_placeholder' => 'Wybierz konto',
         'source_search' => 'Szukaj kont',
@@ -106,7 +106,7 @@ return [
         'watermark' => 'Obserwuje od',
         'last_polled' => 'Ostatnie sprawdzenie',
         'draft_hint' => 'Wybierz co najmniej jeden cel i aktywuj. Replikowane są tylko posty opublikowane po aktywacji.',
-        'active_hint' => 'TryPost regularnie sprawdza to konto i replikuje każdy nowy post.',
+        'active_hint' => 'Social HQ regularnie sprawdza to konto i replikuje każdy nowy post.',
         'paused_hint' => 'Sprawdzanie jest wstrzymane. Wznowienie kontynuuje od miejsca zatrzymania i nic nie ginie.',
         'disabled_hint' => 'Wyłączone. Ponowna aktywacja zaczyna od zera: to, co opublikowałeś w międzyczasie, zostaje pominięte.',
     ],
@@ -121,7 +121,7 @@ return [
         'original_from' => 'oryginał z :date',
         'empty' => [
             'title' => 'Jeszcze nic',
-            'description' => 'Posty publikowane przez to konto poza TryPost pojawią się tutaj.',
+            'description' => 'Posty publikowane przez to konto poza Social HQ pojawią się tutaj.',
         ],
         'open_post' => 'Otwórz post',
         'statuses' => [
@@ -133,7 +133,7 @@ return [
             'failed' => 'Niepowodzenie',
         ],
         'reasons' => [
-            'published_via_trypost' => 'Już opublikowane przez TryPost',
+            'published_via_trypost' => 'Już opublikowane przez Social HQ',
             'media_url_missing' => 'Sieć nie udostępniła pliku do pobrania, zwykle z powodu dźwięku chronionego prawem autorskim',
             'download_failed' => 'Nie udało się pobrać filmu',
             'post_creation_failed' => 'Nie udało się utworzyć postów',

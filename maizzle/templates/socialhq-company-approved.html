@@ -1,0 +1,17 @@
+<x-main>
+  <x-message authenticated="true">
+    <x-heading>
+      @{{ __('mail.socialhq_company_approved.heading', ['company' => $companyName]) }}
+    </x-heading>
+
+    <p class="m-0 leading-6">
+      @{{ __('mail.socialhq_company_approved.body') }}
+    </p>
+
+    <x-spacer height="24px" />
+
+    <x-button href="@{{ $url }}">
+      @{{ __('mail.socialhq_company_approved.button') }}
+    </x-button>
+  </x-message>
+</x-main>

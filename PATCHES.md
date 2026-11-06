@@ -70,6 +70,9 @@ Change a TryPost file when that is the right place, and add a row.
 | 93 | `.github/workflows/release-docker.yml` | Deleted | TryPost's own image release; ours is `socialhq-image.yml` |
 | 94 | `tests/Browser/CalendarDragAndDropTest.php` | "The hour under way" test uses the app's five-minute rule and accepts either outcome in the minute when the page's clock may differ (8 lines) | It used six minutes, so it failed whenever it ran in minute :54 of an hour |
 | 95 | `tests/Browser/{SidebarMenu,SidebarLanguageSwitch,WelcomeMcp,McpSettings,ComposerMediaSources,AuthLanguageSwitcher,InsightsShareChart}Test.php` | Expect the Social HQ name, share card file name and support links (17 lines) | The rebrand changed that copy; the tests still asserted TryPost's |
+| 95 | `tests/Browser/{SidebarMenu,SidebarLanguageSwitch,WelcomeMcp,McpSettings,ComposerMediaSources,AuthLanguageSwitcher,InsightsShareChart}Test.php` | Expect the Social HQ name, share card file name and support links (18 lines) | The rebrand changed that copy; the tests still asserted TryPost's |
+| 4 | `app/Ai/Agents/{IdeaGenerator,MediaAltTextGenerator,PostContentShortener,PostWritingAssistant}.php` | `#[Temperature(x)]` replaced by `use UsesModelSafeTemperature` plus `preferredTemperature()` returning the same value | Claude 5 models reject `temperature`, which broke every AI feature. Candidate for an upstream PR |
+| 5 | `app/Support/Timezone.php` | `normalize()` asks ICU for an alias's canonical name without first requiring it in PHP's legacy tz list | Without the legacy tz database (Ubuntu's tzdata-legacy), every legacy alias became UTC; this also kept CI red. Proposed upstream (trypostit/trypost#478) |
 
 Files we **added** aren't listed here; they're under the module paths in
 SOCIALHQ.md, plus `config/socialhq.php`, `routes/socialhq.php`, `CLAUDE.md`,

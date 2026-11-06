@@ -6,6 +6,7 @@ use App\Ai\Agents\IdeaGenerator;
 use App\Ai\Agents\PostWritingAssistant;
 use App\Enums\Ai\PostAssistantMode;
 use App\Enums\User\Locale;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Knowledge\BrandKnowledge;
@@ -250,4 +251,33 @@ test('the caption assistant and the idea generator write from the current worksp
 
     expect((new PostWritingAssistant(PostAssistantMode::Generate, '', Locale::DEFAULT))->instructions())
         ->not->toContain('What the team knows about this brand');
+});
+
+test('example posts reach the prompt in their own section, read for tone', function () {
+    knowledgeEntry($this->workspace, ['title' => 'Price list', 'body' => 'Rs 2,400 a bag.']);
+    knowledgeEntry($this->workspace, ['kind' => 'example_post', 'title' => 'Dashain reel', 'body' => 'Ghar jaane bela bhayo! Pack your dhaka bag.']);
+
+    $text = BrandKnowledge::forPrompt($this->workspace);
+
+    expect($text)->toContain("What to know:\n- Product or service: Price list")
+        ->and($text)->toContain("Example posts in the brand's voice")
+        ->and($text)->toContain("- Dashain reel\n  Ghar jaane bela bhayo!")
+        ->and($text)->not->toContain('Example post: Dashain reel');
+});
+
+test('the page shows the pillars and posts per week the plan uses', function () {
+    $channel = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
+    BrandProfile::query()->create([
+        'workspace_id' => $this->workspace->id,
+        'pillars' => ['Craft', 'Offers'],
+        'cadence' => [$channel->id => 3],
+    ]);
+
+    $this->actingAs($this->owner)
+        ->get(route('socialhq.brand.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('pillars', ['Craft', 'Offers'])
+            ->where("cadence.{$channel->id}", 3)
+            ->where('planChannels.0.id', $channel->id)
+            ->has('planChannels.0.content_types'));
 });

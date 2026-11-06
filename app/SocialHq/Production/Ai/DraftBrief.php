@@ -53,7 +53,8 @@ final class DraftBrief
         $response = (new BriefWriter(
             language: $user->locale->promptLanguage(),
             context: $context,
-            brandKnowledge: BrandKnowledge::forPrompt($brief->workspace, $item->title),
+            // What the brief is about: the item, and the caption it illustrates.
+            brandKnowledge: BrandKnowledge::forPrompt($brief->workspace, collect([$item->title, $item->angle, $version?->caption])->filter()->implode("\n")),
             isVideo: $brief->kind === BriefKind::Video,
         ))->prompt('Draft the brief for this post.');
 

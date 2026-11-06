@@ -8,6 +8,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Models\SocialAccount;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Knowledge\BrandKnowledge;
+use App\SocialHq\Knowledge\Calendars\OldCalendars;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\ItemStatus;
 use App\SocialHq\Plan\PastPerformance;
@@ -22,7 +23,7 @@ use Illuminate\Support\Collection;
  * Everything the AI planner is told about a month, as one JSON-ready array:
  * the days, the team's goals, the brand, its pillars, its channels with their
  * cadence and formats, the month's events (confirmed or not, flagged), what is
- * already planned, and how recent posts did.
+ * already planned, how recent posts did, and the team's old calendars.
  */
 final class PlannerContext
 {
@@ -46,6 +47,7 @@ final class PlannerContext
      *     events: list<array{key: string, name: string, category: string, starts_on: string, ends_on: string, confirmed: bool}>,
      *     already_planned: list<array{title: string, date: string, channel: string|null}>,
      *     past_posts: list<array<string, mixed>>,
+     *     old_calendar: list<array<string, mixed>>,
      * }
      */
     public static function build(ContentPlan $plan, CarbonImmutable $today): array
@@ -56,6 +58,8 @@ final class PlannerContext
         $profile = PlanOptions::profile($workspace);
         $channels = PlanOptions::channels($workspace);
         $cadence = PlanOptions::cadence($profile, $channels);
+        $events = PlanOptions::events($workspace, $month, $end);
+        $pillars = PlanOptions::pillars($profile);
 
         return [
             'month' => PlanMonth::key($month),
@@ -65,8 +69,8 @@ final class PlannerContext
                 ->values()
                 ->all(),
             'goals' => filled($plan->goals) ? trim((string) $plan->goals) : null,
-            'brand' => BrandKnowledge::forPrompt($workspace),
-            'pillars' => PlanOptions::pillars($profile),
+            'brand' => BrandKnowledge::forPrompt($workspace, self::focus($plan, $pillars, $events, $channels)),
+            'pillars' => $pillars,
             'channels' => $channels->map(fn (SocialAccount $channel): array => [
                 'key' => $channel->id,
                 'platform' => $channel->platform->value,
@@ -74,7 +78,7 @@ final class PlannerContext
                 'posts_per_week' => data_get($cadence, $channel->id),
                 'content_types' => array_map(fn (ContentType $type): string => $type->value, PlanOptions::contentTypesFor($channel->platform)),
             ])->values()->all(),
-            'events' => PlanOptions::events($workspace, $month, $end)->map(fn (CalendarEvent $event): array => [
+            'events' => $events->map(fn (CalendarEvent $event): array => [
                 'key' => $event->key,
                 'name' => $event->name,
                 'category' => $event->category->value,
@@ -95,7 +99,26 @@ final class PlannerContext
                 ->values()
                 ->all(),
             'past_posts' => self::pastPosts($workspace->id),
+            'old_calendar' => OldCalendars::forPlanner($workspace->id, $month),
         ];
+    }
+
+    /**
+     * What the month is about, for picking brand knowledge: the team's goals,
+     * the pillars, the confirmed events and the channels' networks.
+     *
+     * @param  list<string>  $pillars
+     * @param  Collection<int, CalendarEvent>  $events
+     * @param  Collection<int, SocialAccount>  $channels
+     */
+    public static function focus(ContentPlan $plan, array $pillars, Collection $events, Collection $channels): string
+    {
+        return collect([
+            trim((string) $plan->goals),
+            implode(', ', $pillars),
+            $events->filter(fn (CalendarEvent $event): bool => $event->isVerified())->pluck('name')->implode(', '),
+            $channels->map(fn (SocialAccount $channel): string => $channel->platform->label())->unique()->implode(', '),
+        ])->filter()->implode("\n");
     }
 
     /**

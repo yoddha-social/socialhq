@@ -37,7 +37,7 @@ final class WriteItemCopy
         $response = (new CopyWriter(
             language: $user->locale->promptLanguage(),
             context: self::context($item),
-            brandKnowledge: BrandKnowledge::forPrompt($item->workspace, $item->title),
+            brandKnowledge: BrandKnowledge::forPrompt($item->workspace, self::focus($item)),
             isVideo: $isVideo,
             isRewrite: $latest !== null,
             maxLength: $maxLength === null ? null : self::captionBudget($maxLength, $maxHashtags, $latest?->hashtags),
@@ -68,6 +68,23 @@ final class WriteItemCopy
             'script' => $isVideo ? Str::substr(trim((string) data_get($response, 'script')), 0, 20000) : null,
             'notes' => Str::substr($notes, 0, 5000),
         ], ItemSource::Ai);
+    }
+
+    /**
+     * What the copy is about, for picking brand knowledge: the item's title,
+     * objective, angle, pillar, event and format, and the open change requests.
+     */
+    public static function focus(PlanItem $item): string
+    {
+        return collect([
+            $item->title,
+            $item->objective,
+            $item->angle,
+            $item->pillar,
+            $item->event?->name,
+            $item->content_type?->label(),
+            ...ItemCopy::openChangeRequests($item),
+        ])->map(fn (mixed $part): string => trim((string) $part))->filter()->implode("\n");
     }
 
     /**

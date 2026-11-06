@@ -106,9 +106,46 @@ the user's current workspace; their controllers authorize that workspace. New
 features (calendar drafts, scripts, briefs) call `forPrompt()` with the
 workspace they work for and pass the text to their own prompt view.
 
+**Old calendars** (same page): admins import past content calendars as CSV
+or XLSX (up to 5 MB and 5,000 rows, 50 per brand; `knowledge.calendars` in
+`config/socialhq.php`). The upload waits on the private `local` disk while
+the admin matches columns (guessed from English and Nepali headers; only
+the date is required) and the date order; importing stores the rows in
+`shq_past_posts` and deletes the file. Rows without a readable AD date, in
+the future or with a Bikram Sambat year (2070–2099) are skipped with a
+reason; dates are never converted. Uploads never imported are pruned after
+a day (`socialhq:calendars:prune`, hourly). The planner gets up to 60 rows
+(`old_calendar`): the plan's month in earlier years first, then the best by
+engagement, reach or views, then the newest. Code:
+`app/SocialHq/Knowledge/Calendars/`.
+
 The planner, the copy writer and the brief writer read it too (see Planning).
-Not yet: picking the entries that match the request (embeddings through the
-`embed` task; `forPrompt()` already takes the request as `$focus`).
+
+**Documents.** Admins upload PDF, Word (.docx), PowerPoint (.pptx), text and
+Markdown files (type checked by content, up to 10 MB, 30 per workspace;
+`socialhq.knowledge.documents`). They live on the private `local` disk under
+`socialhq/knowledge/{workspace}/`, are downloaded only by members, and go with
+the document or the workspace. `ExtractKnowledgeDocument` (queued) reads the
+text (`DocumentText`: zip sizes checked before reading, at most 300,000
+characters) into excerpts of about 900 characters (`Chunker`). A scan with no
+text, a password or a damaged file fails with a reason the page shows. To
+change the text, delete and upload again.
+
+**Focus and search.** Every caller passes what it writes about as `$focus`:
+the planner the month's goals, pillars, confirmed events and networks; the
+copy writer the item (title, objective, angle, pillar, event, format) and open
+change requests; the brief writer the item and its caption; TryPost's caption
+assistant and idea generator the request typed in their form
+(`TryPostPromptFocus`). With a focus the order is: profile, pinned entries,
+the entries and up to 6 excerpts that match (best first, under
+"From documents:"), then the newest entries, in 8000 characters
+(`SOCIALHQ_KNOWLEDGE_PROMPT_CHARACTERS_FOCUSED`). Without one, nothing
+changes and documents stay out. Search is `KnowledgeSearch`, today BM25 over
+words in PHP (`LexicalKnowledgeSearch`, Unicode words so Nepali works, entry
+titles count triple). "Check what the AI reads" on the page shows what a topic
+gets. Embeddings (the `embed` task, pgvector) would add meaning ("cost" finding
+"price", English finding Nepali): a vector per entry and excerpt, blended with
+the word scores, bound in place of the lexical class.
 
 ## Planning (Plan in the sidebar)
 

@@ -1,0 +1,96 @@
+<?php
+
+declare(strict_types=1);
+
+// Social HQ copy, English only: bin/socialhq-sync-lang copies it to the other locales.
+
+return [
+    'documents' => [
+        'title' => 'Documents',
+        'description' => 'Brochures, price lists and decks. When the AI writes about something they cover, it reads the matching parts.',
+        'upload' => 'Upload document',
+        'empty' => 'No documents yet. Upload a brochure or a price list, and the AI uses its facts when a post is about them.',
+        'empty_member' => 'No documents yet. A workspace admin can upload brochures and price lists here.',
+        'limit_reached' => 'You\'ve uploaded :count documents, the most a brand can have. To upload another, delete one you no longer need.',
+        'types' => [
+            'pdf' => 'PDF',
+            'docx' => 'Word',
+            'pptx' => 'PowerPoint',
+            'txt' => 'Text',
+            'md' => 'Markdown',
+        ],
+        'pages' => ':count page|:count pages',
+        'slides' => ':count slide|:count slides',
+        'characters' => ':count characters',
+        'truncated' => 'Only the first :count characters are read. To use the rest, split the file and upload the parts.',
+        'status' => [
+            'processing' => 'Reading…',
+            'ready' => 'Ready',
+            'failed' => 'Couldn\'t read it',
+        ],
+        'in_ai' => 'Used when relevant',
+        'not_in_ai' => 'Not used by AI',
+        'failures' => [
+            'no_text' => 'We couldn\'t find any text in this file. If it\'s a scan, paste the text as a knowledge entry instead.',
+            'protected' => 'This file is password-protected. Save a copy without the password, then upload that.',
+            'too_big' => 'This file holds more than we can read. Split it into smaller files, then upload them.',
+            'unreadable' => 'We couldn\'t read this file. Check that it opens on your computer, then upload it again.',
+        ],
+        'download' => 'Download',
+        'download_label' => 'Download :title',
+        'more_label' => 'More actions for :title',
+        'edit' => 'Edit',
+        'delete' => 'Delete',
+        'delete_title' => 'Delete ":title"?',
+        'delete_description' => 'The file and its text leave brand knowledge, and the AI stops using them.',
+        'confirm_delete' => 'Delete document',
+        'dialog' => [
+            'upload_title' => 'Upload a document',
+            'upload_description' => 'PDF, Word, PowerPoint, text or Markdown, up to :size MB.',
+            'file' => 'File',
+            'choose' => 'Choose file',
+            'no_file' => 'No file chosen',
+            'title' => 'Title',
+            'title_hint' => 'Leave it empty to use the file name.',
+            'use_in_ai' => 'Use in AI writing',
+            'use_in_ai_hint' => 'The AI reads the parts of this document that match what it writes about.',
+            'edit_title' => 'Edit document',
+            'edit_description' => 'To change the text, delete this document and upload the new file.',
+            'cancel' => 'Cancel',
+            'upload' => 'Upload',
+            'save' => 'Save',
+        ],
+        'errors' => [
+            'type' => 'This file type isn\'t supported. Upload a PDF, Word (.docx), PowerPoint (.pptx), text or Markdown file.',
+            'required' => 'Choose a file to upload.',
+            'too_large' => 'This file is larger than :size MB. Upload a smaller file, or split it into parts.',
+            'too_many' => 'You\'ve uploaded :count documents, the most a brand can have. To upload another, delete one you no longer need.',
+        ],
+        'flash' => [
+            'uploaded' => 'Uploaded ":title". It\'s ready once it has been read.',
+            'saved' => 'Document saved.',
+            'deleted' => 'Document deleted.',
+        ],
+    ],
+
+    'check' => [
+        'title' => 'Check what the AI reads',
+        'description' => 'Type a topic as you would ask the AI. You see the brand knowledge it gets for it, in order.',
+        'label' => 'Topic',
+        'placeholder' => 'Dashain offer on trekking bags',
+        'submit' => 'Check',
+        'failed' => 'Couldn\'t check right now. Try again.',
+        'usage' => ':used of :budget characters',
+        'profile' => 'Brand profile',
+        'profile_trimmed' => 'Shortened to fit',
+        'from_document' => 'From :title',
+        'reasons' => [
+            'pinned' => 'Always used',
+            'matched' => 'Matches the topic',
+            'newest' => 'Newest',
+        ],
+        'size' => ':count characters',
+        'nothing' => 'The AI gets no brand knowledge yet. Add a brand profile, knowledge entries or documents first.',
+        'no_match' => 'Nothing matches this topic, so the AI gets the pinned and newest entries.',
+    ],
+];

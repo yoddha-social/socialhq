@@ -2796,11 +2796,17 @@ test('the hour under way takes a drop five minutes from now while that is still 
     waitForGone($page, '@calendar-grid[aria-busy]');
 
     $scheduledAt = $post->refresh()->scheduled_at;
-    $insideTheHour = $now->addMinutes(6)->format('Y-m-d H') === $now->format('Y-m-d H');
+    $fitsTheHour = fn (CarbonImmutable $at): bool => $at->addMinutes(5)->format('Y-m-d H') === $now->format('Y-m-d H');
+    $moved = $scheduledAt->between($now->addMinutes(4), $now->addMinutes(6)) && $scheduledAt->format('H') === $now->format('H');
+    $kept = $scheduledAt->equalTo($now->addDay()->startOfHour());
 
-    expect($insideTheHour
-        ? $scheduledAt->between($now->addMinutes(4), $now->addMinutes(6)) && $scheduledAt->format('H') === $now->format('H')
-        : $scheduledAt->equalTo($now->addDay()->startOfHour()))->toBeTrue();
+    // The page reads its clock a moment after $now, so in the minute when five
+    // minutes from now leaves the hour, either outcome is right.
+    expect(match (true) {
+        $fitsTheHour($now->addMinute()) => $moved,
+        ! $fitsTheHour($now) => $kept,
+        default => $moved || $kept,
+    })->toBeTrue();
     $page->assertMissing('@calendar-reschedule-error-toast')
         ->assertNoJavaScriptErrors();
 });

@@ -185,7 +185,7 @@ test('the user menu has a help and support submenu with the support links', func
             trigger.click();
             await wait(600);
             return {
-                links: ['help-center', 'discord', 'feature-requests', 'github']
+                links: ['help-center', 'feature-requests', 'github']
                     .map((key) => document.querySelector(`[data-testid="sidebar-support-${key}"]`)?.getAttribute('href')),
                 chat: document.querySelector('[data-testid="sidebar-support-chat"]') !== null,
                 status: document.querySelector('[data-testid="sidebar-support-status"] iframe')?.getAttribute('src') ?? null,
@@ -200,9 +200,8 @@ test('the user menu has a help and support submenu with the support links', func
         ->and($links['status'])->toBe($selfHosted ? null : 'https://status.trypost.it/badge?theme=light')
         ->and($links['links'])->toBe([
             'https://docs.trypost.it',
-            'https://trypost.it/discord',
-            'https://github.com/orgs/trypostit/discussions/categories/feature-requests',
-            'https://github.com/trypostit',
+            'https://github.com/yoddha-social/socialhq/issues',
+            'https://github.com/yoddha-social/socialhq',
         ]);
 
     $page->assertNoJavaScriptErrors();

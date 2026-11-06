@@ -23,6 +23,8 @@ Change a TryPost file when that is the right place, and add a row.
 | 25 | `resources/views/prompts/post_content/assistant.blade.php` | `@include('prompts.socialhq.brand_knowledge')` before the closing rules (2 lines) | The caption assistant writes from the workspace's brand profile and knowledge (rows 20 to 24 are in the sign-up branch) |
 | 26 | `resources/views/prompts/ideas/generator.blade.php` | Same include before the rules (2 lines) | The idea generator does too |
 | 27 | `resources/js/composables/useSettingsNavigation.ts` | "Brand knowledge" in the Content group of the settings sidebar (13 lines) | Where people look for workspace content settings |
+| 90 | `app/Models/Traits/HasWorkspace.php` | `switchWorkspace()` also sets the `currentWorkspace` relation (1 line) | The relation stayed on the old workspace for the rest of the request; browser tests reuse the signed-in user across requests, so the sidebar kept the old name |
+| 5 | `app/Support/Timezone.php` | `normalize()` asks ICU for an alias's canonical name without first requiring it in PHP's legacy tz list | Without the legacy tz database (Ubuntu's tzdata-legacy), every legacy alias became UTC; this also kept CI red. Proposed upstream (trypostit/trypost#478) |
 
 Files we **added** aren't listed here; they're under the module paths in
 SOCIALHQ.md, plus `config/socialhq.php`, `routes/socialhq.php`, `CLAUDE.md`,

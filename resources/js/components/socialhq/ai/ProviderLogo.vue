@@ -15,7 +15,7 @@ const logos: Record<string, { component: Component; themed: boolean }> = {
     anthropic: { component: Anthropic, themed: true },
     cloudflare: { component: Cloudflare, themed: false },
     gemini: { component: Gemini, themed: false },
-    groq: { component: Groq, themed: true },
+    groq: { component: Groq, themed: false },
     mistral: { component: Mistral, themed: false },
     openai: { component: OpenAi, themed: true },
 };

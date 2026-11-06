@@ -216,7 +216,7 @@ const saveBudget = (): void => {
                             $t(`socialhq_ai.status.tasks.${route.task}`)
                         }}</span>
                         <span
-                            class="truncate text-muted-foreground"
+                            class="shrink-0 text-right text-muted-foreground"
                             :class="{ 'text-foreground': route.provider }"
                         >
                             {{

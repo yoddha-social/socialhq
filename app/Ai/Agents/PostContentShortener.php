@@ -6,15 +6,15 @@ namespace App\Ai\Agents;
 
 use App\SocialHq\Ai\AiTask;
 use App\SocialHq\Ai\UsesAiTask;
-use Laravel\Ai\Attributes\Temperature;
+use App\SocialHq\Ai\UsesModelSafeTemperature;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Promptable;
 
-#[Temperature(0.2)]
 class PostContentShortener implements Agent
 {
     use Promptable;
     use UsesAiTask;
+    use UsesModelSafeTemperature;
 
     public function __construct(
         public string $platformLabel,
@@ -36,5 +36,10 @@ class PostContentShortener implements Agent
             'limit' => $this->limit,
             'target' => max(1, (int) floor($this->limit * 0.95)),
         ])->render();
+    }
+
+    protected function preferredTemperature(): float
+    {
+        return 0.2;
     }
 }

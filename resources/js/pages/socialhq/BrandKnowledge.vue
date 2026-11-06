@@ -9,6 +9,8 @@ import BrandPlanningSection from '@/components/socialhq/BrandPlanningSection.vue
 import KnowledgeEntryDialog, {
     type KnowledgeEntryRow,
 } from '@/components/socialhq/KnowledgeEntryDialog.vue';
+import type { PastCalendar } from '@/components/socialhq/oldCalendars';
+import OldCalendarsSection from '@/components/socialhq/OldCalendarsSection.vue';
 import type { PlanChannel } from '@/components/socialhq/plan/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -44,6 +46,7 @@ const props = defineProps<{
     cadence: Record<string, number | null>;
     planChannels: PlanChannel[];
     canEdit: boolean;
+    pastCalendars: PastCalendar[];
 }>();
 
 const profileFields: { field: ProfileField; rows: number; hint: boolean }[] = [
@@ -418,6 +421,11 @@ const confirmDelete = (): void => {
                         </SettingsListRow>
                     </ul>
                 </section>
+
+                <OldCalendarsSection
+                    :calendars="pastCalendars"
+                    :can-edit="canEdit"
+                />
             </template>
         </div>
     </SettingsLayout>

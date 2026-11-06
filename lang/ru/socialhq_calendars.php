@@ -58,7 +58,7 @@ return [
         'title' => 'Import a calendar',
         'description' => 'Upload a CSV or Excel (.xlsx) file with one post per row. In Google Sheets, use File › Download.',
         'choose' => 'Choose a file',
-        'drop' => 'Or drop it here. CSV or .xlsx, up to :size MB.',
+        'drop' => 'Or drop the file here.',
         'uploading' => 'Reading the file…',
         'mapping_title' => 'Match the columns',
         'mapping_description' => 'Tell us which column holds what. Only the date is required.',

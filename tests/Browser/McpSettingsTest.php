@@ -142,7 +142,7 @@ test('the MCP settings open on the connected tab, whose empty state leads to the
     $page->click('@mcp-connect-claude');
     waitForMcpSettingsTestId($page, 'mcp-dialog-waiting');
 
-    $page->assertSeeIn('@mcp-dialog', 'Connect TryPost to Claude')
+    $page->assertSeeIn('@mcp-dialog', 'Connect Social HQ to Claude')
         ->assertSeeIn('@mcp-dialog-url', route('mcp.trypost'))
         ->keys('@mcp-dialog', 'Escape');
 
@@ -153,7 +153,7 @@ test('the MCP settings open on the connected tab, whose empty state leads to the
 
     $page->assertSeeIn('@mcp-dialog', __('mcp.other_dialog_title'))
         ->assertVisible('@mcp-dialog-step-add')
-        ->assertSeeIn('@mcp-dialog-name', 'TryPost')
+        ->assertSeeIn('@mcp-dialog-name', 'Social HQ')
         ->assertSeeIn('@mcp-dialog-config', '"mcpServers"')
         ->assertSeeIn('@mcp-dialog-config', route('mcp.trypost'))
         ->assertMissing('@mcp-dialog-open')

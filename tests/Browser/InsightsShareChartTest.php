@@ -71,7 +71,7 @@ beforeEach(function () {
     Http::fake(['*' => Http::response('', Response::HTTP_NOT_FOUND)]);
 });
 
-test('the followers chart opens a share card in a TryPost tint that turns into a post with the image', function () {
+test('the followers chart opens a share card in a Social HQ tint that turns into a post with the image', function () {
     [$user] = insightsShareBrowserUser();
     $this->actingAs($user);
 
@@ -93,7 +93,7 @@ test('the followers chart opens a share card in a TryPost tint that turns into a
     waitFor($page, '@post-composer-dialog');
     waitForGone($page, '@share-chart-dialog');
 
-    expect(Media::query()->where('original_filename', 'like', 'trypost-followers-%')->exists())->toBeTrue();
+    expect(Media::query()->where('original_filename', 'like', 'socialhq-followers-%')->exists())->toBeTrue();
     $page->assertNoJavaScriptErrors();
 });
 
@@ -355,7 +355,7 @@ test('downloading the share card saves a PNG named after the metric and today', 
     $page->click('@share-chart-download');
     waitForCondition($page, 'window.__downloads.length > 0');
 
-    expect($page->script('window.__downloads[0]'))->toMatch('/^trypost-followers-\d{4}-\d{2}-\d{2}\.png$/');
+    expect($page->script('window.__downloads[0]'))->toMatch('/^socialhq-followers-\d{4}-\d{2}-\d{2}\.png$/');
     $page->assertNoJavaScriptErrors();
 });
 

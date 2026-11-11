@@ -45,7 +45,7 @@ test('the picked language survives navigating between auth screens', function ()
     $page->click('@language-picker-option-pt-BR');
 
     waitForAuthLanguageTestId($page, 'language-picker-trigger');
-    $page->assertSee('Entrar no TryPost');
+    $page->assertSee('Entrar no Social HQ');
 
     $page->click('@login-sign-up-link');
     waitForAuthLanguageTestId($page, 'language-picker-trigger');

@@ -333,7 +333,7 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
     $page->click('@mcp-dialog-url-copy');
     waitForWelcomeMcpCopied($page, 2);
 
-    $page->assertSeeIn('@mcp-dialog', 'Connect TryPost to Claude')
+    $page->assertSeeIn('@mcp-dialog', 'Connect Social HQ to Claude')
         ->assertSeeIn('@mcp-dialog-url', route('mcp.trypost'))
         ->assertSeeIn('@mcp-dialog-step-paste', "Paste the URL into the connector's URL field")
         ->assertVisible('@mcp-dialog-step-add')
@@ -342,7 +342,7 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
         ->assertCount('[data-sonner-toast]', 0)
         ->assertAttribute('@mcp-dialog-open', 'target', '_blank');
 
-    expect(welcomeMcpCopied($page))->toBe(['TryPost', route('mcp.trypost')])
+    expect(welcomeMcpCopied($page))->toBe(['Social HQ', route('mcp.trypost')])
         ->and($page->attribute('@mcp-dialog-open', 'href'))->toStartWith('https://claude.ai/');
 
     $page->assertSeeIn('@mcp-dialog-open', 'Open Claude')
@@ -355,8 +355,8 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
     $page->click('@welcome-mcp-connect-chatgpt');
     waitForWelcomeMcpTestId($page, 'mcp-dialog-step-open');
 
-    $page->assertSeeIn('@mcp-dialog', 'Connect TryPost to ChatGPT')
-        ->assertSeeIn('@mcp-dialog-step-open', 'Open TryPost in ChatGPT')
+    $page->assertSeeIn('@mcp-dialog', 'Connect Social HQ to ChatGPT')
+        ->assertSeeIn('@mcp-dialog-step-open', 'Open Social HQ in ChatGPT')
         ->assertVisible('@mcp-dialog-step-login')
         ->assertMissing('@mcp-dialog-step-paste')
         ->assertMissing('@mcp-dialog-name')
@@ -370,7 +370,7 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
         ->click('@welcome-mcp-connect-other');
     waitForWelcomeMcpTestId($page, 'mcp-dialog-config');
 
-    $page->assertSeeIn('@mcp-dialog', 'Connect TryPost to another app')
+    $page->assertSeeIn('@mcp-dialog', 'Connect Social HQ to another app')
         ->assertVisible('@mcp-dialog-step-add')
         ->assertSeeIn('@mcp-dialog-config', route('mcp.trypost'))
         ->assertMissing('@mcp-dialog-open')
@@ -430,13 +430,13 @@ test('on a phone the MCP step keeps the example and connects through an AI picke
     $page->click('@welcome-mcp-connect-ai');
     waitForWelcomeMcpTestId($page, 'welcome-mcp-pick-other');
 
-    $page->assertSeeIn('@welcome-mcp-ai-picker', 'Where do you want to use TryPost?')
+    $page->assertSeeIn('@welcome-mcp-ai-picker', 'Where do you want to use Social HQ?')
         ->assertVisible('@welcome-mcp-pick-claude')
         ->assertVisible('@welcome-mcp-pick-chatgpt')
         ->click('@welcome-mcp-pick-other');
     waitForWelcomeMcpTestId($page, 'mcp-dialog-config');
 
-    $page->assertSeeIn('@mcp-dialog', 'Connect TryPost to another app')
+    $page->assertSeeIn('@mcp-dialog', 'Connect Social HQ to another app')
         ->assertMissing('@welcome-mcp-ai-picker')
         ->keys('@mcp-dialog', 'Escape');
     waitForWelcomeMcpTestIdGone($page, 'mcp-dialog');

@@ -269,7 +269,7 @@ test('rows with a Bikram Sambat year, a future date, no date or nothing besides 
 
     expect($import->rows_imported)->toBe(2)
         ->and($import->rows_skipped)->toBe(6)
-        ->and($import->skipped_reasons)->toBe([
+        ->and($import->skipped_reasons)->toEqual([
             ['row' => 4, 'reason' => 'bikram_sambat', 'value' => '2082-06-32'],
             ['row' => 5, 'reason' => 'bikram_sambat', 'value' => '२०८२-०६-१७'],
             ['row' => 6, 'reason' => 'future_date', 'value' => $future->format('Y-m-d')],

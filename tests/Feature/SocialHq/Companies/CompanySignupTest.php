@@ -328,4 +328,3 @@ test('the owner of an approved company creates workspaces', function () {
 
     expect(Workspace::query()->where('account_id', $this->teamAccount->id)->count())->toBe(2);
 });
-

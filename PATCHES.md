@@ -73,6 +73,8 @@ Change a TryPost file when that is the right place, and add a row.
 | 95 | `tests/Browser/{SidebarMenu,SidebarLanguageSwitch,WelcomeMcp,McpSettings,ComposerMediaSources,AuthLanguageSwitcher,InsightsShareChart}Test.php` | Expect the Social HQ name, share card file name and support links (18 lines) | The rebrand changed that copy; the tests still asserted TryPost's |
 | 4 | `app/Ai/Agents/{IdeaGenerator,MediaAltTextGenerator,PostContentShortener,PostWritingAssistant}.php` | `#[Temperature(x)]` replaced by `use UsesModelSafeTemperature` plus `preferredTemperature()` returning the same value | Claude 5 models reject `temperature`, which broke every AI feature. Candidate for an upstream PR |
 | 5 | `app/Support/Timezone.php` | `normalize()` asks ICU for an alias's canonical name without first requiring it in PHP's legacy tz list | Without the legacy tz database (Ubuntu's tzdata-legacy), every legacy alias became UTC; this also kept CI red. Proposed upstream (trypostit/trypost#478) |
+| 122 | `package.json`, `package-lock.json` | `overrides`: `minimatch` ^11.0.8 under `@typescript-eslint/typescript-estree` and `@vue/language-core`, `postcss-selector-parser` ^6.1.5 under `@tailwindcss/typography` (11 lines) | Security intake 2026-11-11: their latest releases still pull vulnerable versions (minimatch ReDoS, postcss-selector-parser). Drop each override once upstream ships a fixed range |
+| 123 | `maizzle/package.json`, `maizzle/package-lock.json` | `overrides`: `qs` ^6.17.1, and under `js-beautify` `minimatch` ^11.0.8 and `glob` ^14.0.4 (6 lines) | Same intake: Maizzle 5.3.1 pulls them through express and js-beautify (only its CLI uses glob); the email build output is unchanged |
 
 Files we **added** aren't listed here; they're under the module paths in
 SOCIALHQ.md, plus `config/socialhq.php`, `routes/socialhq.php`, `CLAUDE.md`,
@@ -88,3 +90,4 @@ security part ported by hand from a feature commit). One row per intake.
 
 | Date | TryPost reviewed up to | Picked | Dependency upgrades |
 |---|---|---|---|
+| 2026-11-11 | Not reviewed this time (dependency advisories only) | — | Composer: phpseclib 3.0.58 and Symfony 8.1.11 (filesystem, http-foundation, http-kernel, routing, yaml, plus their 8.1/3.8 siblings), 19 packages, patch releases only; `composer audit` clean. npm (root): `npm audit fix` (vite 8.3.8, vue, dompurify 3.4.17, postcss, ws, shell-quote, protobufjs and more) plus the row 122 overrides; `npm audit` clean. npm (`maizzle/`): `npm audit fix` (markdown-it, js-yaml, undici, proxy-addr, baseline-browser-mapping and more) plus the row 123 overrides; `npm audit` clean, templates rebuild identical. Covers Dependabot PRs #17–#27 |

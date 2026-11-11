@@ -7,6 +7,7 @@ namespace App\SocialHq\Plan\Ai;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use App\Models\User;
+use App\SocialHq\Ai\AiTenant;
 use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Plan\CreativeKind;
 use App\SocialHq\Plan\ItemCopy;
@@ -34,7 +35,8 @@ final class WriteItemCopy
         $maxLength = ItemPage::maxLength($item);
         $maxHashtags = Platform::tryFrom((string) $item->platform)?->maxHashtags() ?? self::DEFAULT_MAX_HASHTAGS;
 
-        $response = (new CopyWriter(
+        // The item's workspace decides whose AI it uses, whatever workspace the user has open.
+        $response = AiTenant::run($item->workspace, fn () => (new CopyWriter(
             language: $user->locale->promptLanguage(),
             context: self::context($item),
             brandKnowledge: BrandKnowledge::forPrompt($item->workspace, self::focus($item)),
@@ -42,7 +44,7 @@ final class WriteItemCopy
             isRewrite: $latest !== null,
             maxLength: $maxLength === null ? null : self::captionBudget($maxLength, $maxHashtags, $latest?->hashtags),
             maxHashtags: $maxHashtags,
-        ))->prompt($latest === null ? 'Write the copy for this post.' : 'Rewrite the copy for this post.');
+        ))->prompt($latest === null ? 'Write the copy for this post.' : 'Rewrite the copy for this post.'));
 
         $caption = trim((string) data_get($response, 'caption'));
 

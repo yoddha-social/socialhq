@@ -177,4 +177,34 @@ return [
         'button' => 'Open :app',
     ],
 
+    'socialhq_company_requested' => [
+        'subject' => ':company wants to start on :app',
+        'title' => 'New company request',
+        'preview' => ':company is waiting for a platform admin.',
+        'heading' => 'A company is waiting for approval',
+        'body' => ':name (:email) asked to start :company and confirmed their email. Approve the company, or decline it with a note.',
+        'button' => 'Review the request',
+        'note' => 'Only platform admins get this email.',
+    ],
+
+    'socialhq_company_approved' => [
+        'subject' => ':company is approved on :app',
+        'title' => 'Company approved',
+        'preview' => 'You can now create workspaces for :company.',
+        'heading' => ':company is approved',
+        'body' => 'Create a workspace for each brand, then invite your team.',
+        'button' => 'Create a workspace',
+    ],
+
+    'socialhq_company_declined' => [
+        'subject' => ':company wasn\'t approved on :app',
+        'title' => 'Company not approved',
+        'preview' => 'A platform admin declined :company.',
+        'heading' => ':company wasn\'t approved',
+        'body' => 'A platform admin declined your request to start :company.',
+        'note' => 'Their note: :note',
+        'button' => 'See your request',
+        'ask_again' => '{1} You can ask again after an hour.|[0,*] You can ask again after :hours hours.',
+    ],
+
 ];

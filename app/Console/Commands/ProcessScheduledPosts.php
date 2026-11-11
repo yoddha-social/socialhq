@@ -8,6 +8,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Jobs\PublishPost;
 use App\Jobs\PublishToSocialPlatform;
 use App\Models\Post;
+use App\SocialHq\Companies\CompanyAccess;
 use App\Support\Social\LimitRetryPolicy;
 use Illuminate\Console\Command;
 use Throwable;
@@ -20,10 +21,17 @@ class ProcessScheduledPosts extends Command
 
     public function handle(): void
     {
+        // Social HQ: a paused company's posts wait until it is restored.
+        $paused = CompanyAccess::pausedWorkspaceIds();
+
         Post::query()
             ->due()
-            ->each(function (Post $post) {
+            ->each(function (Post $post) use ($paused) {
                 try {
+                    if (isset($paused[$post->workspace_id])) {
+                        return;
+                    }
+
                     $claimed = Post::where('id', $post->id)
                         ->where('status', PostStatus::Scheduled)
                         ->update(['status' => PostStatus::Publishing]);
@@ -36,7 +44,7 @@ class ProcessScheduledPosts extends Command
                 }
             });
 
-        $this->dispatchDueLimitRetries();
+        $this->dispatchDueLimitRetries($paused);
     }
 
     /**
@@ -44,12 +52,19 @@ class ProcessScheduledPosts extends Command
      * delayed job, so a worker restart never loses them. Clearing retry_at
      * claims the post, so each retry is dispatched once.
      */
-    private function dispatchDueLimitRetries(): void
+    /**
+     * @param  array<string, true>  $paused
+     */
+    private function dispatchDueLimitRetries(array $paused): void
     {
         Post::query()
             ->dueForLimitRetry()
-            ->each(function (Post $post): void {
+            ->each(function (Post $post) use ($paused): void {
                 try {
+                    if (isset($paused[$post->workspace_id])) {
+                        return;
+                    }
+
                     $claimed = Post::query()
                         ->whereKey($post->id)
                         ->dueForLimitRetry()

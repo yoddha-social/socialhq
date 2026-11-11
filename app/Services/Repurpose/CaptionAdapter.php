@@ -9,6 +9,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ContentSanitizer;
+use App\SocialHq\Ai\AiTenant;
 use App\Support\Hashtags;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -57,7 +58,8 @@ class CaptionAdapter
         $key = "{$limit}:".md5($caption);
 
         $shortened = $this->shortened[$key] ??= rescue(
-            fn (): string => $this->ask($caption, $platform, $limit),
+            // Social HQ: a queued job has no signed-in user; the workspace decides whose AI it uses.
+            fn (): string => AiTenant::run($workspace, fn (): string => $this->ask($caption, $platform, $limit)),
         );
 
         return filled($shortened) && $this->fits($shortened, $platform, $limit) ? $shortened : null;

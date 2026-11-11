@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware\App;
 
 use App\Models\Invite;
+use App\SocialHq\Companies\CompanyRequests;
 use App\SocialHq\Signup\SignupRules;
 use Closure;
 use Illuminate\Http\Request;
@@ -14,7 +15,7 @@ class EnsureRegistrationEnabled
 {
     public function handle(Request $request, Closure $next): mixed
     {
-        if (! config('trypost.self_hosted') || SignupRules::isOpen()) {
+        if (! config('trypost.self_hosted') || SignupRules::isOpen() || CompanyRequests::enabled()) {
             return $next($request);
         }
 

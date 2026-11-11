@@ -6,6 +6,7 @@ namespace App\Http\Middleware\Api;
 
 use App\Models\AccessToken;
 use App\Models\Workspace;
+use App\SocialHq\Companies\CompanyAccess;
 use Closure;
 use Illuminate\Http\Request;
 use Laravel\Passport\AccessToken as PassportAccessToken;
@@ -46,6 +47,11 @@ class LoadWorkspaceFromToken
 
         if (! $user->can('view', $workspace)) {
             return response()->json(['message' => 'Workspace access denied.'], Response::HTTP_FORBIDDEN);
+        }
+
+        // Social HQ: a paused company's API keys and MCP grants stop working too.
+        if (CompanyAccess::isPaused($workspace)) {
+            return response()->json(['message' => __('socialhq_companies.paused.api')], Response::HTTP_FORBIDDEN);
         }
 
         if ($context === 'mcp') {

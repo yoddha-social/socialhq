@@ -1,14 +1,15 @@
 import { usePage } from '@inertiajs/vue3';
 import {
-    IconLayoutGrid,
-    IconBell,
-    IconCoin,
-    IconCode,
-    IconSignature,
-    IconMcp,
-    IconBuilding,
     IconAdjustmentsHorizontal,
+    IconBell,
     IconBook,
+    IconBuilding,
+    IconCode,
+    IconCoin,
+    IconLayoutGrid,
+    IconMcp,
+    IconSignature,
+    IconSparkles,
     IconTag,
     IconUser,
     IconUsers,
@@ -28,7 +29,11 @@ import { edit as profileEdit } from '@/routes/app/profile';
 import { preferences } from '@/routes/app/settings';
 import { index as signatures } from '@/routes/app/signatures';
 import { index as webhooks } from '@/routes/app/webhooks';
-import { channels, settings as workspaceSettings } from '@/routes/app/workspace';
+import {
+    channels,
+    settings as workspaceSettings,
+} from '@/routes/app/workspace';
+import { show as companyAi } from '@/routes/socialhq/ai-settings';
 import { index as brandKnowledge } from '@/routes/socialhq/brand';
 import type { NavItem } from '@/types';
 
@@ -126,6 +131,21 @@ export const useSettingsNavigation = () => {
                         IconCoin,
                         canManageBilling.value && !selfHosted.value,
                     ),
+                    // Social HQ: the company's own AI providers (account owner only).
+                    ...((
+                        page.props.socialhq as
+                            | { companyAi?: { canManage?: boolean } }
+                            | undefined
+                    )?.companyAi?.canManage
+                        ? [
+                              {
+                                  name: 'socialhq_ai',
+                                  title: trans('socialhq_ai.nav'),
+                                  href: companyAi.url(),
+                                  icon: IconSparkles,
+                              },
+                          ]
+                        : []),
                 ],
             },
             {

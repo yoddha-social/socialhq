@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiTask;
+use App\SocialHq\Ai\AiTenant;
 use App\Support\MediaImportStatus;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -57,30 +58,8 @@ class GenerateAiGraphic implements ShouldQueue
                 return;
             }
 
-            $references = array_map(fn (string $path): Image => Image::fromStorage($path, 'local'), $this->referencePaths);
-
-            $response = ImageGeneration::of(self::fullPrompt($graphic))
-                ->attachments($references)
-                ->size($graphic->format->aspectRatio(AiRouter::sharedDriver(AiTask::Image)))
-                ->timeout(AiGraphics::timeoutSeconds())
-                ->generate(AiRouter::route(AiTask::Image));
-            $image = $response->firstImage();
-
-            // The route may have failed over: record what actually made it.
-            $graphic->update([
-                'provider' => $response->meta->provider ?? $graphic->provider,
-                'model' => $response->meta->model ?? $graphic->model,
-            ]);
-
-            $blocked = VisionCheck::review($graphic->prompt, [Image::fromBase64($image->image, $image->mime())], reviewsResult: true);
-
-            if ($blocked !== null) {
-                $this->finish($graphic, AiGraphic::BLOCKED, $blocked);
-
-                return;
-            }
-
-            $this->store($graphic, $workspace, $image->content(), $image->mime());
+            // The job has no signed-in user: the workspace decides whose AI it uses.
+            AiTenant::run($workspace, fn () => $this->generate($graphic, $workspace));
         } catch (Throwable $exception) {
             report($exception);
 
@@ -90,6 +69,34 @@ class GenerateAiGraphic implements ShouldQueue
         } finally {
             Storage::disk('local')->delete($this->referencePaths);
         }
+    }
+
+    private function generate(AiGraphic $graphic, Workspace $workspace): void
+    {
+        $references = array_map(fn (string $path): Image => Image::fromStorage($path, 'local'), $this->referencePaths);
+
+        $response = ImageGeneration::of(self::fullPrompt($graphic))
+            ->attachments($references)
+            ->size($graphic->format->aspectRatio(AiRouter::sharedDriver(AiTask::Image)))
+            ->timeout(AiGraphics::timeoutSeconds())
+            ->generate(AiRouter::route(AiTask::Image));
+        $image = $response->firstImage();
+
+        // The route may have failed over: record what actually made it.
+        $graphic->update([
+            'provider' => $response->meta->provider ?? $graphic->provider,
+            'model' => $response->meta->model ?? $graphic->model,
+        ]);
+
+        $blocked = VisionCheck::review($graphic->prompt, [Image::fromBase64($image->image, $image->mime())], reviewsResult: true);
+
+        if ($blocked !== null) {
+            $this->finish($graphic, AiGraphic::BLOCKED, $blocked);
+
+            return;
+        }
+
+        $this->store($graphic, $workspace, $image->content(), $image->mime());
     }
 
     /**

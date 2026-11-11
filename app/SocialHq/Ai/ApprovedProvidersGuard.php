@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\SocialHq\Ai;
 
+use App\SocialHq\Ai\Company\CompanyRoute;
+use App\SocialHq\Ai\Company\CompanyRouting;
 use Laravel\Ai\Events\GeneratingAudio;
 use Laravel\Ai\Events\GeneratingEmbeddings;
 use Laravel\Ai\Events\GeneratingImage;
@@ -46,6 +48,14 @@ final class ApprovedProvidersGuard
 
         if (! AiRouter::isApproved($provider)) {
             throw new AiUnavailableException("The AI provider [{$provider}] is not approved (SOCIALHQ_AI_APPROVED_PROVIDERS).");
+        }
+
+        // The platform's LiteLLM entries carry the platform's key: a company
+        // reaches LiteLLM only through its own entry (CompanyRouting).
+        if (in_array($provider, [AiRouter::LITELLM, AiRouter::LITELLM_IMAGES], true)
+            && AiRouter::usesGateway()
+            && CompanyRouting::current()->kind !== CompanyRoute::PLATFORM) {
+            throw new AiUnavailableException("The platform's AI [{$provider}] is not available to this company.");
         }
     }
 }

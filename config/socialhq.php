@@ -67,6 +67,14 @@ return [
                 trim(...),
                 explode(',', (string) env('SOCIALHQ_AI_GATEWAY_TASKS', 'write,structured,vision')),
             ))),
+            // LiteLLM's admin API (companies' teams, keys and provider keys).
+            // Unset: the gateway's URL without /v1.
+            'admin_url' => env('LITELLM_ADMIN_URL'),
+            // A management key (socialhq-deploy/scripts/make-litellm-admin-key.sh):
+            // a proxy-admin key limited to the routes the app needs. The master
+            // key is read only in local development, as a fallback.
+            'admin_key' => env('LITELLM_ADMIN_KEY') ?: (env('APP_ENV') === 'local' ? env('LITELLM_MASTER_KEY') : null),
+            'admin_timeout' => (int) env('LITELLM_ADMIN_TIMEOUT', 20),
         ],
         'approved_providers' => array_values(array_filter(array_map(
             trim(...),
@@ -82,6 +90,151 @@ return [
         'models_without_temperature' => [
             '/^claude-[a-z]+-5(-\d{1,2})?(-\d{8})?$/',
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Company AI
+    |--------------------------------------------------------------------------
+    |
+    | Each company brings its own AI provider keys (Settings › AI, account
+    | owner only). A company is a LiteLLM team with its own virtual key and
+    | budget; its keys are LiteLLM credentials and its deployments the model
+    | groups shq-<task>@<team> (LiteLLM's team-scoped model names need an
+    | Enterprise licence). The app keeps the provider, the last four
+    | characters and the test status, never a provider key.
+    |
+    | providers: the catalogue. Only providers that neither train on prompts
+    | nor let people read them (owner decision 2026-11-05). `confirm` names
+    | a checkbox the owner must tick first (Mistral's training opt-out, Gemini
+    | billing: the free tier trains on prompts). `tasks` maps each AI task to
+    | the LiteLLM model it calls; a provider serves only the tasks it lists.
+    | Embeddings take only the first provider in the order that has them
+    | (vectors from two models can't be compared). OpenRouter is left out: a
+    | key there reaches providers with other data rules.
+    |
+    | Copy (name, setup steps, data note) lives in lang/en/socialhq_ai.php.
+    |
+    */
+
+    'company_ai' => [
+        'budget_duration' => '30d',
+        'max_providers' => 6,
+        // Where LiteLLM reaches Workers AI for a company's Cloudflare account.
+        'cloudflare_api_base' => env('SOCIALHQ_CLOUDFLARE_AI_API_BASE', 'https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/'),
+        'providers' => [
+            'groq' => [
+                'logo' => 'groq',
+                'litellm_provider' => 'groq',
+                'console_url' => 'https://console.groq.com/keys',
+                'steps' => 3,
+                'confirm' => null,
+                'fields' => ['provider_key'],
+                'params' => [],
+                'tasks' => [
+                    'write' => ['model' => 'groq/openai/gpt-oss-120b', 'timeout' => 20],
+                    'structured' => ['model' => 'groq/openai/gpt-oss-120b', 'timeout' => 75],
+                    'vision' => ['model' => 'groq/qwen/qwen3.8-27b', 'timeout' => 20],
+                ],
+            ],
+            'cloudflare' => [
+                'logo' => 'cloudflare',
+                'litellm_provider' => 'cloudflare',
+                'console_url' => 'https://dash.cloudflare.com/profile/api-tokens',
+                'steps' => 3,
+                'confirm' => null,
+                'fields' => ['account_id', 'provider_key'],
+                // Cloudflare's models answer 256 tokens unless asked for more.
+                'params' => ['max_tokens' => 8192],
+                'tasks' => [
+                    'write' => ['model' => 'cloudflare/@cf/openai/gpt-oss-120b', 'timeout' => 20],
+                    'structured' => ['model' => 'cloudflare/@cf/openai/gpt-oss-120b', 'timeout' => 75],
+                    'vision' => ['model' => 'cloudflare/@cf/meta/llama-4-scout-17b-16e-instruct', 'timeout' => 20],
+                ],
+            ],
+            'mistral' => [
+                'logo' => 'mistral',
+                'litellm_provider' => 'mistral',
+                'console_url' => 'https://console.mistral.ai/api-keys',
+                'steps' => 3,
+                'confirm' => 'training_off',
+                'fields' => ['provider_key'],
+                'params' => [],
+                'tasks' => [
+                    'write' => ['model' => 'mistral/mistral-small-latest', 'timeout' => 20],
+                    'structured' => ['model' => 'mistral/mistral-small-latest', 'timeout' => 75],
+                    'vision' => ['model' => 'mistral/mistral-small-latest', 'timeout' => 20],
+                    'embed' => ['model' => 'mistral/mistral-embed', 'timeout' => 30],
+                ],
+            ],
+            'gemini' => [
+                'logo' => 'gemini',
+                'litellm_provider' => 'gemini',
+                'console_url' => 'https://aistudio.google.com/apikey',
+                'steps' => 3,
+                'confirm' => 'billing_on',
+                'fields' => ['provider_key'],
+                'params' => [],
+                'tasks' => [
+                    'write' => ['model' => 'gemini/gemini-3.5-flash', 'timeout' => 30],
+                    'structured' => ['model' => 'gemini/gemini-3.5-flash', 'timeout' => 75],
+                    'vision' => ['model' => 'gemini/gemini-3.5-flash', 'timeout' => 30],
+                    'image' => ['model' => 'gemini/gemini-3.1-flash-image', 'timeout' => 300],
+                    'embed' => ['model' => 'gemini/gemini-embedding-001', 'timeout' => 30],
+                ],
+            ],
+            'openai' => [
+                'logo' => 'openai',
+                'litellm_provider' => 'openai',
+                'console_url' => 'https://platform.openai.com/api-keys',
+                'steps' => 3,
+                'confirm' => null,
+                'fields' => ['provider_key'],
+                'params' => [],
+                'tasks' => [
+                    'write' => ['model' => 'openai/gpt-5-mini', 'timeout' => 30],
+                    'structured' => ['model' => 'openai/gpt-5-mini', 'timeout' => 75],
+                    'vision' => ['model' => 'openai/gpt-5-mini', 'timeout' => 30],
+                    'image' => ['model' => 'openai/gpt-image-1', 'timeout' => 300],
+                    'embed' => ['model' => 'openai/text-embedding-3-small', 'timeout' => 30],
+                ],
+            ],
+            'anthropic' => [
+                'logo' => 'anthropic',
+                'litellm_provider' => 'anthropic',
+                'console_url' => 'https://console.anthropic.com/settings/keys',
+                'steps' => 3,
+                'confirm' => null,
+                'fields' => ['provider_key'],
+                'params' => [],
+                'tasks' => [
+                    'write' => ['model' => 'anthropic/claude-haiku-4-5', 'timeout' => 30],
+                    'structured' => ['model' => 'anthropic/claude-haiku-4-5', 'timeout' => 75],
+                    'vision' => ['model' => 'anthropic/claude-haiku-4-5', 'timeout' => 30],
+                ],
+            ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Secrets
+    |--------------------------------------------------------------------------
+    |
+    | The key that encrypts what Social HQ keeps for companies (their LiteLLM
+    | virtual keys), separate from APP_KEY. "base64:" and 32 random bytes:
+    | `php artisan socialhq:secrets-key`. To rotate, move the old key to
+    | SOCIALHQ_SECRETS_PREVIOUS_KEYS (comma separated) and set a new one.
+    | Without it, companies can't add AI providers.
+    |
+    */
+
+    'secrets' => [
+        'key' => env('SOCIALHQ_SECRETS_KEY'),
+        'previous_keys' => array_values(array_filter(array_map(
+            trim(...),
+            explode(',', (string) env('SOCIALHQ_SECRETS_PREVIOUS_KEYS', '')),
+        ))),
     ],
 
     /*
@@ -202,6 +355,29 @@ return [
         'domains' => array_values(array_filter(array_map('trim', explode(',', (string) env('SOCIALHQ_SIGNUP_DOMAINS', ''))))),
         'emails' => array_values(array_filter(array_map('trim', explode(',', (string) env('SOCIALHQ_SIGNUP_EMAILS', ''))))),
         'account_owner' => env('SOCIALHQ_SIGNUP_ACCOUNT_OWNER'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Companies (self-hosted)
+    |--------------------------------------------------------------------------
+    |
+    | A company is an account a platform admin approved; its owner creates
+    | the workspaces (brands). Someone whose email isn't on the sign-up lists
+    | may ask to start a company (requests), and waits until a platform admin
+    | approves it. With `required`, only an approved company's owner creates
+    | workspaces (the test run turns it off: upstream's tests have no
+    | companies). `contact_email` is who a paused company's owner writes to;
+    | without it, the platform admin who paused it.
+    |
+    */
+
+    'companies' => [
+        'requests' => (bool) env('SOCIALHQ_COMPANY_REQUESTS', true),
+        'required' => (bool) env('SOCIALHQ_COMPANIES_REQUIRED', true),
+        'contact_email' => env('SOCIALHQ_PLATFORM_CONTACT_EMAIL'),
+        // A declined company may ask again once this many hours have passed.
+        'ask_again_after_hours' => 24,
     ],
 
 ];

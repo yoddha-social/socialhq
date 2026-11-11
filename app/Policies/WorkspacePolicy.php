@@ -6,6 +6,7 @@ namespace App\Policies;
 
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Companies\CompanyAccess;
 
 class WorkspacePolicy
 {
@@ -21,7 +22,8 @@ class WorkspacePolicy
 
     public function create(User $user): bool
     {
-        return $user->isAccountOwner();
+        // Social HQ: only an approved company's owner creates workspaces (self-hosted).
+        return $user->isAccountOwner() && CompanyAccess::mayCreateWorkspaces($user);
     }
 
     public function update(User $user, Workspace $workspace): bool

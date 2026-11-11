@@ -5,9 +5,12 @@ declare(strict_types=1);
 use App\Ai\Agents\IdeaGenerator;
 use App\Ai\Agents\PostContentShortener;
 use App\Enums\User\Locale;
+use App\Models\User;
+use App\Models\Workspace;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiTask;
 use App\SocialHq\Ai\AiUnavailableException;
+use App\SocialHq\Companies\Company;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Laravel\Ai\AiManager;
@@ -63,6 +66,13 @@ function useLiteLlm(): void
     ]);
     AiRouter::registerGateway();
     app(AiManager::class)->forgetInstance([AiRouter::LITELLM, AiRouter::LITELLM_IMAGES]);
+
+    // Gateway calls run for a company: this one may use the platform's AI.
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create(['account_id' => $owner->account_id, 'user_id' => $owner->id]);
+    $owner->update(['current_workspace_id' => $workspace->id]);
+    Company::factory()->usingPlatformAi()->create(['account_id' => $owner->account_id]);
+    test()->actingAs($owner);
 }
 
 test('direct routing uses the SDK default provider for text and Gemini for images', function () {

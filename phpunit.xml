@@ -38,5 +38,8 @@
         <!-- Social HQ: upstream tests expect TryPost's own approval rules; ours switch them on. -->
         <env name="SOCIALHQ_MEMBERS_ALWAYS_REVIEWED" value="false"/>
         <env name="SOCIALHQ_AGENT_POSTS_REVIEWED" value="false"/>
+        <!-- Social HQ: upstream tests register and create workspaces without companies; ours switch these on. -->
+        <env name="SOCIALHQ_COMPANY_REQUESTS" value="false"/>
+        <env name="SOCIALHQ_COMPANIES_REQUIRED" value="false"/>
     </php>
 </phpunit>

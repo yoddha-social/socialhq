@@ -1,0 +1,29 @@
+<x-main>
+  <x-message authenticated="true">
+    <x-heading>
+      @{{ __('mail.socialhq_company_declined.heading', ['company' => $companyName]) }}
+    </x-heading>
+
+    <p class="m-0 leading-6">
+      @{{ __('mail.socialhq_company_declined.body', ['company' => $companyName]) }}
+    </p>
+
+    <x-spacer height="16px" />
+
+    <p class="m-0 leading-6">
+      @{{ __('mail.socialhq_company_declined.note', ['note' => $note]) }}
+    </p>
+
+    <x-spacer height="24px" />
+
+    <x-button href="@{{ $url }}">
+      @{{ __('mail.socialhq_company_declined.button') }}
+    </x-button>
+
+    <x-spacer height="24px" />
+
+    <p class="m-0 leading-6 text-muted-foreground text-sm">
+      @{{ trans_choice('mail.socialhq_company_declined.ask_again', $hours, ['hours' => $hours]) }}
+    </p>
+  </x-message>
+</x-main>

@@ -8,6 +8,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\User\Locale;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\SocialHq\Ai\AiTenant;
 use App\SocialHq\Ai\AiUnavailableException;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Plan\ContentPlan;
@@ -75,8 +76,9 @@ class GeneratePlanSuggestions implements ShouldQueue
         $today = CarbonImmutable::createFromFormat('!Y-m-d', CarbonImmutable::now(Timezone::normalize($user->timezone))->toDateString(), 'UTC');
 
         try {
-            $response = (new ContentPlanner($user->locale ?? Locale::DEFAULT))
-                ->prompt(json_encode(PlannerContext::build($plan, $today), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+            // The job has no signed-in user: the plan's workspace decides whose AI it uses.
+            $response = AiTenant::run($plan->workspace, fn () => (new ContentPlanner($user->locale ?? Locale::DEFAULT))
+                ->prompt(json_encode(PlannerContext::build($plan, $today), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)));
         } catch (AiUnavailableException $exception) {
             report($exception);
             $this->markFailed('ai_unavailable');

@@ -166,7 +166,11 @@ test('accepting every suggestion leaves planned and dropped items alone', functi
 });
 
 test('any change to an item of an approved plan sends the plan back for review', function (string $action) {
-    $item = ($this->planWithItem)(['status' => PlanStatus::Approved, 'approved_at' => now(), 'approved_by' => $this->owner->id]);
+    // Day 3, so 'move' (to day 10) always changes the date; the factory's random day can be day 10.
+    $item = ($this->planWithItem)(
+        ['status' => PlanStatus::Approved, 'approved_at' => now(), 'approved_by' => $this->owner->id],
+        ['scheduled_on' => $this->month->addDays(2)->toDateString()],
+    );
 
     $request = match ($action) {
         'update' => fn () => $this->put(route('socialhq.plan.items.update', $item->id), ($this->itemPayload)(['title' => 'Changed'])),

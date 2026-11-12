@@ -80,6 +80,8 @@ Change a TryPost file when that is the right place, and add a row.
 | 119 | `resources/js/composables/useSettingsNavigation.ts` | An "AI" item (Settings › AI) after Billing for the owner of an approved company (`socialhq.companyAi.canManage`; 15 lines + 2 imports) | Company AI: each company manages its own AI providers |
 | 120 | `.env.example` | `LITELLM_ADMIN_KEY`, `LITELLM_ADMIN_URL`, `SOCIALHQ_SECRETS_KEY`, `SOCIALHQ_SECRETS_PREVIOUS_KEYS` (8 lines) | Company AI settings |
 | 121 | `tests/fixtures/single-line-copy.php` | Budgets for Settings › AI's buttons, menu items and badges (`socialhq_ai.*`), at their English length (14 lines) | `SingleLineCopyTest` keeps them on one line once they are translated |
+| 122 | `package.json`, `package-lock.json` | `overrides`: `minimatch` ^11.0.8 under `@typescript-eslint/typescript-estree` and `@vue/language-core`, `postcss-selector-parser` ^6.1.5 under `@tailwindcss/typography` (11 lines) | Security intake 2026-11-11: their latest releases still pull vulnerable versions (minimatch ReDoS, postcss-selector-parser). Drop each override once upstream ships a fixed range |
+| 123 | `maizzle/package.json`, `maizzle/package-lock.json` | `overrides`: `qs` ^6.17.1, and under `js-beautify` `minimatch` ^11.0.8 and `glob` ^14.0.4 (6 lines) | Same intake: Maizzle 5.3.1 pulls them through express and js-beautify (only its CLI uses glob); the email build output is unchanged |
 
 Files we **added** aren't listed here; they're under the module paths in
 SOCIALHQ.md, plus `config/socialhq.php`, `routes/socialhq.php`, `CLAUDE.md`,
@@ -95,3 +97,4 @@ security part ported by hand from a feature commit). One row per intake.
 
 | Date | TryPost reviewed up to | Picked | Dependency upgrades |
 |---|---|---|---|
+| 2026-11-11 | Not reviewed this time (dependency advisories only) | — | Composer: phpseclib 3.0.58 and Symfony 8.1.11 (filesystem, http-foundation, http-kernel, routing, yaml, plus their 8.1/3.8 siblings), 19 packages, patch releases only; `composer audit` clean. npm (root): `npm audit fix` (vite 8.3.8, vue, dompurify 3.4.17, postcss, ws, shell-quote, protobufjs and more) plus the row 122 overrides; `npm audit` clean. npm (`maizzle/`): `npm audit fix` (markdown-it, js-yaml, undici, proxy-addr, baseline-browser-mapping and more) plus the row 123 overrides; `npm audit` clean, templates rebuild identical. Covers Dependabot PRs #17–#27 |

@@ -8,5 +8,12 @@
   "dependencies": {
     "@maizzle/framework": "latest",
     "tailwindcss-preset-email": "latest"
+  },
+  "overrides": {
+    "qs": "^6.17.1",
+    "js-beautify": {
+      "minimatch": "^11.0.8",
+      "glob": "^14.0.4"
+    }
   }
 }

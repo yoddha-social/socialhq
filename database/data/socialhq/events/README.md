@@ -7,6 +7,11 @@ Compiled 2026-11-06. Two files:
 | `nepal-2083.csv` | 91 | BS 2083 (2026-04-14 to 2027-04-13), plus New Year 2084 (2027-04-14) |
 | `international.csv` | 105 (85 distinct observances) | 2026-11-01 to 2027-12-31; days in Nov and Dec appear for both years |
 
+Imported rows get a country: `NP` for `nepal-2083.csv`, none for
+`international.csv`. Other countries' public holidays are not files here:
+the events page's "Add a country" imports them from Nager.Date
+(https://date.nager.at), unconfirmed. Nepal stays on this list.
+
 Every row in `nepal-2083.csv` starts its `notes` with a quality tag:
 - `[official]`: the date is from the MOHA notice.
 - `[newspaper citing official]`: a newspaper report of a government decision.

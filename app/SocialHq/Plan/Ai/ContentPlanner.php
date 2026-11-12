@@ -72,6 +72,7 @@ class ContentPlanner implements Agent, HasStructuredOutput
                 'pillar' => $schema->string()->description('One of the pillars, or "" when there are none.')->required(),
                 'objective' => $schema->string()->required(),
                 'angle' => $schema->string()->required(),
+                'suggested_time' => $schema->string()->description('Posting time "HH:MM" (24-hour) in the audience\'s main_timezone, or "" when unsure.')->required(),
             ])->withoutAdditionalProperties())->required(),
         ];
     }

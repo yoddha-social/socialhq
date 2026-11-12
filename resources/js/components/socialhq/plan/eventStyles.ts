@@ -12,7 +12,7 @@ export type EventCategory =
     | 'observance'
     | 'brand';
 
-export type EventRegion = 'nepal' | 'international' | 'brand';
+export type EventRegion = 'nepal' | 'international' | 'country' | 'brand';
 
 export interface CalendarEventRow {
     id: number;
@@ -20,6 +20,8 @@ export interface CalendarEventRow {
     name_ne: string | null;
     category: EventCategory;
     region: EventRegion;
+    /** ISO 3166-1 alpha-2: NP for Nepal, another country's code, null for international days. */
+    country_code: string | null;
     starts_on: string;
     ends_on: string;
     bs_date: string | null;
@@ -32,6 +34,28 @@ export interface CalendarEventRow {
     verified_by: string | null;
     verified_at: string | null;
 }
+
+/** A country "Add a country" offers (Nager.Date's list). */
+export interface HolidayCountry {
+    code: string;
+    name: string;
+}
+
+/**
+ * A country's name in the interface language (`Intl.DisplayNames`), or its
+ * code when the browser has no name for it.
+ */
+export const countryName = (code: string, locale: string): string => {
+    try {
+        return (
+            new Intl.DisplayNames([locale, 'en'], { type: 'region' }).of(
+                code,
+            ) ?? code
+        );
+    } catch {
+        return code;
+    }
+};
 
 /** One event on a day of the publish calendar (`shqEvents` prop). */
 export interface CalendarEventMarker {

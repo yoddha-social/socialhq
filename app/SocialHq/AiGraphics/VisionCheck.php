@@ -16,16 +16,17 @@ final class VisionCheck
 {
     /**
      * @param  list<Image>  $images
+     * @param  bool  $brandLogo  The first reference image is the brand's own logo (Brand look)
      * @return string|null null when allowed, the reason otherwise
      */
-    public static function review(string $prompt, array $images, bool $reviewsResult = false): ?string
+    public static function review(string $prompt, array $images, bool $reviewsResult = false, bool $brandLogo = false): ?string
     {
         if (! AiGraphics::visionCheckEnabled()) {
             return null;
         }
 
         try {
-            $response = (new GraphicSafetyReviewer($reviewsResult))->prompt(
+            $response = (new GraphicSafetyReviewer($reviewsResult, $brandLogo))->prompt(
                 "Prompt:\n".$prompt,
                 attachments: $images,
                 timeout: 60,

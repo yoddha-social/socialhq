@@ -37,7 +37,10 @@ final class DocumentStorage
     public static function registerCleanup(): void
     {
         KnowledgeDocument::deleted(function (KnowledgeDocument $document): void {
-            DB::afterCommit(fn () => self::disk()->delete($document->path));
+            // A linked document not read yet has no file.
+            if (filled($document->path)) {
+                DB::afterCommit(fn () => self::disk()->delete($document->path));
+            }
         });
 
         Workspace::deleting(function (Workspace $workspace): void {

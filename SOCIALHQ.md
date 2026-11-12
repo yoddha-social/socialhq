@@ -155,6 +155,61 @@ characters) into excerpts of about 900 characters (`Chunker`). A scan with no
 text, a password or a damaged file fails with a reason the page shows. To
 change the text, delete and upload again.
 
+**Google links** (same section, "Add Google link"). A Docs, Sheets or Slides
+file shared as "Anyone with the link can view" is read without a Google
+sign-in, through its export URL (Docs and Slides as text, Sheets as XLSX:
+every visible sheet, "cell | cell" rows). Only `https://docs.google.com`
+links are taken (`socialhq.knowledge.google.host`), and only the file id is
+kept: the export URL is rebuilt from it. Redirects may go to Google's own
+hosts only (`*.googleusercontent.com`); a sign-in redirect or page, a 401 or
+a 403 means the file isn't shared ("Share it as 'Anyone with the link can
+view', or upload the file"). The text is stored as a .txt document
+(`source` `google_doc` / `google_sheet` / `google_slides`) and goes through
+the same extraction, limits and count as an upload. "Read again" re-reads
+it; unchanged text (same hash) keeps its excerpts. The title follows the
+file's name until an admin renames it. Code: `app/SocialHq/Knowledge/Sources/`.
+
+**Brand look** (same page). The logo (PNG, JPEG, WebP or SVG, checked by
+content, up to 2 MB; an SVG is stored only after `SvgSanitizer` keeps its
+drawing and drops scripts, handlers, foreign content, images and links out,
+and is served with a `default-src 'none'; sandbox` policy) on the private
+`local` disk under `socialhq/brand/{workspace}/`, served to members and
+deleted with the workspace; up to 8 named hex colours; heading and body
+fonts; "Overall look" notes (`shq_brand_looks`, `Knowledge/Look/`). The
+brief writer gets it all as reference data (`BrandLook::promptText()`), the
+copy writer only the style notes (`copyLine()`). AI graphics offer "Follow
+our brand look" (the text goes in the image prompt and is kept on the
+`shq_ai_graphics` row) and "Add our logo" (a bitmap logo becomes the first
+of the 3 reference images; the vision check is told it is the company's
+own). An SVG logo can't be a reference: upload a PNG for that.
+
+**Read our website** (admins). The brand's address starts `ReadWebsite`
+(queued, 5 an hour per person, one run at a time per brand):
+`WebsiteCrawler` reads robots.txt (rules for `SocialHQBot` or `*`, its
+Crawl-delay, its sitemaps), then the sitemap (an index followed one level),
+then the home page's links; the same site only (with or without `www.`),
+HTML only, up to 25 pages (`socialhq.knowledge.website`), a pause between
+requests (1 s or the Crawl-delay), 150 s for the run. Every request goes
+through `SourceFetcher` (`SafeHttpFetcher`): http(s), DNS resolved and
+private, loopback and link-local addresses refused on every redirect hop,
+size and time caps. `PageText` keeps the main text (`<main>`, else the
+largest `<article>`, else the body; no nav, header, footer, aside, forms,
+scripts, hidden parts or cookie banners) and notes the markup's colours and
+fonts. Pages unchanged since the last run (304 to their ETag or
+Last-Modified, or the same HTML hash) reuse their stored text
+(`shq_website_pages`). Lines seen on an earlier page are dropped, each page
+is cut to 4,000 characters and the whole to 20,000, and only that goes to
+the AI: one `WebsiteReader` call (`AiTask::Structured`, every key required),
+none at all when the text is the same as the last run's (its suggestions
+carry over). `WebsiteSuggestions` checks the answer (unchanged fields,
+entries whose title exists, colours not in the markup are dropped). The
+page lists each suggestion (profile field, entry, colour, font, overall
+look, and keeping the pages' text as the "Website" document for search,
+which doesn't count toward the documents limit) with Accept, Edit and Skip;
+nothing is saved until accepted (`WebsiteReview`). Each run is logged in
+`shq_website_crawls` (who, status, reason, provider, model). Code:
+`app/SocialHq/Knowledge/Website/`.
+
 **Focus and search.** Every caller passes what it writes about as `$focus`:
 the planner the month's goals, pillars, confirmed events and networks; the
 copy writer the item (title, objective, angle, pillar, event, format) and open
@@ -190,6 +245,16 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   never brings back a date the team edited, moved or deleted. The AI never
   calculates a date and plans only around confirmed ones. The publish calendar
   shows a marker on days with events (PATCHES rows 60–63).
+  Each date has a country (`country_code`, ISO 3166-1 alpha-2): `NP` for
+  Nepal's, a country's code for its public holidays, null for international
+  days. "Add a country" (who may change shared dates) imports countries'
+  public holidays for this year and the next from Nager.Date
+  (`ImportPublicHolidays`, `--country=US` on the command; host in
+  `socialhq.events.nager`, answers cached per country and year), as "Needs
+  check" with Nager.Date as the source; re-importing follows the same rules,
+  per country. Nepal never comes from Nager.Date. The country filter and
+  `EventsForMonth`'s `$countries` keep the chosen countries' dates plus every
+  date without a country.
 - **Content plan** (`/socialhq/plan/{YYYY-MM}`). Items with a date, channel,
   format (TryPost's content type), what to make, pillar, owner, event, objective
   and angle. "Generate with AI" (`ContentPlanner`, a queued job) drafts the
@@ -199,6 +264,27 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   format, confirmed event around its dates, paused channels, duplicates) before
   they show, dashed, to accept or drop. "Approve plan" waits until no
   suggestion is open; any change sends an approved plan back to review.
+  The dialog's options (`PlannerOptions`, saved on the plan as
+  `generation_options`; the switches remembered per brand in the profile's
+  `planner_options`): the days to plan, any range inside the plan's month (a
+  plan stays one month, so items never leave it; suggestions outside the range
+  are kept), old calendars and recent posts on or off (left out of the prompt
+  when off), and events only for the audience's countries (`country_code` in
+  them, or null for international days).
+- **Audience** (Brand knowledge, "Where your audience is"; admins edit,
+  members read). Up to 10 places on the brand profile (`audience_locations`:
+  country, city or none, IANA zone prefilled from the country's main zone,
+  share %, at most 100 in all). The main zone is the largest share's, else the
+  zone of whoever plans. The planner gets the places and the main zone, and
+  each item a `suggested_time` ("HH:MM", checked in code; an unreadable one is
+  dropped, not the item) with `suggested_timezone` set by the code. Cards, the
+  list and the side sheet show it in that zone and the viewer's ("9:00 in
+  Sydney · 4:45 in Kathmandu"); "Create post" hands the composer that instant
+  as a wall clock in the user's zone (`SuggestedTime`), else 09:00 of the day.
+- **List view**: grouped by week (the user's start of week) with sticky week
+  headers, sortable by day, channel, pillar, owner and status (kept per
+  browser), inline accept, drop and restore, time and event columns; stacked
+  cards below `md`.
 - **Item** (`/socialhq/plan/items/{id}`). Copy (caption, hashtags, script for
   video, notes) saved as numbered versions, never edited in place; AI writes or
   rewrites a version (`CopyWriter`). Review thread: send for review, request

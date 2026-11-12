@@ -22,10 +22,17 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * import_key and import_date record the row of the official list an event
  * came from (null for dates people added); the app never changes them.
  * Deleting only hides an event, so a re-import doesn't bring it back.
+ *
+ * country_code (ISO 3166-1 alpha-2) is the country that observes it: NP for
+ * Nepal's dates, another code for a country's public holidays (Nager.Date),
+ * null for international days.
  */
 class CalendarEvent extends Model
 {
     use HasFactory, SoftDeletes;
+
+    /** Nepal's dates come from our official list, never from Nager.Date. */
+    public const NEPAL = 'NP';
 
     protected $table = 'shq_events';
 
@@ -100,6 +107,37 @@ class CalendarEvent extends Model
     public function scopeOverlapping(Builder $query, string $from, string $to): void
     {
         $query->where('starts_on', '<=', $to)->where('ends_on', '>=', $from);
+    }
+
+    /**
+     * Events for an audience in these countries: theirs, plus every event
+     * without a country (international days, a brand's own dates). Null
+     * keeps every country.
+     *
+     * @param  Builder<CalendarEvent>  $query
+     * @param  list<string>|null  $countries  ISO 3166-1 alpha-2 codes
+     */
+    public function scopeForCountries(Builder $query, ?array $countries): void
+    {
+        if ($countries === null) {
+            return;
+        }
+
+        $codes = collect($countries)->map(fn (string $code): string => strtoupper(trim($code)))->filter()->unique()->values()->all();
+
+        $query->where(fn (Builder $query) => $query->whereNull('country_code')->when($codes !== [], fn (Builder $query) => $query->orWhereIn('country_code', $codes)));
+    }
+
+    /**
+     * Events of our official list (Nepal's dates and the international
+     * days), which the CSV importer owns; other countries' holidays are
+     * Nager.Date's.
+     *
+     * @param  Builder<CalendarEvent>  $query
+     */
+    public function scopeFromOfficialList(Builder $query): void
+    {
+        $query->where(fn (Builder $query) => $query->whereNull('country_code')->orWhere('country_code', self::NEPAL));
     }
 
     /**

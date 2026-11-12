@@ -28,6 +28,9 @@ return [
         'international' => 'International',
         'brand' => 'This brand only',
         'unverified' => 'Needs check',
+        'country' => 'Country',
+        'all_countries' => 'All countries',
+        'country_hint' => 'Dates for :country, plus international days and your brands\' own dates.',
     ],
 
     'categories' => [
@@ -42,6 +45,7 @@ return [
     'regions' => [
         'nepal' => 'Nepal',
         'international' => 'International',
+        'country' => 'Another country',
         'brand' => 'This brand',
     ],
 
@@ -64,6 +68,7 @@ return [
         'more' => 'More actions for :name',
         'add' => 'Add a date',
         'import' => 'Import official dates',
+        'add_country' => 'Add a country',
     ],
 
     'dialog' => [
@@ -74,6 +79,7 @@ return [
         'name' => 'Name',
         'name_placeholder' => 'Store anniversary',
         'name_ne' => 'Nepali name',
+        'name_local' => 'Local name',
         'category' => 'Kind',
         'starts_on' => 'Starts',
         'ends_on' => 'Ends',
@@ -121,6 +127,33 @@ return [
         'done' => 'Official dates imported: :created new, :updated updated, :skipped unchanged.',
         'missing' => '{1} One date is no longer in the official list; it stays until you delete it.|[0,*] :count dates are no longer in the official list; they stay until you delete them.',
         'failed' => 'Couldn\'t import the official dates. Try again; if it keeps failing, tell whoever runs Social HQ.',
+    ],
+
+    'countries' => [
+        'title' => 'Add a country\'s public holidays',
+        'description' => 'Import a country\'s public holidays from Nager.Date. Each date starts as Needs check, and the AI uses it once someone confirms it.',
+        'countries' => 'Countries',
+        'search' => 'Search countries',
+        'selected' => ':count of :max picked',
+        'nepal_note' => 'Nepal\'s dates come from Import official dates.',
+        'years' => 'Years',
+        'loading' => 'Loading countries…',
+        'load_failed' => 'Couldn\'t load the countries from Nager.Date. Try again in a few minutes.',
+        'retry' => 'Try again',
+        'no_match' => 'No country matches your search.',
+        'cancel' => 'Cancel',
+        'import' => 'Import holidays',
+        'done' => 'Public holidays imported for :countries: :created new, :updated updated, :skipped unchanged. Check each date before planning around it.',
+        'missing' => '{1} One holiday is no longer listed by Nager.Date; it stays until you delete it.|[0,*] :count holidays are no longer listed by Nager.Date; they stay until you delete them.',
+        'unavailable' => 'Couldn\'t reach Nager.Date for :countries, so nothing was imported. Try again in a few minutes.',
+        'failed' => 'Couldn\'t import these holidays. Try again; if it keeps failing, tell whoever runs Social HQ.',
+        'errors' => [
+            'pick_country' => 'Pick at least one country.',
+            'too_many' => 'Pick up to :max countries at a time.',
+            'nepal' => 'Nepal\'s dates come from the official list: use Import official dates.',
+            'unknown' => 'Pick a country from the list.',
+            'pick_year' => 'Pick this year, next year or both.',
+        ],
     ],
 
     'markers' => [

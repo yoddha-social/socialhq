@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 
 /**
  * "Create post": prepares the composer draft of an approved item (copy,
- * final media, date and channel). The page opens TryPost's composer with it.
+ * final media, date, posting time and channel). The page opens TryPost's composer with it.
  */
 class ItemPostController extends Controller
 {
@@ -27,6 +27,7 @@ class ItemPostController extends Controller
             'media' => $draft['media']->map(fn (Media $media): array => MediaResource::make($media)->resolve($request))->values()->all(),
             'import_ids' => $draft['import_ids'],
             'scheduled_on' => $draft['scheduled_on'],
+            'scheduled_at' => $draft['scheduled_at'],
             'social_account_id' => $draft['social_account_id'],
         ]);
     }

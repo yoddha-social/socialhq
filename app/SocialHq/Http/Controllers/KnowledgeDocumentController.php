@@ -33,7 +33,7 @@ class KnowledgeDocumentController extends Controller
         $workspace = $this->workspace($request, edit: true);
 
         // Count, then create, like entries: two admins at once may pass the limit by one.
-        if (KnowledgeDocument::query()->where('workspace_id', $workspace->id)->count() >= DocumentsPage::limit()) {
+        if (! DocumentsPage::hasRoom($workspace)) {
             throw ValidationException::withMessages(['file' => __('socialhq_knowledge.documents.errors.too_many', ['count' => DocumentsPage::limit()])]);
         }
 
@@ -69,7 +69,7 @@ class KnowledgeDocumentController extends Controller
         $workspace = $this->workspace($request, edit: false);
         $found = KnowledgeDocument::query()->where('workspace_id', $workspace->id)->findOrFail($document);
 
-        abort_unless(DocumentStorage::disk()->exists($found->path), Response::HTTP_NOT_FOUND);
+        abort_unless(filled($found->path) && DocumentStorage::disk()->exists($found->path), Response::HTTP_NOT_FOUND);
 
         return DocumentStorage::disk()->download($found->path, $found->file_name, [
             'Content-Type' => $found->mime,
@@ -81,6 +81,11 @@ class KnowledgeDocumentController extends Controller
     public function update(UpdateKnowledgeDocumentRequest $request, int $document): RedirectResponse
     {
         $found = $this->document($request, $document);
+
+        // A title the admin typed stays when a linked file is read again.
+        if ($request->has('title') && $request->validated('title') !== $found->title) {
+            $found->auto_title = false;
+        }
 
         $found->update([...$request->validated(), 'updated_by' => $request->user()->id]);
 

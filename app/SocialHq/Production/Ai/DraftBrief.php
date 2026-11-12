@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\SocialHq\Production\Ai;
 
 use App\Models\User;
+use App\SocialHq\Ai\AiTenant;
 use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Plan\CopyStatus;
 use App\SocialHq\Plan\ItemVersion;
@@ -50,13 +51,14 @@ final class DraftBrief
             ], fn (mixed $value): bool => filled($value)),
         ], fn (mixed $value): bool => filled($value));
 
-        $response = (new BriefWriter(
+        // The brief's workspace decides whose AI it uses, whatever workspace the user has open.
+        $response = AiTenant::run($brief->workspace, fn () => (new BriefWriter(
             language: $user->locale->promptLanguage(),
             context: $context,
             // What the brief is about: the item, and the caption it illustrates.
             brandKnowledge: BrandKnowledge::forPrompt($brief->workspace, collect([$item->title, $item->angle, $version?->caption])->filter()->implode("\n")),
             isVideo: $brief->kind === BriefKind::Video,
-        ))->prompt('Draft the brief for this post.');
+        ))->prompt('Draft the brief for this post.'));
 
         $draft = [
             'on_screen_text' => Str::substr(trim((string) data_get($response, 'on_screen_text')), 0, 5000),

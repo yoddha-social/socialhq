@@ -21,6 +21,9 @@ class RedirectWhileAwaitingAccess
 {
     private const ALLOWED_ROUTES = [
         'socialhq.access.pending',
+        // The company pages (EnsureCompanyApproved) and the platform pages (their controller checks).
+        'socialhq.company.*',
+        'socialhq.platform.*',
         'logout',
         'verification.notice',
         'verification.verify',

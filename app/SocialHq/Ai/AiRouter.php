@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\SocialHq\Ai;
 
+use App\Models\Account;
+use App\SocialHq\Ai\Company\CompanyRoute;
+use App\SocialHq\Ai\Company\CompanyRouting;
+use App\SocialHq\Companies\Company;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Laravel\Ai\AiManager;
@@ -18,6 +22,12 @@ use Throwable;
  * direct routing the route lists providers the app calls with its own keys.
  * Either way only approved providers are used: any other target is dropped,
  * so a key for a provider that trains on prompts can never be called.
+ *
+ * With the gateway, the route also depends on the company the call runs for
+ * (AiTenant, CompanyRouting): a company with its own provider keys calls its
+ * own groups (shq-<task>@<team>) with its own virtual key; one without keys
+ * uses the platform's groups only when a platform admin allowed it; any
+ * other call has no route and fails closed.
  */
 final class AiRouter
 {
@@ -83,6 +93,10 @@ final class AiRouter
     {
         $targets = self::approvedTargets($task);
 
+        if ($targets === [] && (self::usesGateway() || self::companiesEnforced()) && CompanyRouting::current()->kind === CompanyRoute::NONE) {
+            throw AiUnavailableException::needsSetup(CompanyRouting::current());
+        }
+
         if ($targets === []) {
             throw new AiUnavailableException("No approved AI provider is configured for the [{$task->value}] task.");
         }
@@ -132,6 +146,8 @@ final class AiRouter
      */
     public static function isApproved(string $provider): bool
     {
+        $provider = CompanyRouting::gatewayEntryOf($provider) ?? $provider;
+
         return in_array($provider, self::approvedProviders(), true);
     }
 
@@ -145,7 +161,15 @@ final class AiRouter
     {
         $rows = [];
 
-        if (self::usesGateway() && blank(config("socialhq.ai.routes.{$task->value}")) && ! self::gatewayServes($task)) {
+        if (self::usesGateway() && CompanyRouting::current()->kind === CompanyRoute::NONE) {
+            return [['provider' => $task->litellmProvider(), 'model' => $task->litellmGroup(), 'used' => false, 'reason' => 'no AI for this company']];
+        }
+
+        if (self::usesGateway() && CompanyRouting::current()->kind === CompanyRoute::OWN && ! CompanyRouting::current()->serves($task)) {
+            return [['provider' => $task->litellmProvider(), 'model' => $task->litellmGroup(), 'used' => false, 'reason' => 'no provider of the company serves it']];
+        }
+
+        if (self::usesGateway() && CompanyRouting::current()->kind === CompanyRoute::PLATFORM && blank(config("socialhq.ai.routes.{$task->value}")) && ! self::gatewayServes($task)) {
             return [['provider' => $task->litellmProvider(), 'model' => $task->litellmGroup(), 'used' => false, 'reason' => 'not in SOCIALHQ_AI_GATEWAY_TASKS']];
         }
 
@@ -170,8 +194,41 @@ final class AiRouter
     }
 
     /**
-     * The task's route as written: SOCIALHQ_AI_ROUTE_<TASK> when set, else the
-     * gateway's model group, else the SDK's default provider.
+     * Whether companies decide whose AI a call uses (self-hosted, with
+     * SOCIALHQ_COMPANIES_REQUIRED on).
+     */
+    private static function companiesEnforced(): bool
+    {
+        return (bool) config('trypost.self_hosted') && (bool) config('socialhq.companies.required', true);
+    }
+
+    /**
+     * In direct mode every call uses the platform's keys, so only the
+     * platform or an approved company allowed the platform's AI may make
+     * one. Without a tenant (a job that set none) nothing runs.
+     */
+    private static function directModeAllowed(): bool
+    {
+        if (! self::companiesEnforced()) {
+            return true;
+        }
+
+        $tenant = AiTenant::current();
+
+        if ($tenant === AiTenant::PLATFORM) {
+            return true;
+        }
+
+        $company = $tenant instanceof Account ? Company::forAccount($tenant) : null;
+
+        return $company !== null && $company->isApproved() && $company->uses_platform_ai;
+    }
+
+    /**
+     * The task's route as written. With the gateway: the company's own
+     * group, or for the platform SOCIALHQ_AI_ROUTE_<TASK> when set, else the
+     * platform's group, or nothing. Direct: SOCIALHQ_AI_ROUTE_<TASK> when set,
+     * else the SDK's default provider.
      *
      * @return array<string, string|null>
      */
@@ -179,12 +236,27 @@ final class AiRouter
     {
         $written = config("socialhq.ai.routes.{$task->value}");
 
-        if (filled($written)) {
-            return self::parse((string) $written);
+        if (self::usesGateway()) {
+            $company = CompanyRouting::current();
+
+            return match ($company->kind) {
+                CompanyRoute::OWN => $company->serves($task) ? [CompanyRouting::provider($task, $company) => CompanyRouting::group($task, (string) $company->teamId)] : [],
+                // Written routes use the platform's own keys: never for a company with its own.
+                CompanyRoute::PLATFORM => filled($written)
+                    ? self::parse((string) $written)
+                    : (self::gatewayServes($task) ? [$task->litellmProvider() => $task->litellmGroup()] : []),
+                default => [],
+            };
         }
 
-        if (self::usesGateway()) {
-            return self::gatewayServes($task) ? [$task->litellmProvider() => $task->litellmGroup()] : [];
+        // Direct mode calls the platform's own provider keys: only for the
+        // platform or a company allowed to use them.
+        if (! self::directModeAllowed()) {
+            return [];
+        }
+
+        if (filled($written)) {
+            return self::parse((string) $written);
         }
 
         $default = match ($task) {

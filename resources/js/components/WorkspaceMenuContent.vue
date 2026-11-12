@@ -23,6 +23,7 @@ import { computed, ref } from 'vue';
 
 import PreferencesController from '@/actions/App/Http/Controllers/App/Settings/PreferencesController';
 import { updateLanguage } from '@/actions/App/Http/Controllers/App/Settings/ProfileController';
+import PlatformMenuItem from '@/components/socialhq/PlatformMenuItem.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { buttonVariants } from '@/components/ui/button';
 import {
@@ -321,6 +322,8 @@ const supportLinks = [
                 {{ $t('sidebar.plans_billing') }}
             </Link>
         </DropdownMenuItem>
+        <!-- Social HQ: platform admins only (PATCHES.md). -->
+        <PlatformMenuItem />
     </DropdownMenuGroup>
 
     <DropdownMenuSeparator />

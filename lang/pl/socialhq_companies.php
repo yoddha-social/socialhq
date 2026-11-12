@@ -1,0 +1,132 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+| Social HQ: companies (asking to start one, waiting, paused, and the
+| platform admin pages). English only; bin/socialhq-sync-lang copies it.
+*/
+
+return [
+    'signup' => [
+        'name_label' => 'Company name',
+        'name_placeholder' => 'Acme Ltd',
+        'name_hint' => 'To start your company on Social HQ. A platform admin approves each new company.',
+        'name_hint_lists' => 'To start a new company on Social HQ. Leave it empty if your work email lets you join your team here.',
+        'name_required' => 'Name your company to ask for one, or ask your team\'s admin for an invite.',
+        'name_too_long' => 'Keep the company name under 120 characters.',
+    ],
+
+    'requested' => [
+        'page_title' => 'Check your email',
+        'title' => 'Check your email',
+        'description' => 'We sent an email to :email.',
+        'description_no_email' => 'We sent you an email.',
+        'step_confirm' => 'Open its link to confirm your email, then log in. If you already have an account, the email lets you set a new password instead.',
+        'step_review' => 'A platform admin reviews your company. You wait on one page until then.',
+        'step_answer' => 'We email you their answer. Once approved, you create your first workspace.',
+        'log_in' => 'Log in',
+    ],
+
+    'waiting' => [
+        'page_title' => 'Waiting for approval',
+        'pending_title' => 'Your company is waiting for approval',
+        'pending_description' => ':company · you signed up as :email',
+        'verify_first' => 'First confirm your email: we sent you a link. Platform admins hear about your company once it\'s confirmed.',
+        'notified' => 'Platform admins have your request. We\'ll email you as soon as they decide.',
+        'resend' => 'Resend confirmation email',
+        'link_sent' => 'A new confirmation link is on its way.',
+        'name_label' => 'Company name',
+        'save_name' => 'Save name',
+        'declined_title' => 'Your company wasn\'t approved',
+        'declined_description' => 'A platform admin declined :company.',
+        'note_label' => 'Their note',
+        'ask_again' => 'Ask again',
+        'ask_again_hint' => 'Changed something? Ask again and a platform admin looks at your company once more.',
+        'ask_again_after' => 'You can ask again :time.',
+        'log_out' => 'Log out',
+        'platform_link' => 'Open the platform admin pages',
+        'already_decided' => 'A platform admin already decided on your company, so its name can\'t change now.',
+        'cannot_ask_again' => 'You can\'t ask again yet. Try again later.',
+    ],
+
+    'paused' => [
+        'page_title' => 'Company paused',
+        'title' => 'Your company is paused',
+        'description' => 'Nobody at :company can use Social HQ until a platform admin restores it.',
+        'owner_contact' => 'To get it restored, write to :email.',
+        'owner_no_contact' => 'To get it restored, contact the people who run this Social HQ server.',
+        'member_contact' => 'To find out more, contact :name (:email), who manages your company.',
+        'note_label' => 'Note from the platform admin',
+        'log_out' => 'Log out',
+        'api' => 'This company is paused on Social HQ. Its owner can ask the platform admins to restore it.',
+    ],
+
+    'start' => [
+        'page_title' => 'No workspace yet',
+        'title' => 'You don\'t have a workspace yet',
+        'description' => 'Workspaces belong to a company. To work in one, ask its admin to invite you: the invite arrives by email.',
+        'ask_title' => 'Or start your own company',
+        'ask_description' => 'Name your company and a platform admin reviews it. Once approved, you create its workspaces.',
+        'name_label' => 'Company name',
+        'submit' => 'Ask to start a company',
+        'log_out' => 'Log out',
+    ],
+
+    'platform' => [
+        'page_title' => 'Companies',
+        'title' => 'Companies',
+        'description' => 'Which companies may use this Social HQ server.',
+        'menu_item' => 'Platform: companies',
+        'tabs' => [
+            'requests' => 'Requests',
+            'companies' => 'Companies',
+        ],
+        'requests_empty' => 'No company is waiting for approval.',
+        'companies_empty' => 'No company has been approved or declined yet.',
+        'requested' => 'Asked :time',
+        'not_verified' => 'Email not confirmed',
+        'not_verified_hint' => 'You can approve it once the owner confirms their email.',
+        'created' => 'Since :time',
+        'workspaces' => '{1} 1 workspace|[0,*] :count workspaces',
+        'members' => '{1} 1 person|[0,*] :count people',
+        'status' => [
+            'pending' => 'Waiting',
+            'approved' => 'Approved',
+            'declined' => 'Declined',
+            'suspended' => 'Paused',
+        ],
+        'note' => 'Note: :note',
+        'approve' => 'Approve',
+        'decline' => 'Decline',
+        'suspend' => 'Pause',
+        'restore' => 'Restore',
+        'approve_label' => 'Approve :name',
+        'decline_label' => 'Decline :name',
+        'suspend_label' => 'Pause :name',
+        'restore_label' => 'Restore :name',
+        'platform_ai' => 'May use Social HQ\'s AI keys',
+        'platform_ai_label' => ':name may use Social HQ\'s AI keys',
+        'decline_title' => 'Decline :name?',
+        'decline_description' => 'The owner sees your note and can ask again after a day.',
+        'suspend_title' => 'Pause :name?',
+        'suspend_description' => 'Nobody at :name can use Social HQ until you restore it. Its owner sees your note.',
+        'restore_title' => 'Restore :name?',
+        'restore_description' => 'Everyone at :name can work again.',
+        'note_label' => 'Note for the owner',
+        'confirm_decline' => 'Decline',
+        'confirm_suspend' => 'Pause',
+        'confirm_restore' => 'Restore',
+        'cancel' => 'Cancel',
+        'note_required' => 'Write a note: the owner reads it.',
+        'note_too_long' => 'Keep the note under 500 characters.',
+        'flash' => [
+            'approved' => ':name is approved. Its owner can create workspaces now.',
+            'declined' => 'You declined :name.',
+            'suspended' => ':name is paused.',
+            'restored' => ':name works again.',
+            'already_decided' => 'Another platform admin already decided on this company.',
+            'not_verified' => 'The owner hasn\'t confirmed their email yet, so the company can\'t be approved.',
+        ],
+    ],
+];

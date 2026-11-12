@@ -67,9 +67,33 @@ TryPost's four agents carry it too (PATCHES.md row 15). Code:
   `write,structured,vision`): the gateway serves only these. `image` and
   `embed` have only paid Gemini in LiteLLM, so they stay off (and "Generate
   with AI" stays hidden) until its key is set and they are listed.
+- **Per company** (gateway only; `app/SocialHq/Ai/Company/`). Each call
+  runs for a company (`AiTenant`): on the web the user's current workspace's
+  account, in a job the workspace it carries (`AiTenant::run($workspace,
+  ...)`; a job without one fails closed). `CompanyRouting` decides once per
+  request or job: a company with its own provider keys calls
+  `shq-<task>@shq-co-<account>` with its own LiteLLM team key (SDK entry
+  `litellm-co-<account>`, so no key carries over between companies or
+  Horizon jobs); one without keys uses the platform groups above only when
+  a platform admin allowed it (`uses_platform_ai`); otherwise AI buttons
+  hide and a call says "add an AI provider in Settings › AI". Written
+  routes (`SOCIALHQ_AI_ROUTE_<TASK>`) apply to the platform only.
+- **Settings › AI** (owner of an approved company): add a key from the
+  catalogue (`socialhq.company_ai.providers`: Groq, Cloudflare Workers AI,
+  Mistral with its training opt-out ticked, paid Gemini with billing
+  ticked, OpenAI, Anthropic), tested through LiteLLM before anything is
+  saved; Test, Replace, Remove, order (LiteLLM's deployment `order`),
+  monthly budget (the team's `max_budget`) and spend. Provider keys live
+  only in LiteLLM (credentials, encrypted with its salt key); the app keeps
+  the last 4 characters. The team key is encrypted with
+  `SOCIALHQ_SECRETS_KEY` (`SecretBox`, never APP_KEY). Every change is in
+  `shq_company_ai_events`. The app calls LiteLLM's admin API with
+  `LITELLM_ADMIN_KEY` (`Gateway\LiteLlmAdmin`), which needs
+  `store_model_in_db`. Team-scoped model names are LiteLLM Enterprise, so
+  each company's groups are global names its team key alone may call.
 - `php artisan socialhq:ai-routes` shows each task's targets and why one is
   unused; `--live` sends a small request through each (`--images` adds one
-  image).
+  image); `--account=<id>` routes as that company.
 - Per-call records are LiteLLM's spend logs (its admin UI on port 4000), not
   a table in the app: AGENTS.md keeps TryPost free of AI usage recording.
 
@@ -258,6 +282,41 @@ empty sign-up stays invites only. Code: `app/SocialHq/Signup/`.
    workspace their request closes by itself (`note` `joined_by_invite`).
    Declining an invite leaves them waiting.
 
+**Companies** (`app/SocialHq/Companies/`). A company is an account a
+platform admin approved; only its owner creates workspaces
+(`SOCIALHQ_COMPANIES_REQUIRED`, default on). Platform admins are granted
+with `php artisan socialhq:platform-admin <email>` only; on a new server the
+first person asks for a company, is granted, and approves it.
+
+1. Anyone off the lists may ask to start a company
+   (`SOCIALHQ_COMPANY_REQUESTS`, default on; off brings back "can't sign up
+   here"). The register form adds "Company name"; the server decides on
+   submit (`CompanySignup`). That path never logs in and always ends on
+   "Check your email": a new email gets its account, a pending company and
+   the confirmation link; an email that has an account gets a password reset
+   link, so the form never says which. Google and GitHub prove the email, so
+   they create the pending company at once, named after the person; the
+   owner renames it while it waits.
+2. Platform admins are emailed once the owner's email is confirmed (once an
+   hour per address). The owner waits on one page (resend, rename, log
+   out). Declined: the page shows the note, and "Ask again" puts it back to
+   pending after 24 hours.
+3. `/socialhq/platform/companies` ("Platform: companies" in the user menu,
+   404 for others): Requests (approve once the email is confirmed, decline
+   with a note) and Companies (pause with a note, restore, "May use Social
+   HQ's AI keys"). Decisions lock the row: the first admin wins, the second
+   is told. Every request and decision is in `shq_company_events`; the owner
+   is emailed when approved or declined.
+4. `EnsureCompanyApproved` (web group): a waiting company's owner sees the
+   waiting page; everyone in a paused company sees the paused page (who to
+   contact: `SOCIALHQ_PLATFORM_CONTACT_EMAIL`, else the admin who paused it,
+   and for members the owner), and its API keys and MCP grants get a 403.
+   Someone with no workspace who can't create one (an invited person's
+   empty account) gets a page that says to ask for an invite or, if their
+   account is empty, to ask for a company. Platform admins follow their own
+   company's rules but always reach the platform pages. Scheduled posts of
+   a paused company still publish.
+
 Google or GitHub sign-in to an account whose email isn't confirmed yet
 (someone registered the address with a password and never confirmed it)
 takes the account over for the address's owner: the password is replaced,
@@ -270,8 +329,9 @@ nothing and creates nothing.
 Our screens use the `socialhq.*` keys in `lang/en/socialhq.php`, in English
 only. Email copy follows AGENTS.md instead: one `mail.<slug>` block per
 template in every `lang/*/mail.php` (the sign-up emails are
-`socialhq_access_requested` and `socialhq_access_approved`, English in every
-locale for now). Upstream's parity test wants every locale to have the same keys, so
+`socialhq_access_requested` and `socialhq_access_approved`, and the company
+emails `socialhq_company_requested`, `_approved` and `_declined`, English in
+every locale for now). Upstream's parity test wants every locale to have the same keys, so
 after changing that file run `bin/socialhq-sync-lang`, which copies it to the
 other 15 locales.
 

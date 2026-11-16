@@ -217,6 +217,8 @@ return [
         'date_in_month' => 'Pick a day in this plan\'s month.',
         'channel' => 'Pick one of this brand\'s channels.',
         'content_type' => 'Pick a format this channel offers.',
+        'creative' => 'This format can\'t carry what you picked to make. Pick another format, or change What to make.',
+        'creative_has_brief' => 'This item already has a brief for its creative, so What to make stays the same kind. To make something else, drop this item and add a new one.',
         'pillar' => 'Pick one of the brand\'s pillars.',
         'event' => 'Pick an event in this month.',
         'owner' => 'Pick someone in this workspace.',

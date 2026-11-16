@@ -9,10 +9,17 @@ use App\Models\Workspace;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Plan\ContentPlan;
+use App\SocialHq\Plan\CopyStatus;
+use App\SocialHq\Plan\CreativeKind;
+use App\SocialHq\Plan\ItemReview;
 use App\SocialHq\Plan\ItemSource;
 use App\SocialHq\Plan\ItemStatus;
+use App\SocialHq\Plan\ItemVersion;
 use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Plan\PlanStatus;
+use App\SocialHq\Plan\ReviewKind;
+use App\SocialHq\Production\Brief;
+use App\SocialHq\Production\BriefKind;
 use Carbon\CarbonImmutable;
 
 beforeEach(function () {
@@ -85,6 +92,7 @@ test('an item must fit the month, the brand\'s channels, the channel\'s formats,
     'an event of another month' => [fn () => ['event_id' => CalendarEvent::factory()->verified()->create(['account_id' => $this->workspace->account_id, 'starts_on' => $this->month->addMonthNoOverflow()->addDays(3), 'ends_on' => $this->month->addMonthNoOverflow()->addDays(3)])->id], 'event_id'],
     'someone outside the workspace' => [fn () => ['owner_id' => User::factory()->create()->id], 'owner_id'],
     'no title' => [fn () => ['title' => ''], 'title'],
+    'a creative the format can\'t carry' => [fn () => ['creative' => 'none'], 'creative'],
 ]);
 
 test('an unconfirmed event of the month can still be picked by a person', function () {
@@ -241,3 +249,33 @@ test('editing, moving or commenting on an AI suggestion accepts it, so a new dra
 
     expect($suggestion->fresh()->status)->toBe(ItemStatus::Planned);
 })->with(['update', 'move', 'comment']);
+
+test('changing the channel or format sends approved copy back to draft, with a note', function () {
+    $item = ($this->planWithItem)([], ['copy_status' => CopyStatus::Approved, 'content_type' => ContentType::InstagramReel, 'creative' => 'video']);
+    ItemVersion::query()->create(['item_id' => $item->id, 'number' => 1, 'caption' => 'Approved caption', 'source' => ItemSource::Manual, 'created_by' => $this->owner->id]);
+
+    // Other edits leave it approved.
+    $this->actingAs($this->member)->put(route('socialhq.plan.items.update', $item->id), ($this->itemPayload)(['title' => 'Renamed']))->assertSessionHasNoErrors();
+    expect($item->fresh()->copy_status)->toBe(CopyStatus::Approved);
+
+    $this->actingAs($this->member)->put(route('socialhq.plan.items.update', $item->id), ($this->itemPayload)(['content_type' => ContentType::InstagramStory->value]))->assertSessionHasNoErrors();
+
+    $note = ItemReview::query()->where('item_id', $item->id)->sole();
+    expect($item->fresh()->copy_status)->toBe(CopyStatus::Draft)
+        ->and($note->kind)->toBe(ReviewKind::Reopened)
+        ->and($note->body)->toBe(__('socialhq_production.review.reopened_format'));
+});
+
+test('what to make keeps the kind of the item\'s brief', function () {
+    $item = ($this->planWithItem)([], ['content_type' => ContentType::InstagramReel, 'creative' => 'video']);
+    Brief::factory()->for($item, 'item')->create(['kind' => BriefKind::Video]);
+
+    $this->actingAs($this->member)
+        ->put(route('socialhq.plan.items.update', $item->id), ($this->itemPayload)(['content_type' => ContentType::InstagramFeed->value, 'creative' => 'none']))
+        ->assertSessionHasErrors(['creative' => __('socialhq_plan.validation.creative_has_brief')]);
+    $this->actingAs($this->member)
+        ->put(route('socialhq.plan.items.update', $item->id), ($this->itemPayload)(['content_type' => ContentType::InstagramFeed->value, 'creative' => 'image']))
+        ->assertSessionHasErrors('creative');
+
+    expect($item->fresh()->creative)->toBe(CreativeKind::Video);
+});

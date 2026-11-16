@@ -8,7 +8,9 @@ use App\Http\Controllers\Controller;
 use App\SocialHq\Http\Requests\Plan\UpdateBriefRequest;
 use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Plan\PlanItem;
+use App\SocialHq\Plan\ReviewKind;
 use App\SocialHq\Production\Brief;
+use App\SocialHq\Production\BriefRounds;
 use App\SocialHq\Production\BriefStage;
 use App\SocialHq\Production\FormatNotes;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -24,6 +26,11 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class BriefController extends Controller
 {
+    /**
+     * The fields that say what the creative must show.
+     */
+    private const array CONTENT = ['format_notes', 'on_screen_text', 'direction', 'references'];
+
     public function store(Request $request, int $item): RedirectResponse
     {
         $planItem = PlanAccess::item($request, $item);
@@ -57,11 +64,26 @@ class BriefController extends Controller
         return back();
     }
 
+    /**
+     * Changing what an approved creative must show (its format, text,
+     * direction or references) reopens it, so the next upload is a new
+     * round that gets reviewed.
+     */
     public function update(UpdateBriefRequest $request, int $item): RedirectResponse
     {
         $brief = PlanAccess::item($request, $item)->brief ?? abort(Response::HTTP_NOT_FOUND);
 
-        $brief->update($request->validated());
+        DB::transaction(function () use ($brief, $request): void {
+            $locked = Brief::query()->lockForUpdate()->findOrFail($brief->id);
+            $locked->fill($request->validated());
+            $reopen = $locked->stage === BriefStage::Approved && $locked->isDirty(self::CONTENT);
+            $locked->save();
+
+            if ($reopen) {
+                BriefRounds::moveTo($locked, BriefStage::InProgress);
+                BriefRounds::note($locked, $request->user(), ReviewKind::Reopened, $locked->currentRound() ?: null, __('socialhq_production.review.reopened_brief'));
+            }
+        });
 
         return back();
     }

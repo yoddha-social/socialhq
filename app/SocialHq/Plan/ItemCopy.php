@@ -51,6 +51,25 @@ final class ItemCopy
         });
     }
 
+    /**
+     * Send approved copy, or copy in review, back to draft with a note in
+     * the thread saying why: what it was written for changed.
+     */
+    public static function reopen(PlanItem $item, User $user, string $reason): void
+    {
+        DB::transaction(function () use ($item, $user, $reason): void {
+            $locked = PlanItem::query()->lockForUpdate()->findOrFail($item->id);
+
+            if (! in_array($locked->copy_status, [CopyStatus::Approved, CopyStatus::InReview], true)) {
+                return;
+            }
+
+            $locked->update(['copy_status' => CopyStatus::Draft]);
+            self::note($locked, $user, ReviewKind::Reopened, ItemVersion::query()->where('item_id', $locked->id)->orderByDesc('number')->first(), $reason);
+            $item->setRawAttributes($locked->getAttributes(), true);
+        });
+    }
+
     public static function submit(PlanItem $item, User $user): void
     {
         self::transition($item, [CopyStatus::Draft, CopyStatus::ChangesRequested], CopyStatus::InReview, 'cannot_submit', null, function (PlanItem $locked, ItemVersion $version) use ($user): void {

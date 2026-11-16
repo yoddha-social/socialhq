@@ -13,6 +13,7 @@ use App\SocialHq\Http\Requests\Plan\StorePlanItemRequest;
 use App\SocialHq\Http\Requests\Plan\UpdatePlanItemRequest;
 use App\SocialHq\Knowledge\Audience\Audience;
 use App\SocialHq\Plan\ContentPlan;
+use App\SocialHq\Plan\ItemCopy;
 use App\SocialHq\Plan\ItemSource;
 use App\SocialHq\Plan\ItemStatus;
 use App\SocialHq\Plan\PlanAccess;
@@ -67,6 +68,12 @@ class PlanItemWriteController extends Controller
                 ...self::withTimeZone($request->validated(), $found, $found->plan->workspace, $request->user()),
                 'platform' => $channel->platform->value,
             ]);
+
+            // Copy approved (or in review) for one channel and format isn't approved for another.
+            if ($found->wasChanged(['social_account_id', 'content_type'])) {
+                ItemCopy::reopen($found, $request->user(), __('socialhq_production.review.reopened_format'));
+            }
+
             $found->acceptForWork();
         });
 

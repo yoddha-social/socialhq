@@ -137,6 +137,7 @@ return [
         ],
         'errors' => [
             'not_needed' => 'This item has no creative to make, so it doesn\'t need a brief.',
+            'kind_fixed' => 'A brief\'s kind follows what its item needs made, so it can\'t change here.',
         ],
     ],
 
@@ -238,6 +239,8 @@ return [
             'reopened' => 'started a new version after approval',
             'reopened_creative' => 'reopened the approved creative',
         ],
+        'reopened_format' => 'The channel or format changed, so the copy needs review again.',
+        'reopened_brief' => 'The brief changed after approval, so the creative needs a new round.',
         'about_version' => 'Copy, version :number',
         'about_round' => 'Creative, round :round',
         'errors' => [

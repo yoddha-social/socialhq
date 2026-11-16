@@ -326,6 +326,7 @@ const replaceWithDraft = (): void => {
                         id="socialhq-brief-kind"
                         v-model="form.kind"
                         class="w-full"
+                        disabled
                         data-testid="item-brief-kind"
                     >
                         <NativeSelectOption value="graphic">

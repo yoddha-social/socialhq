@@ -36,6 +36,7 @@ use App\SocialHq\Knowledge\Search\LexicalKnowledgeSearch;
 use App\SocialHq\Knowledge\TryPostPromptFocus;
 use App\SocialHq\Production\BriefStorage;
 use App\SocialHq\Secrets\SecretsKeyCommand;
+use App\SocialHq\Secrets\SecretsReencryptCommand;
 use App\SocialHq\Signup\AccessRequests;
 use App\SocialHq\Signup\PasswordResetProof;
 use App\SocialHq\Signup\SignupRules;
@@ -97,7 +98,7 @@ class SocialHqServiceProvider extends ServiceProvider
         Event::listen(ApprovedProvidersGuard::EVENTS, [ApprovedProvidersGuard::class, 'handle']);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiRoutesCommand::class, ImportEventsCommand::class, PruneCalendarUploadsCommand::class, PlatformAdminCommand::class, SecretsKeyCommand::class]);
+            $this->commands([AiRoutesCommand::class, ImportEventsCommand::class, PruneCalendarUploadsCommand::class, PlatformAdminCommand::class, SecretsKeyCommand::class, SecretsReencryptCommand::class]);
         }
 
         // Provider keys are write-only: never flashed back as old input after a

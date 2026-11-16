@@ -95,13 +95,13 @@ TryPost's four agents carry it too (PATCHES.md row 15). Code:
 - `php artisan socialhq:ai-routes` shows each task's targets and why one is
   unused; `--live` sends a small request through each (`--images` adds one
   image); `--account=<id>` routes as that company.
-- Per-call records are LiteLLM's spend logs (its admin UI on port 4000), not
-  a table in the app: AGENTS.md keeps TryPost free of AI usage recording.
-  Every text call through the gateway carries the account id as OpenAI's
-  `user` field and `metadata.spend_logs_metadata` (account, workspace,
-  task), so platform-AI spend, which shares `LITELLM_API_KEY`, can be told
-  apart (`AiRouter::gatewayAttribution`). Image and embedding calls can't:
-  the SDK has no hook for them.
+- **Spend attribution in LiteLLM**: every text call through the gateway also
+  carries the account id as OpenAI's `user` field and
+  `metadata.spend_logs_metadata` (account, workspace, task), so platform-AI
+  spend, which shares `LITELLM_API_KEY`, can be told apart in LiteLLM's own
+  spend logs (`AiRouter::gatewayAttribution`). Image and embedding calls
+  can't: the SDK has no hook for them. The app's own record is the usage log
+  below.
 - **Timeouts** (`AiTimeout`, through `UsesAiTask::timeout()`): 90 s for a
   call someone waits for (Cloudflare ends a request at about 100 s), 300 s
   for agents that only run in queued jobs (the planner, the website reader).
@@ -120,6 +120,30 @@ TryPost's four agents carry it too (PATCHES.md row 15). Code:
   off and is logged; after a rotation run `php artisan
   socialhq:secrets-reencrypt` (`--dry-run` first), then drop the previous
   key.
+- **Settings › AI › Usage** (same owner; `/socialhq/settings/ai/usage`) lists
+  each AI request and how it was routed; platform admins see every company's
+  at `/socialhq/platform/ai-usage` (a link on the companies page, 404 for
+  others). `Ai/Usage/AiUsageRecorder` writes `shq_ai_usage_logs`, one row per
+  request the SDK sends to LiteLLM plus calls refused before sending
+  (`UsesAiTask`, "No AI provider"): company, brand, person (a job gets the
+  user of the request that queued it through hidden Context), feature (the
+  agent's class), task, keys used (own or platform), status (answered,
+  failed, rate-limited, budget reached, no AI provider), and from LiteLLM's
+  response headers the model that answered, the group that answered, the
+  fallbacks, the cost and the duration; tokens come from the SDK. Only
+  requests to the gateway's model endpoints carry our `x-litellm-call-id` and
+  `x-litellm-tags` (feature, company), so LiteLLM's own spend log can be
+  matched by call id; no other host gets them. **Metadata only**: never a
+  prompt, an answer or a provider's error text (only LiteLLM's `error.type`).
+  Logging never breaks AI (each step is `rescue()`d). Rows are kept 90 days
+  (`AiUsageLog::RETENTION_DAYS`, `model:prune` daily). Images and streamed
+  replies get no group or fallback headers from LiteLLM; its admin UI (port
+  4000) has those by call id.
+- That log is a **scoped exception** to AGENTS.md "AI usage is not recorded
+  or metered" (user decision 2026-11-16): it is an admin audit log only.
+  Nothing reads it to allow, limit or bill AI (LiteLLM's team budget does
+  that) and `AccountPolicy::useAi` is unchanged. Don't add credits, limits
+  or billing on top of it.
 
 ## Brand knowledge
 

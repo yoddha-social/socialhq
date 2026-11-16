@@ -179,7 +179,7 @@ final class AiRouter
             'user' => $accountId,
             'metadata' => ['spend_logs_metadata' => array_filter([
                 'account_id' => $accountId,
-                'workspace_id' => AiTenant::workspaceId(),
+                'workspace_id' => AiTenant::currentWorkspaceId(),
                 'task' => $task->value,
             ])],
         ]);

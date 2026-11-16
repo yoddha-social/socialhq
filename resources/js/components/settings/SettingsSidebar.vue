@@ -15,6 +15,9 @@ import {
     SidebarMenuBadge,
     SidebarMenuButton,
     SidebarMenuItem,
+    SidebarMenuSub,
+    SidebarMenuSubButton,
+    SidebarMenuSubItem,
     useSidebar,
 } from '@/components/ui/sidebar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -70,7 +73,7 @@ const exactMatchItems = ['general', 'profile', 'account'];
                         <SidebarMenuButton
                             as-child
                             class="ps-2 pe-3 font-medium text-muted-foreground data-[active=true]:text-sidebar-foreground data-[active=true]:[&>svg]:text-sidebar-foreground"
-                            :is-active="urlIsActive(item.href, { exact: exactMatchItems.includes(item.name) })"
+                            :is-active="urlIsActive(item.href, { exact: exactMatchItems.includes(item.name) || Boolean(item.children?.length) })"
                             :tooltip="item.title"
                         >
                             <Link
@@ -87,6 +90,23 @@ const exactMatchItems = ['general', 'profile', 'account'];
                         >
                             {{ item.count }}
                         </SidebarMenuBadge>
+                        <!-- Social HQ: sub-pages of an item (Settings › AI › Usage). -->
+                        <SidebarMenuSub v-if="item.children?.length">
+                            <SidebarMenuSubItem v-for="child in item.children" :key="child.name">
+                                <SidebarMenuSubButton
+                                    as-child
+                                    class="text-muted-foreground data-[active=true]:text-sidebar-foreground"
+                                    :is-active="urlIsActive(child.href, { exact: true })"
+                                >
+                                    <Link
+                                        :href="child.href"
+                                        :data-testid="`settings-nav-${child.name.replaceAll('_', '-')}`"
+                                    >
+                                        <span>{{ child.title }}</span>
+                                    </Link>
+                                </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                        </SidebarMenuSub>
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarGroup>

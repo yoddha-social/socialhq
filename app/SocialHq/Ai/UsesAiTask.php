@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\SocialHq\Ai;
 
+use App\SocialHq\Ai\Usage\AiUsageRecorder;
 use Laravel\Ai\Enums\Lab;
 
 /**
@@ -28,7 +29,14 @@ trait UsesAiTask
      */
     public function provider(): array
     {
-        return $this->aiRoute = AiRouter::route($this->aiTask());
+        try {
+            return $this->aiRoute = AiRouter::route($this->aiTask());
+        } catch (AiUnavailableException $exception) {
+            // Settings › AI › Usage lists calls refused before anything was sent.
+            app(AiUsageRecorder::class)->blocked($this, $exception);
+
+            throw $exception;
+        }
     }
 
     /**

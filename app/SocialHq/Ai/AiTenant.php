@@ -34,8 +34,8 @@ final class AiTenant
     private static array $stack = [];
 
     /**
-     * The workspace each run() was given (null when it was an account), for
-     * LiteLLM's spend logs.
+     * The workspace run() was given, alongside $stack (null when it got an
+     * account or the platform). The usage log and LiteLLM's spend logs read it.
      *
      * @var list<string|null>
      */
@@ -69,6 +69,21 @@ final class AiTenant
     }
 
     /**
+     * The workspace (brand) AI calls run for, when known: the one run() was
+     * given, else the signed-in user's current workspace.
+     */
+    public static function currentWorkspaceId(): ?string
+    {
+        if (self::$workspaces !== []) {
+            return self::$workspaces[array_key_last(self::$workspaces)];
+        }
+
+        $user = auth()->user();
+
+        return $user instanceof User ? $user->current_workspace_id : null;
+    }
+
+    /**
      * The account AI calls run for, self::PLATFORM, or null for nobody.
      */
     public static function current(): Account|string|null
@@ -82,20 +97,5 @@ final class AiTenant
         $user = auth()->user();
 
         return $user instanceof User ? $user->currentWorkspace?->account : null;
-    }
-
-    /**
-     * The id of the workspace AI calls run for, when known: the one run()
-     * was given, or on the web the user's current workspace.
-     */
-    public static function workspaceId(): ?string
-    {
-        if (self::$stack !== []) {
-            return self::$workspaces[array_key_last(self::$workspaces)];
-        }
-
-        $user = auth()->user();
-
-        return $user instanceof User ? $user->current_workspace_id : null;
     }
 }

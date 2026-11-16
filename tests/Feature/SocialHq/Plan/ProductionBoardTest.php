@@ -11,6 +11,7 @@ use App\SocialHq\Plan\ReviewKind;
 use App\SocialHq\Production\Brief;
 use App\SocialHq\Production\BriefFile;
 use App\SocialHq\Production\BriefKind;
+use App\SocialHq\Production\BriefRounds;
 use App\SocialHq\Production\BriefStage;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -159,7 +160,85 @@ test('a creative with no files can\'t be dragged into Approved, even by an appro
     $this->actingAs($this->owner)->putJson(route('socialhq.plan.board.move', $brief->id), [
         'stage' => 'approved',
         'ordered_ids' => [$brief->id],
-    ])->assertConflict();
+    ])->assertUnprocessable();
 
     expect($brief->fresh()->stage->value)->toBe('in_progress');
+});
+
+test('dragging decides only a round that is in review, like the review buttons', function () {
+    // Files uploaded but never sent for review.
+    $brief = boardBrief($this->plan, ['stage' => BriefStage::InProgress]);
+    BriefFile::query()->create(['brief_id' => $brief->id, 'round' => 1, 'path' => 'a.png', 'original_name' => 'a.png', 'mime_type' => 'image/png', 'size' => 1]);
+
+    foreach (['approved', 'changes_requested'] as $stage) {
+        $this->actingAs($this->owner)->putJson(route('socialhq.plan.board.move', $brief->id), ['stage' => $stage, 'ordered_ids' => [$brief->id]])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('creative');
+    }
+
+    // Changes were requested on the round: it can't be approved by dragging it back.
+    $brief->update(['stage' => BriefStage::ChangesRequested]);
+    ItemReview::query()->create(['item_id' => $brief->item_id, 'brief_id' => $brief->id, 'round' => 1, 'user_id' => $this->owner->id, 'kind' => ReviewKind::ChangesRequested, 'body' => 'Again']);
+    $this->actingAs($this->owner)->putJson(route('socialhq.plan.board.move', $brief->id), ['stage' => 'approved', 'ordered_ids' => [$brief->id]])->assertUnprocessable();
+
+    expect($brief->fresh()->stage)->toBe(BriefStage::ChangesRequested)
+        ->and($brief->fresh()->approved_at)->toBeNull();
+});
+
+test('a drag decides only the round the approver saw', function () {
+    $brief = boardBrief($this->plan, ['stage' => BriefStage::InReview]);
+    BriefFile::query()->create(['brief_id' => $brief->id, 'round' => 2, 'path' => 'a.png', 'original_name' => 'a.png', 'mime_type' => 'image/png', 'size' => 1]);
+
+    $this->actingAs($this->owner)->putJson(route('socialhq.plan.board.move', $brief->id), ['stage' => 'approved', 'ordered_ids' => [$brief->id], 'round' => 1])
+        ->assertUnprocessable()
+        ->assertJsonPath('errors.creative.0', __('socialhq_production.review.errors.changed'));
+    expect($brief->fresh()->stage)->toBe(BriefStage::InReview);
+
+    $this->actingAs($this->owner)->putJson(route('socialhq.plan.board.move', $brief->id), ['stage' => 'approved', 'ordered_ids' => [$brief->id], 'round' => 2])->assertOk();
+    expect($brief->fresh()->stage)->toBe(BriefStage::Approved);
+});
+
+test('only approvers take a card out of review', function () {
+    $brief = boardBrief($this->plan, ['stage' => BriefStage::InReview]);
+    BriefFile::query()->create(['brief_id' => $brief->id, 'round' => 1, 'path' => 'a.png', 'original_name' => 'a.png', 'mime_type' => 'image/png', 'size' => 1]);
+
+    $this->actingAs($this->designer)->putJson(route('socialhq.plan.board.move', $brief->id), ['stage' => 'in_progress', 'ordered_ids' => [$brief->id]])->assertForbidden();
+    expect($brief->fresh()->stage)->toBe(BriefStage::InReview);
+
+    $this->actingAs($this->owner)->putJson(route('socialhq.plan.board.move', $brief->id), ['stage' => 'in_progress', 'ordered_ids' => [$brief->id]])->assertOk();
+    expect($brief->fresh()->stage)->toBe(BriefStage::InProgress);
+});
+
+test('a reopened creative starts a new round, so the final files are only the new ones', function () {
+    $brief = boardBrief($this->plan, ['stage' => BriefStage::InReview]);
+    BriefFile::query()->create(['brief_id' => $brief->id, 'round' => 1, 'path' => 'a.png', 'original_name' => 'a.png', 'mime_type' => 'image/png', 'size' => 1]);
+
+    $this->actingAs($this->owner)->putJson(route('socialhq.plan.board.move', $brief->id), ['stage' => 'approved', 'ordered_ids' => [$brief->id]])->assertOk();
+    $this->actingAs($this->owner)->putJson(route('socialhq.plan.board.move', $brief->id), ['stage' => 'in_progress', 'ordered_ids' => [$brief->id]])->assertOk();
+
+    $brief->refresh();
+    expect(BriefRounds::uploadRound($brief))->toBe(2)
+        ->and(BriefRounds::submitBlocker($brief))->not->toBeNull()
+        ->and(ItemReview::query()->where('brief_id', $brief->id)->latest('id')->first()->kind)->toBe(ReviewKind::Reopened);
+
+    // The reopened round can't go back to review or be approved without new files.
+    $this->actingAs($this->owner)->putJson(route('socialhq.plan.board.move', $brief->id), ['stage' => 'in_review', 'ordered_ids' => [$brief->id]])->assertConflict();
+});
+
+test('without a month the board shows open work and what was approved for this month or later', function () {
+    $pastPlan = ContentPlan::factory()->create(['workspace_id' => $this->workspace->id, 'month' => now()->subMonthsNoOverflow(2)->startOfMonth()->toDateString()]);
+    $oldApproved = boardBrief($pastPlan, ['stage' => BriefStage::Approved]);
+    $oldOpen = boardBrief($pastPlan, ['stage' => BriefStage::InProgress]);
+    $currentPlan = ContentPlan::factory()->create(['workspace_id' => $this->workspace->id, 'month' => now()->startOfMonth()->toDateString()]);
+    $currentApproved = boardBrief($currentPlan, ['stage' => BriefStage::Approved]);
+
+    $this->actingAs($this->designer)->get(route('socialhq.plan.production'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('cards', fn ($cards) => collect($cards)->pluck('id')->sort()->values()->all() === collect([$oldOpen->id, $currentApproved->id])->sort()->values()->all())
+            ->where('months', [now()->startOfMonth()->format('Y-m'), now()->subMonthsNoOverflow(2)->format('Y-m')]));
+
+    $this->actingAs($this->designer)->get(route('socialhq.plan.production', ['month' => now()->subMonthsNoOverflow(2)->format('Y-m')]))
+        ->assertInertia(fn (Assert $page) => $page->has('cards', 2));
+
+    expect($oldApproved->exists)->toBeTrue();
 });

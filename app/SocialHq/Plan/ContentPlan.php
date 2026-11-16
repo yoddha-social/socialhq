@@ -19,7 +19,7 @@ class ContentPlan extends Model
 {
     use HasFactory;
 
-    /** A running AI draft older than this is treated as dead. */
+    /** A running AI draft older than this is treated as dead: keep it above GeneratePlanSuggestions::$timeout (6 minutes). */
     public const STALE_MINUTES = 10;
 
     protected $table = 'shq_content_plans';

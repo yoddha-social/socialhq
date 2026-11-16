@@ -24,7 +24,8 @@ use Throwable;
  * import can still tell it apart from a row a person edited. Rows a person
  * added, edited, narrowed to one brand or deleted are never overwritten or
  * brought back, and an unchanged row keeps its confirmation. Rows that left
- * the list are counted, not deleted. Only the list's own rows (Nepal's and
+ * the list are counted and flagged (WriteImportedEvent::delist), not
+ * deleted. Only the list's own rows (Nepal's and
  * the international ones) are matched and counted: other countries'
  * holidays belong to ImportPublicHolidays.
  */
@@ -49,7 +50,8 @@ final class ImportOfficialEvents
 
     /**
      * `missing` counts the account's imported dates that are no longer in the
-     * official list (only when the whole shipped dataset is read).
+     * official list, which are flagged (only when the whole shipped dataset
+     * is read).
      *
      * @param  list<string>|null  $paths  CSV files to read; the shipped dataset when null.
      * @return array{created: int, updated: int, skipped: int, missing: int}
@@ -93,7 +95,8 @@ final class ImportOfficialEvents
     }
 
     /**
-     * How many of the account's imported dates (not deleted) are no longer in the list.
+     * Flags the account's imported dates (not deleted) that are no longer in
+     * the list, and says how many there are.
      *
      * @param  list<array<string, mixed>>  $rows
      */
@@ -101,13 +104,11 @@ final class ImportOfficialEvents
     {
         $listed = collect($rows)->map(fn (array $row): string => data_get($row, 'key').'|'.data_get($row, 'starts_on'))->flip();
 
-        return CalendarEvent::query()
-            ->where('account_id', $account->id)
-            ->fromOfficialList()
-            ->whereNotNull('import_key')
-            ->get(['id', 'import_key', 'import_date'])
-            ->reject(fn (CalendarEvent $event): bool => $listed->has("{$event->import_key}|{$event->import_date?->toDateString()}"))
-            ->count();
+        return WriteImportedEvent::delist(
+            CalendarEvent::query()->where('account_id', $account->id)->fromOfficialList(),
+            $listed,
+            fn (CalendarEvent $event): string => "{$event->import_key}|{$event->import_date?->toDateString()}",
+        );
     }
 
     /**

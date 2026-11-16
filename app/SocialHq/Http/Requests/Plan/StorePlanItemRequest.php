@@ -9,7 +9,6 @@ use App\SocialHq\Http\Requests\Plan\Concerns\ResolvesPlanContext;
 use App\SocialHq\Plan\CreativeKind;
 use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Plan\PlanMonth;
-use App\SocialHq\Plan\PlanOptions;
 use App\SocialHq\Plan\SuggestedTime;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -56,14 +55,7 @@ class StorePlanItemRequest extends FormRequest
      */
     public function after(): array
     {
-        return [function (Validator $validator): void {
-            $channel = $this->workspaceChannels()->firstWhere('id', $this->input('social_account_id'));
-            $type = ContentType::tryFrom((string) $this->input('content_type'));
-
-            if ($channel !== null && $type !== null && ! PlanOptions::fitsChannel($type, $channel->platform)) {
-                $validator->errors()->add('content_type', __('socialhq_plan.validation.content_type'));
-            }
-        }];
+        return [fn (Validator $validator) => $this->checkFormat($validator)];
     }
 
     /**

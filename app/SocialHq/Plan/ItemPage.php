@@ -123,6 +123,8 @@ final class ItemPage
             'approved_at' => $brief->approved_at?->toIso8601String(),
             'current_round' => (int) $brief->files->max('round'),
             'accepts_uploads' => BriefRounds::acceptsUploads($brief),
+            'next_round' => BriefRounds::uploadRound($brief),
+            'can_submit' => BriefRounds::acceptsUploads($brief) && BriefRounds::submitBlocker($brief) === null,
             'rounds' => $brief->files
                 ->groupBy('round')
                 ->sortKeysDesc()

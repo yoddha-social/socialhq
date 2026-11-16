@@ -9,6 +9,7 @@ use App\SocialHq\Events\ImportOfficialEvents;
 use App\SocialHq\Plan\PlanAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use InvalidArgumentException;
 
 /**
@@ -25,6 +26,12 @@ class EventImportController extends Controller
 
         try {
             $counts = ImportOfficialEvents::handle($workspace->account);
+        } catch (LockTimeoutException) {
+            // Another import for the account is still writing.
+            session()->flash('flash.banner', __('socialhq_events.import.busy'));
+            session()->flash('flash.bannerStyle', 'danger');
+
+            return back();
         } catch (InvalidArgumentException $exception) {
             report($exception);
             session()->flash('flash.banner', __('socialhq_events.import.failed'));

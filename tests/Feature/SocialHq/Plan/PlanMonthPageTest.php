@@ -76,6 +76,13 @@ test('without a month the page opens the user\'s current month and creates no pl
     expect(ContentPlan::query()->count())->toBe(0);
 });
 
+test('a month that doesn\'t exist is not found', function () {
+    $this->actingAs($this->owner)->get('/socialhq/plan/2026-13')->assertNotFound();
+    $this->actingAs($this->owner)->post('/socialhq/plan/2026-00/items', [])->assertNotFound();
+
+    expect(ContentPlan::query()->count())->toBe(0);
+});
+
 test('a member works on the plan but cannot approve or change brand settings', function () {
     $member = workspaceMember($this->workspace, 'approval');
 

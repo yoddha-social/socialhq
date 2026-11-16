@@ -33,6 +33,8 @@ export interface CalendarEventRow {
     verified: boolean;
     verified_by: string | null;
     verified_at: string | null;
+    /** Its source no longer lists it: it needs a check and stays out of planning. */
+    delisted: boolean;
 }
 
 /** A country "Add a country" offers (Nager.Date's list). */

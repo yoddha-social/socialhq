@@ -99,6 +99,10 @@ final class CalendarStorage
     public static function registerCleanup(): void
     {
         CalendarImport::deleting(fn (CalendarImport $import) => self::forget($import->path));
-        Workspace::deleting(fn (Workspace $workspace) => DB::afterCommit(fn () => self::disk()->deleteDirectory(self::directory($workspace))));
+        // A block, not an arrow: outside a transaction afterCommit runs the callback at once and
+        // returns its result, and a deleting listener that returns a value stops the ones after it.
+        Workspace::deleting(function (Workspace $workspace): void {
+            DB::afterCommit(fn () => self::disk()->deleteDirectory(self::directory($workspace)));
+        });
     }
 }

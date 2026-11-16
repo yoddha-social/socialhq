@@ -27,7 +27,8 @@ final class PlanOptions
 
     public const MAX_PILLAR_LENGTH = 40;
 
-    public const MAX_POSTS_PER_WEEK = 14;
+    /** One post per channel per day at most (the planner refuses a second one), so 7 a week. */
+    public const MAX_POSTS_PER_WEEK = 7;
 
     /**
      * Channels a new item can go to: the workspace's connected accounts, in the sidebar's order.
@@ -40,26 +41,29 @@ final class PlanOptions
     }
 
     /**
-     * Who may own an item: the members plus the account owner (as Workspace::approvers() unions them).
+     * The brand's people: the members plus the account owner (as
+     * Workspace::approvers() unions them), by name. Who may own an item and
+     * who a brief can be assigned to (BriefTeam).
      *
      * @return Collection<int, User>
      */
     public static function owners(Workspace $workspace): Collection
     {
-        $people = $workspace->members()->orderBy('name')->get();
-        $owner = $workspace->account?->owner;
+        $people = $workspace->members()->with('avatarMedia')->get();
+        $owner = $workspace->account?->owner?->loadMissing('avatarMedia');
 
-        if ($owner !== null && ! $people->contains('id', $owner->id)) {
-            $people->push($owner);
-        }
-
-        return $people->values();
+        return $people
+            ->when($owner !== null, fn (Collection $users) => $users->push($owner))
+            ->unique('id')
+            ->sortBy(fn (User $user): string => mb_strtolower((string) $user->name))
+            ->values();
     }
 
     /**
      * Events the brand sees that overlap the days given, confirmed or not, in
-     * date order. With countries, only the events of those countries and the
-     * international ones (no country).
+     * date order, without dates their source no longer lists (the source
+     * corrected or dropped them). With countries, only the events of those
+     * countries and the international ones (no country).
      *
      * @param  list<string>|null  $countries  ISO 3166-1 alpha-2 codes, or null for every event
      * @return Collection<int, CalendarEvent>
@@ -67,7 +71,9 @@ final class PlanOptions
     public static function events(Workspace $workspace, CarbonImmutable $from, CarbonImmutable $to, ?array $countries = null): Collection
     {
         // The audience's countries plus every event without one (international, brand-only).
-        return EventsForMonth::forWorkspace($workspace, $from, $to, $countries);
+        return EventsForMonth::forWorkspace($workspace, $from, $to, $countries)
+            ->reject(fn (CalendarEvent $event): bool => $event->isDelisted())
+            ->values();
     }
 
     public static function profile(Workspace $workspace): ?BrandProfile

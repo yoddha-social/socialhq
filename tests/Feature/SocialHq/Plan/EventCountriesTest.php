@@ -11,6 +11,7 @@ use App\SocialHq\Events\EventsForMonth;
 use App\SocialHq\Events\ImportOfficialEvents;
 use App\SocialHq\Events\ImportPublicHolidays;
 use App\SocialHq\Events\Nager\NagerDateUnavailable;
+use App\SocialHq\Plan\PlanOptions;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
@@ -114,7 +115,7 @@ test('re-importing keeps confirmations, updates changed holidays and skips the o
     ImportPublicHolidays::handle($this->account, ['US'], [$this->year]);
 
     $independence = CalendarEvent::query()->where('key', 'independence-day')->sole();
-    $this->actingAs($this->owner)->post(route('socialhq.plan.events.verify', $independence->id))->assertRedirect();
+    $this->actingAs($this->owner)->post(route('socialhq.plan.events.verify', $independence->id), ['name' => $independence->name, 'starts_on' => $independence->starts_on->toDateString(), 'ends_on' => $independence->ends_on->toDateString()])->assertRedirect();
 
     $chavez = CalendarEvent::query()->where('key', 'cesar-chavez-day')->sole();
     $this->travel(1)->minutes();
@@ -153,6 +154,65 @@ test('a holiday the team deleted stays deleted, and one Nager.Date stopped listi
     expect(ImportPublicHolidays::handle($this->account, ['US'], [$this->year]))->toBe(['created' => 0, 'updated' => 0, 'skipped' => 2, 'missing' => 1])
         ->and(CalendarEvent::query()->where('key', 'independence-day')->exists())->toBeFalse()
         ->and(CalendarEvent::query()->where('key', 'columbus-day')->exists())->toBeTrue();
+});
+
+test('a confirmed holiday Nager.Date moves loses its confirmation and leaves planning; the new date needs a check', function () {
+    ImportPublicHolidays::handle($this->account, ['US'], [$this->year]);
+    $independence = CalendarEvent::query()->where('key', 'independence-day')->sole();
+    $independence->forceFill(['verified_at' => now(), 'verified_by' => $this->owner->id])->save();
+    $independence->refresh();
+
+    // Nager.Date corrects the date.
+    Cache::flush();
+    $this->nager["{$this->year}/US"][0] = nagerHoliday("{$this->year}-07-05", 'Independence Day');
+
+    expect(ImportPublicHolidays::handle($this->account, ['US'], [$this->year]))->toBe(['created' => 1, 'updated' => 0, 'skipped' => 2, 'missing' => 1]);
+
+    $old = $independence->fresh();
+    $new = CalendarEvent::query()->where('key', 'independence-day')->whereKeyNot($old->id)->sole();
+    $july = CarbonImmutable::parse("{$this->year}-07-01");
+
+    expect($old->isDelisted())->toBeTrue()
+        ->and($old->isVerified())->toBeFalse()
+        ->and($new->isVerified())->toBeFalse()
+        ->and(PlanOptions::events($this->workspace, $july, $july->endOfMonth())->pluck('id')->all())->toBe([$new->id]);
+
+    // It can't be confirmed as it is; editing makes it the team's own date again.
+    $this->actingAs($this->owner)->post(route('socialhq.plan.events.verify', $old->id), ['name' => $old->name, 'starts_on' => $old->starts_on->toDateString(), 'ends_on' => $old->ends_on->toDateString()])
+        ->assertSessionHasErrors(['event' => __('socialhq_events.errors.delisted')]);
+
+    $this->travel(1)->minutes();
+    $this->actingAs($this->owner)->put(route('socialhq.plan.events.update', $old->id), [
+        'name' => 'Independence Day (observed)',
+        'name_ne' => null,
+        'category' => 'public_holiday',
+        'starts_on' => $old->starts_on->toDateString(),
+        'ends_on' => $old->ends_on->toDateString(),
+        'bs_date' => null,
+        'public_holiday' => true,
+        'description' => null,
+        'source_url' => $old->source_url,
+        'brand_only' => false,
+    ])->assertSessionHasNoErrors();
+
+    expect($old->fresh()->isDelisted())->toBeFalse();
+    ImportPublicHolidays::handle($this->account, ['US'], [$this->year]);
+    expect($old->fresh()->isDelisted())->toBeFalse();
+});
+
+test('a date that leaves the list and comes back is listed again', function () {
+    ImportPublicHolidays::handle($this->account, ['US'], [$this->year]);
+    $holidays = $this->nager["{$this->year}/US"];
+
+    Cache::flush();
+    $this->nager["{$this->year}/US"] = array_values(array_filter($holidays, fn (array $holiday): bool => $holiday['name'] !== 'Columbus Day'));
+    ImportPublicHolidays::handle($this->account, ['US'], [$this->year]);
+    expect(CalendarEvent::query()->where('key', 'columbus-day')->sole()->isDelisted())->toBeTrue();
+
+    Cache::flush();
+    $this->nager["{$this->year}/US"] = $holidays;
+    ImportPublicHolidays::handle($this->account, ['US'], [$this->year]);
+    expect(CalendarEvent::query()->where('key', 'columbus-day')->sole()->isDelisted())->toBeFalse();
 });
 
 test('each country and year is read from Nager.Date once, then from the cache', function () {
@@ -226,6 +286,14 @@ test('adding a country checks the countries and years', function () {
         ->assertSessionHasErrors('countries');
 
     Http::assertNothingSent();
+});
+
+test('a country Nager.Date doesn\'t cover is refused with a message, not the unavailable banner', function () {
+    $this->actingAs($this->owner)
+        ->post(route('socialhq.plan.events.countries.store'), ['countries' => ['US', 'FR'], 'years' => [$this->year]])
+        ->assertSessionHasErrors(['countries' => __('socialhq_events.countries.errors.not_covered', ['countries' => 'FR'])]);
+
+    expect(CalendarEvent::query()->count())->toBe(0);
 });
 
 test('only people who may change shared dates add a country', function () {

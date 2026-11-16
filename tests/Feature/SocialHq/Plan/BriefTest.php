@@ -7,11 +7,15 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\CreativeKind;
+use App\SocialHq\Plan\ItemReview;
 use App\SocialHq\Plan\ItemVersion;
 use App\SocialHq\Plan\PlanItem;
+use App\SocialHq\Plan\ReviewKind;
 use App\SocialHq\Production\Ai\BriefWriter;
 use App\SocialHq\Production\Brief;
+use App\SocialHq\Production\BriefFile;
 use App\SocialHq\Production\BriefKind;
+use App\SocialHq\Production\BriefRounds;
 use App\SocialHq\Production\BriefStage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Ai\Exceptions\AiException;
@@ -132,4 +136,30 @@ test('a failed brief draft says so', function () {
     $this->actingAs($this->owner)->postJson(route('socialhq.plan.items.brief.ai', $this->item->id))
         ->assertStatus(502)
         ->assertJsonPath('message', __('socialhq_production.brief.ai_failed'));
+});
+
+test('a brief keeps the kind its item needs', function () {
+    Brief::factory()->for($this->item, 'item')->create(['kind' => BriefKind::Graphic]);
+
+    $this->actingAs($this->owner)->put(route('socialhq.plan.items.brief.update', $this->item->id), ['kind' => 'video'])
+        ->assertSessionHasErrors(['kind' => __('socialhq_production.brief.errors.kind_fixed')]);
+
+    expect($this->item->brief->fresh()->kind)->toBe(BriefKind::Graphic);
+});
+
+test('changing what an approved creative must show reopens it for a new round', function () {
+    $brief = Brief::factory()->for($this->item, 'item')->create(['kind' => BriefKind::Graphic, 'stage' => BriefStage::Approved, 'approved_at' => now(), 'approved_by' => $this->owner->id, 'on_screen_text' => 'Happy Dashain']);
+    BriefFile::query()->create(['brief_id' => $brief->id, 'round' => 1, 'path' => 'a.png', 'original_name' => 'a.png', 'mime_type' => 'image/png', 'size' => 1]);
+
+    // A new due date or assignee leaves it approved.
+    $this->actingAs($this->owner)->put(route('socialhq.plan.items.brief.update', $this->item->id), ['kind' => 'graphic', 'on_screen_text' => 'Happy Dashain', 'due_on' => now()->addWeek()->toDateString()])->assertSessionHasNoErrors();
+    expect($brief->fresh()->stage)->toBe(BriefStage::Approved);
+
+    $this->actingAs($this->owner)->put(route('socialhq.plan.items.brief.update', $this->item->id), ['kind' => 'graphic', 'on_screen_text' => 'Happy Tihar'])->assertSessionHasNoErrors();
+
+    $brief->refresh();
+    expect($brief->stage)->toBe(BriefStage::InProgress)
+        ->and($brief->approved_at)->toBeNull()
+        ->and(ItemReview::query()->where('brief_id', $brief->id)->sole()->kind)->toBe(ReviewKind::Reopened)
+        ->and(BriefRounds::uploadRound($brief))->toBe(2);
 });

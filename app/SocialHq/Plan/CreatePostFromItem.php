@@ -43,7 +43,13 @@ final class CreatePostFromItem
     /**
      * The post's time is the item's posting time as a wall clock in the
      * user's zone (what the composer takes), or null without one (the
-     * composer then uses 09:00 of the day).
+     * composer then uses 09:00 of the day). When both are set, scheduled_at
+     * wins: it is the instant the audience should see the post, which may
+     * fall on the day before or after scheduled_on in the user's zone.
+     *
+     * post_created_at is set when the composer draft is prepared: TryPost's
+     * composer reports nothing back, so a draft closed without saving still
+     * counts.
      *
      * @return array{content: string, media: Collection<int, Media>, import_ids: list<string>, scheduled_on: string, scheduled_at: ?string, social_account_id: ?string}
      */

@@ -28,14 +28,14 @@ class BriefReviewController extends Controller
 
     public function approve(ReviewDecisionRequest $request, int $item): RedirectResponse
     {
-        BriefRounds::approve($this->brief($request, $item, approve: true), $request->user(), $request->validated('note'));
+        BriefRounds::approve($this->brief($request, $item, approve: true), $request->user(), $request->validated('note'), (int) $request->validated('round'));
 
         return back();
     }
 
     public function requestChanges(ReviewDecisionRequest $request, int $item): RedirectResponse
     {
-        BriefRounds::requestChanges($this->brief($request, $item, approve: true), $request->user(), (string) $request->validated('note'));
+        BriefRounds::requestChanges($this->brief($request, $item, approve: true), $request->user(), (string) $request->validated('note'), (int) $request->validated('round'));
 
         return back();
     }

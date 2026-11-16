@@ -15,8 +15,9 @@ use Throwable;
 
 /**
  * The creative work on a brief, in review rounds: uploads go into the
- * current round until someone asks for changes, then the next upload starts
- * a new round. Every step is written to the item's review thread.
+ * current round until it is decided (changes requested, approved, or an
+ * approved creative reopened), then the next upload starts a new round.
+ * Every step is written to the item's review thread.
  */
 final class BriefRounds
 {
@@ -31,7 +32,7 @@ final class BriefRounds
             return 1;
         }
 
-        return self::changesRequestedOn($brief, $current) ? $current + 1 : $current;
+        return self::isDecided($brief, $current) ? $current + 1 : $current;
     }
 
     /**
@@ -95,13 +96,13 @@ final class BriefRounds
 
     /**
      * Why the current round can't go to review, or null when it can: it
-     * needs files, and a round that already got change requests is done.
+     * needs files, and a round that was already decided is done.
      */
     public static function submitBlocker(Brief $brief): ?string
     {
         $round = $brief->currentRound();
 
-        if ($round === 0 || self::changesRequestedOn($brief, $round)) {
+        if ($round === 0 || self::isDecided($brief, $round)) {
             return __('socialhq_production.creative.errors.cannot_submit');
         }
 
@@ -122,14 +123,20 @@ final class BriefRounds
         });
     }
 
-    public static function approve(Brief $brief, User $user, ?string $note = null): void
+    /**
+     * @param  ?int  $shownRound  the round the approver saw, refused when the brief has moved on since
+     */
+    public static function approve(Brief $brief, User $user, ?string $note = null, ?int $shownRound = null): void
     {
-        self::decide($brief, $user, BriefStage::Approved, ReviewKind::Approved, $note, 'cannot_approve');
+        self::decide($brief, $user, BriefStage::Approved, $note, $shownRound);
     }
 
-    public static function requestChanges(Brief $brief, User $user, string $note): void
+    /**
+     * @param  ?int  $shownRound  the round the approver saw, refused when the brief has moved on since
+     */
+    public static function requestChanges(Brief $brief, User $user, ?string $note, ?int $shownRound = null): void
     {
-        self::decide($brief, $user, BriefStage::ChangesRequested, ReviewKind::ChangesRequested, $note, 'cannot_request_changes');
+        self::decide($brief, $user, BriefStage::ChangesRequested, $note, $shownRound);
     }
 
     /**
@@ -166,20 +173,47 @@ final class BriefRounds
         ]);
     }
 
-    private static function decide(Brief $brief, User $user, BriefStage $to, ReviewKind $kind, ?string $note, string $error): void
+    /**
+     * Approve the round in review or ask for changes on it: the review
+     * endpoint and the board both come here. Only a round that is in review,
+     * has files and hasn't been decided yet; with $shownRound, only the
+     * round the approver was looking at.
+     */
+    public static function decide(Brief $brief, User $user, BriefStage $to, ?string $note = null, ?int $shownRound = null): void
     {
-        DB::transaction(function () use ($brief, $user, $to, $kind, $note, $error): void {
+        [$kind, $error] = match ($to) {
+            BriefStage::Approved => [ReviewKind::Approved, 'cannot_approve'],
+            BriefStage::ChangesRequested => [ReviewKind::ChangesRequested, 'cannot_request_changes'],
+        };
+
+        DB::transaction(function () use ($brief, $user, $to, $kind, $note, $error, $shownRound): void {
             $locked = Brief::query()->lockForUpdate()->findOrFail($brief->id);
 
-            // Only a round that is in review, has files and hasn't been decided yet.
             if ($locked->stage !== BriefStage::InReview || self::submitBlocker($locked) !== null) {
                 throw ValidationException::withMessages(['creative' => __("socialhq_production.creative.errors.{$error}")]);
+            }
+
+            if ($shownRound !== null && $shownRound !== $locked->currentRound()) {
+                throw ValidationException::withMessages(['creative' => __('socialhq_production.review.errors.changed')]);
             }
 
             self::moveTo($locked, $to, $user);
             self::note($locked, $user, $kind, $locked->currentRound(), $note);
             $brief->setRawAttributes($locked->getAttributes(), true);
         });
+    }
+
+    /**
+     * Whether a round is done: changes were requested on it, it was
+     * approved, or the approved creative was reopened.
+     */
+    public static function isDecided(Brief $brief, int $round): bool
+    {
+        return ItemReview::query()
+            ->where('brief_id', $brief->id)
+            ->where('round', $round)
+            ->whereIn('kind', [ReviewKind::ChangesRequested, ReviewKind::Approved, ReviewKind::Reopened])
+            ->exists();
     }
 
     public static function changesRequestedOn(Brief $brief, int $round): bool

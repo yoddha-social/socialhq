@@ -109,9 +109,9 @@ test('a round is reviewed: changes need a note, only approvers decide, the next 
     // No uploads while in review.
     uploadCreative($this, $this->designer)->assertSessionHasErrors('file');
 
-    $this->actingAs($this->designer)->post(route('socialhq.plan.items.brief.approve', $this->item->id))->assertForbidden();
-    $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.request-changes', $this->item->id), ['note' => ''])->assertSessionHasErrors('note');
-    $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.request-changes', $this->item->id), ['note' => 'Bigger logo'])->assertSessionHasNoErrors();
+    $this->actingAs($this->designer)->post(route('socialhq.plan.items.brief.approve', $this->item->id), ['round' => 1])->assertForbidden();
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.request-changes', $this->item->id), ['note' => '', 'round' => 1])->assertSessionHasErrors('note');
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.request-changes', $this->item->id), ['note' => 'Bigger logo', 'round' => 1])->assertSessionHasNoErrors();
     expect($this->brief->fresh()->stage)->toBe(BriefStage::ChangesRequested);
 
     // The reviewed round can't be sent again without new files.
@@ -123,7 +123,10 @@ test('a round is reviewed: changes need a note, only approvers decide, the next 
         ->and($this->brief->fresh()->stage)->toBe(BriefStage::InProgress);
 
     $this->actingAs($this->designer)->post(route('socialhq.plan.items.brief.submit', $this->item->id));
-    $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.approve', $this->item->id))->assertSessionHasNoErrors();
+    // An approval of the round the approver saw before round 2 arrived is refused.
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.approve', $this->item->id), ['round' => 1])
+        ->assertSessionHasErrors(['creative' => __('socialhq_production.review.errors.changed')]);
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.approve', $this->item->id), ['round' => 2])->assertSessionHasNoErrors();
 
     $brief = $this->brief->fresh();
     $thread = ItemReview::query()->where('brief_id', $brief->id)->orderBy('id')->get();
@@ -144,7 +147,7 @@ test('uploads and reviews never reach another workspace\'s brief', function () {
 
     $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.files.store', $other->item_id), ['file' => UploadedFile::fake()->image('a.png')])->assertNotFound();
     $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.submit', $other->item_id))->assertNotFound();
-    $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.approve', $other->item_id))->assertNotFound();
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.approve', $other->item_id), ['round' => 1])->assertNotFound();
 
     expect(BriefFile::query()->count())->toBe(0);
 });
@@ -172,7 +175,7 @@ test('a file\'s stored name and served type come from its content, not its name'
 test('a round can\'t be decided unless it is in review with files', function () {
     $this->brief->update(['stage' => BriefStage::InReview]);
 
-    $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.approve', $this->item->id))->assertSessionHasErrors('creative');
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.approve', $this->item->id), ['round' => 1])->assertSessionHasErrors('creative');
 
     expect($this->brief->fresh()->stage)->toBe(BriefStage::InReview);
 });

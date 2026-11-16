@@ -325,6 +325,7 @@ const deleteItem = (url: string) => (): Promise<void> =>
         });
     });
 
+/** Deleting an item with approved work is for approvers: the server refuses with a message saying to drop it instead. */
 const askDelete = (): void => {
     if (props.item) {
         const url = destroyItem.url(props.item.id);

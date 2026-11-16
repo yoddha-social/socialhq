@@ -272,7 +272,10 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   international days, a source per row; `php artisan socialhq:events:import`
   does the same). Every imported date starts as "Needs check" until an approver
   confirms it; changing a date or name clears the confirmation. Re-importing
-  never brings back a date the team edited, moved or deleted. The AI never
+  never brings back a date the team edited, moved or deleted. A date its source
+  no longer lists (corrected or dropped) loses its confirmation, shows "No
+  longer listed" and stays out of planning until the source lists it again or
+  someone edits it. The AI never
   calculates a date and plans only around confirmed ones. The publish calendar
   shows a marker on days with events (PATCHES rows 60–63).
   Each date has a country (`country_code`, ISO 3166-1 alpha-2): `NP` for

@@ -109,4 +109,8 @@ export interface BriefDetail {
     rounds?: BriefRound[];
     current_round?: number;
     accepts_uploads?: boolean;
+    /** The round the next upload goes into: a new one once the current round is decided. */
+    next_round?: number;
+    /** Whether the current round may be sent for review. */
+    can_submit?: boolean;
 }

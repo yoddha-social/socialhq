@@ -15,7 +15,9 @@ use App\SocialHq\Ai\Company\CompanyAiAccess;
 use App\SocialHq\Ai\Company\CompanyRouting;
 use App\SocialHq\Ai\Company\Jobs\TearDownCompanyAi;
 use App\SocialHq\Ai\Company\ProviderCredential;
+use App\SocialHq\AiGraphics\AiGraphicResults;
 use App\SocialHq\AiGraphics\AiGraphics;
+use App\SocialHq\AiGraphics\PruneAiGraphicResultsCommand;
 use App\SocialHq\Approval\ApprovalRules;
 use App\SocialHq\Approval\RecordApprovalEvents;
 use App\SocialHq\Companies\CompanyRequests;
@@ -98,7 +100,7 @@ class SocialHqServiceProvider extends ServiceProvider
         Event::listen(ApprovedProvidersGuard::EVENTS, [ApprovedProvidersGuard::class, 'handle']);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiRoutesCommand::class, ImportEventsCommand::class, PruneCalendarUploadsCommand::class, PlatformAdminCommand::class, SecretsKeyCommand::class, SecretsReencryptCommand::class]);
+            $this->commands([AiRoutesCommand::class, ImportEventsCommand::class, PruneAiGraphicResultsCommand::class, PruneCalendarUploadsCommand::class, PlatformAdminCommand::class, SecretsKeyCommand::class, SecretsReencryptCommand::class]);
         }
 
         // Provider keys are write-only: never flashed back as old input after a
@@ -191,6 +193,8 @@ class SocialHqServiceProvider extends ServiceProvider
         // uploads never imported go after a day.
         CalendarStorage::registerCleanup();
         $this->callAfterResolving(Schedule::class, fn (Schedule $schedule) => $schedule->command(PruneCalendarUploadsCommand::class)->hourly()->withoutOverlapping());
+        AiGraphicResults::registerCleanup();
+        $this->callAfterResolving(Schedule::class, fn (Schedule $schedule) => $schedule->command(PruneAiGraphicResultsCommand::class)->daily()->withoutOverlapping());
 
         // One share for the whole module: a second Inertia::share('socialhq') would replace this one.
         // Each part is a closure, so a partial reload that doesn't ask for it runs none of its queries.

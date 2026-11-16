@@ -9,10 +9,17 @@ use App\Models\Workspace;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Plan\ContentPlan;
+use App\SocialHq\Plan\CopyStatus;
+use App\SocialHq\Plan\CreativeKind;
+use App\SocialHq\Plan\ItemReview;
 use App\SocialHq\Plan\ItemSource;
 use App\SocialHq\Plan\ItemStatus;
+use App\SocialHq\Plan\ItemVersion;
 use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Plan\PlanStatus;
+use App\SocialHq\Plan\ReviewKind;
+use App\SocialHq\Production\Brief;
+use App\SocialHq\Production\BriefKind;
 use Carbon\CarbonImmutable;
 
 beforeEach(function () {
@@ -85,6 +92,7 @@ test('an item must fit the month, the brand\'s channels, the channel\'s formats,
     'an event of another month' => [fn () => ['event_id' => CalendarEvent::factory()->verified()->create(['account_id' => $this->workspace->account_id, 'starts_on' => $this->month->addMonthNoOverflow()->addDays(3), 'ends_on' => $this->month->addMonthNoOverflow()->addDays(3)])->id], 'event_id'],
     'someone outside the workspace' => [fn () => ['owner_id' => User::factory()->create()->id], 'owner_id'],
     'no title' => [fn () => ['title' => ''], 'title'],
+    'a creative the format can\'t carry' => [fn () => ['creative' => 'none'], 'creative'],
 ]);
 
 test('an unconfirmed event of the month can still be picked by a person', function () {
@@ -226,3 +234,64 @@ test('an item whose event was deleted or whose owner left can still be edited', 
 
     expect($item->fresh()->title)->toBe('Still editable');
 });
+
+test('editing, moving or commenting on an AI suggestion accepts it, so a new draft keeps that work', function (string $action) {
+    $suggestion = ($this->planWithItem)([], ['status' => ItemStatus::Suggested, 'source' => ItemSource::Ai, 'scheduled_on' => $this->month->addDays(2)->toDateString()]);
+
+    $request = match ($action) {
+        'update' => fn () => $this->put(route('socialhq.plan.items.update', $suggestion->id), ($this->itemPayload)(['title' => 'Our take'])),
+        'move' => fn () => $this->post(route('socialhq.plan.items.move', $suggestion->id), ['scheduled_on' => $this->month->addDays(9)->toDateString()]),
+        'comment' => fn () => $this->post(route('socialhq.plan.items.comments.store', $suggestion->id), ['body' => 'Good one']),
+    };
+
+    $this->actingAs($this->member);
+    $request()->assertSessionHasNoErrors();
+
+    expect($suggestion->fresh()->status)->toBe(ItemStatus::Planned);
+})->with(['update', 'move', 'comment']);
+
+test('changing the channel or format sends approved copy back to draft, with a note', function () {
+    $item = ($this->planWithItem)([], ['copy_status' => CopyStatus::Approved, 'content_type' => ContentType::InstagramReel, 'creative' => 'video']);
+    ItemVersion::query()->create(['item_id' => $item->id, 'number' => 1, 'caption' => 'Approved caption', 'source' => ItemSource::Manual, 'created_by' => $this->owner->id]);
+
+    // Other edits leave it approved.
+    $this->actingAs($this->member)->put(route('socialhq.plan.items.update', $item->id), ($this->itemPayload)(['title' => 'Renamed']))->assertSessionHasNoErrors();
+    expect($item->fresh()->copy_status)->toBe(CopyStatus::Approved);
+
+    $this->actingAs($this->member)->put(route('socialhq.plan.items.update', $item->id), ($this->itemPayload)(['content_type' => ContentType::InstagramStory->value]))->assertSessionHasNoErrors();
+
+    $note = ItemReview::query()->where('item_id', $item->id)->sole();
+    expect($item->fresh()->copy_status)->toBe(CopyStatus::Draft)
+        ->and($note->kind)->toBe(ReviewKind::Reopened)
+        ->and($note->body)->toBe(__('socialhq_production.review.reopened_format'));
+});
+
+test('what to make keeps the kind of the item\'s brief', function () {
+    $item = ($this->planWithItem)([], ['content_type' => ContentType::InstagramReel, 'creative' => 'video']);
+    Brief::factory()->for($item, 'item')->create(['kind' => BriefKind::Video]);
+
+    $this->actingAs($this->member)
+        ->put(route('socialhq.plan.items.update', $item->id), ($this->itemPayload)(['content_type' => ContentType::InstagramFeed->value, 'creative' => 'none']))
+        ->assertSessionHasErrors(['creative' => __('socialhq_plan.validation.creative_has_brief')]);
+    $this->actingAs($this->member)
+        ->put(route('socialhq.plan.items.update', $item->id), ($this->itemPayload)(['content_type' => ContentType::InstagramFeed->value, 'creative' => 'image']))
+        ->assertSessionHasErrors('creative');
+
+    expect($item->fresh()->creative)->toBe(CreativeKind::Video);
+});
+
+test('only approvers delete an item with approved work; others are told to drop it', function (Closure $approved) {
+    $item = ($this->planWithItem)();
+    $approved->call($this, $item);
+
+    $this->actingAs($this->member)->delete(route('socialhq.plan.items.destroy', $item->id))
+        ->assertSessionHasErrors(['item' => __('socialhq_plan.errors.delete_approved')]);
+    expect($item->fresh())->not->toBeNull();
+
+    $this->actingAs($this->owner)->delete(route('socialhq.plan.items.destroy', $item->id))->assertSessionHasNoErrors();
+    expect($item->fresh())->toBeNull();
+})->with([
+    'approved copy' => [fn (PlanItem $item) => $item->update(['copy_status' => CopyStatus::Approved])],
+    'an approved creative' => [fn (PlanItem $item) => Brief::factory()->for($item, 'item')->create(['stage' => 'approved'])],
+    'a created post' => [fn (PlanItem $item) => $item->update(['post_created_at' => now()])],
+]);

@@ -22,7 +22,7 @@ use InvalidArgumentException;
  * rules: an unchanged row keeps its confirmation, and a row a person added,
  * edited, narrowed to one brand or deleted is never overwritten or brought
  * back. Holidays Nager.Date no longer lists for an imported year are
- * counted, not deleted. Nothing is written unless every country and year
+ * counted and flagged (WriteImportedEvent::delist), not deleted. Nothing is written unless every country and year
  * could be read.
  */
 final class ImportPublicHolidays
@@ -142,7 +142,8 @@ final class ImportPublicHolidays
     }
 
     /**
-     * How many imported holidays of these countries and years Nager.Date no longer lists.
+     * Flags the imported holidays of these countries and years that Nager.Date
+     * no longer lists, and says how many there are.
      *
      * @param  list<array<string, mixed>>  $rows
      * @param  list<string>  $countries
@@ -152,16 +153,14 @@ final class ImportPublicHolidays
     {
         $listed = collect($rows)->map(fn (array $row): string => data_get($row, 'country_code').'|'.data_get($row, 'key').'|'.data_get($row, 'starts_on'))->flip();
 
-        return CalendarEvent::query()
-            ->where('account_id', $account->id)
-            ->whereIn('country_code', $countries)
-            ->whereNotNull('import_key')
-            ->where('import_date', '>=', min($years).'-01-01')
-            ->where('import_date', '<=', max($years).'-12-31')
-            ->get(['id', 'country_code', 'import_key', 'import_date'])
-            ->filter(fn (CalendarEvent $event): bool => in_array($event->import_date?->year, $years, true))
-            ->reject(fn (CalendarEvent $event): bool => $listed->has("{$event->country_code}|{$event->import_key}|{$event->import_date?->toDateString()}"))
-            ->count();
+        return WriteImportedEvent::delist(
+            CalendarEvent::query()
+                ->where('account_id', $account->id)
+                ->whereIn('country_code', $countries)
+                ->where(fn ($query) => collect($years)->each(fn (int $year) => $query->orWhereBetween('import_date', ["{$year}-01-01", "{$year}-12-31"]))),
+            $listed,
+            fn (CalendarEvent $event): string => "{$event->country_code}|{$event->import_key}|{$event->import_date?->toDateString()}",
+        );
     }
 
     private static function clean(?string $value, int $limit): ?string

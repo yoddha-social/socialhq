@@ -56,9 +56,12 @@ const columnCards = (stage: BriefStage): BoardCardData[] =>
         .sort((a, b) => a.position - b.position || a.id - b.id);
 
 const moveHttp = useHttp<
-    { stage: BriefStage; ordered_ids: number[] },
+    { stage: BriefStage; ordered_ids: number[]; round: number | null },
     { stage: BriefStage }
->({ stage: 'todo', ordered_ids: [] });
+>({ stage: 'todo', ordered_ids: [], round: null });
+
+/** One move at a time: a drop while another saves is ignored, so one move's failure never undoes another. */
+const moving = ref(false);
 
 onBeforeUnmount(() => {
     moveHttp.cancel();
@@ -67,8 +70,15 @@ onBeforeUnmount(() => {
 /** Stages only approvers move cards into or out of: they hold a review decision. */
 const DECIDED: BriefStage[] = ['approved', 'changes_requested'];
 
+/** Only approvers decide, and only they take a card out of review. */
 const needsApprover = (from: BriefStage, to: BriefStage): boolean =>
-    from !== to && (DECIDED.includes(from) || DECIDED.includes(to));
+    from !== to &&
+    (DECIDED.includes(from) || DECIDED.includes(to) || from === 'in_review');
+
+/** After a failed move, the server's board is the truth. */
+const reloadCards = (): void => {
+    router.reload({ only: ['cards'] });
+};
 
 const applyMove = async (
     briefId: number,
@@ -76,6 +86,10 @@ const applyMove = async (
     to: BriefStage,
     index: number,
 ): Promise<void> => {
+    if (moving.value) {
+        return;
+    }
+
     if (needsApprover(from, to) && !props.abilities.canApprove) {
         toast.error(
             trans('socialhq_production.board.errors.approvers_only', {
@@ -99,7 +113,7 @@ const applyMove = async (
         return;
     }
 
-    const snapshot = board.value.map((card) => ({ ...card }));
+    const moved = board.value.find((card) => card.id === briefId);
 
     board.value = board.value.map((card) => {
         const position = order.indexOf(card.id);
@@ -109,12 +123,14 @@ const applyMove = async (
 
     moveHttp.stage = to;
     moveHttp.ordered_ids = order;
+    moveHttp.round = moved?.rounds ?? null;
+    moving.value = true;
 
     try {
         const result = await moveHttp.put(moveBrief.url(briefId));
 
         if (!result) {
-            board.value = snapshot;
+            reloadCards();
             toast.error(trans('socialhq_production.board.move_failed'));
 
             return;
@@ -128,11 +144,13 @@ const applyMove = async (
             );
         }
     } catch (exception) {
-        board.value = snapshot;
+        reloadCards();
         toast.error(
             extractErrorMessage(exception) ??
                 trans('socialhq_production.board.move_failed'),
         );
+    } finally {
+        moving.value = false;
     }
 };
 
@@ -150,9 +168,9 @@ const targetsOf = (card: BoardCardData): BriefStage[] =>
             (props.abilities.canApprove || !needsApprover(card.stage, stage)),
     );
 
-/** Whether this viewer may drop a card from `from` into a column: anyone may reorder a column; only approvers move cards into a decided one. */
+/** Whether this viewer may drop a card from `from` into a column: anyone may reorder a column; only approvers make the moves needsApprover lists. */
 const acceptsDrops = (stage: BriefStage, from: BriefStage): boolean =>
-    props.abilities.canApprove || !DECIDED.includes(stage) || from === stage;
+    props.abilities.canApprove || !needsApprover(from, stage);
 
 const moveWithMenu = (card: BoardCardData, stage: BriefStage): void => {
     void applyMove(card.id, card.stage, stage, columnCards(stage).length);

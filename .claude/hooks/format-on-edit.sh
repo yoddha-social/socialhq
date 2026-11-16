@@ -39,7 +39,7 @@ case "$REL" in
 esac
 
 # Every locale must carry the English module copy (TryPost's locale parity test).
-if [ "$REL" = "lang/en/socialhq.php" ]; then
+if [[ "$REL" =~ ^lang/en/socialhq(_[a-z]+)?\.php$ ]]; then
   (cd "$ROOT" && bin/socialhq-sync-lang) || PROBLEMS+="bin/socialhq-sync-lang failed"$'\n'
 fi
 

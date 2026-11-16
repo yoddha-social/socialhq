@@ -28,9 +28,9 @@ case "$REL" in
     deny "$REL holds secrets. Add the variable to .env.example and tell the user what to set." ;;
   composer.lock|package-lock.json)
     deny "$REL is written by composer/npm. Change dependencies with the tool, after the user approves." ;;
-  lang/en/socialhq.php) ;;
-  lang/*/socialhq.php)
-    deny "bin/socialhq-sync-lang overwrites $REL from lang/en/socialhq.php. Edit the English file; the PostToolUse hook runs the sync." ;;
+  lang/en/socialhq*.php) ;;
+  lang/*/socialhq*.php)
+    deny "bin/socialhq-sync-lang overwrites $REL from lang/en/${REL##*/}. Edit the English file; the PostToolUse hook runs the sync." ;;
 esac
 
 NOTES=""
@@ -44,7 +44,7 @@ esac
 # A file from the TryPost base: fine to edit, but log it so security
 # cherry-picks from TryPost know where they may conflict.
 if ! is_module_path "$REL" && (cd "$ROOT" && git ls-files --error-unmatch -- "$REL" >/dev/null 2>&1) \
-   && ! grep -qF "\`$REL\`" "$ROOT/PATCHES.md" 2>/dev/null; then
+   && ! in_patches "$REL"; then
   NOTES+="$REL comes from the TryPost base and is not in PATCHES.md yet. Add a row (file, change, why) in the same change."$'\n'
 fi
 

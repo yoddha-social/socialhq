@@ -8,7 +8,6 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * One row of an old calendar: what the team posted on a day, where, in which
@@ -35,13 +34,5 @@ class PastPost extends Model
             'reach' => 'integer',
             'views' => 'integer',
         ];
-    }
-
-    /**
-     * @return BelongsTo<CalendarImport, $this>
-     */
-    public function calendarImport(): BelongsTo
-    {
-        return $this->belongsTo(CalendarImport::class, 'calendar_import_id');
     }
 }

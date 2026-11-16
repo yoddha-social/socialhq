@@ -25,7 +25,8 @@ class PlanItemFactory extends Factory
         return [
             'plan_id' => ContentPlan::factory(),
             'workspace_id' => fn (array $attributes): string => ContentPlan::query()->findOrFail($attributes['plan_id'])->workspace_id,
-            'scheduled_on' => fn (array $attributes): string => ContentPlan::query()->findOrFail($attributes['plan_id'])->month->addDays($this->faker->numberBetween(0, 27))->toDateString(),
+            // The 10th of the plan's month, so tests never depend on a random day.
+            'scheduled_on' => fn (array $attributes): string => ContentPlan::query()->findOrFail($attributes['plan_id'])->month->addDays(9)->toDateString(),
             'platform' => 'instagram',
             'content_type' => ContentType::InstagramFeed,
             'creative' => CreativeKind::Image,

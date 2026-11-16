@@ -12,6 +12,7 @@ use App\SocialHq\Plan\CreativeKind;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Contracts\Agent;
+use Laravel\Ai\Contracts\HasProviderOptions;
 use Laravel\Ai\Contracts\HasStructuredOutput;
 use Laravel\Ai\Promptable;
 
@@ -24,7 +25,7 @@ use Laravel\Ai\Promptable;
  * output tokens and stop mid-answer).
  */
 #[MaxTokens(ContentPlanner::MAX_OUTPUT_TOKENS)]
-class ContentPlanner implements Agent, HasStructuredOutput
+class ContentPlanner implements Agent, HasProviderOptions, HasStructuredOutput
 {
     use Promptable;
     use UsesAiTask;
@@ -40,6 +41,14 @@ class ContentPlanner implements Agent, HasStructuredOutput
     public function aiTask(): AiTask
     {
         return AiTask::Structured;
+    }
+
+    /**
+     * Only GeneratePlanSuggestions (queued) prompts it: it gets AiTimeout::QUEUED.
+     */
+    protected function runsQueued(): bool
+    {
+        return true;
     }
 
     public function instructions(): string

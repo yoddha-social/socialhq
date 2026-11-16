@@ -10,10 +10,11 @@ use App\SocialHq\Ai\UsesAiTask;
 use App\SocialHq\Ai\UsesModelSafeTemperature;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Agent;
+use Laravel\Ai\Contracts\HasProviderOptions;
 use Laravel\Ai\Contracts\HasStructuredOutput;
 use Laravel\Ai\Promptable;
 
-class IdeaGenerator implements Agent, HasStructuredOutput
+class IdeaGenerator implements Agent, HasProviderOptions, HasStructuredOutput
 {
     use Promptable;
     use UsesAiTask;

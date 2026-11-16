@@ -11,6 +11,7 @@ use App\SocialHq\Companies\Company;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Laravel\Ai\AiManager;
+use Laravel\Ai\Enums\Lab;
 use Throwable;
 
 /**
@@ -93,8 +94,10 @@ final class AiRouter
     {
         $targets = self::approvedTargets($task);
 
-        if ($targets === [] && (self::usesGateway() || self::companiesEnforced()) && CompanyRouting::current()->kind === CompanyRoute::NONE) {
-            throw AiUnavailableException::needsSetup(CompanyRouting::current());
+        // With companies, a task without a target is the company's setup
+        // (no AI, or none that serves the task), not a failure.
+        if ($targets === [] && (self::usesGateway() || self::companiesEnforced())) {
+            throw AiUnavailableException::forTask($task);
         }
 
         if ($targets === []) {
@@ -152,6 +155,37 @@ final class AiRouter
     }
 
     /**
+     * What a gateway call carries so LiteLLM's spend logs say whose it was:
+     * every company allowed the platform's AI shares LITELLM_API_KEY, so the
+     * key alone can't tell them apart. `user` is OpenAI's end-user field
+     * (LiteLLM tracks spend per end user); `metadata.spend_logs_metadata`
+     * lands in each spend log row. Nothing for a provider other than the
+     * LiteLLM text entries (images and embeddings have no SDK hook for it).
+     *
+     * @return array<string, mixed>
+     */
+    public static function gatewayAttribution(AiTask $task, Lab|string $provider): array
+    {
+        $name = $provider instanceof Lab ? $provider->value : $provider;
+
+        if ((CompanyRouting::gatewayEntryOf($name) ?? $name) !== self::LITELLM) {
+            return [];
+        }
+
+        $tenant = AiTenant::current();
+        $accountId = $tenant instanceof Account ? (string) $tenant->id : $tenant;
+
+        return array_filter([
+            'user' => $accountId,
+            'metadata' => ['spend_logs_metadata' => array_filter([
+                'account_id' => $accountId,
+                'workspace_id' => AiTenant::workspaceId(),
+                'task' => $task->value,
+            ])],
+        ]);
+    }
+
+    /**
      * Every target of the task as configured, with whether it is used and,
      * when not, why. For the socialhq:ai-routes command.
      *
@@ -161,16 +195,8 @@ final class AiRouter
     {
         $rows = [];
 
-        if (self::usesGateway() && CompanyRouting::current()->kind === CompanyRoute::NONE) {
-            return [['provider' => $task->litellmProvider(), 'model' => $task->litellmGroup(), 'used' => false, 'reason' => 'no AI for this company']];
-        }
-
-        if (self::usesGateway() && CompanyRouting::current()->kind === CompanyRoute::OWN && ! CompanyRouting::current()->serves($task)) {
-            return [['provider' => $task->litellmProvider(), 'model' => $task->litellmGroup(), 'used' => false, 'reason' => 'no provider of the company serves it']];
-        }
-
-        if (self::usesGateway() && CompanyRouting::current()->kind === CompanyRoute::PLATFORM && blank(config("socialhq.ai.routes.{$task->value}")) && ! self::gatewayServes($task)) {
-            return [['provider' => $task->litellmProvider(), 'model' => $task->litellmGroup(), 'used' => false, 'reason' => 'not in SOCIALHQ_AI_GATEWAY_TASKS']];
+        if (self::usesGateway() && ($reason = self::gatewayGap($task)) !== null) {
+            return [['provider' => $task->litellmProvider(), 'model' => $task->litellmGroup(), 'used' => false, 'reason' => $reason]];
         }
 
         foreach (self::configuredTargets($task) as $provider => $model) {
@@ -219,9 +245,7 @@ final class AiRouter
             return true;
         }
 
-        $company = $tenant instanceof Account ? Company::forAccount($tenant) : null;
-
-        return $company !== null && $company->isApproved() && $company->uses_platform_ai;
+        return $tenant instanceof Account && CompanyRouting::mayUsePlatformAi(Company::forAccount($tenant));
     }
 
     /**
@@ -237,15 +261,16 @@ final class AiRouter
         $written = config("socialhq.ai.routes.{$task->value}");
 
         if (self::usesGateway()) {
+            if (self::gatewayGap($task) !== null) {
+                return [];
+            }
+
             $company = CompanyRouting::current();
 
             return match ($company->kind) {
-                CompanyRoute::OWN => $company->serves($task) ? [CompanyRouting::provider($task, $company) => CompanyRouting::group($task, (string) $company->teamId)] : [],
+                CompanyRoute::OWN => [CompanyRouting::provider($task, $company) => CompanyRouting::group($task, (string) $company->teamId)],
                 // Written routes use the platform's own keys: never for a company with its own.
-                CompanyRoute::PLATFORM => filled($written)
-                    ? self::parse((string) $written)
-                    : (self::gatewayServes($task) ? [$task->litellmProvider() => $task->litellmGroup()] : []),
-                default => [],
+                default => filled($written) ? self::parse((string) $written) : [$task->litellmProvider() => $task->litellmGroup()],
             };
         }
 
@@ -288,8 +313,21 @@ final class AiRouter
     }
 
     /**
-     * Why a target can't serve the task, or null when it can.
+     * Why the gateway has no target for the task for the current company,
+     * or null when it has one. The one place configuredTargets() and
+     * explain() read it from.
      */
+    private static function gatewayGap(AiTask $task): ?string
+    {
+        $company = CompanyRouting::current();
+
+        return match ($company->kind) {
+            CompanyRoute::OWN => $company->serves($task) ? null : 'no provider of the company serves it',
+            CompanyRoute::PLATFORM => filled(config("socialhq.ai.routes.{$task->value}")) || self::gatewayServes($task) ? null : 'not in SOCIALHQ_AI_GATEWAY_TASKS',
+            default => 'no AI for this company',
+        };
+    }
+
     /**
      * The gateway serves only the tasks listed in SOCIALHQ_AI_GATEWAY_TASKS:
      * shq-image and shq-embed have no free provider, so they are listed only
@@ -301,6 +339,9 @@ final class AiRouter
         return in_array($task->value, Arr::wrap(config('socialhq.ai.litellm.tasks', [])), true);
     }
 
+    /**
+     * Why a target can't serve the task, or null when it can.
+     */
     private static function rejection(AiTask $task, string $provider): ?string
     {
         if (! self::isApproved($provider)) {

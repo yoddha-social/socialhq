@@ -11,9 +11,10 @@ use App\SocialHq\Ai\AiTask;
 use App\SocialHq\Ai\UsesAiTask;
 use App\SocialHq\Ai\UsesModelSafeTemperature;
 use Laravel\Ai\Contracts\Agent;
+use Laravel\Ai\Contracts\HasProviderOptions;
 use Laravel\Ai\Promptable;
 
-class PostWritingAssistant implements Agent
+class PostWritingAssistant implements Agent, HasProviderOptions
 {
     use Promptable;
     use UsesAiTask;

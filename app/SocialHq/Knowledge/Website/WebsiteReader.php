@@ -11,6 +11,7 @@ use App\SocialHq\Knowledge\KnowledgeKind;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Contracts\Agent;
+use Laravel\Ai\Contracts\HasProviderOptions;
 use Laravel\Ai\Contracts\HasStructuredOutput;
 use Laravel\Ai\Promptable;
 
@@ -20,7 +21,7 @@ use Laravel\Ai\Promptable;
  * WebsiteSuggestions checks it, and an admin accepts each part.
  */
 #[MaxTokens(4000)]
-class WebsiteReader implements Agent, HasStructuredOutput
+class WebsiteReader implements Agent, HasProviderOptions, HasStructuredOutput
 {
     use Promptable;
     use UsesAiTask;
@@ -36,6 +37,14 @@ class WebsiteReader implements Agent, HasStructuredOutput
     public function aiTask(): AiTask
     {
         return AiTask::Structured;
+    }
+
+    /**
+     * Only ReadWebsite (queued) prompts it: it gets AiTimeout::QUEUED.
+     */
+    protected function runsQueued(): bool
+    {
+        return true;
     }
 
     public function instructions(): string

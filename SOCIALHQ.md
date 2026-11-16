@@ -96,6 +96,29 @@ TryPost's four agents carry it too (PATCHES.md row 15). Code:
   image); `--account=<id>` routes as that company.
 - Per-call records are LiteLLM's spend logs (its admin UI on port 4000), not
   a table in the app: AGENTS.md keeps TryPost free of AI usage recording.
+  Every text call through the gateway carries the account id as OpenAI's
+  `user` field and `metadata.spend_logs_metadata` (account, workspace,
+  task), so platform-AI spend, which shares `LITELLM_API_KEY`, can be told
+  apart (`AiRouter::gatewayAttribution`). Image and embedding calls can't:
+  the SDK has no hook for them.
+- **Timeouts** (`AiTimeout`, through `UsesAiTask::timeout()`): 90 s for a
+  call someone waits for (Cloudflare ends a request at about 100 s), 300 s
+  for agents that only run in queued jobs (the planner, the website reader).
+  LiteLLM's per-deployment timeouts must leave room for a fallback inside
+  90 s.
+- **Temperature through the gateway**: the model the app sees is a group
+  name, so `models_without_temperature` never matches and the temperature
+  is always sent; LiteLLM's `drop_params: true` removes it for models that
+  reject it. Keep that setting in the LiteLLM config.
+- **"AI isn't set up"** (the company has no AI, or none that serves the
+  task) is a configuration state, not an error: endpoints answer 409 with
+  copy that says how to set it up (`AiResponses`), jobs don't report it, and
+  the shared `aiTasks` prop (`write`, `structured`, `vision`) hides the
+  assistant, alt text and idea buttons. A company key that no secrets key
+  opens (missing or rotated `SOCIALHQ_SECRETS_KEY`) turns that company's AI
+  off and is logged; after a rotation run `php artisan
+  socialhq:secrets-reencrypt` (`--dry-run` first), then drop the previous
+  key.
 
 ## Brand knowledge
 

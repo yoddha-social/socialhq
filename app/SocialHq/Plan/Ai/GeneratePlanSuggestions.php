@@ -84,7 +84,11 @@ class GeneratePlanSuggestions implements ShouldQueue
             $response = AiTenant::run($plan->workspace, fn () => (new ContentPlanner($user->locale ?? Locale::DEFAULT))
                 ->prompt(json_encode(PlannerContext::build($plan, $today, $user->timezone), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)));
         } catch (AiUnavailableException $exception) {
-            report($exception);
+            // No AI set up for the company is a configuration state, not an error to report.
+            if (! $exception->isConfigurationState()) {
+                report($exception);
+            }
+
             $this->markFailed('ai_unavailable');
 
             return;

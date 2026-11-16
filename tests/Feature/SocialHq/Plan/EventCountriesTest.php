@@ -114,7 +114,7 @@ test('re-importing keeps confirmations, updates changed holidays and skips the o
     ImportPublicHolidays::handle($this->account, ['US'], [$this->year]);
 
     $independence = CalendarEvent::query()->where('key', 'independence-day')->sole();
-    $this->actingAs($this->owner)->post(route('socialhq.plan.events.verify', $independence->id))->assertRedirect();
+    $this->actingAs($this->owner)->post(route('socialhq.plan.events.verify', $independence->id), ['name' => $independence->name, 'starts_on' => $independence->starts_on->toDateString(), 'ends_on' => $independence->ends_on->toDateString()])->assertRedirect();
 
     $chavez = CalendarEvent::query()->where('key', 'cesar-chavez-day')->sole();
     $this->travel(1)->minutes();

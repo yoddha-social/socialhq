@@ -136,7 +136,7 @@ test('re-importing keeps confirmations, updates changed rows and skips rows a pe
     ])]);
 
     $laxmi = CalendarEvent::query()->where('key', 'laxmi-puja-tihar')->firstOrFail();
-    $this->actingAs($this->owner)->post(route('socialhq.plan.events.verify', $laxmi->id))->assertRedirect();
+    $this->actingAs($this->owner)->post(route('socialhq.plan.events.verify', $laxmi->id), shownDates($laxmi))->assertRedirect();
 
     $edited = CalendarEvent::query()->where('key', 'chhath')->firstOrFail();
     $this->travel(1)->minutes();
@@ -261,7 +261,7 @@ test('approvers add, edit, confirm and delete dates', function () {
         ->and($event->created_by)->toBe($this->owner->id)
         ->and($event->isVerified())->toBeFalse();
 
-    $this->actingAs($this->owner)->post(route('socialhq.plan.events.verify', $event->id))->assertRedirect();
+    $this->actingAs($this->owner)->post(route('socialhq.plan.events.verify', $event->id), shownDates($event))->assertRedirect();
     expect($event->fresh()->verified_by)->toBe($this->owner->id);
 
     $this->actingAs($this->owner)
@@ -278,7 +278,7 @@ test('approvers add, edit, confirm and delete dates', function () {
         ->assertRedirect();
     expect($event->fresh()->isVerified())->toBeFalse();
 
-    $this->actingAs($this->owner)->post(route('socialhq.plan.events.verify', $event->id));
+    $this->actingAs($this->owner)->post(route('socialhq.plan.events.verify', $event->id), shownDates($event->fresh()));
     $this->actingAs($this->owner)->delete(route('socialhq.plan.events.unverify', $event->id))->assertRedirect();
     expect($event->fresh()->isVerified())->toBeFalse();
 
@@ -308,7 +308,7 @@ test('members cannot change dates', function () {
 
     $this->actingAs($member)->post(route('socialhq.plan.events.store'), eventPayload($this->day))->assertForbidden();
     $this->actingAs($member)->put(route('socialhq.plan.events.update', $event->id), eventPayload($this->day))->assertForbidden();
-    $this->actingAs($member)->post(route('socialhq.plan.events.verify', $event->id))->assertForbidden();
+    $this->actingAs($member)->post(route('socialhq.plan.events.verify', $event->id), shownDates($event))->assertForbidden();
     $this->actingAs($member)->delete(route('socialhq.plan.events.unverify', $event->id))->assertForbidden();
     $this->actingAs($member)->delete(route('socialhq.plan.events.destroy', $event->id))->assertForbidden();
     $this->actingAs($member)->post(route('socialhq.plan.events.import'))->assertForbidden();
@@ -323,7 +323,7 @@ test('another account\'s or another brand\'s event is not found', function () {
     $brandOnly = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'workspace_id' => $otherBrand->id, 'starts_on' => $this->day, 'ends_on' => $this->day]);
 
     foreach ([$foreign, $brandOnly] as $event) {
-        $this->actingAs($this->owner)->post(route('socialhq.plan.events.verify', $event->id))->assertNotFound();
+        $this->actingAs($this->owner)->post(route('socialhq.plan.events.verify', $event->id), shownDates($event))->assertNotFound();
         $this->actingAs($this->owner)->put(route('socialhq.plan.events.update', $event->id), eventPayload($this->day))->assertNotFound();
         $this->actingAs($this->owner)->delete(route('socialhq.plan.events.destroy', $event->id))->assertNotFound();
     }
@@ -477,17 +477,17 @@ test('an approver of one brand manages that brand\'s dates but not the dates eve
     $shared = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'starts_on' => $this->day, 'ends_on' => $this->day]);
     $own = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'workspace_id' => $this->workspace->id, 'category' => 'brand', 'region' => 'brand', 'starts_on' => $this->day, 'ends_on' => $this->day]);
 
-    $this->actingAs($approver)->post(route('socialhq.plan.events.verify', $shared->id))->assertForbidden();
+    $this->actingAs($approver)->post(route('socialhq.plan.events.verify', $shared->id), shownDates($shared))->assertForbidden();
     $this->actingAs($approver)->delete(route('socialhq.plan.events.destroy', $shared->id))->assertForbidden();
     $this->actingAs($approver)->post(route('socialhq.plan.events.import'))->assertForbidden();
-    $this->actingAs($approver)->post(route('socialhq.plan.events.verify', $own->id))->assertRedirect();
+    $this->actingAs($approver)->post(route('socialhq.plan.events.verify', $own->id), shownDates($own))->assertRedirect();
 
     $this->actingAs($approver)->get(route('socialhq.plan.events.index'))
         ->assertInertia(fn ($page) => $page->where('abilities.canApprove', true)->where('abilities.canManageSharedEvents', false));
 
     // Approving in every brand is enough.
     $other->members()->attach($approver->id, membershipPivot('admin'));
-    $this->actingAs($approver->fresh())->post(route('socialhq.plan.events.verify', $shared->id))->assertRedirect();
+    $this->actingAs($approver->fresh())->post(route('socialhq.plan.events.verify', $shared->id), shownDates($shared))->assertRedirect();
 
     expect($shared->fresh()->isVerified())->toBeTrue()
         ->and($own->fresh()->isVerified())->toBeTrue();
@@ -512,3 +512,28 @@ test('narrowing a shared date to one brand unlinks it from the other brands\' it
     expect($theirs->fresh()->event_id)->toBeNull()
         ->and($ours->fresh()->event_id)->toBe($shared->id);
 });
+
+test('a date is confirmed only as the approver saw it', function () {
+    $event = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'starts_on' => $this->day, 'ends_on' => $this->day]);
+    $shown = shownDates($event);
+
+    // Someone moves it to the next day while the approver looks at the old one.
+    $event->update(['starts_on' => $this->day->addDay(), 'ends_on' => $this->day->addDay()]);
+
+    $this->actingAs($this->owner)->post(route('socialhq.plan.events.verify', $event->id), $shown)
+        ->assertSessionHasErrors(['event' => __('socialhq_events.errors.changed')]);
+    expect($event->fresh()->isVerified())->toBeFalse();
+
+    $this->actingAs($this->owner)->post(route('socialhq.plan.events.verify', $event->id), shownDates($event->fresh()))->assertSessionHasNoErrors();
+    expect($event->fresh()->isVerified())->toBeTrue();
+});
+
+/**
+ * What the events page shows of a date, sent back when confirming it.
+ *
+ * @return array{name: string, starts_on: string, ends_on: string}
+ */
+function shownDates(CalendarEvent $event): array
+{
+    return ['name' => $event->name, 'starts_on' => $event->starts_on->toDateString(), 'ends_on' => $event->ends_on->toDateString()];
+}

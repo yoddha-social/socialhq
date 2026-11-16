@@ -26,14 +26,14 @@ class ItemCopyReviewController extends Controller
 
     public function approve(ReviewDecisionRequest $request, int $item): RedirectResponse
     {
-        ItemCopy::approve(PlanAccess::item($request, $item, approve: true), $request->user(), $request->validated('note'));
+        ItemCopy::approve(PlanAccess::item($request, $item, approve: true), $request->user(), $request->validated('note'), (int) $request->validated('version_id'));
 
         return back();
     }
 
     public function requestChanges(ReviewDecisionRequest $request, int $item): RedirectResponse
     {
-        ItemCopy::requestChanges(PlanAccess::item($request, $item, approve: true), $request->user(), (string) $request->validated('note'));
+        ItemCopy::requestChanges(PlanAccess::item($request, $item, approve: true), $request->user(), (string) $request->validated('note'), (int) $request->validated('version_id'));
 
         return back();
     }

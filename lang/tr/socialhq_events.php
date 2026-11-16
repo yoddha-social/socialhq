@@ -121,6 +121,7 @@ return [
         'too_long' => 'Pick an end date within 31 days of the start date.',
         'duplicate' => 'There\'s already an event with this name on that day. Use another name or day.',
         'brand_kind_shared' => 'A brand date belongs to one brand. Switch on Only this brand, or pick another kind.',
+        'changed' => 'This date changed after you opened the page. Reload it to check the new date, then confirm.',
     ],
 
     'import' => [

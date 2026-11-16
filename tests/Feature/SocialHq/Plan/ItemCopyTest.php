@@ -91,19 +91,19 @@ test('copy goes through review: submit, changes requested with a note, approve',
     expect($this->item->fresh()->copy_status)->toBe(CopyStatus::InReview);
 
     // A writer who can't approve is refused both decisions.
-    $this->actingAs($writer)->post(route('socialhq.plan.items.copy.approve', $this->item->id))->assertForbidden();
-    $this->actingAs($writer)->post(route('socialhq.plan.items.copy.request-changes', $this->item->id), ['note' => 'x'])->assertForbidden();
+    $this->actingAs($writer)->post(route('socialhq.plan.items.copy.approve', $this->item->id), ['version_id' => shownVersion($this->item)])->assertForbidden();
+    $this->actingAs($writer)->post(route('socialhq.plan.items.copy.request-changes', $this->item->id), ['note' => 'x', 'version_id' => shownVersion($this->item)])->assertForbidden();
 
     // A change request needs a note.
-    $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.request-changes', $this->item->id), ['note' => ''])
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.request-changes', $this->item->id), ['note' => '', 'version_id' => shownVersion($this->item)])
         ->assertSessionHasErrors('note');
-    $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.request-changes', $this->item->id), ['note' => 'Shorter hook'])
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.request-changes', $this->item->id), ['note' => 'Shorter hook', 'version_id' => shownVersion($this->item)])
         ->assertSessionHasNoErrors();
     expect($this->item->fresh()->copy_status)->toBe(CopyStatus::ChangesRequested);
 
     $this->actingAs($writer)->post(route('socialhq.plan.items.versions.store', $this->item->id), copyPayload('Shorter'));
     $this->actingAs($writer)->post(route('socialhq.plan.items.copy.submit', $this->item->id))->assertSessionHasNoErrors();
-    $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.approve', $this->item->id))->assertSessionHasNoErrors();
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.approve', $this->item->id), ['version_id' => shownVersion($this->item)])->assertSessionHasNoErrors();
 
     expect($this->item->fresh()->copy_status)->toBe(CopyStatus::Approved)
         ->and(ItemReview::query()->where('item_id', $this->item->id)->orderBy('id')->pluck('kind')->map->value->all())
@@ -117,7 +117,7 @@ test('copy that is not in review cannot be approved, and an empty item cannot be
     $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.submit', $this->item->id))->assertSessionHasErrors('copy');
 
     $this->actingAs($this->owner)->post(route('socialhq.plan.items.versions.store', $this->item->id), copyPayload());
-    $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.approve', $this->item->id))->assertSessionHasErrors('copy');
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.approve', $this->item->id), ['version_id' => shownVersion($this->item)])->assertSessionHasErrors('copy');
 
     expect($this->item->fresh()->copy_status)->toBe(CopyStatus::Draft);
 });
@@ -125,7 +125,7 @@ test('copy that is not in review cannot be approved, and an empty item cannot be
 test('a new version of approved copy sends it back to draft and notes it in the thread', function () {
     $this->actingAs($this->owner)->post(route('socialhq.plan.items.versions.store', $this->item->id), copyPayload());
     $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.submit', $this->item->id));
-    $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.approve', $this->item->id));
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.approve', $this->item->id), ['version_id' => shownVersion($this->item)]);
 
     $this->actingAs($this->owner)->post(route('socialhq.plan.items.versions.store', $this->item->id), copyPayload('Edited after approval'));
 
@@ -159,3 +159,29 @@ test('writing copy on an AI suggestion accepts it', function () {
 
     expect($this->item->fresh()->status)->toBe(ItemStatus::Planned);
 });
+
+test('an approval or change request applies only to the version the approver saw', function () {
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.versions.store', $this->item->id), copyPayload('First'));
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.submit', $this->item->id));
+    $shown = shownVersion($this->item);
+
+    // A new version lands while the approver reads the first (it sends the copy back to draft, then to review again).
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.versions.store', $this->item->id), copyPayload('Second'));
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.submit', $this->item->id));
+
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.approve', $this->item->id), ['version_id' => $shown])
+        ->assertSessionHasErrors(['copy' => __('socialhq_production.review.errors.changed')]);
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.request-changes', $this->item->id), ['note' => 'x', 'version_id' => $shown])
+        ->assertSessionHasErrors('copy');
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.approve', $this->item->id), [])->assertSessionHasErrors('version_id');
+
+    expect($this->item->fresh()->copy_status)->toBe(CopyStatus::InReview);
+
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.approve', $this->item->id), ['version_id' => shownVersion($this->item)])->assertSessionHasNoErrors();
+    expect(ItemReview::query()->where('kind', ReviewKind::Approved)->sole()->version->caption)->toBe('Second');
+});
+
+function shownVersion(PlanItem $item): int
+{
+    return (int) ItemVersion::query()->where('item_id', $item->id)->max('id');
+}

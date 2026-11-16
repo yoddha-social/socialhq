@@ -9,6 +9,7 @@ import {
     IconWorld,
 } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
+import { toast } from 'vue-sonner';
 
 import EmptyState from '@/components/EmptyState.vue';
 import EventCountryDialog from '@/components/socialhq/plan/EventCountryDialog.vue';
@@ -265,8 +266,24 @@ const trackBusy = (event: CalendarEventRow) => ({
     },
 });
 
+/** Confirms the date as shown: the server refuses it if it changed since. */
 const confirmEvent = (event: CalendarEventRow): void => {
-    router.post(verifyEvent.url(event.id), {}, trackBusy(event));
+    router.post(
+        verifyEvent.url(event.id),
+        {
+            name: event.name,
+            starts_on: event.starts_on,
+            ends_on: event.ends_on,
+        },
+        {
+            ...trackBusy(event),
+            onError: (errors) => {
+                if (errors.event) {
+                    toast.error(errors.event);
+                }
+            },
+        },
+    );
 };
 
 const unconfirmEvent = (event: CalendarEventRow): void => {

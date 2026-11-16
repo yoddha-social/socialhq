@@ -53,21 +53,27 @@ final class ItemCopy
 
     public static function submit(PlanItem $item, User $user): void
     {
-        self::transition($item, [CopyStatus::Draft, CopyStatus::ChangesRequested], CopyStatus::InReview, 'cannot_submit', function (PlanItem $locked, ItemVersion $version) use ($user): void {
+        self::transition($item, [CopyStatus::Draft, CopyStatus::ChangesRequested], CopyStatus::InReview, 'cannot_submit', null, function (PlanItem $locked, ItemVersion $version) use ($user): void {
             self::note($locked, $user, ReviewKind::Submitted, $version);
         });
     }
 
-    public static function approve(PlanItem $item, User $user, ?string $note = null): void
+    /**
+     * @param  ?int  $shownVersionId  the version the approver saw, refused when a newer one was saved since
+     */
+    public static function approve(PlanItem $item, User $user, ?string $note = null, ?int $shownVersionId = null): void
     {
-        self::transition($item, [CopyStatus::InReview], CopyStatus::Approved, 'cannot_approve', function (PlanItem $locked, ItemVersion $version) use ($user, $note): void {
+        self::transition($item, [CopyStatus::InReview], CopyStatus::Approved, 'cannot_approve', $shownVersionId, function (PlanItem $locked, ItemVersion $version) use ($user, $note): void {
             self::note($locked, $user, ReviewKind::Approved, $version, $note);
         });
     }
 
-    public static function requestChanges(PlanItem $item, User $user, string $note): void
+    /**
+     * @param  ?int  $shownVersionId  the version the approver saw, refused when a newer one was saved since
+     */
+    public static function requestChanges(PlanItem $item, User $user, string $note, ?int $shownVersionId = null): void
     {
-        self::transition($item, [CopyStatus::InReview], CopyStatus::ChangesRequested, 'cannot_request_changes', function (PlanItem $locked, ItemVersion $version) use ($user, $note): void {
+        self::transition($item, [CopyStatus::InReview], CopyStatus::ChangesRequested, 'cannot_request_changes', $shownVersionId, function (PlanItem $locked, ItemVersion $version) use ($user, $note): void {
             self::note($locked, $user, ReviewKind::ChangesRequested, $version, $note);
         });
     }
@@ -98,14 +104,18 @@ final class ItemCopy
      * @param  list<CopyStatus>  $from
      * @param  callable(PlanItem, ItemVersion): void  $record
      */
-    private static function transition(PlanItem $item, array $from, CopyStatus $to, string $error, callable $record): void
+    private static function transition(PlanItem $item, array $from, CopyStatus $to, string $error, ?int $shownVersionId, callable $record): void
     {
-        DB::transaction(function () use ($item, $from, $to, $error, $record): void {
+        DB::transaction(function () use ($item, $from, $to, $error, $shownVersionId, $record): void {
             $locked = PlanItem::query()->lockForUpdate()->findOrFail($item->id);
             $version = ItemVersion::query()->where('item_id', $locked->id)->orderByDesc('number')->first();
 
             if ($version === null || ! in_array($locked->copy_status, $from, true)) {
                 throw ValidationException::withMessages(['copy' => __("socialhq_production.item.copy.errors.{$error}")]);
+            }
+
+            if ($shownVersionId !== null && $shownVersionId !== $version->id) {
+                throw ValidationException::withMessages(['copy' => __('socialhq_production.review.errors.changed')]);
             }
 
             $locked->update(['copy_status' => $to]);

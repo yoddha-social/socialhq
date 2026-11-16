@@ -156,7 +156,7 @@ const confirmDecision = (decisionNote: string): void => {
         decision.value === 'approve'
             ? approveCreative.url(props.itemId)
             : requestCreativeChanges.url(props.itemId),
-        { note: decisionNote },
+        { note: decisionNote, round: currentRound.value },
         {
             preserveScroll: true,
             onStart: () => {

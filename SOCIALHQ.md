@@ -364,8 +364,10 @@ empty sign-up stays invites only. Code: `app/SocialHq/Signup/`.
    to it.
 4. An admin picks the workspaces they manage and whether the person is an
    admin; a member who is not an admin always sends posts for approval. The
-   person gets an email. Declining deletes their user (and their avatar
-   files) and keeps the request in `shq_access_requests`. When two admins
+   person gets an email. Only the account owner declines (an admin of one
+   workspace sees the list without the button): declining deletes their
+   user (and their avatar files) and keeps the request in
+   `shq_access_requests`. When two admins
    decide at once, the first wins and the second is told so.
 5. While waiting, the person can open and accept an invite: once they have a
    workspace their request closes by itself (`note` `joined_by_invite`).

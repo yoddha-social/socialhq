@@ -168,6 +168,24 @@ test('an admin of one workspace can only give access to that workspace', functio
     expect($user->fresh()->workspaces()->count())->toBe(0);
 });
 
+test('a workspace admin sees and approves requests, but only the account owner declines', function () {
+    signUp('asha@acme.test');
+    $user = User::query()->where('email', 'asha@acme.test')->firstOrFail();
+    verifyEmailOf($user);
+    $request = AccessRequest::query()->where('user_id', $user->id)->firstOrFail();
+    $admin = workspaceMember($this->otherWorkspace, 'admin');
+
+    $this->actingAs($admin)->get(route('socialhq.access-requests.index'))
+        ->assertInertia(fn ($page) => $page->has('requests', 1)->where('canDecline', false));
+    $this->post(route('socialhq.access-requests.decline', $request->id))->assertForbidden();
+
+    expect(User::query()->whereKey($user->id)->exists())->toBeTrue()
+        ->and($request->fresh()->status)->toBe(AccessRequest::PENDING);
+
+    $this->actingAs($this->owner)->get(route('socialhq.access-requests.index'))
+        ->assertInertia(fn ($page) => $page->where('canDecline', true));
+});
+
 test('members who are not admins cannot see or decide requests', function () {
     signUp('asha@acme.test');
     $request = AccessRequest::query()->firstOrFail();

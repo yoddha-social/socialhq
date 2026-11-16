@@ -104,6 +104,15 @@ final class AccessRequests
     }
 
     /**
+     * Declining deletes the person, so only the account owner may: an admin
+     * of one workspace must not turn away people another workspace may want.
+     */
+    public static function canDecline(User $user): bool
+    {
+        return $user->isAccountOwner();
+    }
+
+    /**
      * Requests waiting for this user's decision, in one query: 0 for anyone
      * who is neither the account owner nor an admin of one of its workspaces.
      */

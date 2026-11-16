@@ -19,9 +19,9 @@ use App\SocialHq\Plan\Ai\ContentPlanner;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Inertia\Testing\AssertableInertia as Assert;
-use Illuminate\Support\Facades\Http;
 use Laravel\Ai\AiManager;
 
 beforeEach(function () {

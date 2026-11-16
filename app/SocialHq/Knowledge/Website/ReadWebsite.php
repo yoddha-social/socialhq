@@ -34,7 +34,8 @@ class ReadWebsite implements ShouldQueue
 
     public int $tries = 1;
 
-    public int $timeout = 300;
+    /** The crawl (up to 150 s) plus the queued AI call (AiTimeout::QUEUED, 300 s). */
+    public int $timeout = 480;
 
     public bool $failOnTimeout = true;
 

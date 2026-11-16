@@ -263,7 +263,7 @@ return [
             'duplicate_day' => 'Channel already has a post that day',
         ],
         'errors' => [
-            'ai_unavailable' => 'AI drafts are off. Ask whoever runs Social HQ to turn them on.',
+            'ai_unavailable' => 'AI drafts need your company\'s AI. Ask your company\'s owner to set it up in Settings › AI, then try again.',
             'ai_failed' => 'The AI couldn\'t draft this month. Try again in a few minutes.',
             'invalid_output' => 'The AI\'s draft couldn\'t be used. Try again.',
             'no_access' => 'The person who started this draft can no longer work on this plan. Try again to start a new draft.',

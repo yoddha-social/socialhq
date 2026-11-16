@@ -13,6 +13,7 @@ use App\SocialHq\Companies\CompanyStatus;
 use App\SocialHq\Companies\PlatformAdmins;
 use App\SocialHq\Http\Requests\StoreCompanyRequest;
 use App\SocialHq\Http\Requests\UpdateCompanyRequest;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -121,7 +122,13 @@ class CompanyRequestController extends Controller
         $user = $request->user();
         abort_unless(CompanyAccess::mayAskForCompany($user), 403);
 
-        CompanyRequests::open($user, $user->account, $request->validated('name'));
+        try {
+            CompanyRequests::open($user, $user->account, $request->validated('name'));
+        } catch (UniqueConstraintViolationException) {
+            // A second submit of the same form a moment later: the first one asked already.
+            return redirect()->route('socialhq.company.waiting');
+        }
+
         CompanyRequests::notifyPlatformAdmins($user);
 
         return redirect()->route('socialhq.company.waiting');

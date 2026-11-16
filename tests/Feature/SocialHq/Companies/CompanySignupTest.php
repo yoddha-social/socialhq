@@ -462,3 +462,21 @@ test('sign-ups join the account the configured owner owns, only while its compan
     registerForCompany('ravi@acme.test', null)->assertSessionHasErrors('company_name');
     expect(User::query()->where('email', 'ravi@acme.test')->exists())->toBeFalse();
 });
+
+test('asking twice at once from the no-workspace page ends on the waiting page, with one company', function () {
+    $account = Account::factory()->create();
+    $user = User::factory()->create(['account_id' => $account->id]);
+    $account->update(['owner_id' => $user->id]);
+
+    // The other submit inserts its row between this one's check and its insert.
+    Company::creating(function (Company $company) use ($account): void {
+        if (Company::query()->where('account_id', $account->id)->doesntExist()) {
+            Company::factory()->pending()->create(['account_id' => $account->id, 'name' => 'Ravi Studio']);
+        }
+    });
+
+    $this->actingAs($user)->post(route('socialhq.company.store'), ['name' => 'Ravi Studio'])
+        ->assertRedirect(route('socialhq.company.waiting'));
+
+    expect(Company::query()->where('account_id', $account->id)->count())->toBe(1);
+});

@@ -84,18 +84,35 @@ test('a platform admin sees requests and companies on one page', function () {
     $this->actingAs($this->admin)->get(route('socialhq.platform.companies.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('socialhq/platform/Companies')
-            ->has('requests', 2)
-            ->where('requests.0.name', 'Himal Tea')
-            ->where('requests.0.owner_email', 'mina@himaltea.test')
-            ->where('requests.0.verified', true)
-            ->where('requests.1.verified', false)
-            ->has('companies', 2)
-            ->where('companies.0.name', $approved->name)
-            ->where('companies.0.workspaces_count', 1)
-            ->where('companies.0.members_count', 2)
-            ->where('companies.0.status', 'approved')
+            ->has('requests.data', 2)
+            ->where('requestsCount', 2)
+            ->where('requests.data.0.name', 'Himal Tea')
+            ->where('requests.data.0.owner_email', 'mina@himaltea.test')
+            ->where('requests.data.0.verified', true)
+            ->where('requests.data.1.verified', false)
+            ->has('companies.data', 2)
+            ->where('companies.data.0.name', $approved->name)
+            ->where('companies.data.0.workspaces_count', 1)
+            ->where('companies.data.0.members_count', 2)
+            ->where('companies.data.0.status', 'approved')
             ->where('socialhq.platform.admin', true)
             ->where('socialhq.platform.pendingCompanies', 1));
+});
+
+test('the companies list loads a page at a time as it scrolls', function () {
+    config(['app.pagination.default' => 2]);
+    approvedCompanyWithMember();
+    Company::factory()->create(['name' => 'Annapurna Foods']);
+
+    $this->actingAs($this->admin)->get(route('socialhq.platform.companies.index', ['tab' => 'companies']))
+        ->assertInertia(fn ($page) => $page->has('companies.data', 2)
+            ->where('companies.data.0.name', 'Annapurna Foods')
+            ->where('companies.meta.hasNextPage', true));
+
+    $this->get(route('socialhq.platform.companies.index', ['tab' => 'companies', 'companies_page' => 2]))
+        ->assertInertia(fn ($page) => $page->has('companies.data', 1)
+            ->where('companies.data.0.name', 'Zeta Platform')
+            ->where('companies.meta.hasNextPage', false));
 });
 
 test('approving lets the owner create workspaces and emails them', function () {

@@ -29,28 +29,30 @@ class CompanyController extends Controller
     {
         $this->authorizePlatformAdmin($request);
 
-        $companies = Company::query()
-            ->with(['account' => fn ($account) => $account->withCount(['workspaces', 'users'])->with('owner')])
-            ->get();
-
-        [$requests, $decided] = $companies->partition(fn (Company $company): bool => $company->status === CompanyStatus::Pending);
-
         return Inertia::render('socialhq/platform/Companies', [
             'tab' => $request->query('tab') === 'companies' ? 'companies' : 'requests',
-            'requests' => $requests
-                ->sortBy(fn (Company $company) => $company->requested_at ?? $company->created_at)
-                ->map(fn (Company $company): array => [
+            'requests' => Inertia::scroll(fn () => Company::query()
+                ->pending()
+                ->with('account.owner')
+                ->orderBy('requested_at')
+                ->orderBy('id')
+                ->paginate((int) config('app.pagination.default'), pageName: 'requests_page')
+                ->through(fn (Company $company): array => [
                     'id' => $company->id,
                     'name' => $company->name,
                     'owner_name' => $company->account?->owner?->name,
                     'owner_email' => $company->account?->owner?->email,
                     'verified' => $company->account?->owner?->hasVerifiedEmail() === true,
                     'requested_at' => ($company->requested_at ?? $company->created_at)?->toIso8601String(),
-                ])
-                ->values(),
-            'companies' => $decided
-                ->sortBy(fn (Company $company): string => mb_strtolower($company->name))
-                ->map(fn (Company $company): array => [
+                ])),
+            'requestsCount' => Company::query()->pending()->count(),
+            'companies' => Inertia::scroll(fn () => Company::query()
+                ->where('status', '!=', CompanyStatus::Pending)
+                ->with(['account' => fn ($account) => $account->withCount(['workspaces', 'users'])->with('owner')])
+                ->orderBy('name')
+                ->orderBy('id')
+                ->paginate((int) config('app.pagination.default'), pageName: 'companies_page')
+                ->through(fn (Company $company): array => [
                     'id' => $company->id,
                     'name' => $company->name,
                     'owner_name' => $company->account?->owner?->name,
@@ -62,8 +64,7 @@ class CompanyController extends Controller
                     'decision_note' => $company->decision_note,
                     'decided_at' => $company->decided_at?->toIso8601String(),
                     'created_at' => $company->created_at?->toIso8601String(),
-                ])
-                ->values(),
+                ])),
         ]);
     }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, InfiniteScroll, router, useForm } from '@inertiajs/vue3';
 import { IconBuilding, IconBuildingPlus } from '@tabler/icons-vue';
 import { transChoice } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
@@ -56,12 +56,18 @@ interface CompanyRow {
     created_at: string | null;
 }
 
+interface ScrollRows<T> {
+    data: T[];
+    meta: { hasNextPage: boolean };
+}
+
 type NoteAction = 'decline' | 'suspend';
 
 const props = defineProps<{
     tab: 'requests' | 'companies';
-    requests: CompanyRequestRow[];
-    companies: CompanyRow[];
+    requests: ScrollRows<CompanyRequestRow>;
+    requestsCount: number;
+    companies: ScrollRows<CompanyRow>;
 }>();
 
 const tab = ref<string>(props.tab);
@@ -223,8 +229,8 @@ const setPlatformAi = (company: CompanyRow, enabled: boolean): void => {
                     data-testid="socialhq-platform-tab-requests"
                 >
                     {{ $t('socialhq_companies.platform.tabs.requests') }}
-                    <Badge v-if="requests.length > 0" variant="secondary">
-                        {{ requests.length }}
+                    <Badge v-if="requestsCount > 0" variant="secondary">
+                        {{ requestsCount }}
                     </Badge>
                 </TabsTrigger>
                 <TabsTrigger
@@ -237,230 +243,259 @@ const setPlatformAi = (company: CompanyRow, enabled: boolean): void => {
 
             <TabsContent value="requests" class="flex flex-col gap-4">
                 <EmptyState
-                    v-if="requests.length === 0"
+                    v-if="requests.data.length === 0"
                     :icon="IconBuildingPlus"
                     :title="$t('socialhq_companies.platform.requests_empty')"
                     data-testid="socialhq-platform-requests-empty"
                 />
-                <ul
+                <InfiniteScroll
                     v-else
-                    class="flex flex-col gap-2"
-                    data-testid="socialhq-platform-requests"
+                    data="requests"
+                    items-element="#socialhq-platform-requests"
+                    preserve-url
                 >
-                    <SettingsListRow
-                        v-for="request in requests"
-                        :key="request.id"
-                        :icon="IconBuildingPlus"
-                        :data-testid="`socialhq-platform-request-${request.id}`"
+                    <ul
+                        id="socialhq-platform-requests"
+                        class="flex flex-col gap-2"
+                        data-testid="socialhq-platform-requests"
                     >
-                        <p class="truncate text-sm font-medium text-foreground">
-                            {{ request.name }}
-                        </p>
-                        <p class="truncate text-sm text-muted-foreground">
-                            {{ request.owner_name }} · {{ request.owner_email }}
-                        </p>
-                        <p
-                            class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+                        <SettingsListRow
+                            v-for="request in requests.data"
+                            :key="request.id"
+                            :icon="IconBuildingPlus"
+                            :data-testid="`socialhq-platform-request-${request.id}`"
                         >
-                            <span v-if="request.requested_at">
-                                {{
-                                    $t(
-                                        'socialhq_companies.platform.requested',
-                                        {
-                                            time: date.diffForHumans(
-                                                request.requested_at,
-                                            ),
-                                        },
-                                    )
-                                }}
-                            </span>
-                            <Badge
-                                v-if="!request.verified"
-                                variant="warning"
-                                :title="
-                                    $t(
-                                        'socialhq_companies.platform.not_verified_hint',
-                                    )
-                                "
-                                :data-testid="`socialhq-platform-unverified-${request.id}`"
+                            <p
+                                class="truncate text-sm font-medium text-foreground"
                             >
-                                {{
-                                    $t(
-                                        'socialhq_companies.platform.not_verified',
-                                    )
-                                }}
-                            </Badge>
-                        </p>
+                                {{ request.name }}
+                            </p>
+                            <p class="truncate text-sm text-muted-foreground">
+                                {{ request.owner_name }} ·
+                                {{ request.owner_email }}
+                            </p>
+                            <p
+                                class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+                            >
+                                <span v-if="request.requested_at">
+                                    {{
+                                        $t(
+                                            'socialhq_companies.platform.requested',
+                                            {
+                                                time: date.diffForHumans(
+                                                    request.requested_at,
+                                                ),
+                                            },
+                                        )
+                                    }}
+                                </span>
+                                <Badge
+                                    v-if="!request.verified"
+                                    variant="warning"
+                                    :title="
+                                        $t(
+                                            'socialhq_companies.platform.not_verified_hint',
+                                        )
+                                    "
+                                    :data-testid="`socialhq-platform-unverified-${request.id}`"
+                                >
+                                    {{
+                                        $t(
+                                            'socialhq_companies.platform.not_verified',
+                                        )
+                                    }}
+                                </Badge>
+                            </p>
 
-                        <template #actions>
-                            <div class="flex shrink-0 gap-2">
-                                <Button
-                                    variant="ghost"
-                                    :aria-label="
-                                        $t(
-                                            'socialhq_companies.platform.decline_label',
-                                            { name: request.name },
-                                        )
-                                    "
-                                    :data-testid="`socialhq-platform-decline-${request.id}`"
-                                    @click="openDecline(request)"
-                                >
-                                    {{
-                                        $t(
-                                            'socialhq_companies.platform.decline',
-                                        )
-                                    }}
-                                </Button>
-                                <Button
-                                    v-if="request.verified"
-                                    :loading="approvingId === request.id"
-                                    :aria-label="
-                                        $t(
-                                            'socialhq_companies.platform.approve_label',
-                                            { name: request.name },
-                                        )
-                                    "
-                                    :data-testid="`socialhq-platform-approve-${request.id}`"
-                                    @click="approve(request)"
-                                >
-                                    {{
-                                        $t(
-                                            'socialhq_companies.platform.approve',
-                                        )
-                                    }}
-                                </Button>
-                            </div>
-                        </template>
-                    </SettingsListRow>
-                </ul>
+                            <template #actions>
+                                <div class="flex shrink-0 gap-2">
+                                    <Button
+                                        variant="ghost"
+                                        :aria-label="
+                                            $t(
+                                                'socialhq_companies.platform.decline_label',
+                                                { name: request.name },
+                                            )
+                                        "
+                                        :data-testid="`socialhq-platform-decline-${request.id}`"
+                                        @click="openDecline(request)"
+                                    >
+                                        {{
+                                            $t(
+                                                'socialhq_companies.platform.decline',
+                                            )
+                                        }}
+                                    </Button>
+                                    <Button
+                                        v-if="request.verified"
+                                        :loading="approvingId === request.id"
+                                        :aria-label="
+                                            $t(
+                                                'socialhq_companies.platform.approve_label',
+                                                { name: request.name },
+                                            )
+                                        "
+                                        :data-testid="`socialhq-platform-approve-${request.id}`"
+                                        @click="approve(request)"
+                                    >
+                                        {{
+                                            $t(
+                                                'socialhq_companies.platform.approve',
+                                            )
+                                        }}
+                                    </Button>
+                                </div>
+                            </template>
+                        </SettingsListRow>
+                    </ul>
+                </InfiniteScroll>
             </TabsContent>
 
             <TabsContent value="companies" class="flex flex-col gap-4">
                 <EmptyState
-                    v-if="companies.length === 0"
+                    v-if="companies.data.length === 0"
                     :icon="IconBuilding"
                     :title="$t('socialhq_companies.platform.companies_empty')"
                     data-testid="socialhq-platform-companies-empty"
                 />
-                <ul
+                <InfiniteScroll
                     v-else
-                    class="flex flex-col gap-2"
-                    data-testid="socialhq-platform-companies"
+                    data="companies"
+                    items-element="#socialhq-platform-companies"
+                    preserve-url
                 >
-                    <SettingsListRow
-                        v-for="company in companies"
-                        :key="company.id"
-                        :icon="IconBuilding"
-                        :data-testid="`socialhq-platform-company-${company.id}`"
+                    <ul
+                        id="socialhq-platform-companies"
+                        class="flex flex-col gap-2"
+                        data-testid="socialhq-platform-companies"
                     >
-                        <p
-                            class="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground"
+                        <SettingsListRow
+                            v-for="company in companies.data"
+                            :key="company.id"
+                            :icon="IconBuilding"
+                            :data-testid="`socialhq-platform-company-${company.id}`"
                         >
-                            <span class="truncate">{{ company.name }}</span>
-                            <Badge
-                                :variant="statusVariant(company.status)"
-                                :data-testid="`socialhq-platform-status-${company.id}`"
+                            <p
+                                class="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground"
+                            >
+                                <span class="truncate">{{ company.name }}</span>
+                                <Badge
+                                    :variant="statusVariant(company.status)"
+                                    :data-testid="`socialhq-platform-status-${company.id}`"
+                                >
+                                    {{
+                                        $t(
+                                            `socialhq_companies.platform.status.${company.status}`,
+                                        )
+                                    }}
+                                </Badge>
+                            </p>
+                            <p class="truncate text-sm text-muted-foreground">
+                                {{ company.owner_name }} ·
+                                {{ company.owner_email }}
+                            </p>
+                            <p class="text-xs text-muted-foreground">
+                                {{ countsLabel(company) }}
+                                <template v-if="company.created_at">
+                                    ·
+                                    {{
+                                        $t(
+                                            'socialhq_companies.platform.created',
+                                            {
+                                                time: date.diffForHumans(
+                                                    company.created_at,
+                                                ),
+                                            },
+                                        )
+                                    }}
+                                </template>
+                            </p>
+                            <p
+                                v-if="
+                                    company.decision_note &&
+                                    company.status !== 'approved'
+                                "
+                                class="text-xs whitespace-pre-line text-muted-foreground"
                             >
                                 {{
-                                    $t(
-                                        `socialhq_companies.platform.status.${company.status}`,
-                                    )
-                                }}
-                            </Badge>
-                        </p>
-                        <p class="truncate text-sm text-muted-foreground">
-                            {{ company.owner_name }} · {{ company.owner_email }}
-                        </p>
-                        <p class="text-xs text-muted-foreground">
-                            {{ countsLabel(company) }}
-                            <template v-if="company.created_at">
-                                ·
-                                {{
-                                    $t('socialhq_companies.platform.created', {
-                                        time: date.diffForHumans(
-                                            company.created_at,
-                                        ),
+                                    $t('socialhq_companies.platform.note', {
+                                        note: company.decision_note,
                                     })
                                 }}
-                            </template>
-                        </p>
-                        <p
-                            v-if="
-                                company.decision_note &&
-                                company.status !== 'approved'
-                            "
-                            class="text-xs whitespace-pre-line text-muted-foreground"
-                        >
-                            {{
-                                $t('socialhq_companies.platform.note', {
-                                    note: company.decision_note,
-                                })
-                            }}
-                        </p>
-                        <div
-                            v-if="company.status !== 'declined'"
-                            class="mt-1 flex items-center gap-2"
-                        >
-                            <Switch
-                                :id="`socialhq-platform-ai-${company.id}`"
-                                :model-value="company.uses_platform_ai"
-                                :aria-label="
-                                    $t(
-                                        'socialhq_companies.platform.platform_ai_label',
-                                        { name: company.name },
-                                    )
-                                "
-                                :data-testid="`socialhq-platform-ai-${company.id}`"
-                                @update:model-value="
-                                    setPlatformAi(company, Boolean($event))
-                                "
-                            />
-                            <Label
-                                :for="`socialhq-platform-ai-${company.id}`"
-                                class="text-sm font-normal"
+                            </p>
+                            <div
+                                v-if="company.status !== 'declined'"
+                                class="mt-1 flex items-center gap-2"
                             >
-                                {{
-                                    $t(
-                                        'socialhq_companies.platform.platform_ai',
-                                    )
-                                }}
-                            </Label>
-                        </div>
+                                <Switch
+                                    :id="`socialhq-platform-ai-${company.id}`"
+                                    :model-value="company.uses_platform_ai"
+                                    :aria-label="
+                                        $t(
+                                            'socialhq_companies.platform.platform_ai_label',
+                                            { name: company.name },
+                                        )
+                                    "
+                                    :data-testid="`socialhq-platform-ai-${company.id}`"
+                                    @update:model-value="
+                                        setPlatformAi(company, Boolean($event))
+                                    "
+                                />
+                                <Label
+                                    :for="`socialhq-platform-ai-${company.id}`"
+                                    class="text-sm font-normal"
+                                >
+                                    {{
+                                        $t(
+                                            'socialhq_companies.platform.platform_ai',
+                                        )
+                                    }}
+                                </Label>
+                            </div>
 
-                        <template #actions>
-                            <Button
-                                v-if="company.status === 'approved'"
-                                variant="ghost"
-                                class="shrink-0"
-                                :aria-label="
-                                    $t(
-                                        'socialhq_companies.platform.suspend_label',
-                                        { name: company.name },
-                                    )
-                                "
-                                :data-testid="`socialhq-platform-suspend-${company.id}`"
-                                @click="openSuspend(company)"
-                            >
-                                {{ $t('socialhq_companies.platform.suspend') }}
-                            </Button>
-                            <Button
-                                v-else-if="company.status === 'suspended'"
-                                variant="outline"
-                                class="shrink-0"
-                                :aria-label="
-                                    $t(
-                                        'socialhq_companies.platform.restore_label',
-                                        { name: company.name },
-                                    )
-                                "
-                                :data-testid="`socialhq-platform-restore-${company.id}`"
-                                @click="openRestore(company)"
-                            >
-                                {{ $t('socialhq_companies.platform.restore') }}
-                            </Button>
-                        </template>
-                    </SettingsListRow>
-                </ul>
+                            <template #actions>
+                                <Button
+                                    v-if="company.status === 'approved'"
+                                    variant="ghost"
+                                    class="shrink-0"
+                                    :aria-label="
+                                        $t(
+                                            'socialhq_companies.platform.suspend_label',
+                                            { name: company.name },
+                                        )
+                                    "
+                                    :data-testid="`socialhq-platform-suspend-${company.id}`"
+                                    @click="openSuspend(company)"
+                                >
+                                    {{
+                                        $t(
+                                            'socialhq_companies.platform.suspend',
+                                        )
+                                    }}
+                                </Button>
+                                <Button
+                                    v-else-if="company.status === 'suspended'"
+                                    variant="outline"
+                                    class="shrink-0"
+                                    :aria-label="
+                                        $t(
+                                            'socialhq_companies.platform.restore_label',
+                                            { name: company.name },
+                                        )
+                                    "
+                                    :data-testid="`socialhq-platform-restore-${company.id}`"
+                                    @click="openRestore(company)"
+                                >
+                                    {{
+                                        $t(
+                                            'socialhq_companies.platform.restore',
+                                        )
+                                    }}
+                                </Button>
+                            </template>
+                        </SettingsListRow>
+                    </ul>
+                </InfiniteScroll>
             </TabsContent>
         </Tabs>
     </SettingsLayout>

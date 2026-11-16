@@ -18,10 +18,10 @@ use App\SocialHq\Http\Requests\Plan\StoreCalendarEventRequest;
 use App\SocialHq\Http\Requests\Plan\UpdateCalendarEventRequest;
 use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Plan\PlanItem;
+use App\SocialHq\Plan\PlanMonth;
 use App\Support\Timezone;
 use Carbon\CarbonImmutable;
 use Closure;
-use DateTimeZone;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -43,7 +43,7 @@ class EventController extends Controller
         $workspace = PlanAccess::workspace($request);
         $today = CarbonImmutable::now(Timezone::normalize($request->user()->timezone))->startOfDay();
         $upcoming = $request->query('view') === 'upcoming';
-        $month = self::month($request->query('month'), $today->getTimezone()) ?? $today->startOfMonth();
+        $month = PlanMonth::tryParse($request->query('month')) ?? $today->startOfMonth();
         [$from, $to] = $upcoming ? [$today, $today->addDays(self::UPCOMING_DAYS - 1)] : [$month, $month->endOfMonth()];
         $country = self::country($request->query('country'));
         $canManageShared = PlanAccess::canApprove($request->user(), $workspace) && PlanAccess::canManageSharedEvents($request->user(), $workspace);
@@ -308,14 +308,5 @@ class EventController extends Controller
         $code = strtoupper(trim($value));
 
         return preg_match('/^[A-Z]{2}$/', $code) === 1 ? $code : null;
-    }
-
-    private static function month(mixed $value, DateTimeZone $timezone): ?CarbonImmutable
-    {
-        if (! is_string($value) || preg_match('/^(\d{4})-(0[1-9]|1[0-2])$/', $value, $parts) !== 1 || (int) $parts[1] < 2000 || (int) $parts[1] > 2100) {
-            return null;
-        }
-
-        return CarbonImmutable::createFromFormat('!Y-m', $value, $timezone);
     }
 }

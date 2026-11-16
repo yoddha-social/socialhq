@@ -130,6 +130,7 @@ return [
         'done' => 'Official dates imported: :created new, :updated updated, :skipped unchanged.',
         'missing' => '{1} One date is no longer in the official list. It\'s marked No longer listed, and the AI stops planning around it.|[0,*] :count dates are no longer in the official list. They\'re marked No longer listed, and the AI stops planning around them.',
         'failed' => 'Couldn\'t import the official dates. Try again; if it keeps failing, tell whoever runs Social HQ.',
+        'busy' => 'Another import of dates is still running for your company. Wait a minute, then try again.',
     ],
 
     'countries' => [
@@ -155,6 +156,7 @@ return [
             'too_many' => 'Pick up to :max countries at a time.',
             'nepal' => 'Nepal\'s dates come from the official list: use Import official dates.',
             'unknown' => 'Pick a country from the list.',
+            'not_covered' => 'Nager.Date doesn\'t list public holidays for :countries. Pick a country from the list.',
             'pick_year' => 'Pick this year, next year or both.',
         ],
     ],

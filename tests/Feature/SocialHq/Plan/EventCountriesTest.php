@@ -288,6 +288,14 @@ test('adding a country checks the countries and years', function () {
     Http::assertNothingSent();
 });
 
+test('a country Nager.Date doesn\'t cover is refused with a message, not the unavailable banner', function () {
+    $this->actingAs($this->owner)
+        ->post(route('socialhq.plan.events.countries.store'), ['countries' => ['US', 'FR'], 'years' => [$this->year]])
+        ->assertSessionHasErrors(['countries' => __('socialhq_events.countries.errors.not_covered', ['countries' => 'FR'])]);
+
+    expect(CalendarEvent::query()->count())->toBe(0);
+});
+
 test('only people who may change shared dates add a country', function () {
     $member = workspaceMember($this->workspace, 'approval');
     $brandApprover = workspaceMember($this->workspace, 'admin');

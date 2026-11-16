@@ -7,6 +7,7 @@ namespace App\SocialHq\Http\Controllers\Plan;
 use App\Http\Controllers\Controller;
 use App\SocialHq\Http\Requests\Plan\MoveBriefRequest;
 use App\SocialHq\Plan\PlanAccess;
+use App\SocialHq\Plan\PlanMonth;
 use App\SocialHq\Production\Brief;
 use App\SocialHq\Production\BriefKind;
 use App\SocialHq\Production\BriefStage;
@@ -28,7 +29,7 @@ class ProductionBoardController extends Controller
         $user = $request->user();
 
         $kind = BriefKind::tryFrom((string) $request->query('kind'))?->value;
-        $month = preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', (string) $request->query('month')) === 1 ? (string) $request->query('month') : null;
+        $month = PlanMonth::tryParse($request->query('month')) === null ? null : (string) $request->query('month');
         $filters = ['mine' => $request->boolean('mine'), 'kind' => $kind, 'month' => $month];
 
         return Inertia::render('socialhq/plan/Production', [

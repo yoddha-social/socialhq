@@ -85,6 +85,7 @@ Change a TryPost file when that is the right place, and add a row.
 | 121 | `tests/fixtures/single-line-copy.php` | Budgets for Settings › AI's buttons, menu items and badges (`socialhq_ai.*`), at their English length (14 lines) | `SingleLineCopyTest` keeps them on one line once they are translated |
 | 122 | `package.json`, `package-lock.json` | `overrides`: `minimatch` ^11.0.8 under `@typescript-eslint/typescript-estree` and `@vue/language-core`, `postcss-selector-parser` ^6.1.5 under `@tailwindcss/typography` (11 lines) | Security intake 2026-11-11: their latest releases still pull vulnerable versions (minimatch ReDoS, postcss-selector-parser). Drop each override once upstream ships a fixed range |
 | 123 | `maizzle/package.json`, `maizzle/package-lock.json` | `overrides`: `qs` ^6.17.1, and under `js-beautify` `minimatch` ^11.0.8 and `glob` ^14.0.4 (6 lines) | Same intake: Maizzle 5.3.1 pulls them through express and js-beautify (only its CLI uses glob); the email build output is unchanged |
+| 136 | `tests/fixtures/single-line-copy.php` | Budget for the events page's "No longer listed" badge (`socialhq_events.badges.delisted`, 1 line) | `SingleLineCopyTest` keeps it on one line once it is translated |
 
 Files we **added** aren't listed here; they're under the module paths in
 SOCIALHQ.md, plus `config/socialhq.php`, `routes/socialhq.php`, `CLAUDE.md`,

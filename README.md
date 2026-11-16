@@ -1,4 +1,4 @@
-> **Social HQ** — this is [yoddha-social](https://github.com/yoddha-social)'s fork of TryPost for internal use, with our features in a separate module. See [SOCIALHQ.md](SOCIALHQ.md). Everything below is upstream's README.
+> **Social HQ** — this is [yoddha-social](https://github.com/yoddha-social)'s fork of TryPost for internal use, with our features in a separate module. See [SOCIALHQ.md](SOCIALHQ.md). To deploy it, use [yoddha-social/socialhq-deploy](https://github.com/yoddha-social/socialhq-deploy) (private), not the self-hosting steps below. Everything below is upstream's README.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/trypostit/trypost/main/public/images/trypost/logo-dark.png" alt="TryPost" width="190">

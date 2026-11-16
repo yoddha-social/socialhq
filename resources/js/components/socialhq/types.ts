@@ -24,8 +24,10 @@ export interface SocialHqSharedProps {
 /** Event markers by day (`YYYY-MM-DD`), on the publish calendar page only. */
 export type CalendarEventMarkersByDay = Record<string, CalendarEventMarker[]>;
 
-declare module '@inertiajs/core' {
-    interface PageProps {
+// Added to the app's shared props, which Inertia's PageProps extends
+// (types/globals.d.ts), so usePage() and usePage<SharedData>() both see them.
+declare module '@/types' {
+    interface SharedData {
         socialhq: SocialHqSharedProps;
         /** BuildCalendarPageProps (PATCHES.md row 60). */
         shqEvents?: CalendarEventMarkersByDay;

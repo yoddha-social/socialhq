@@ -8,12 +8,15 @@
 # ----------------------------------------------------------------------------
 
 ARG PHP_VERSION=8.5.12
+# The php:${PHP_VERSION}-fpm-alpine index digest (all platforms). Change both
+# together: `docker buildx imagetools inspect php:<version>-fpm-alpine` prints it.
+ARG PHP_IMAGE_DIGEST=sha256:951fb5b1780219b81d5daffa4cebef8e0077c537f3893d9790a5dfcd66ca334d
 ARG NODE_VERSION=22
 
 # ----------------------------------------------------------------------------
 # Stage 1: system-base — PHP-FPM + system packages + extensions
 # ----------------------------------------------------------------------------
-FROM php:${PHP_VERSION}-fpm-alpine AS system-base
+FROM php:${PHP_VERSION}-fpm-alpine@${PHP_IMAGE_DIGEST} AS system-base
 
 RUN apk add --no-cache \
         nginx \
@@ -58,7 +61,8 @@ RUN apk add --no-cache \
     && apk del $PHPIZE_DEPS \
     && rm -rf /tmp/* /var/cache/apk/*
 
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+# composer:2.11, pinned by digest like the PHP image.
+COPY --from=composer:2.11@sha256:ca11f643d7791ebdd90a34fc20caf11380d434007ae539a9ea75cd9212e13dca /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 

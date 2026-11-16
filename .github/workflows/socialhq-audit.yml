@@ -1,6 +1,6 @@
-# Dependency advisories for Social HQ: composer audit and npm audit weekly and on
-# PRs that change dependencies or skills (a new advisory shouldn't block unrelated
-# PRs). A red run is the cue for the socialhq-security-intake skill.
+# Dependency advisories for Social HQ: composer audit and npm audit (the app and
+# maizzle/) weekly and on PRs that change dependencies or skills (a new advisory
+# shouldn't block unrelated PRs). A red run is the cue for the socialhq-security-intake skill.
 name: socialhq audit
 
 on:
@@ -10,6 +10,8 @@ on:
       - composer.lock
       - package.json
       - package-lock.json
+      - maizzle/package.json
+      - maizzle/package-lock.json
       - .ai/skills/**
       - bin/socialhq-lint-skills
       - .github/workflows/socialhq-audit.yml
@@ -29,10 +31,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.5'
           coverage: none
@@ -40,8 +42,14 @@ jobs:
       - name: composer audit
         run: composer audit --locked --no-interaction
 
-      - name: npm audit (production dependencies)
-        run: npm audit --omit=dev --audit-level=high
+      # Dev dependencies too: they build the image's JavaScript (Vite) and the
+      # emails (Maizzle), and run on CI and our machines.
+      - name: npm audit
+        run: npm audit --audit-level=high
+
+      - name: npm audit (maizzle)
+        working-directory: maizzle
+        run: npm audit --audit-level=high
 
       - name: Skills lint
         run: bin/socialhq-lint-skills

@@ -15,6 +15,7 @@ import {
     type PastCalendar,
 } from '@/components/socialhq/oldCalendars';
 import { firstErrorOf } from '@/components/socialhq/requestErrors';
+import { useDropZone } from '@/components/socialhq/useDropZone';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -221,25 +222,11 @@ const browse = (): void => {
     fileInput.value?.click();
 };
 
-const dragDepth = ref(0);
-const dragging = computed(() => dragDepth.value > 0);
-
-const onDragEnter = (): void => {
-    dragDepth.value++;
-};
-
-const onDragLeave = (): void => {
-    dragDepth.value = Math.max(0, dragDepth.value - 1);
-};
-
-const onDrop = (event: DragEvent): void => {
-    dragDepth.value = 0;
-    const file = event.dataTransfer?.files?.[0];
-
+const { dragging, onDragEnter, onDragLeave, onDrop } = useDropZone(([file]) => {
     if (file) {
         void sendFile(file);
     }
-};
+});
 
 const chooseAnotherFile = (): void => {
     discardUpload();

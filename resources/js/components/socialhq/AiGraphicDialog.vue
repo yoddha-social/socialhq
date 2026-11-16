@@ -5,6 +5,7 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import { serverMessageOf, statusOf } from '@/components/socialhq/requestErrors';
+import { useDropZone } from '@/components/socialhq/useDropZone';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -247,28 +248,11 @@ const canAddMore = computed(
     () => !busy.value && http.references.length < maxReferences.value,
 );
 
-// Drag and drop: the counter keeps the highlight while the pointer moves
-// over the zone's children.
-const dragDepth = ref(0);
-const dragging = computed(() => dragDepth.value > 0);
-
-const onDragEnter = (): void => {
-    dragDepth.value++;
-};
-
-const onDragLeave = (): void => {
-    dragDepth.value = Math.max(0, dragDepth.value - 1);
-};
-
-const onDrop = (event: DragEvent): void => {
-    dragDepth.value = 0;
-
-    if (!canAddMore.value) {
-        return;
+const { dragging, onDragEnter, onDragLeave, onDrop } = useDropZone((files) => {
+    if (canAddMore.value) {
+        addFiles(files);
     }
-
-    addFiles(Array.from(event.dataTransfer?.files ?? []));
-};
+});
 
 const browse = (): void => {
     if (canAddMore.value) {

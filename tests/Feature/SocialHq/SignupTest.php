@@ -256,12 +256,12 @@ test('both emails render with the Social HQ header and their mail.php copy', fun
 });
 
 /**
- * Google answers the callback with this address.
+ * Google answers the callback with this address (null: without the email_verified claim).
  */
-function googleSignsIn(string $email, bool $verified = true, string $googleId = 'google-asha'): void
+function googleSignsIn(string $email, ?bool $verified = true, string $googleId = 'google-asha'): void
 {
     $googleUser = (new SocialiteUser)
-        ->setRaw(['sub' => $googleId, 'email' => $email, 'email_verified' => $verified])
+        ->setRaw(array_filter(['sub' => $googleId, 'email' => $email, 'email_verified' => $verified], fn (mixed $value): bool => $value !== null))
         ->map(['id' => $googleId, 'name' => 'Asha Rai', 'email' => $email]);
 
     Socialite::shouldReceive('driver')->with('google-auth')->andReturn($driver = Mockery::mock());
@@ -316,6 +316,19 @@ test('an address google has not verified signs in to nothing and creates nothing
     $this->get(route('auth.google.callback'))->assertRedirect(route('login'));
 
     expect(User::query()->where('email', 'ravi@acme.test')->exists())->toBeFalse();
+});
+
+test('a google answer without the email_verified claim proves nothing', function () {
+    signUp('asha@acme.test');
+    $this->post(route('logout'));
+
+    googleSignsIn('asha@acme.test', verified: null);
+    $this->get(route('auth.google.callback'))
+        ->assertRedirect(route('login'))
+        ->assertSessionHasErrors(['email' => __('socialhq.signup.oauth_email_unverified')]);
+
+    $this->assertGuest();
+    expect(User::query()->where('email', 'asha@acme.test')->firstOrFail()->hasVerifiedEmail())->toBeFalse();
 });
 
 test('an email that may not sign up never learns whether it has an account', function () {

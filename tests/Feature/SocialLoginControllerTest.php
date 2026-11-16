@@ -32,7 +32,7 @@ test('google callback logs in existing user by email', function () {
         'email' => 'existing@example.com',
     ]);
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->map([
         'id' => '123456',
         'name' => 'Existing User',
@@ -54,7 +54,7 @@ test('an existing user signing in with google or github returns to the page that
     $user = User::factory()->create(['email' => 'deep-link@example.com']);
     $intended = route('app.insights', ['range' => '30d']);
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->map(['id' => 'deep-link', 'name' => 'Deep Link', 'email' => 'deep-link@example.com']);
 
     Socialite::shouldReceive('driver')
@@ -76,7 +76,7 @@ test('an existing user signing in with google or github returns to the page that
 ]);
 
 test('google callback creates new user when email does not exist', function () {
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->map([
         'id' => '789',
         'name' => 'New User',
@@ -104,7 +104,7 @@ test('google callback creates new user when email does not exist', function () {
 });
 
 test('github callback creates new user with a default workspace', function () {
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->map([
         'id' => '987',
         'name' => 'New Dev',
@@ -153,7 +153,7 @@ test('google registration with an invite param completes it instead of creating 
         'invite' => $invite->id,
     ]));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->map([
         'id' => 'g-invited',
         'name' => 'Invited User',
@@ -197,7 +197,7 @@ test('google login with a pending invite sends an existing user there instead of
         'invite' => $invite->id,
     ]));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->map([
         'id' => 'g-existing-invited',
         'name' => 'Existing Invited',
@@ -234,7 +234,7 @@ test('github registration with an invite param completes it instead of creating 
         'invite' => $invite->id,
     ]));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->map([
         'id' => 'gh-invited',
         'name' => 'Invited User',
@@ -276,7 +276,7 @@ test('github login with a pending invite sends an existing user there instead of
         'invite' => $invite->id,
     ]));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->map([
         'id' => 'gh-existing-invited',
         'name' => 'Existing Invited',
@@ -311,7 +311,7 @@ test('google registration rejects an invite issued to a different email and crea
 
     $this->get(route('auth.google.redirect', ['invite' => $invite->id]));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->map([
         'id' => 'g-wrong-email',
         'name' => 'Someone Else',
@@ -348,7 +348,7 @@ test('github registration rejects an invite issued to a different email and crea
 
     $this->get(route('auth.github.redirect', ['invite' => $invite->id]));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->map([
         'id' => 'gh-wrong-email',
         'name' => 'Someone Else',
@@ -391,7 +391,7 @@ test('a stale invite id from an aborted oauth attempt does not leak into a later
     // A later, unrelated "Sign in with Google" attempt carries no invite param.
     $this->get(route('auth.google.redirect'));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->map([
         'id' => 'g-unrelated',
         'name' => 'Unrelated Signup',
@@ -419,7 +419,7 @@ test('a stale invite id from an aborted oauth attempt does not leak into a later
 test('google registration 404s in self-hosted mode without an invite param', function () {
     config()->set('trypost.self_hosted', true);
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->map([
         'id' => 'g-no-invite',
         'name' => 'No Invite',
@@ -455,7 +455,7 @@ test('google registration succeeds in self-hosted mode with an invite param', fu
 
     $this->get(route('auth.google.redirect', ['invite' => $invite->id]));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->map([
         'id' => 'g-self-hosted-invite',
         'name' => 'Self Hosted Invite',
@@ -478,7 +478,7 @@ test('google login for an existing user is never blocked by the self-hosted gate
 
     $user = User::factory()->create(['email' => 'existing-self-hosted@example.com']);
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->map([
         'id' => 'g-existing-self-hosted',
         'name' => 'Existing Self Hosted',
@@ -499,7 +499,7 @@ test('google login for an existing user is never blocked by the self-hosted gate
 test('github registration 404s in self-hosted mode without an invite param', function () {
     config()->set('trypost.self_hosted', true);
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->map([
         'id' => 'gh-no-invite',
         'name' => 'No Invite',
@@ -535,7 +535,7 @@ test('github registration succeeds in self-hosted mode with an invite param', fu
 
     $this->get(route('auth.github.redirect', ['invite' => $invite->id]));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->map([
         'id' => 'gh-self-hosted-invite',
         'name' => 'Self Hosted Invite',
@@ -558,7 +558,7 @@ test('github login for an existing user is never blocked by the self-hosted gate
 
     $user = User::factory()->create(['email' => 'gh-existing-self-hosted@example.com']);
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->map([
         'id' => 'gh-existing-self-hosted',
         'name' => 'Existing Self Hosted',
@@ -582,7 +582,7 @@ test('google callback marks unverified existing user as verified', function () {
         'email_verified_at' => null,
     ]);
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->map([
         'id' => '456',
         'name' => 'Unverified User',

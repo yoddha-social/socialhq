@@ -79,7 +79,7 @@ test('google registration saves ad click ids captured before the oauth round-tri
 
     $this->get(route('auth.google.redirect', $clickIds));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->id = 'g-click-user';
     $socialiteUser->name = 'Google Click';
     $socialiteUser->email = 'google-click@example.com';
@@ -105,7 +105,7 @@ test('github registration saves ad click ids captured before the oauth round-tri
 
     $this->get(route('auth.github.redirect', $clickIds));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->id = 'gh-click-user';
     $socialiteUser->name = 'GitHub Click';
     $socialiteUser->email = 'github-click@example.com';
@@ -137,7 +137,7 @@ test('existing google user login consumes the click id session so it does not le
 
     $this->get(route('auth.google.redirect', ['gclid' => 'stale-click']));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->id = 'g-existing-click';
     $socialiteUser->name = 'Existing Click User';
     $socialiteUser->email = 'existing-click@example.com';
@@ -163,7 +163,7 @@ test('existing github user login consumes the click id session so it does not le
 
     $this->get(route('auth.github.redirect', ['gclid' => 'stale-gh-click']));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->id = 'gh-existing-click';
     $socialiteUser->name = 'Existing GitHub Click User';
     $socialiteUser->email = 'existing-gh-click@example.com';

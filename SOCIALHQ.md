@@ -425,8 +425,8 @@ Google or GitHub sign-in to an account whose email isn't confirmed yet
 (someone registered the address with a password and never confirmed it)
 takes the account over for the address's owner: the password is replaced,
 remember-me and other sessions end, and the email counts as confirmed
-(`OAuthSignIn`). An address Google says it hasn't verified signs in to
-nothing and creates nothing.
+(`OAuthSignIn`). An address Google doesn't say it verified (`email_verified`
+false or missing) signs in to nothing and creates nothing.
 
 ## Interface copy
 

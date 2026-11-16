@@ -1,6 +1,6 @@
 # Lane brief — Item page (copy, review), briefs and the production board
 
-Read first: `overnight/2026-11-05/LANE-RULES.md`, `overnight/2026-11-05/DESIGN.md` (all of
+Read first: `docs/history/overnight/2026-11-05/LANE-RULES.md`, `docs/history/overnight/2026-11-05/DESIGN.md` (all of
 it), SOCIALHQ.md ("AI routing", "Brand knowledge", "AI graphics" — the media import
 pattern), the `ai-sdk-development` skill. Test DB: `shq_lane_prod`. PATCHES rows: 70–74.
 Migration prefix (only if needed): `2026_11_06_0006xx_`. Branch: `overnight/production`.

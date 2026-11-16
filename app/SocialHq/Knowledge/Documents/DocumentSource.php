@@ -20,5 +20,4 @@ enum DocumentSource: string
     {
         return in_array($this, [self::GoogleDoc, self::GoogleSheet, self::GoogleSlides], true);
     }
-
 }

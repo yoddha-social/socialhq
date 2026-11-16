@@ -7,9 +7,9 @@ namespace App\SocialHq\Http\Controllers\Plan;
 use App\Http\Controllers\Controller;
 use App\SocialHq\Events\ImportOfficialEvents;
 use App\SocialHq\Plan\PlanAccess;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Contracts\Cache\LockTimeoutException;
 use InvalidArgumentException;
 
 /**

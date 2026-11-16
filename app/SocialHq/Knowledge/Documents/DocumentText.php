@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\SocialHq\Knowledge\Documents;
 
+use App\SocialHq\Knowledge\SafeXml;
 use DOMDocument;
 use DOMElement;
 use DOMNode;
-use App\SocialHq\Knowledge\SafeXml;
 use Smalot\PdfParser\Config;
 use Smalot\PdfParser\Parser;
 use Throwable;

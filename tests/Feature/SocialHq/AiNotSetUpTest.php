@@ -46,7 +46,8 @@ beforeEach(function () {
     $this->owner = $this->owner->fresh();
 
     // An approved company with no AI of its own, not allowed the platform's.
-    $this->company = Company::factory()->create(['account_id' => $this->owner->account_id, 'uses_platform_ai' => false]);
+    $this->company = Company::factory()->create(['account_id' => $this->owner->account_id]);
+    $this->company->forceFill(['uses_platform_ai' => false])->save();
 
     $plan = ContentPlan::factory()->create(['workspace_id' => $this->workspace->id]);
     $this->item = PlanItem::factory()->create(['plan_id' => $plan->id, 'creative' => CreativeKind::Image]);
@@ -78,7 +79,7 @@ test('a member is told to ask the owner', function () {
 
 test('a company whose AI can\'t serve the task is told so', function () {
     // Platform AI allowed, but the gateway doesn't serve images or vision.
-    $this->company->update(['uses_platform_ai' => true]);
+    $this->company->forceFill(['uses_platform_ai' => true])->save();
     config(['socialhq.ai.litellm.tasks' => ['write', 'structured']]);
 
     $this->actingAs($this->owner)
@@ -90,7 +91,7 @@ test('a company whose AI can\'t serve the task is told so', function () {
 });
 
 test('a failing provider is reported and answered with the endpoint\'s 502', function () {
-    $this->company->update(['uses_platform_ai' => true]);
+    $this->company->forceFill(['uses_platform_ai' => true])->save();
     PostWritingAssistant::fake(fn () => throw new AiException('down'));
 
     $this->actingAs($this->owner)
@@ -102,7 +103,7 @@ test('a failing provider is reported and answered with the endpoint\'s 502', fun
 });
 
 test('pages share which AI tasks the company can use', function (bool $platformAi, array $tasks) {
-    $this->company->update(['uses_platform_ai' => $platformAi]);
+    $this->company->forceFill(['uses_platform_ai' => $platformAi])->save();
     config(['socialhq.ai.litellm.tasks' => ['write', 'structured']]);
 
     $this->actingAs($this->owner)->get(route('app.posts.index'))
@@ -116,7 +117,7 @@ test('the item page hides AI the company can\'t use', function () {
     $this->actingAs($this->owner)->get(route('socialhq.plan.items.show', $this->item->id))
         ->assertInertia(fn (Assert $page) => $page->where('aiAvailable', false));
 
-    $this->company->update(['uses_platform_ai' => true]);
+    $this->company->forceFill(['uses_platform_ai' => true])->save();
     // A new request decides again (the decision is kept for one request).
     app()->forgetScopedInstances();
 

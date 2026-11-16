@@ -488,5 +488,10 @@ test('asking twice at once from the no-workspace page ends on the waiting page, 
     $this->actingAs($user)->post(route('socialhq.company.store'), ['name' => 'Ravi Studio'])
         ->assertRedirect(route('socialhq.company.waiting'));
 
-    expect(Company::query()->where('account_id', $account->id)->count())->toBe(1);
+    // The insert hit a real unique violation and rolled back to its own savepoint,
+    // so the connection is still usable. In this test the other submit's row was
+    // written inside that savepoint too, so it went with it; in production it is
+    // another request's committed row and stays.
+    expect($raced)->toBeTrue()
+        ->and(Company::query()->where('account_id', $account->id)->count())->toBe(0);
 });

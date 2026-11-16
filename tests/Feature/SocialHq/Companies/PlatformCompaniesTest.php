@@ -106,15 +106,17 @@ test('the companies list loads a page at a time as it scrolls', function () {
     approvedCompanyWithMember();
     Company::factory()->create(['name' => 'Annapurna Foods']);
 
-    $this->actingAs($this->admin)->get(route('socialhq.platform.companies.index', ['tab' => 'companies']))
-        ->assertInertia(fn ($page) => $page->has('companies.data', 2)
-            ->where('companies.data.0.name', 'Annapurna Foods')
-            ->where('companies.meta.hasNextPage', true));
+    $first = $this->actingAs($this->admin)->get(route('socialhq.platform.companies.index', ['tab' => 'companies']))->viewData('page');
 
-    $this->get(route('socialhq.platform.companies.index', ['tab' => 'companies', 'companies_page' => 2]))
-        ->assertInertia(fn ($page) => $page->has('companies.data', 1)
-            ->where('companies.data.0.name', 'Zeta Platform')
-            ->where('companies.meta.hasNextPage', false));
+    expect(array_column($first['props']['companies']['data'], 'name'))->toHaveCount(2)
+        ->and($first['props']['companies']['data'][0]['name'])->toBe('Annapurna Foods')
+        ->and($first['scrollProps']['companies'])->toMatchArray(['pageName' => 'companies_page', 'currentPage' => 1, 'nextPage' => 2]);
+
+    $second = $this->get(route('socialhq.platform.companies.index', ['tab' => 'companies', 'companies_page' => 2]))->viewData('page');
+
+    expect($second['props']['companies']['data'])->toHaveCount(1)
+        ->and($second['props']['companies']['data'][0]['name'])->toBe('Zeta Platform')
+        ->and($second['scrollProps']['companies'])->toMatchArray(['currentPage' => 2, 'nextPage' => null]);
 });
 
 test('a partial reload of one shared part runs none of the other parts\' queries', function () {

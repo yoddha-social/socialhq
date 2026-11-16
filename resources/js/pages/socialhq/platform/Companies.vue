@@ -58,7 +58,6 @@ interface CompanyRow {
 
 interface ScrollRows<T> {
     data: T[];
-    meta: { hasNextPage: boolean };
 }
 
 type NoteAction = 'decline' | 'suspend';

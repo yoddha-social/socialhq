@@ -1,6 +1,10 @@
 <script setup lang="ts">
-import { Head, router, useForm } from '@inertiajs/vue3';
-import { IconBuilding, IconBuildingPlus } from '@tabler/icons-vue';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import {
+    IconBuilding,
+    IconBuildingPlus,
+    IconSparkles,
+} from '@tabler/icons-vue';
 import { transChoice } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
@@ -23,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import date from '@/date';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
+import { index as aiUsage } from '@/routes/socialhq/platform/ai-usage';
 import {
     approve as approveCompany,
     decline as declineCompany,
@@ -216,6 +221,17 @@ const setPlatformAi = (company: CompanyRow, enabled: boolean): void => {
         :title="$t('socialhq_companies.platform.title')"
         :description="$t('socialhq_companies.platform.description')"
     >
+        <template #actions>
+            <Button variant="outline" as-child>
+                <Link
+                    :href="aiUsage.url()"
+                    data-testid="platform-ai-usage-link"
+                >
+                    <IconSparkles class="size-4" />
+                    {{ $t('socialhq_ai_usage.platform.link') }}
+                </Link>
+            </Button>
+        </template>
         <Tabs v-model="tab" class="flex flex-col gap-6">
             <TabsList variant="line">
                 <TabsTrigger

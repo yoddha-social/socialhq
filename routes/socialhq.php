@@ -66,6 +66,7 @@ Route::middleware('auth')->prefix('socialhq')->name('socialhq.')->group(function
         require __DIR__.'/socialhq/knowledge.php';
         require __DIR__.'/socialhq/calendars.php';
         require __DIR__.'/socialhq/ai.php';
+        require __DIR__.'/socialhq/ai-usage.php';
     });
 });
 

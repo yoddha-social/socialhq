@@ -36,7 +36,7 @@ test('a google login whose email is not the invited one is sent to login with th
 
     $this->get(route('auth.google.redirect', ['invite' => $invite->id]));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->map([
         'id' => 'g-wrong-email',
         'name' => 'Someone Else',

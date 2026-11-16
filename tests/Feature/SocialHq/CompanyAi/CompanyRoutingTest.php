@@ -118,7 +118,7 @@ test('a company with neither fails closed and tells the owner where to set it up
 
 test('a suspended company has no AI, even with its own keys', function () {
     ['owner' => $owner, 'company' => $company] = routingCompany(usesPlatformAi: true, virtualKey: 'sk-company-a');
-    $company->update(['status' => 'suspended']);
+    $company->forceFill(['status' => 'suspended'])->save();
 
     $this->actingAs($owner);
 

@@ -48,6 +48,8 @@ class RegisteredUserController extends Controller
             'email' => $request->validated('email'),
             'password' => $request->validated('password'),
             'is_invite' => $invite !== null,
+            // Social HQ: no invite, so SignupRules and CompanySignup decide where it goes (PATCHES.md row 130).
+            'self_signup' => $invite === null,
             'registration_ip' => $request->ip(),
             'locale' => $request->validated('locale'),
             'timezone' => $request->validated('timezone'),

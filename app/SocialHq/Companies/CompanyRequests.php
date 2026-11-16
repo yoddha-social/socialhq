@@ -34,7 +34,7 @@ final class CompanyRequests
     {
         $name = self::cleanName($name);
 
-        $company = Company::query()->create([
+        $company = Company::query()->forceCreate([
             'account_id' => $account->id,
             'name' => $name,
             'status' => CompanyStatus::Pending,
@@ -106,14 +106,14 @@ final class CompanyRequests
                 return false;
             }
 
-            $locked->update([
+            $locked->forceFill([
                 'status' => CompanyStatus::Pending,
                 'requested_at' => now(),
                 'admins_notified_at' => null,
                 'decided_by' => null,
                 'decided_at' => null,
                 'decision_note' => null,
-            ]);
+            ])->save();
             $locked->record(CompanyEvent::ASKED_AGAIN, $owner);
 
             return true;

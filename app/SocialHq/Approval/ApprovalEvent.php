@@ -20,7 +20,12 @@ class ApprovalEvent extends Model
 
     protected $table = 'shq_approval_events';
 
-    protected $guarded = ['id'];
+    /**
+     * Written by RecordApprovalEvents only, never from a request.
+     *
+     * @var list<string>
+     */
+    protected $fillable = ['workspace_id', 'post_id', 'user_id', 'action', 'via', 'from_status', 'to_status'];
 
     protected function casts(): array
     {

@@ -25,14 +25,13 @@ use Laravel\Socialite\Contracts\User as SocialiteUser;
 final class OAuthSignIn
 {
     /**
-     * Whether Google says it verified the address (its `email_verified`
-     * claim). GitHub only ever returns a verified primary address.
+     * Whether Google says it verified the address: its `email_verified`
+     * claim is true. A missing claim proves nothing, so it counts as not
+     * verified. GitHub only ever returns a verified primary address.
      */
     public static function googleVerifiedEmail(SocialiteUser $googleUser): bool
     {
-        $claim = data_get($googleUser instanceof AbstractUser ? $googleUser->getRaw() : null, 'email_verified');
-
-        return $claim === null || filter_var($claim, FILTER_VALIDATE_BOOLEAN);
+        return data_get($googleUser instanceof AbstractUser ? $googleUser->getRaw() : null, 'email_verified') === true;
     }
 
     /**

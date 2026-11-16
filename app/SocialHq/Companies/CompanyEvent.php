@@ -35,7 +35,10 @@ class CompanyEvent extends Model
 
     protected $table = 'shq_company_events';
 
-    protected $guarded = ['id'];
+    /**
+     * @var list<string>
+     */
+    protected $fillable = ['action', 'user_id', 'note'];
 
     protected function casts(): array
     {

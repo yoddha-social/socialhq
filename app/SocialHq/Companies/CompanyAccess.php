@@ -33,6 +33,48 @@ final class CompanyAccess
     }
 
     /**
+     * Whether only approved companies work (self-hosted, `socialhq.companies.required`).
+     */
+    public static function companiesRequired(): bool
+    {
+        return (bool) config('trypost.self_hosted') && (bool) config('socialhq.companies.required', true);
+    }
+
+    /**
+     * Whether the user's account owns workspaces without being a company
+     * while companies are required. Sign-up never makes one (CreateUser),
+     * so this is a gap or an install that turned the requirement on later:
+     * it is not approved, and its owner may ask for a company.
+     */
+    public static function hasWorkspacesWithoutCompany(User $user): bool
+    {
+        return self::companiesRequired()
+            && $user->account_id !== null
+            && self::companyOf($user) === null
+            && Workspace::query()->where('account_id', $user->account_id)->exists();
+    }
+
+    /**
+     * Why the workspace's API keys and MCP grants are refused (a lang key),
+     * or null when its company works: a paused company, and, while companies
+     * are required, an account that isn't an approved company. Self-hosted only.
+     */
+    public static function apiRefusal(Workspace $workspace): ?string
+    {
+        if (! config('trypost.self_hosted')) {
+            return null;
+        }
+
+        $status = Company::query()->where('account_id', $workspace->account_id)->first(['status'])?->status;
+
+        return match (true) {
+            $status === CompanyStatus::Suspended => 'socialhq_companies.paused.api',
+            $status === CompanyStatus::Approved, $status === null && ! self::companiesRequired() => null,
+            default => 'socialhq_companies.not_approved.api',
+        };
+    }
+
+    /**
      * Whether the workspace's company is suspended (its API keys and MCP
      * grants stop working, like its people). Self-hosted only.
      */
@@ -69,7 +111,7 @@ final class CompanyAccess
      */
     public static function mayCreateWorkspaces(User $user): bool
     {
-        if (! config('trypost.self_hosted') || ! config('socialhq.companies.required', true)) {
+        if (! self::companiesRequired()) {
             return true;
         }
 
@@ -81,14 +123,16 @@ final class CompanyAccess
 
     /**
      * Whether this user may ask to start a company from the account they
-     * have: they own it, it has no workspace and isn't a company yet.
+     * have: they own it and it isn't a company yet, and either it has no
+     * workspace or companies are required (an account with workspaces but
+     * no company then asks to be approved).
      */
     public static function mayAskForCompany(User $user): bool
     {
         return CompanyRequests::enabled()
             && $user->isAccountOwner()
-            && ! $user->account()->first()?->workspaces()->exists()
-            && self::companyOf($user) === null;
+            && self::companyOf($user) === null
+            && (self::companiesRequired() || ! $user->account()->first()?->workspaces()->exists());
     }
 
     /**

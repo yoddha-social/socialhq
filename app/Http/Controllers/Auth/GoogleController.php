@@ -123,6 +123,8 @@ class GoogleController extends Controller
             'google_id' => $googleUser->getId(),
             'email_verified_at' => now(),
             'is_invite' => $invite !== null,
+            // Social HQ: no invite, so SignupRules and CompanySignup decide where it goes (PATCHES.md row 130).
+            'self_signup' => $invite === null,
             'registration_ip' => request()->ip(),
             'locale' => data_get($preferences, 'locale'),
             'timezone' => data_get($preferences, 'timezone'),

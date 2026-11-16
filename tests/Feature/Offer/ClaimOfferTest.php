@@ -212,7 +212,7 @@ test('a guest\'s offer is claimed when they sign up with google', function () {
     config(['trypost.google_auth_enabled' => true]);
     $this->get(route('auth.google.redirect', ['offer' => 'black-friday-2026']));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->id = 'g-offer';
     $socialiteUser->name = 'Google Offer';
     $socialiteUser->email = 'google-offer@example.com';
@@ -229,7 +229,7 @@ test('a guest\'s offer is claimed when they sign up with github', function () {
     config(['trypost.github_auth_enabled' => true]);
     $this->get(route('auth.github.redirect', ['offer' => 'black-friday-2026']));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->id = 'gh-offer';
     $socialiteUser->name = 'GitHub Offer';
     $socialiteUser->email = 'github-offer@example.com';

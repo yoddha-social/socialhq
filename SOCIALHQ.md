@@ -372,9 +372,12 @@ empty sign-up stays invites only. Code: `app/SocialHq/Signup/`.
    the same list. An email that may not sign up only ever hears "can't sign
    up here", never whether it has an account. The register form allows 5
    tries a minute and 20 an hour per IP.
-2. The person joins the team's account (`SOCIALHQ_SIGNUP_ACCOUNT_OWNER`,
-   matched without regard to case, or else the oldest account that owns a
-   workspace) with no workspace and waits on one page until let in. If the
+2. The person joins the team's account (the account that
+   `SOCIALHQ_SIGNUP_ACCOUNT_OWNER` owns, matched without regard to case, or
+   else the oldest account that owns a workspace) with no workspace and
+   waits on one page until let in. While company requests are on, the
+   owner must be set (several companies may own workspaces); where
+   companies are required, only an approved company takes sign-ups. If the
    lists are set but no account is found, sign-up stays closed and the log
    says why. Only an invite that still exists counts as an invite.
 3. Once their email is confirmed, the account owner and every workspace admin
@@ -384,8 +387,10 @@ empty sign-up stays invites only. Code: `app/SocialHq/Signup/`.
    to it.
 4. An admin picks the workspaces they manage and whether the person is an
    admin; a member who is not an admin always sends posts for approval. The
-   person gets an email. Declining deletes their user (and their avatar
-   files) and keeps the request in `shq_access_requests`. When two admins
+   person gets an email. Only the account owner declines (an admin of one
+   workspace sees the list without the button): declining deletes their
+   user (and their avatar files) and keeps the request in
+   `shq_access_requests`. When two admins
    decide at once, the first wins and the second is told so.
 5. While waiting, the person can open and accept an invite: once they have a
    workspace their request closes by itself (`note` `joined_by_invite`).
@@ -422,16 +427,29 @@ first person asks for a company, is granted, and approves it.
    and for members the owner), and its API keys and MCP grants get a 403.
    Someone with no workspace who can't create one (an invited person's
    empty account) gets a page that says to ask for an invite or, if their
-   account is empty, to ask for a company. Platform admins follow their own
-   company's rules but always reach the platform pages. Scheduled posts of
-   a paused company still publish.
+   account is empty, to ask for a company. An account that owns
+   workspaces but has no company row (sign-up never makes one: the
+   register and Google/GitHub controllers tell `CreateUser` it is a self
+   sign-up, which either joins a team, asks for a company or gets no
+   workspace) is not approved: its people get the same page, its owner
+   asks for approval there, and its API keys get a 403. An invite link
+   kept in the session counts as the invite only for its own email.
+   Platform admins follow their own
+   company's rules but always reach the platform pages.
+5. A paused company publishes nothing: its due posts and limit retries wait
+   (`posts:process-scheduled`), and its repurposes neither read their
+   source nor make posts. Restoring sends its posts that came due while it
+   was paused (still scheduled, time passed) back to drafts, content and
+   channels kept and schedule cleared, so a dated post never goes out late
+   and nothing publishes at once; the flash tells the platform admin how
+   many. Posts scheduled after the restore publish as planned.
 
 Google or GitHub sign-in to an account whose email isn't confirmed yet
 (someone registered the address with a password and never confirmed it)
 takes the account over for the address's owner: the password is replaced,
 remember-me and other sessions end, and the email counts as confirmed
-(`OAuthSignIn`). An address Google says it hasn't verified signs in to
-nothing and creates nothing.
+(`OAuthSignIn`). An address Google doesn't say it verified (`email_verified`
+false or missing) signs in to nothing and creates nothing.
 
 ## Interface copy
 

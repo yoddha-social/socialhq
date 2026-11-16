@@ -62,12 +62,21 @@ return [
         'api' => 'This company is paused on Social HQ. Its owner can ask the platform admins to restore it.',
     ],
 
+    'not_approved' => [
+        'api' => 'This account isn\'t an approved company on Social HQ. Its owner can ask the platform admins to approve it.',
+    ],
+
     'start' => [
         'page_title' => 'No workspace yet',
         'title' => 'You don\'t have a workspace yet',
         'description' => 'Workspaces belong to a company. To work in one, ask its admin to invite you: the invite arrives by email.',
         'ask_title' => 'Or start your own company',
         'ask_description' => 'Name your company and a platform admin reviews it. Once approved, you create its workspaces.',
+        'unapproved_page_title' => 'Company not approved',
+        'unapproved_title' => 'Your company isn\'t approved yet',
+        'unapproved_description' => 'Your workspaces open once a platform admin approves your company. Until then, nobody in it can use them.',
+        'unapproved_ask_title' => 'Ask for approval',
+        'unapproved_ask_description' => 'Name your company and a platform admin reviews it. Once approved, your workspaces open again.',
         'name_label' => 'Company name',
         'submit' => 'Ask to start a company',
         'log_out' => 'Log out',
@@ -112,7 +121,7 @@ return [
         'suspend_title' => 'Pause :name?',
         'suspend_description' => 'Nobody at :name can use Social HQ until you restore it. Its owner sees your note.',
         'restore_title' => 'Restore :name?',
-        'restore_description' => 'Everyone at :name can work again.',
+        'restore_description' => 'Everyone at :name can work again. Posts that came due while it was paused go back to drafts, so nothing goes out late.',
         'note_label' => 'Note for the owner',
         'confirm_decline' => 'Decline',
         'confirm_suspend' => 'Pause',
@@ -125,6 +134,7 @@ return [
             'declined' => 'You declined :name.',
             'suspended' => ':name is paused.',
             'restored' => ':name works again.',
+            'restored_drafts' => '{1} :name works again. 1 post that came due while it was paused went back to drafts.|[2,*] :name works again. :count posts that came due while it was paused went back to drafts.',
             'already_decided' => 'Another platform admin already decided on this company.',
             'not_verified' => 'The owner hasn\'t confirmed their email yet, so the company can\'t be approved.',
         ],

@@ -88,7 +88,7 @@ test('google registration saves utm parameters captured before the oauth round-t
 
     $this->get(route('auth.google.redirect', $utms));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->id = 'g-utm';
     $socialiteUser->name = 'Google UTM';
     $socialiteUser->email = 'google-utm@example.com';
@@ -116,7 +116,7 @@ test('utm parameters captured on the register page survive a google oauth round-
 
     $this->get(route('register', $utms));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->id = 'g-cross';
     $socialiteUser->name = 'Cross Flow';
     $socialiteUser->email = 'cross-flow@example.com';
@@ -145,7 +145,7 @@ test('existing google user login consumes the utm session so utms do not leak to
 
     $this->get(route('auth.google.redirect', ['utm_source' => 'twitter']));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->id = 'g-existing';
     $socialiteUser->name = 'Existing User';
     $socialiteUser->email = 'existing@example.com';
@@ -221,7 +221,7 @@ test('email registration captures the requesting ip address', function () {
 });
 
 test('google registration captures the requesting ip address', function () {
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->id = 'g-ip';
     $socialiteUser->name = 'Google IP';
     $socialiteUser->email = 'google-ip@example.com';
@@ -249,7 +249,7 @@ test('github registration saves utm parameters captured before the oauth round-t
 
     $this->get(route('auth.github.redirect', $utms));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->id = 'gh-utm';
     $socialiteUser->name = 'GitHub UTM';
     $socialiteUser->email = 'github-utm@example.com';
@@ -276,7 +276,7 @@ test('github registration saves utm parameters captured before the oauth round-t
 });
 
 test('github registration captures the requesting ip address', function () {
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->id = 'gh-ip';
     $socialiteUser->name = 'GitHub IP';
     $socialiteUser->email = 'github-ip@example.com';
@@ -300,7 +300,7 @@ test('github registration captures the requesting ip address', function () {
 });
 
 test('github registration without email redirects to login with error', function () {
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->id = 'gh-no-email';
     $socialiteUser->name = 'No Email';
     $socialiteUser->email = null;
@@ -330,7 +330,7 @@ test('existing github user login consumes the utm session and skips signup succe
 
     $this->get(route('auth.github.redirect', ['utm_source' => 'hackernews']));
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->id = 'gh-existing';
     $socialiteUser->name = 'Existing GitHub';
     $socialiteUser->email = 'existing-gh@example.com';

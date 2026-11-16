@@ -168,6 +168,24 @@ test('an admin of one workspace can only give access to that workspace', functio
     expect($user->fresh()->workspaces()->count())->toBe(0);
 });
 
+test('a workspace admin sees and approves requests, but only the account owner declines', function () {
+    signUp('asha@acme.test');
+    $user = User::query()->where('email', 'asha@acme.test')->firstOrFail();
+    verifyEmailOf($user);
+    $request = AccessRequest::query()->where('user_id', $user->id)->firstOrFail();
+    $admin = workspaceMember($this->otherWorkspace, 'admin');
+
+    $this->actingAs($admin)->get(route('socialhq.access-requests.index'))
+        ->assertInertia(fn ($page) => $page->has('requests', 1)->where('canDecline', false));
+    $this->post(route('socialhq.access-requests.decline', $request->id))->assertForbidden();
+
+    expect(User::query()->whereKey($user->id)->exists())->toBeTrue()
+        ->and($request->fresh()->status)->toBe(AccessRequest::PENDING);
+
+    $this->actingAs($this->owner)->get(route('socialhq.access-requests.index'))
+        ->assertInertia(fn ($page) => $page->where('canDecline', true));
+});
+
 test('members who are not admins cannot see or decide requests', function () {
     signUp('asha@acme.test');
     $request = AccessRequest::query()->firstOrFail();
@@ -238,12 +256,12 @@ test('both emails render with the Social HQ header and their mail.php copy', fun
 });
 
 /**
- * Google answers the callback with this address.
+ * Google answers the callback with this address (null: without the email_verified claim).
  */
-function googleSignsIn(string $email, bool $verified = true, string $googleId = 'google-asha'): void
+function googleSignsIn(string $email, ?bool $verified = true, string $googleId = 'google-asha'): void
 {
     $googleUser = (new SocialiteUser)
-        ->setRaw(['sub' => $googleId, 'email' => $email, 'email_verified' => $verified])
+        ->setRaw(array_filter(['sub' => $googleId, 'email' => $email, 'email_verified' => $verified], fn (mixed $value): bool => $value !== null))
         ->map(['id' => $googleId, 'name' => 'Asha Rai', 'email' => $email]);
 
     Socialite::shouldReceive('driver')->with('google-auth')->andReturn($driver = Mockery::mock());
@@ -300,6 +318,19 @@ test('an address google has not verified signs in to nothing and creates nothing
     expect(User::query()->where('email', 'ravi@acme.test')->exists())->toBeFalse();
 });
 
+test('a google answer without the email_verified claim proves nothing', function () {
+    signUp('asha@acme.test');
+    $this->post(route('logout'));
+
+    googleSignsIn('asha@acme.test', verified: null);
+    $this->get(route('auth.google.callback'))
+        ->assertRedirect(route('login'))
+        ->assertSessionHasErrors(['email' => __('socialhq.signup.oauth_email_unverified')]);
+
+    $this->assertGuest();
+    expect(User::query()->where('email', 'asha@acme.test')->firstOrFail()->hasVerifiedEmail())->toBeFalse();
+});
+
 test('an email that may not sign up never learns whether it has an account', function () {
     User::factory()->create(['email' => 'boss@other.test']);
 
@@ -314,6 +345,21 @@ test('signing up by email is limited per address', function () {
     }
 
     signUp('someone6@other.test')->assertTooManyRequests();
+});
+
+test('signing up by email is limited to 20 tries an hour per address, past the minute limit', function () {
+    foreach (range(1, 4) as $minute) {
+        foreach (range(1, 5) as $attempt) {
+            signUp("someone{$minute}x{$attempt}@other.test")->assertSessionHasErrors('email');
+        }
+
+        $this->travel(61)->seconds();
+    }
+
+    signUp('one-more@other.test')->assertTooManyRequests();
+
+    $this->travel(1)->hours();
+    signUp('next-hour@other.test')->assertSessionHasErrors('email');
 });
 
 test('a declined person who signs up again does not email the admins again within the hour', function () {
@@ -475,7 +521,7 @@ test('declining deletes the files of the person\'s avatar', function () {
     Storage::assertMissing($avatar->path);
 });
 
-test('the pending count for the shared props is one query, and 0 for members who cannot decide', function () {
+test('the pending count for the shared props is a count for those who decide, and 0 after one query for others', function () {
     signUp('asha@acme.test');
     verifyEmailOf(User::query()->where('email', 'asha@acme.test')->firstOrFail());
     $member = workspaceMember($this->workspace);
@@ -490,7 +536,7 @@ test('the pending count for the shared props is one query, and 0 for members who
     ];
 
     expect($counts)->toBe([1, 1, 0])
-        ->and(DB::getQueryLog())->toHaveCount(3);
+        ->and(DB::getQueryLog())->toHaveCount(5);
 });
 
 test('approving without a workspace says to pick one', function () {

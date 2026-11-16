@@ -12,10 +12,15 @@ import { logout } from '@/routes';
 import { store } from '@/routes/socialhq/company';
 import { index as platformCompanies } from '@/routes/socialhq/platform/companies';
 
-defineProps<{
+const props = defineProps<{
     canAskForCompany: boolean;
+    unapproved: boolean;
     isPlatformAdmin: boolean;
 }>();
+
+// An account that owns workspaces but isn't an approved company asks to be approved.
+const copyKey = (key: string): string =>
+    `socialhq_companies.start.${props.unapproved ? `unapproved_${key}` : key}`;
 
 const form = useForm({ name: '' });
 
@@ -26,10 +31,10 @@ const submit = (): void => {
 
 <template>
     <AuthLayout
-        :title="$t('socialhq_companies.start.title')"
-        :description="$t('socialhq_companies.start.description')"
+        :title="$t(copyKey('title'))"
+        :description="$t(copyKey('description'))"
     >
-        <Head :title="$t('socialhq_companies.start.page_title')" />
+        <Head :title="$t(copyKey('page_title'))" />
         <Toast />
 
         <div class="flex flex-col gap-6" data-testid="socialhq-company-start">
@@ -41,10 +46,10 @@ const submit = (): void => {
             >
                 <div class="flex flex-col gap-1">
                     <h2 class="text-sm font-medium text-foreground">
-                        {{ $t('socialhq_companies.start.ask_title') }}
+                        {{ $t(copyKey('ask_title')) }}
                     </h2>
                     <p class="text-sm text-muted-foreground">
-                        {{ $t('socialhq_companies.start.ask_description') }}
+                        {{ $t(copyKey('ask_description')) }}
                     </p>
                 </div>
                 <div class="grid gap-2">

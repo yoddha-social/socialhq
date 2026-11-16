@@ -13,6 +13,7 @@ use App\SocialHq\Companies\CompanyStatus;
 use App\SocialHq\Companies\PlatformAdmins;
 use App\SocialHq\Http\Requests\StoreCompanyRequest;
 use App\SocialHq\Http\Requests\UpdateCompanyRequest;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -89,22 +90,25 @@ class CompanyRequestController extends Controller
     }
 
     /**
-     * Someone with no workspace who can't create one: how to get in.
+     * Someone with no workspace who can't create one, or whose account owns
+     * workspaces without being an approved company: how to get in.
      */
     public function start(Request $request): Response|RedirectResponse
     {
         $user = $request->user();
+        $unapproved = CompanyAccess::hasWorkspacesWithoutCompany($user);
 
         if ($user->can('create', Workspace::class)) {
             return redirect()->route('app.workspaces.create');
         }
 
-        if ($user->current_workspace_id !== null) {
+        if ($user->current_workspace_id !== null && ! $unapproved) {
             return redirect()->route('app.home');
         }
 
         return Inertia::render('socialhq/CompanyStart', [
             'canAskForCompany' => CompanyAccess::mayAskForCompany($user),
+            'unapproved' => $unapproved,
             'isPlatformAdmin' => PlatformAdmins::is($user),
         ]);
     }
@@ -118,7 +122,13 @@ class CompanyRequestController extends Controller
         $user = $request->user();
         abort_unless(CompanyAccess::mayAskForCompany($user), 403);
 
-        CompanyRequests::open($user, $user->account, $request->validated('name'));
+        try {
+            CompanyRequests::open($user, $user->account, $request->validated('name'));
+        } catch (UniqueConstraintViolationException) {
+            // A second submit of the same form a moment later: the first one asked already.
+            return redirect()->route('socialhq.company.waiting');
+        }
+
         CompanyRequests::notifyPlatformAdmins($user);
 
         return redirect()->route('socialhq.company.waiting');

@@ -18,6 +18,9 @@ use Symfony\Component\HttpFoundation\Response;
  * Only approved companies work (self-hosted). Wherever they go:
  * - the owner of a pending or declined company sees the waiting page;
  * - everyone in a suspended company sees the paused page;
+ * - while companies are required, an account that owns workspaces but
+ *   isn't a company is not approved: its people see the no-workspace page,
+ *   where the owner asks for a company;
  * - someone with no workspace who can't create one (an invited person's
  *   empty account, a member removed from every workspace) is shown what to
  *   do instead of the workspace form.
@@ -60,6 +63,7 @@ class EnsureCompanyApproved
         $redirect = match (true) {
             $company?->status === CompanyStatus::Suspended => 'socialhq.company.paused',
             $company !== null && $company->isWaiting() => 'socialhq.company.waiting',
+            $company === null && CompanyAccess::hasWorkspacesWithoutCompany($user) => 'socialhq.company.start',
             $request->routeIs('app.workspaces.create') && config('socialhq.companies.required', true) && Gate::forUser($user)->denies('create', Workspace::class) => 'socialhq.company.start',
             default => null,
         };

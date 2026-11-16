@@ -31,5 +31,7 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
-/docs/
+/docs/*
+!/docs/history/
+!/docs/upstream/
 /.superpowers/

@@ -72,6 +72,15 @@ final class ApprovalRules
 
         return $caller instanceof User
             && $caller->is($user)
-            && $caller->token() instanceof AccessToken;
+            && self::usesAccessToken($caller);
+    }
+
+    /**
+     * Whether this user's current request came through an API key or an MCP
+     * grant (a Passport access token), whatever agent_posts_reviewed says.
+     */
+    public static function usesAccessToken(User $user): bool
+    {
+        return $user->token() instanceof AccessToken;
     }
 }

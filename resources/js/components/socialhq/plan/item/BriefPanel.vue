@@ -17,6 +17,14 @@ import type {
     PlanAbilities,
     PlanPerson,
 } from '@/components/socialhq/plan/item/types';
+import {
+    toastFirstError,
+    toastRequestFailed,
+} from '@/components/socialhq/plan/planRequests';
+import {
+    firstErrorOf,
+    serverMessageOf,
+} from '@/components/socialhq/requestErrors';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -25,7 +33,6 @@ import {
     NativeSelectOption,
 } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
-import { extractErrorMessage } from '@/lib/httpError';
 import { production } from '@/routes/socialhq/plan';
 import {
     ai as draftWithAi,
@@ -122,6 +129,8 @@ const createBrief = (): void => {
             onFinish: () => {
                 creating.value = false;
             },
+            onError: toastFirstError,
+            onHttpException: toastRequestFailed,
         },
     );
 };
@@ -164,8 +173,12 @@ const draftBrief = async (): Promise<void> => {
     try {
         const draft = await aiHttp.post(draftWithAi.url(props.itemId));
 
+        // A 422 resolves with nothing and fills aiHttp.errors.
         if (!draft) {
-            aiError.value = trans('socialhq_production.brief.ai_failed');
+            aiError.value =
+                firstErrorOf(
+                    aiHttp.errors as Record<string, string | undefined>,
+                ) ?? trans('socialhq_production.brief.ai_failed');
 
             return;
         }
@@ -193,7 +206,7 @@ const draftBrief = async (): Promise<void> => {
         }
     } catch (exception) {
         aiError.value =
-            extractErrorMessage(exception) ??
+            serverMessageOf(exception) ??
             trans('socialhq_production.brief.ai_failed');
     }
 };

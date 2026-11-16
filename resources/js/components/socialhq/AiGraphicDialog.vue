@@ -4,6 +4,7 @@ import { IconPhotoPlus, IconShieldCheck, IconX } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
+import { serverMessageOf, statusOf } from '@/components/socialhq/requestErrors';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -95,6 +96,28 @@ let cancelled = false;
 
 const busy = computed(() => phase.value !== 'idle');
 
+/**
+ * What to say when a request throws (a 422 resolves instead): a rate limit or
+ * a refusal by name, else the server's message, else the fallback.
+ */
+const failureMessage = (
+    error: unknown,
+    fallbackKey: string,
+    rateLimitedKey: string = fallbackKey,
+): string => {
+    const status = statusOf(error);
+
+    if (status === 429) {
+        return trans(rateLimitedKey);
+    }
+
+    if (status === 403) {
+        return trans('socialhq.ai_graphics.errors.not_available');
+    }
+
+    return serverMessageOf(error) ?? trans(fallbackKey);
+};
+
 const clearPreviews = (): void => {
     previews.value.forEach((url) => URL.revokeObjectURL(url));
     previews.value = [];
@@ -130,8 +153,12 @@ const loadRecent = async (): Promise<void> => {
             logo: null,
             vectorLogo: false,
         };
-    } catch {
+    } catch (error) {
         recent.value = [];
+
+        if (statusOf(error) === 403) {
+            message.value = trans('socialhq.ai_graphics.errors.not_available');
+        }
     }
 };
 
@@ -156,8 +183,11 @@ const useRecent = async (graphic: RecentGraphic): Promise<void> => {
             });
             open.value = false;
         }
-    } catch {
-        message.value = trans('socialhq.ai_graphics.errors.attach_failed');
+    } catch (error) {
+        message.value = failureMessage(
+            error,
+            'socialhq.ai_graphics.errors.attach_failed',
+        );
     } finally {
         attaching.value = null;
     }
@@ -323,7 +353,10 @@ const poll = async (importId: string): Promise<void> => {
         }
     }
 
-    phase.value = 'idle';
+    if (!cancelled) {
+        phase.value = 'idle';
+        message.value = trans('socialhq.ai_graphics.errors.timed_out');
+    }
 };
 
 const submit = async (): Promise<void> => {
@@ -340,8 +373,12 @@ const submit = async (): Promise<void> => {
         // A validation error (including a blocked request) resolves with
         // nothing and fills http.errors.
         started = await http.post(store.url());
-    } catch {
-        message.value = trans('socialhq.ai_graphics.errors.generation_failed');
+    } catch (error) {
+        message.value = failureMessage(
+            error,
+            'socialhq.ai_graphics.errors.generation_failed',
+            'socialhq.ai_graphics.errors.rate_limited',
+        );
     }
 
     if (!started) {

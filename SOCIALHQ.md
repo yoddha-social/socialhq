@@ -21,7 +21,7 @@ adds the planning and AI layer:
 | PHP (models, actions, jobs, controllers, policies, AI) | `app/SocialHq/` (namespace `App\SocialHq`) |
 | Wiring (routes, migrations, schedule) | `app/SocialHq/SocialHqServiceProvider.php` |
 | Database migrations (tables prefixed `shq_`) | `database/migrations/socialhq/` |
-| Routes | `routes/socialhq.php` (under `/socialhq/*`) |
+| Routes | `routes/socialhq.php`, which loads `routes/socialhq/*.php` (all under `/socialhq/*`) |
 | Configuration | `config/socialhq.php` |
 | Inertia pages and components | `resources/js/pages/socialhq/`, `resources/js/components/socialhq/` |
 | Tests (Pest) | `tests/Feature/SocialHq/`, `tests/Unit/SocialHq/`, `tests/Browser/SocialHq/` |

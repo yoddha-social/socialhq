@@ -13,7 +13,8 @@ use App\SocialHq\Plan\ReviewKind;
 use Illuminate\Http\RedirectResponse;
 
 /**
- * Comments in an item's review thread.
+ * Comments in an item's review thread. Commenting on an AI suggestion
+ * accepts it, so a new AI draft never deletes the conversation.
  */
 class ItemCommentController extends Controller
 {
@@ -34,6 +35,8 @@ class ItemCommentController extends Controller
             'kind' => ReviewKind::Comment,
             'body' => $request->validated('body'),
         ]);
+
+        $planItem->acceptForWork();
 
         return back();
     }

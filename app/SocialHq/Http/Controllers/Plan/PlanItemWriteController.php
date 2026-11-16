@@ -28,8 +28,9 @@ use Illuminate\Validation\ValidationException;
 /**
  * Writes to the items of a month's plan from the month page: add, edit,
  * move, accept or drop a suggestion, restore, delete. Any change to an
- * approved plan sends it back for review. The item page (copy, review,
- * brief) has its own controller.
+ * approved plan sends it back for review; editing or moving an AI
+ * suggestion accepts it, so a new AI draft never replaces that work. The
+ * item page (copy, review, brief) has its own controller.
  */
 class PlanItemWriteController extends Controller
 {
@@ -61,10 +62,13 @@ class PlanItemWriteController extends Controller
         $found = $this->item($request, $item);
         $channel = SocialAccount::query()->where('workspace_id', $found->workspace_id)->findOrFail($request->validated('social_account_id'));
 
-        $this->change($found, fn () => $found->update([
-            ...self::withTimeZone($request->validated(), $found, $found->plan->workspace, $request->user()),
-            'platform' => $channel->platform->value,
-        ]));
+        $this->change($found, function () use ($found, $request, $channel): void {
+            $found->update([
+                ...self::withTimeZone($request->validated(), $found, $found->plan->workspace, $request->user()),
+                'platform' => $channel->platform->value,
+            ]);
+            $found->acceptForWork();
+        });
 
         return back();
     }
@@ -74,10 +78,13 @@ class PlanItemWriteController extends Controller
         $found = $this->item($request, $item);
 
         if ($found->scheduled_on->toDateString() !== $request->validated('scheduled_on')) {
-            $this->change($found, fn () => $found->update([
-                'scheduled_on' => $request->validated('scheduled_on'),
-                'position' => $this->nextPosition($found->plan, $request->validated('scheduled_on')),
-            ]));
+            $this->change($found, function () use ($found, $request): void {
+                $found->update([
+                    'scheduled_on' => $request->validated('scheduled_on'),
+                    'position' => $this->nextPosition($found->plan, $request->validated('scheduled_on')),
+                ]);
+                $found->acceptForWork();
+            });
         }
 
         return back();

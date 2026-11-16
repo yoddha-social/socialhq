@@ -226,3 +226,18 @@ test('an item whose event was deleted or whose owner left can still be edited', 
 
     expect($item->fresh()->title)->toBe('Still editable');
 });
+
+test('editing, moving or commenting on an AI suggestion accepts it, so a new draft keeps that work', function (string $action) {
+    $suggestion = ($this->planWithItem)([], ['status' => ItemStatus::Suggested, 'source' => ItemSource::Ai, 'scheduled_on' => $this->month->addDays(2)->toDateString()]);
+
+    $request = match ($action) {
+        'update' => fn () => $this->put(route('socialhq.plan.items.update', $suggestion->id), ($this->itemPayload)(['title' => 'Our take'])),
+        'move' => fn () => $this->post(route('socialhq.plan.items.move', $suggestion->id), ['scheduled_on' => $this->month->addDays(9)->toDateString()]),
+        'comment' => fn () => $this->post(route('socialhq.plan.items.comments.store', $suggestion->id), ['body' => 'Good one']),
+    };
+
+    $this->actingAs($this->member);
+    $request()->assertSessionHasNoErrors();
+
+    expect($suggestion->fresh()->status)->toBe(ItemStatus::Planned);
+})->with(['update', 'move', 'comment']);

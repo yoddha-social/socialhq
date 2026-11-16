@@ -17,6 +17,7 @@ use App\SocialHq\Signup\AccessRequest;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Testing\TestResponse;
@@ -213,7 +214,7 @@ test('the owner renames a waiting company, not a decided one', function () {
 
     $this->put(route('socialhq.company.update'), ['name' => ''])->assertSessionHasErrors('name');
 
-    $company->update(['status' => CompanyStatus::Approved]);
+    $company->forceFill(['status' => CompanyStatus::Approved])->save();
     $this->put(route('socialhq.company.update'), ['name' => 'Other'])->assertNotFound();
     expect($company->fresh()->name)->toBe('Himal Tea');
 });
@@ -469,9 +470,18 @@ test('asking twice at once from the no-workspace page ends on the waiting page, 
     $account->update(['owner_id' => $user->id]);
 
     // The other submit inserts its row between this one's check and its insert.
-    Company::creating(function (Company $company) use ($account): void {
-        if (Company::query()->where('account_id', $account->id)->doesntExist()) {
-            Company::factory()->pending()->create(['account_id' => $account->id, 'name' => 'Ravi Studio']);
+    $raced = false;
+    Company::creating(function () use ($account, &$raced): void {
+        if (! $raced) {
+            $raced = true;
+            DB::table('shq_companies')->insert([
+                'account_id' => $account->id,
+                'name' => 'Ravi Studio',
+                'status' => CompanyStatus::Pending->value,
+                'uses_platform_ai' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
         }
     });
 

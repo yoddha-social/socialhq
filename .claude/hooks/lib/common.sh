@@ -69,7 +69,7 @@ unlisted_patches() {
   [ -n "$base" ] || return 0
   while IFS= read -r f; do
     is_module_path "$f" || in_patches "$f" || printf '%s\n' "$f"
-  done < <(cd "$ROOT" && git diff --name-only "$base" --)
+  done < <(cd "$ROOT" && git diff --no-renames --name-only "$base" --)
 }
 
 # Echo a repo-relative path for an absolute one inside the repo; fail otherwise.

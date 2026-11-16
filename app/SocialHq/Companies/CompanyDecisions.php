@@ -128,7 +128,7 @@ final class CompanyDecisions
                 return;
             }
 
-            $locked->update(['uses_platform_ai' => $enabled]);
+            $locked->forceFill(['uses_platform_ai' => $enabled])->save();
             $locked->record($enabled ? CompanyEvent::PLATFORM_AI_ON : CompanyEvent::PLATFORM_AI_OFF, $admin);
         });
     }
@@ -149,12 +149,12 @@ final class CompanyDecisions
                 return null;
             }
 
-            $locked->update([
+            $locked->forceFill([
                 'status' => $to,
                 'decided_by' => $admin->id,
                 'decided_at' => now(),
                 'decision_note' => $note,
-            ]);
+            ])->save();
             $locked->record($action, $admin, $note);
 
             return $locked;

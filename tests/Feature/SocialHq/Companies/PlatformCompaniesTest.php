@@ -18,6 +18,8 @@ use App\SocialHq\Companies\Mail\CompanyDeclined;
 use App\SocialHq\Companies\Mail\CompanyRequested;
 use App\SocialHq\Companies\PlatformAdmins;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 beforeEach(function () {
     config([
@@ -113,6 +115,29 @@ test('the companies list loads a page at a time as it scrolls', function () {
         ->assertInertia(fn ($page) => $page->has('companies.data', 1)
             ->where('companies.data.0.name', 'Zeta Platform')
             ->where('companies.meta.hasNextPage', false));
+});
+
+test('a partial reload of one shared part runs none of the other parts\' queries', function () {
+    $partial = fn (string $only) => $this->actingAs($this->admin)
+        ->withHeaders([
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => Inertia::getVersion(),
+            'X-Inertia-Partial-Component' => 'socialhq/platform/Companies',
+            'X-Inertia-Partial-Data' => $only,
+        ])
+        ->get(route('socialhq.platform.companies.index'))
+        ->assertOk();
+
+    expect(array_keys($partial('socialhq.platform')->json('props.socialhq')))->toBe(['platform'])
+        ->and($partial('socialhq.platform')->json('props.socialhq.platform'))->toBe(['admin' => true, 'pendingCompanies' => 1]);
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    $partial('tab');
+    $queries = collect(DB::getQueryLog())->pluck('query');
+    DB::disableQueryLog();
+
+    expect($queries->filter(fn (string $sql): bool => str_contains($sql, 'shq_access_requests')))->toBeEmpty();
 });
 
 test('approving lets the owner create workspaces and emails them', function () {
@@ -227,7 +252,7 @@ test('a paused company\'s API keys stop working until it is restored', function 
 test('a configured contact address is who a paused company\'s owner writes to', function () {
     config(['socialhq.companies.contact_email' => 'help@socialhq.test']);
     [$company, $owner] = approvedCompanyWithMember();
-    $company->update(['status' => CompanyStatus::Suspended, 'decided_by' => $this->admin->id]);
+    $company->forceFill(['status' => CompanyStatus::Suspended, 'decided_by' => $this->admin->id])->save();
 
     $this->actingAs($owner)->get(route('socialhq.company.paused'))
         ->assertInertia(fn ($page) => $page->where('contact', 'help@socialhq.test'));
@@ -243,7 +268,7 @@ test('restoring or pausing only applies to a company in the right state', functi
 });
 
 test('platform admins are paused with their own company but still reach the platform pages', function () {
-    $this->adminCompany->update(['status' => CompanyStatus::Suspended]);
+    $this->adminCompany->forceFill(['status' => CompanyStatus::Suspended])->save();
 
     $this->actingAs($this->admin)->get(route('app.calendar'))->assertRedirect(route('socialhq.company.paused'));
     $this->get(route('socialhq.platform.companies.index'))->assertOk();
@@ -266,7 +291,7 @@ test('a platform admin decides which companies may use the platform AI keys', fu
 });
 
 test('the company emails render', function () {
-    $this->company->update(['status' => CompanyStatus::Declined, 'decision_note' => 'Tell us about your brands.']);
+    $this->company->forceFill(['status' => CompanyStatus::Declined, 'decision_note' => 'Tell us about your brands.'])->save();
 
     expect((new CompanyRequested($this->company->id))->render())
         ->toContain('Himal Tea')

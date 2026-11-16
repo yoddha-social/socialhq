@@ -161,6 +161,8 @@ return [
         'download' => 'Download',
         'uploaded_by' => ':name, :time',
         'upload_failed' => 'Couldn\'t upload :name. Try again.',
+        'upload_too_large' => ':name is larger than uploads allow. Upload a smaller or compressed file.',
+        'upload_rate_limited' => 'You\'ve uploaded many files in a short time. Wait a minute, then upload the rest.',
         'errors' => [
             'type' => 'This file type isn\'t accepted. Upload an image, an MP4 or MOV video, or a PDF.',
             'not_accepting' => 'Uploads are closed while this round is in review, and once the creative is approved.',

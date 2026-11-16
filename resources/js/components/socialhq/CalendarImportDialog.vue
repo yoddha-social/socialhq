@@ -14,6 +14,7 @@ import {
     type DateOrder,
     type PastCalendar,
 } from '@/components/socialhq/oldCalendars';
+import { firstErrorOf } from '@/components/socialhq/requestErrors';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -146,6 +147,8 @@ const reset = (): void => {
 
 watch(open, (isOpen) => {
     if (!isOpen) {
+        // An upload still on its way is abandoned, so reopening starts at step 1.
+        uploadHttp.cancel();
         discardUpload();
         reset();
     }
@@ -155,11 +158,6 @@ onBeforeUnmount(() => {
     uploadHttp.cancel();
     confirmHttp.cancel();
 });
-
-const firstError = (
-    errors: Record<string, string | undefined>,
-): string | null =>
-    Object.values(errors).find((message) => Boolean(message)) ?? null;
 
 const sendFile = async (file: File): Promise<void> => {
     if (uploadHttp.processing) {
@@ -175,13 +173,29 @@ const sendFile = async (file: File): Promise<void> => {
     try {
         response = await uploadHttp.post(store.url());
     } catch {
-        uploadError.value = trans('socialhq_calendars.errors.request_failed');
+        // Closing the dialog cancels the upload: nothing to report then.
+        if (open.value) {
+            uploadError.value = trans(
+                'socialhq_calendars.errors.request_failed',
+            );
+        }
+
+        return;
+    }
+
+    if (!open.value) {
+        // Finished just as the dialog closed: drop it on the server too.
+        if (response) {
+            void removeHttp
+                .delete(destroy.url(response.id))
+                .catch(() => undefined);
+        }
 
         return;
     }
 
     if (!response) {
-        uploadError.value = firstError(
+        uploadError.value = firstErrorOf(
             uploadHttp.errors as Record<string, string | undefined>,
         );
 
@@ -258,7 +272,7 @@ const submit = async (): Promise<void> => {
     }
 
     if (!response) {
-        confirmError.value = firstError(
+        confirmError.value = firstErrorOf(
             confirmHttp.errors as Record<string, string | undefined>,
         );
 

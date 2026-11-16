@@ -279,3 +279,19 @@ test('what to make keeps the kind of the item\'s brief', function () {
 
     expect($item->fresh()->creative)->toBe(CreativeKind::Video);
 });
+
+test('only approvers delete an item with approved work; others are told to drop it', function (Closure $approved) {
+    $item = ($this->planWithItem)();
+    $approved->call($this, $item);
+
+    $this->actingAs($this->member)->delete(route('socialhq.plan.items.destroy', $item->id))
+        ->assertSessionHasErrors(['item' => __('socialhq_plan.errors.delete_approved')]);
+    expect($item->fresh())->not->toBeNull();
+
+    $this->actingAs($this->owner)->delete(route('socialhq.plan.items.destroy', $item->id))->assertSessionHasNoErrors();
+    expect($item->fresh())->toBeNull();
+})->with([
+    'approved copy' => [fn (PlanItem $item) => $item->update(['copy_status' => CopyStatus::Approved])],
+    'an approved creative' => [fn (PlanItem $item) => Brief::factory()->for($item, 'item')->create(['stage' => 'approved'])],
+    'a created post' => [fn (PlanItem $item) => $item->update(['post_created_at' => now()])],
+]);

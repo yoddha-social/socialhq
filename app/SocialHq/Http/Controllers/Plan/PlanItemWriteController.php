@@ -13,6 +13,7 @@ use App\SocialHq\Http\Requests\Plan\StorePlanItemRequest;
 use App\SocialHq\Http\Requests\Plan\UpdatePlanItemRequest;
 use App\SocialHq\Knowledge\Audience\Audience;
 use App\SocialHq\Plan\ContentPlan;
+use App\SocialHq\Plan\CopyStatus;
 use App\SocialHq\Plan\ItemCopy;
 use App\SocialHq\Plan\ItemSource;
 use App\SocialHq\Plan\ItemStatus;
@@ -20,6 +21,7 @@ use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Plan\PlanMonth;
 use App\SocialHq\Plan\PlanOptions;
+use App\SocialHq\Production\BriefStage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -130,9 +132,22 @@ class PlanItemWriteController extends Controller
         return back();
     }
 
+    /**
+     * Approved copy, an approved creative or a created post is approved work:
+     * only approvers delete an item that has one. Others drop it instead.
+     */
     public function destroy(Request $request, int $item): RedirectResponse
     {
         $found = $this->item($request, $item);
+        $found->loadMissing('brief');
+
+        $approvedWork = $found->copy_status === CopyStatus::Approved
+            || $found->brief?->stage === BriefStage::Approved
+            || $found->post_created_at !== null;
+
+        if ($approvedWork && ! PlanAccess::canApprove($request->user(), $found->plan->workspace)) {
+            throw ValidationException::withMessages(['item' => __('socialhq_plan.errors.delete_approved')]);
+        }
 
         $this->change($found, fn () => $found->delete());
 

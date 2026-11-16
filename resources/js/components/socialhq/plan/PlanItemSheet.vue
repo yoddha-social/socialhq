@@ -271,10 +271,34 @@ const toggleDropped = (): void => {
     );
 };
 
+/** Deleting an item with approved work is for approvers: the server says so, and to drop it instead. */
 const askDelete = (): void => {
-    if (props.item) {
-        confirmDelete.value?.open({ url: destroyItem.url(props.item.id) });
+    if (!props.item) {
+        return;
     }
+
+    const url = destroyItem.url(props.item.id);
+
+    confirmDelete.value?.open({
+        url,
+        request: () =>
+            new Promise<void>((resolve, reject) => {
+                router.delete(url, {
+                    preserveState: true,
+                    preserveScroll: true,
+                    onSuccess: () => resolve(),
+                    onError: (errors) => {
+                        toastFirstError(errors);
+                        reject(new Error('delete refused'));
+                    },
+                    onHttpException: () => {
+                        reject(new Error('delete failed'));
+
+                        return toastRequestFailed();
+                    },
+                });
+            }),
+    });
 };
 </script>
 

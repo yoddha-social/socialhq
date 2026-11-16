@@ -235,6 +235,7 @@ return [
         'open_suggestions' => 'To approve the plan, accept or drop every AI suggestion first.',
         'generating' => 'The AI is still drafting this month. To approve the plan, wait for it to finish and review its suggestions.',
         'item_changed' => 'This item changed since you opened it. Reload the page and try again.',
+        'delete_approved' => 'This item has approved work, so only a workspace admin can delete it. To take it out of the plan, drop it instead.',
         'request_failed' => 'Couldn\'t save that change. Try again.',
     ],
     'generation' => [

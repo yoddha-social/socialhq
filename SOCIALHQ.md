@@ -349,9 +349,12 @@ empty sign-up stays invites only. Code: `app/SocialHq/Signup/`.
    the same list. An email that may not sign up only ever hears "can't sign
    up here", never whether it has an account. The register form allows 5
    tries a minute and 20 an hour per IP.
-2. The person joins the team's account (`SOCIALHQ_SIGNUP_ACCOUNT_OWNER`,
-   matched without regard to case, or else the oldest account that owns a
-   workspace) with no workspace and waits on one page until let in. If the
+2. The person joins the team's account (the account that
+   `SOCIALHQ_SIGNUP_ACCOUNT_OWNER` owns, matched without regard to case, or
+   else the oldest account that owns a workspace) with no workspace and
+   waits on one page until let in. While company requests are on, the
+   owner must be set (several companies may own workspaces); where
+   companies are required, only an approved company takes sign-ups. If the
    lists are set but no account is found, sign-up stays closed and the log
    says why. Only an invite that still exists counts as an invite.
 3. Once their email is confirmed, the account owner and every workspace admin

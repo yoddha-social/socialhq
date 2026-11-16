@@ -7,7 +7,12 @@ namespace App\SocialHq\Signup;
 use App\Models\Account;
 use App\Models\Invite;
 use App\Models\User;
+use App\SocialHq\Companies\Company;
+use App\SocialHq\Companies\CompanyAccess;
+use App\SocialHq\Companies\CompanyRequests;
+use App\SocialHq\Companies\CompanyStatus;
 use Closure;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -106,11 +111,14 @@ final class SignupRules
     }
 
     /**
-     * The account people who sign up join: the configured owner's, or else
-     * the oldest account that owns a workspace. Every invited person has an
-     * empty account of their own until they accept, so "the only account"
-     * rarely exists. Looked up once per web request (never cached in a
-     * queue worker or command, where one request object lives for hours).
+     * The account people who sign up join: the account the configured owner
+     * owns, or else the oldest account that owns a workspace. Every invited
+     * person has an empty account of their own until they accept, so "the
+     * only account" rarely exists. With company requests on, several
+     * companies may own workspaces, so the owner must be configured. Where
+     * companies are required, only an approved company takes sign-ups.
+     * Looked up once per web request (never cached in a queue worker or
+     * command, where one request object lives for hours).
      */
     public static function account(): ?Account
     {
@@ -132,9 +140,23 @@ final class SignupRules
 
     private static function findAccount(string $owner): ?Account
     {
-        return $owner !== ''
-            ? self::accountOwnedBy($owner)
-            : Account::query()->whereHas('workspaces')->oldest()->oldest('id')->first();
+        if ($owner === '' && CompanyRequests::enabled()) {
+            return null;
+        }
+
+        return Account::query()
+            ->when(
+                $owner !== '',
+                fn (Builder $accounts) => $accounts->whereIn('owner_id', self::usersWithEmail($owner)->select('id')),
+                fn (Builder $accounts) => $accounts->whereHas('workspaces'),
+            )
+            ->when(CompanyAccess::companiesRequired(), fn (Builder $accounts) => $accounts->whereIn(
+                'id',
+                Company::query()->where('status', CompanyStatus::Approved)->select('account_id'),
+            ))
+            ->oldest()
+            ->oldest('id')
+            ->first();
     }
 
     /**
@@ -168,15 +190,17 @@ final class SignupRules
     }
 
     /**
-     * The account of the user with this email, whatever its case (Google and
-     * GitHub may send capitals). LIKE wildcards in the address are escaped,
-     * so "a_b@" never matches "axb@".
+     * Users with this email, whatever its case (Google and GitHub may send
+     * capitals). LIKE wildcards in the address are escaped, so "a_b@" never
+     * matches "axb@".
+     *
+     * @return Builder<User>
      */
-    private static function accountOwnedBy(string $email): ?Account
+    private static function usersWithEmail(string $email): Builder
     {
         $pattern = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $email);
 
-        return User::query()->whereLike('email', $pattern)->oldest()->first()?->account;
+        return User::query()->whereLike('email', $pattern);
     }
 
     /**
@@ -186,7 +210,7 @@ final class SignupRules
     private static function warnNoAccount(): void
     {
         if (Cache::add('socialhq:signup:no-account-warning', true, now()->addHour())) {
-            Log::warning('Social HQ sign-up is closed: SOCIALHQ_SIGNUP_DOMAINS or SOCIALHQ_SIGNUP_EMAILS is set, but there is no account to join. Set SOCIALHQ_SIGNUP_ACCOUNT_OWNER to the account owner\'s email, or create a workspace first.');
+            Log::warning('Social HQ sign-up is closed: SOCIALHQ_SIGNUP_DOMAINS or SOCIALHQ_SIGNUP_EMAILS is set, but there is no account to join. Set SOCIALHQ_SIGNUP_ACCOUNT_OWNER to the email of the person who owns the account (required while company requests are on; where companies are required, its company must be approved).');
         }
     }
 }

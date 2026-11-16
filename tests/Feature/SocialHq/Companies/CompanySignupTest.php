@@ -41,6 +41,8 @@ beforeEach(function () {
     $this->teamWorkspace->members()->attach($this->teamOwner->id, membershipPivot('admin'));
     $this->teamOwner->update(['current_workspace_id' => $this->teamWorkspace->id]);
     Company::factory()->create(['account_id' => $this->teamAccount->id]);
+    // With company requests on, the team's account is named by its owner.
+    config(['socialhq.signup.account_owner' => $this->teamOwner->email]);
 
     $this->platformAdmin = User::factory()->create(['account_id' => $this->teamAccount->id]);
     PlatformAdmins::grant($this->platformAdmin);
@@ -432,4 +434,31 @@ test('the API keys of an account with workspaces but no company are refused, an 
 
     Company::factory()->create(['account_id' => $api['workspace']->account_id]);
     $callApi()->assertOk();
+});
+
+test('with company requests on and no owner configured, a work email joins no one and asks for a company', function () {
+    config(['socialhq.signup.account_owner' => null]);
+
+    registerForCompany('asha@acme.test', null)->assertSessionHasErrors('company_name');
+    registerForCompany('asha@acme.test')->assertRedirect(route('socialhq.company.requested'));
+
+    $user = User::query()->where('email', 'asha@acme.test')->firstOrFail();
+
+    expect($user->account_id)->not->toBe($this->teamAccount->id)
+        ->and(AccessRequest::query()->where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+test('sign-ups join the account the configured owner owns, only while its company is approved', function () {
+    // The owner works in another company's workspace: their own account still takes the sign-ups.
+    $elsewhere = Company::factory()->create();
+    $this->teamOwner->update(['account_id' => $elsewhere->account_id]);
+
+    registerForCompany('asha@acme.test', null)->assertRedirect();
+    expect(User::query()->where('email', 'asha@acme.test')->value('account_id'))->toBe($this->teamAccount->id);
+
+    Company::query()->where('account_id', $this->teamAccount->id)->update(['status' => CompanyStatus::Suspended]);
+    auth()->logout();
+
+    registerForCompany('ravi@acme.test', null)->assertSessionHasErrors('company_name');
+    expect(User::query()->where('email', 'ravi@acme.test')->exists())->toBeFalse();
 });

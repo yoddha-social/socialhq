@@ -41,20 +41,22 @@ final class PlanOptions
     }
 
     /**
-     * Who may own an item: the members plus the account owner (as Workspace::approvers() unions them).
+     * The brand's people: the members plus the account owner (as
+     * Workspace::approvers() unions them), by name. Who may own an item and
+     * who a brief can be assigned to (BriefTeam).
      *
      * @return Collection<int, User>
      */
     public static function owners(Workspace $workspace): Collection
     {
-        $people = $workspace->members()->orderBy('name')->get();
-        $owner = $workspace->account?->owner;
+        $people = $workspace->members()->with('avatarMedia')->get();
+        $owner = $workspace->account?->owner?->loadMissing('avatarMedia');
 
-        if ($owner !== null && ! $people->contains('id', $owner->id)) {
-            $people->push($owner);
-        }
-
-        return $people->values();
+        return $people
+            ->when($owner !== null, fn (Collection $users) => $users->push($owner))
+            ->unique('id')
+            ->sortBy(fn (User $user): string => mb_strtolower((string) $user->name))
+            ->values();
     }
 
     /**

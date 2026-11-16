@@ -224,3 +224,21 @@ test('a reopened creative starts a new round, so the final files are only the ne
     // The reopened round can't go back to review or be approved without new files.
     $this->actingAs($this->owner)->putJson(route('socialhq.plan.board.move', $brief->id), ['stage' => 'in_review', 'ordered_ids' => [$brief->id]])->assertConflict();
 });
+
+test('without a month the board shows open work and what was approved for this month or later', function () {
+    $pastPlan = ContentPlan::factory()->create(['workspace_id' => $this->workspace->id, 'month' => now()->subMonthsNoOverflow(2)->startOfMonth()->toDateString()]);
+    $oldApproved = boardBrief($pastPlan, ['stage' => BriefStage::Approved]);
+    $oldOpen = boardBrief($pastPlan, ['stage' => BriefStage::InProgress]);
+    $currentPlan = ContentPlan::factory()->create(['workspace_id' => $this->workspace->id, 'month' => now()->startOfMonth()->toDateString()]);
+    $currentApproved = boardBrief($currentPlan, ['stage' => BriefStage::Approved]);
+
+    $this->actingAs($this->designer)->get(route('socialhq.plan.production'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('cards', fn ($cards) => collect($cards)->pluck('id')->sort()->values()->all() === collect([$oldOpen->id, $currentApproved->id])->sort()->values()->all())
+            ->where('months', [now()->startOfMonth()->format('Y-m'), now()->subMonthsNoOverflow(2)->format('Y-m')]));
+
+    $this->actingAs($this->designer)->get(route('socialhq.plan.production', ['month' => now()->subMonthsNoOverflow(2)->format('Y-m')]))
+        ->assertInertia(fn (Assert $page) => $page->has('cards', 2));
+
+    expect($oldApproved->exists)->toBeTrue();
+});

@@ -8,6 +8,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\SocialHq\Plan\CreativeKind;
+use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Plan\PlanMonth;
 use App\SocialHq\Plan\PlanOptions;
@@ -39,10 +40,7 @@ trait ResolvesPlanContext
 
     protected function planItem(): PlanItem
     {
-        return $this->resolvedItem ??= PlanItem::query()
-            ->with('plan')
-            ->where('workspace_id', $this->planWorkspace()->id)
-            ->findOrFail((int) $this->route('item'));
+        return $this->resolvedItem ??= PlanAccess::findItem($this->planWorkspace(), (int) $this->route('item'));
     }
 
     /**

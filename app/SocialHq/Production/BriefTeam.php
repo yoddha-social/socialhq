@@ -6,10 +6,12 @@ namespace App\SocialHq\Production;
 
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Plan\PlanOptions;
 use Illuminate\Support\Collection;
 
 /**
- * Who a brief can be assigned to: the workspace's members and its owner.
+ * Who a brief can be assigned to: the brand's people, as PlanOptions::owners()
+ * defines them (the members and the account owner).
  */
 final class BriefTeam
 {
@@ -18,14 +20,7 @@ final class BriefTeam
      */
     public static function members(Workspace $workspace): Collection
     {
-        $members = $workspace->members()->with('avatarMedia')->get();
-        $owner = $workspace->owner()->with('avatarMedia')->first();
-
-        return $members
-            ->when($owner !== null, fn (Collection $users) => $users->push($owner))
-            ->unique('id')
-            ->sortBy(fn (User $user): string => mb_strtolower((string) $user->name))
-            ->values();
+        return PlanOptions::owners($workspace);
     }
 
     /**

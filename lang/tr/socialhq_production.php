@@ -190,7 +190,7 @@ return [
             'kind' => 'Kind',
             'all_kinds' => 'All kinds',
             'month' => 'Month',
-            'all_months' => 'All months',
+            'all_months' => 'Open work',
         ],
         'empty_title' => 'No briefs yet',
         'empty_description' => 'Briefs start in the content plan: open an item that needs a graphic or video, then click Create brief. It stays here until its creative is approved.',

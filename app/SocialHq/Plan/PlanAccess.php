@@ -36,13 +36,16 @@ final class PlanAccess
      */
     public static function canManageSharedEvents(User $user, Workspace $workspace): bool
     {
-        if ($user->ownsAccountOf($workspace)) {
-            return true;
-        }
+        // Once per request: a page asks twice (its abilities and its own checks), and it checks every brand.
+        return once(function () use ($user, $workspace): bool {
+            if ($user->ownsAccountOf($workspace)) {
+                return true;
+            }
 
-        $workspaces = Workspace::query()->where('account_id', $workspace->account_id)->get();
+            $workspaces = Workspace::query()->where('account_id', $workspace->account_id)->get();
 
-        return $workspaces->isNotEmpty() && $workspaces->every(fn (Workspace $brand): bool => self::canApprove($user, $brand));
+            return $workspaces->isNotEmpty() && $workspaces->every(fn (Workspace $brand): bool => self::canApprove($user, $brand));
+        });
     }
 
     public static function canManageBrand(User $user, Workspace $workspace): bool
@@ -74,9 +77,17 @@ final class PlanAccess
      */
     public static function item(Request $request, int $item, bool $approve = false): PlanItem
     {
-        $workspace = self::workspace($request, $approve);
+        return self::findItem(self::workspace($request, $approve), $item);
+    }
 
-        return PlanItem::query()->where('workspace_id', $workspace->id)->findOrFail($item);
+    /**
+     * An item of this workspace, with its plan; any other is not found. The
+     * one lookup of an item by id (controllers through item(), requests
+     * directly).
+     */
+    public static function findItem(Workspace $workspace, int $item): PlanItem
+    {
+        return PlanItem::query()->with('plan')->where('workspace_id', $workspace->id)->findOrFail($item);
     }
 
     /**

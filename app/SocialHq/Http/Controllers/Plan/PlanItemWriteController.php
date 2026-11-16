@@ -62,7 +62,7 @@ class PlanItemWriteController extends Controller
 
     public function update(UpdatePlanItemRequest $request, int $item): RedirectResponse
     {
-        $found = $this->item($request, $item);
+        $found = PlanAccess::item($request, $item);
         $channel = SocialAccount::query()->where('workspace_id', $found->workspace_id)->findOrFail($request->validated('social_account_id'));
 
         $this->change($found, function () use ($found, $request, $channel): void {
@@ -84,7 +84,7 @@ class PlanItemWriteController extends Controller
 
     public function move(MovePlanItemRequest $request, int $item): RedirectResponse
     {
-        $found = $this->item($request, $item);
+        $found = PlanAccess::item($request, $item);
 
         if ($found->scheduled_on->toDateString() !== $request->validated('scheduled_on')) {
             $this->change($found, function () use ($found, $request): void {
@@ -104,7 +104,7 @@ class PlanItemWriteController extends Controller
      */
     public function accept(Request $request, int $item): RedirectResponse
     {
-        $found = $this->item($request, $item);
+        $found = PlanAccess::item($request, $item);
         $this->ensureStatus($found, ItemStatus::Suggested);
 
         $this->change($found, fn () => $found->update(['status' => ItemStatus::Planned]));
@@ -114,7 +114,7 @@ class PlanItemWriteController extends Controller
 
     public function drop(Request $request, int $item): RedirectResponse
     {
-        $found = $this->item($request, $item);
+        $found = PlanAccess::item($request, $item);
         $this->ensureStatus($found, ItemStatus::Suggested, ItemStatus::Planned);
 
         $this->change($found, fn () => $found->update(['status' => ItemStatus::Dropped]));
@@ -124,7 +124,7 @@ class PlanItemWriteController extends Controller
 
     public function restore(Request $request, int $item): RedirectResponse
     {
-        $found = $this->item($request, $item);
+        $found = PlanAccess::item($request, $item);
         $this->ensureStatus($found, ItemStatus::Dropped);
 
         $this->change($found, fn () => $found->update(['status' => ItemStatus::Planned]));
@@ -138,7 +138,7 @@ class PlanItemWriteController extends Controller
      */
     public function destroy(Request $request, int $item): RedirectResponse
     {
-        $found = $this->item($request, $item);
+        $found = PlanAccess::item($request, $item);
         $found->loadMissing('brief');
 
         $approvedWork = $found->copy_status === CopyStatus::Approved
@@ -173,16 +173,6 @@ class PlanItemWriteController extends Controller
         }
 
         return back();
-    }
-
-    /**
-     * An item of the current workspace the user may work on (another workspace's item is a 404).
-     */
-    private function item(Request $request, int $id): PlanItem
-    {
-        $workspace = PlanAccess::workspace($request);
-
-        return PlanItem::query()->with('plan')->where('workspace_id', $workspace->id)->findOrFail($id);
     }
 
     private function change(PlanItem $item, callable $write): void

@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Plan\ItemPage;
 use App\SocialHq\Plan\PlanAccess;
+use App\SocialHq\Plan\PlanMonth;
 use App\SocialHq\Plan\ReviewKind;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -29,19 +30,30 @@ final class ProductionBoard
     private const array DECIDED = [BriefStage::Approved, BriefStage::ChangesRequested];
 
     /**
+     * The board's cards. Without a month, the work still open plus what was
+     * approved for this month or later (approved work of past months stays
+     * out, so the board doesn't load every brief ever made).
+     *
      * @param  array{mine?: bool, kind?: ?string, month?: ?string}  $filters
      * @return list<array<string, mixed>>
      */
     public static function cards(Workspace $workspace, User $user, array $filters): array
     {
-        $month = filled($filters['month'] ?? null) ? Carbon::createFromFormat('!Y-m', (string) $filters['month']) : null;
+        $month = PlanMonth::tryParse($filters['month'] ?? null);
+        $current = PlanMonth::current($user)->toDateString();
 
         return Brief::query()
             ->where('workspace_id', $workspace->id)
             ->when($filters['mine'] ?? false, fn ($query) => $query->where('assignee_id', $user->id))
             ->when(filled($filters['kind'] ?? null), fn ($query) => $query->where('kind', $filters['kind']))
-            ->when($month !== null, fn ($query) => $query->whereHas('item', fn ($items) => $items
-                ->whereBetween('scheduled_on', [$month->toDateString(), $month->copy()->endOfMonth()->toDateString()])))
+            ->when(
+                $month !== null,
+                fn ($query) => $query->whereHas('item', fn ($items) => $items
+                    ->whereBetween('scheduled_on', [$month->toDateString(), PlanMonth::end($month)->toDateString()])),
+                fn ($query) => $query->where(fn ($open) => $open
+                    ->where('stage', '!=', BriefStage::Approved)
+                    ->orWhereHas('item', fn ($items) => $items->where('scheduled_on', '>=', $current))),
+            )
             ->with(['item.socialAccount', 'assignee.avatarMedia', 'files'])
             ->orderBy('position')
             ->orderBy('id')
@@ -61,10 +73,11 @@ final class ProductionBoard
         return Brief::query()
             ->where('shq_briefs.workspace_id', $workspace->id)
             ->join('shq_plan_items', 'shq_plan_items.id', '=', 'shq_briefs.item_id')
-            ->pluck('shq_plan_items.scheduled_on')
-            ->map(fn (mixed $day): string => Carbon::parse($day)->format('Y-m'))
-            ->unique()
-            ->sortDesc()
+            ->join('shq_content_plans', 'shq_content_plans.id', '=', 'shq_plan_items.plan_id')
+            ->distinct()
+            ->orderByDesc('shq_content_plans.month')
+            ->pluck('shq_content_plans.month')
+            ->map(fn (mixed $month): string => Carbon::parse($month)->format('Y-m'))
             ->values()
             ->all();
     }
@@ -131,7 +144,7 @@ final class ProductionBoard
 
             $order = $order->merge($column->diff($order))->values();
 
-            $order->each(fn (int $id, int $position) => Brief::query()->whereKey($id)->update(['position' => $position]));
+            Brief::reorder($order->all());
         });
     }
 

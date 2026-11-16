@@ -205,11 +205,10 @@ return [
         'move_card' => 'Move :title',
         'moved' => 'Moved to :stage.',
         'move_failed' => 'Couldn\'t move the card. Try again.',
-        'approvers_note' => 'Only :names can move cards into or out of Approved and Changes requested.',
+        'approvers_note' => 'Only :names can take cards out of In review, or move them into or out of Approved and Changes requested.',
         'errors' => [
-            'approvers_only' => 'Only :names can move cards into or out of Approved and Changes requested.',
+            'approvers_only' => 'Only :names can take cards out of In review, or move them into or out of Approved and Changes requested.',
             'review_needs_files' => 'To send this creative for review, upload the files for a new round first.',
-            'approve_needs_files' => 'To approve this creative, its files need to be uploaded first.',
         ],
     ],
 
@@ -243,6 +242,7 @@ return [
         'about_round' => 'Creative, round :round',
         'errors' => [
             'note_required' => 'Say what should change.',
+            'changed' => 'This changed after you opened it. Reload the page to see the latest, then decide again.',
         ],
     ],
 ];

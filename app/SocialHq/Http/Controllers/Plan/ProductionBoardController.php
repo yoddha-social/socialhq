@@ -48,7 +48,15 @@ class ProductionBoardController extends Controller
         $workspace = PlanAccess::workspace($request);
         $card = Brief::query()->where('workspace_id', $workspace->id)->findOrFail($brief);
 
-        ProductionBoard::move($card, $request->user(), BriefStage::from($request->validated('stage')), array_map('intval', $request->validated('ordered_ids')));
+        $round = $request->validated('round');
+
+        ProductionBoard::move(
+            $card,
+            $request->user(),
+            BriefStage::from($request->validated('stage')),
+            array_map('intval', $request->validated('ordered_ids')),
+            $round === null ? null : (int) $round,
+        );
 
         return response()->json(['stage' => $card->fresh()->stage->value], HttpResponse::HTTP_OK);
     }

@@ -41,15 +41,9 @@ const rounds = computed(() => props.brief.rounds ?? []);
 const currentRound = computed(() => props.brief.current_round ?? 0);
 const acceptsUploads = computed(() => props.brief.accepts_uploads ?? false);
 const nextRound = computed(() =>
-    props.brief.stage === 'changes_requested'
-        ? currentRound.value + 1
-        : Math.max(1, currentRound.value),
+    Math.max(1, props.brief.next_round ?? currentRound.value),
 );
-const canSubmit = computed(
-    () =>
-        currentRound.value > 0 &&
-        (props.brief.stage === 'todo' || props.brief.stage === 'in_progress'),
-);
+const canSubmit = computed(() => props.brief.can_submit ?? false);
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const note = ref('');

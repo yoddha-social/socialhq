@@ -6,6 +6,7 @@ import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
+import { localizedDay } from '@/components/socialhq/localizedDay';
 import {
     toastFirstError,
     toastRequestFailed,
@@ -36,7 +37,6 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import date from '@/date';
 import dayjs from '@/dayjs';
-import { activeLocale } from '@/language';
 import { userTimezone } from '@/preferences';
 import {
     destroy as destroyItem,
@@ -141,9 +141,7 @@ const clearTime = (): void => {
 };
 
 const days = computed(() => {
-    const start = dayjs(`${props.month}-01`).locale(
-        activeLocale.value.toLowerCase(),
-    );
+    const start = localizedDay(`${props.month}-01`);
 
     return Array.from({ length: start.daysInMonth() }, (_, index) => {
         const day = start.add(index, 'day');

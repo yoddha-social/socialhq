@@ -8,11 +8,11 @@ import {
 import { computed } from 'vue';
 
 import PlatformLogo from '@/components/PlatformLogo.vue';
+import { localizedDay } from '@/components/socialhq/localizedDay';
 import { reviewBadgeVariant } from '@/components/socialhq/plan/copyStatus';
 import type { PlanItemDetail } from '@/components/socialhq/plan/item/types';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import dayjs from '@/dayjs';
 import { show as planShow } from '@/routes/socialhq/plan';
 
 const props = defineProps<{
@@ -20,10 +20,10 @@ const props = defineProps<{
 }>();
 
 const monthLabel = computed(() =>
-    dayjs(`${props.item.month}-01`).format('MMMM YYYY'),
+    localizedDay(`${props.item.month}-01`).format('MMMM YYYY'),
 );
 const dayLabel = computed(() =>
-    dayjs(props.item.scheduled_on).format('dddd, LL'),
+    localizedDay(props.item.scheduled_on).format('dddd, LL'),
 );
 </script>
 

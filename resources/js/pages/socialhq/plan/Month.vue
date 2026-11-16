@@ -14,6 +14,7 @@ import {
 import { computed, ref, watch } from 'vue';
 
 import EmptyState from '@/components/EmptyState.vue';
+import { localizedDay } from '@/components/socialhq/localizedDay';
 import PlanBrandSettingsDialog from '@/components/socialhq/plan/PlanBrandSettingsDialog.vue';
 import PlanGenerateDialog from '@/components/socialhq/plan/PlanGenerateDialog.vue';
 import PlanGenerationPanel from '@/components/socialhq/plan/PlanGenerationPanel.vue';
@@ -52,8 +53,6 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useAtLeastBreakpoint } from '@/composables/useBreakpoint';
-import dayjs from '@/dayjs';
-import { activeLocale } from '@/language';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { channels as channelsSettings } from '@/routes/app/workspace';
 import {
@@ -112,9 +111,7 @@ watch(view, (next) => {
 const isDesktop = useAtLeastBreakpoint('md');
 
 const monthLabel = computed(() =>
-    dayjs(`${props.month}-01`)
-        .locale(activeLocale.value.toLowerCase())
-        .format('MMMM YYYY'),
+    localizedDay(`${props.month}-01`).format('MMMM YYYY'),
 );
 
 const lookups = computed<PlanLookups>(() => ({

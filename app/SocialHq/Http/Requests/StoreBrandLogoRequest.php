@@ -33,6 +33,12 @@ class StoreBrandLogoRequest extends FormRequest
                 'file',
                 'max:'.self::maxKilobytes(),
                 function (string $attribute, mixed $value, Closure $fail): void {
+                    if ($value instanceof UploadedFile && $value->getSize() === 0) {
+                        $fail(__('socialhq_knowledge.look.errors.logo_empty'));
+
+                        return;
+                    }
+
                     $this->logo = $value instanceof UploadedFile ? LogoFile::read($value->getRealPath()) : null;
 
                     if ($this->logo === null) {

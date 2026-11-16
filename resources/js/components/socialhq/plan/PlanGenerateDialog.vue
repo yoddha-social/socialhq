@@ -127,11 +127,19 @@ const setSwitch = (key: SourceSwitch, value: boolean): void => {
     form[key] = value;
 };
 
-const onFromChange = (): void => {
-    if (form.to < form.from) {
-        form.to = form.from;
-    }
-};
+/**
+ * The last day never comes before the first: moving the first day past it
+ * moves it along. A watcher, not the select's change event, which fires
+ * before the select's v-model has updated the form.
+ */
+watch(
+    () => form.from,
+    (from) => {
+        if (from !== '' && form.to < from) {
+            form.to = from;
+        }
+    },
+);
 
 const close = (): void => {
     open.value = false;
@@ -171,10 +179,7 @@ const start = (): void => {
 <template>
     <Dialog v-model:open="open">
         <DialogContent class="sm:max-w-lg" data-testid="plan-generate-dialog">
-            <form
-                class="flex max-h-[80vh] flex-col gap-5 overflow-x-hidden overflow-y-auto px-1"
-                @submit.prevent="start"
-            >
+            <form class="flex flex-col gap-5" @submit.prevent="start">
                 <DialogHeader>
                     <DialogTitle>{{
                         $t('socialhq_plan.generate.title', {
@@ -204,7 +209,6 @@ const start = (): void => {
                                 v-model="form.from"
                                 class="capitalize"
                                 data-testid="plan-generate-from"
-                                @change="onFromChange"
                             >
                                 <NativeSelectOption
                                     v-for="day in days"

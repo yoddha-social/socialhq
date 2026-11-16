@@ -204,7 +204,7 @@ return [
         ],
 
         'pending' => [
-            'title' => '保留中の招待',
+            'title' => '招待はまだ承諾されていません',
             'description' => '承諾待ちの招待',
             'empty' => '保留中の招待はありません',
         ],
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => 'このメールアドレスには既に招待が存在します。',
-            'email_belongs_to_account' => 'このメールアドレスは既に別の Social HQ アカウントに属しています。専用の仕事用メールアドレスをご利用ください。',
+            'already_member' => 'このユーザーはすでにこのワークスペースのメンバーです。',
             'cannot_remove_self' => '自分自身を削除することはできません。',
             'cannot_remove_owner' => 'アカウントのオーナーは削除できません。',
             'cannot_change_own_access' => '自分のアクセス権は変更できません。',
@@ -261,6 +261,7 @@ return [
             'member_removed' => 'メンバーを正常に削除しました。',
             'wrong_email' => 'この招待は別のメールアドレス宛てです。',
             'already_member' => 'あなたはすでにこのワークスペースのメンバーです。',
+            'other_account' => 'あなたのアカウントは別の会社に属しているため、このワークスペースには参加できません。招待した人に、別の仕事用メールアドレスを招待するよう依頼してください。',
             'invite_accepted' => 'ようこそ！これでワークスペースのメンバーになりました。',
             'invite_workspace_gone' => 'ワークスペースが削除されたため、この招待は無効です。',
             'invite_declined' => '招待を辞退しました。',

@@ -51,6 +51,7 @@ const props = defineProps<{
     catalogue: CatalogueProvider[];
     providers: CompanyProvider[];
     tasks: TaskRoute[];
+    maxKeys: number;
     budget: { monthlyUsd: number | null; duration: string };
     spend?: CompanySpend | null;
 }>();
@@ -67,11 +68,12 @@ const statusVariant = (
           ? 'destructive-subtle'
           : 'secondary';
 
-const added = computed(() => props.providers.map((item) => item.provider));
 const canAdd = computed(
-    () =>
-        props.blocker === null &&
-        props.catalogue.some((provider) => !added.value.includes(provider.id)),
+    () => props.blocker === null && props.providers.length < props.maxKeys,
+);
+
+const hasFreeKey = computed(() =>
+    props.providers.some((item) => item.tier === 'free'),
 );
 
 const formatUsd = (value: number): string =>
@@ -80,16 +82,25 @@ const formatUsd = (value: number): string =>
         currency: 'USD',
     }).format(value);
 
-// Add / replace
+// Add / edit / replace
 const isKeyDialogOpen = ref(false);
+const editing = ref<CompanyProvider | null>(null);
 const replacing = ref<CompanyProvider | null>(null);
 
 const openAdd = (): void => {
+    editing.value = null;
+    replacing.value = null;
+    isKeyDialogOpen.value = true;
+};
+
+const openEdit = (item: CompanyProvider): void => {
+    editing.value = item;
     replacing.value = null;
     isKeyDialogOpen.value = true;
 };
 
 const openReplace = (item: CompanyProvider): void => {
+    editing.value = null;
     replacing.value = item;
     isKeyDialogOpen.value = true;
 };
@@ -125,6 +136,17 @@ const moveDown = (item: CompanyProvider): void => moveProvider(item, 'down');
 
 // Remove
 const removing = ref<CompanyProvider | null>(null);
+
+/** What happens to the key's work once it is gone. */
+const removeOutcomeKey = computed((): string => {
+    if (props.providers.length > 1) {
+        return 'socialhq_ai.remove.others_take_over';
+    }
+
+    return props.usesPlatformAi
+        ? 'socialhq_ai.remove.platform_takes_over'
+        : 'socialhq_ai.remove.ai_stops';
+});
 const isRemoveOpen = ref(false);
 const isRemoving = ref(false);
 
@@ -223,27 +245,42 @@ const saveBudget = (): void => {
                                 route.provider === 'platform'
                                     ? $t('socialhq_ai.status.platform')
                                     : route.provider
-                                      ? $t(
+                                      ? (route.label ??
+                                        $t(
                                             `socialhq_ai.providers.${route.provider}.name`,
-                                        )
+                                        ))
                                       : $t('socialhq_ai.status.none')
                             }}
+                            <template v-if="route.count > 1">
+                                ·
+                                {{
+                                    $t('socialhq_ai.status.more', {
+                                        count: String(route.count - 1),
+                                    })
+                                }}
+                            </template>
                         </span>
                     </li>
                 </ul>
-                <p
-                    v-if="usesPlatformAi && providers.length === 0"
-                    class="text-sm text-muted-foreground"
-                >
-                    {{ $t('socialhq_ai.status.uses_platform') }}
-                </p>
             </section>
 
             <EmptyState
                 v-if="providers.length === 0"
                 :icon="IconSparkles"
-                :title="$t('socialhq_ai.empty.title')"
-                :description="$t('socialhq_ai.empty.body')"
+                :title="
+                    $t(
+                        usesPlatformAi
+                            ? 'socialhq_ai.empty.platform_title'
+                            : 'socialhq_ai.empty.title',
+                    )
+                "
+                :description="
+                    $t(
+                        usesPlatformAi
+                            ? 'socialhq_ai.empty.platform_body'
+                            : 'socialhq_ai.empty.body',
+                    )
+                "
                 data-testid="socialhq-ai-empty"
             >
                 <template v-if="canAdd" #action>
@@ -283,22 +320,29 @@ const saveBudget = (): void => {
                     <SettingsListRow
                         v-for="(item, index) in providers"
                         :key="item.id"
-                        :data-testid="`socialhq-ai-provider-${item.provider}`"
+                        :data-testid="`socialhq-ai-provider-${item.id}`"
                     >
                         <template #media>
                             <ProviderLogo :logo="logoOf(item.provider)" />
                         </template>
                         <div class="flex flex-wrap items-center gap-2">
-                            <span class="font-medium">
+                            <span class="min-w-0 font-medium break-words">
                                 {{
+                                    item.label ??
                                     $t(
                                         `socialhq_ai.providers.${item.provider}.name`,
                                     )
                                 }}
                             </span>
                             <Badge
+                                variant="secondary"
+                                :data-testid="`socialhq-ai-provider-tier-${item.id}`"
+                            >
+                                {{ $t(`socialhq_ai.tiers.${item.tier}`) }}
+                            </Badge>
+                            <Badge
                                 :variant="statusVariant(item.status)"
-                                :data-testid="`socialhq-ai-provider-status-${item.provider}`"
+                                :data-testid="`socialhq-ai-provider-status-${item.id}`"
                             >
                                 {{
                                     $t(`socialhq_ai.list.status.${item.status}`)
@@ -306,6 +350,14 @@ const saveBudget = (): void => {
                             </Badge>
                         </div>
                         <p class="text-sm text-muted-foreground">
+                            <template v-if="item.label">
+                                {{
+                                    $t(
+                                        `socialhq_ai.providers.${item.provider}.name`,
+                                    )
+                                }}
+                                ·
+                            </template>
                             {{
                                 $t('socialhq_ai.list.key_ending', {
                                     last4: item.last4,
@@ -321,6 +373,20 @@ const saveBudget = (): void => {
                                       })
                                     : $t('socialhq_ai.list.never_tested')
                             }}
+                        </p>
+                        <p
+                            v-if="!item.retired && item.servedTasks.length"
+                            class="text-sm text-muted-foreground"
+                            :data-testid="`socialhq-ai-provider-tasks-${item.id}`"
+                        >
+                            {{ $t('socialhq_ai.add.tasks') }}:
+                            <template
+                                v-for="(task, taskIndex) in item.servedTasks"
+                                :key="task"
+                            >
+                                <template v-if="taskIndex > 0">, </template>
+                                {{ $t(`socialhq_ai.status.tasks.${task}`) }}
+                            </template>
                         </p>
                         <p
                             v-if="item.retired"
@@ -343,7 +409,7 @@ const saveBudget = (): void => {
                                 size="sm"
                                 :loading="busyId === item.id"
                                 :disabled="item.retired || blocker !== null"
-                                :data-testid="`socialhq-ai-test-${item.provider}`"
+                                :data-testid="`socialhq-ai-test-${item.id}`"
                                 @click="runTest(item)"
                             >
                                 {{ $t('socialhq_ai.list.actions.test') }}
@@ -356,7 +422,7 @@ const saveBudget = (): void => {
                                         :aria-label="
                                             $t('socialhq_ai.list.actions.menu')
                                         "
-                                        :data-testid="`socialhq-ai-menu-${item.provider}`"
+                                        :data-testid="`socialhq-ai-menu-${item.id}`"
                                     >
                                         <IconDots class="size-4" />
                                     </Button>
@@ -364,7 +430,7 @@ const saveBudget = (): void => {
                                 <DropdownMenuContent align="end">
                                     <DropdownMenuItem
                                         v-if="index > 0"
-                                        :data-testid="`socialhq-ai-up-${item.provider}`"
+                                        :data-testid="`socialhq-ai-up-${item.id}`"
                                         @select="moveUp(item)"
                                     >
                                         <IconArrowUp class="size-4" />
@@ -376,7 +442,7 @@ const saveBudget = (): void => {
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                         v-if="index < providers.length - 1"
-                                        :data-testid="`socialhq-ai-down-${item.provider}`"
+                                        :data-testid="`socialhq-ai-down-${item.id}`"
                                         @select="moveDown(item)"
                                     >
                                         <IconArrowDown class="size-4" />
@@ -388,7 +454,16 @@ const saveBudget = (): void => {
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                         v-if="!item.retired && blocker === null"
-                                        :data-testid="`socialhq-ai-replace-${item.provider}`"
+                                        :data-testid="`socialhq-ai-edit-${item.id}`"
+                                        @select="openEdit(item)"
+                                    >
+                                        {{
+                                            $t('socialhq_ai.list.actions.edit')
+                                        }}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        v-if="!item.retired && blocker === null"
+                                        :data-testid="`socialhq-ai-replace-${item.id}`"
                                         @select="openReplace(item)"
                                     >
                                         {{
@@ -400,7 +475,7 @@ const saveBudget = (): void => {
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                         variant="destructive"
-                                        :data-testid="`socialhq-ai-remove-${item.provider}`"
+                                        :data-testid="`socialhq-ai-remove-${item.id}`"
                                         @select="openRemove(item)"
                                     >
                                         {{
@@ -426,6 +501,12 @@ const saveBudget = (): void => {
                     </h2>
                     <p class="text-sm text-muted-foreground">
                         {{ $t('socialhq_ai.budget.description') }}
+                        <template v-if="usesPlatformAi && !providers.length">
+                            {{ $t('socialhq_ai.budget.platform_note') }}
+                        </template>
+                        <template v-if="hasFreeKey">
+                            {{ $t('socialhq_ai.budget.free_note') }}
+                        </template>
                     </p>
                 </div>
                 <form
@@ -522,7 +603,8 @@ const saveBudget = (): void => {
         <ProviderKeyDialog
             v-model:open="isKeyDialogOpen"
             :catalogue="catalogue"
-            :added="added"
+            :existing="providers"
+            :editing="editing"
             :replacing="replacing"
         />
 
@@ -533,15 +615,17 @@ const saveBudget = (): void => {
                         {{
                             $t('socialhq_ai.remove.title', {
                                 provider: removing
-                                    ? $t(
+                                    ? (removing.label ??
+                                      $t(
                                           `socialhq_ai.providers.${removing.provider}.name`,
-                                      )
+                                      ))
                                     : '',
                             })
                         }}
                     </DialogTitle>
                     <DialogDescription>
                         {{ $t('socialhq_ai.remove.description') }}
+                        {{ $t(removeOutcomeKey) }}
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>

@@ -21,6 +21,7 @@ Route::prefix('settings/ai')->name('ai-settings.')->group(function () {
     Route::middleware('throttle:socialhq-company-ai')->group(function () {
         Route::post('providers', [ProviderCredentialController::class, 'store'])->name('providers.store');
         Route::put('providers/{credential}', [ProviderCredentialController::class, 'update'])->whereNumber('credential')->name('providers.update');
+        Route::put('providers/{credential}/settings', [ProviderCredentialController::class, 'settings'])->whereNumber('credential')->name('providers.settings');
         Route::delete('providers/{credential}', [ProviderCredentialController::class, 'destroy'])->whereNumber('credential')->name('providers.destroy');
         Route::post('providers/{credential}/test', ProviderCredentialTestController::class)->whereNumber('credential')->name('providers.test');
         Route::post('providers/{credential}/move', ProviderCredentialOrderController::class)->whereNumber('credential')->name('providers.move');

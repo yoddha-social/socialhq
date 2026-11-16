@@ -115,7 +115,7 @@ const openDialog = (): void => {
                 <p class="border-t pt-3 text-sm text-muted-foreground">
                     {{
                         $t('socialhq_audience.main_help', {
-                            zone: audience.mainTimezone,
+                            zone: placeOfZone(audience.mainTimezone),
                         })
                     }}
                     {{

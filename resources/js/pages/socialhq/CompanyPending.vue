@@ -33,6 +33,16 @@ const props = defineProps<{
 
 const declined = computed(() => props.company.status === 'declined');
 
+const statusKey = computed((): string | null => {
+    if (props.status === 'verification-link-sent') {
+        return 'socialhq_companies.waiting.link_sent';
+    }
+
+    return props.status === 'email-confirmed'
+        ? 'socialhq_companies.waiting.email_confirmed'
+        : null;
+});
+
 const nameForm = useForm({ name: props.company.name });
 
 const saveName = (): void => {
@@ -64,13 +74,15 @@ const rememberName = (): void => {
                       email,
                   })
         "
-        :status="
-            status === 'verification-link-sent'
-                ? $t('socialhq_companies.waiting.link_sent')
-                : undefined
-        "
+        :status="statusKey ? $t(statusKey) : undefined"
     >
-        <Head :title="$t('socialhq_companies.waiting.page_title')" />
+        <Head
+            :title="
+                declined
+                    ? $t('socialhq_companies.waiting.declined_page_title')
+                    : $t('socialhq_companies.waiting.page_title')
+            "
+        />
         <Toast />
 
         <div

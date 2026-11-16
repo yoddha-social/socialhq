@@ -46,6 +46,28 @@ test('new users can register', function () {
     $response->assertRedirect(route('app.welcome', absolute: false));
 });
 
+test('an email with capitals is stored in lower case instead of refused', function () {
+    $this->post(route('register.store'), [
+        'name' => 'Test User',
+        'email' => ' Test@Example.com ',
+        'password' => strongPassword(),
+        'locale' => 'en',
+    ])->assertSessionHasNoErrors();
+
+    expect(User::query()->where('email', 'test@example.com')->exists())->toBeTrue();
+});
+
+test('an email without a dot in its domain is refused', function () {
+    $this->post(route('register.store'), [
+        'name' => 'Test User',
+        'email' => 'test@example',
+        'password' => strongPassword(),
+        'locale' => 'en',
+    ])->assertSessionHasErrors('email');
+
+    expect(User::query()->where('email', 'test@example')->exists())->toBeFalse();
+});
+
 test('new users get a default workspace on registration', function () {
     $this->post(route('register.store'), [
         'name' => 'Test User',

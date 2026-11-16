@@ -53,6 +53,12 @@ class StoreKnowledgeDocumentRequest extends FormRequest
                     return;
                 }
 
+                if ($file->getSize() === 0) {
+                    $validator->errors()->add('file', __('socialhq_knowledge.documents.errors.empty'));
+
+                    return;
+                }
+
                 $this->detected = DocumentType::detect((string) $file->getRealPath(), (string) $file->getClientOriginalName());
 
                 if ($this->detected === null) {

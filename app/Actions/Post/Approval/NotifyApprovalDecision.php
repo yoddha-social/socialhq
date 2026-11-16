@@ -17,9 +17,9 @@ final class NotifyApprovalDecision
     /**
      * Emails the member who asked for approval (see Post::approvalRequester())
      * about one post, once the decision commits. Deciding your own request
-     * sends nothing.
+     * sends nothing. A rejection carries the approver's reason when one was given.
      */
-    public static function execute(Post $post, ApprovalDecision $decision, User $approver, ?User $requester): void
+    public static function execute(Post $post, ApprovalDecision $decision, User $approver, ?User $requester, ?string $reason = null): void
     {
         if (blank($requester) || $requester->id === $approver->id) {
             return;
@@ -30,7 +30,7 @@ final class NotifyApprovalDecision
             Type::Collaboration,
             $decision === ApprovalDecision::Approved
                 ? new PostApproved($post->id, $approver, $requester)
-                : new PostRejected($post->id, $approver),
+                : new PostRejected($post->id, $approver, $reason),
         )->afterCommit();
     }
 }

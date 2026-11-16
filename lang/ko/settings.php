@@ -204,7 +204,7 @@ return [
         ],
 
         'pending' => [
-            'title' => '대기 중인 초대',
+            'title' => '아직 초대를 수락하지 않음',
             'description' => '수락 대기 중인 초대',
             'empty' => '대기 중인 초대가 없습니다',
         ],
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => '이 이메일에 대한 초대가 이미 존재합니다.',
-            'email_belongs_to_account' => '이 이메일은 이미 다른 Social HQ 계정에 속해 있습니다. 전용 업무용 이메일을 사용해 주세요.',
+            'already_member' => '이 사용자는 이미 이 워크스페이스의 멤버입니다.',
             'cannot_remove_self' => '자신을 제거할 수 없습니다.',
             'cannot_remove_owner' => '계정 소유자는 제거할 수 없습니다.',
             'cannot_change_own_access' => '자신의 접근 권한은 변경할 수 없습니다.',
@@ -261,6 +261,7 @@ return [
             'member_removed' => '멤버가 성공적으로 제거되었습니다.',
             'wrong_email' => '이 초대는 다른 이메일 주소를 위한 것입니다.',
             'already_member' => '이미 이 워크스페이스의 멤버입니다.',
+            'other_account' => '계정이 다른 회사에 속해 있어 이 워크스페이스에 참여할 수 없습니다. 초대한 사람에게 별도의 업무용 이메일로 초대해 달라고 요청하세요.',
             'invite_accepted' => '환영합니다! 이제 워크스페이스의 멤버입니다.',
             'invite_workspace_gone' => '워크스페이스가 삭제되어 이 초대는 더 이상 유효하지 않습니다.',
             'invite_declined' => '초대를 거절했습니다.',

@@ -204,7 +204,7 @@ return [
         ],
 
         'pending' => [
-            'title' => '待处理的邀请',
+            'title' => '邀请尚未接受',
             'description' => '等待接受的邀请',
             'empty' => '没有待处理的邀请',
         ],
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => '该邮箱已有邀请。',
-            'email_belongs_to_account' => '该邮箱已属于另一个 Social HQ 账户。请改用专用工作邮箱。',
+            'already_member' => '此人已经是此工作区的成员。',
             'cannot_remove_self' => '你不能移除自己。',
             'cannot_remove_owner' => '你不能移除账户所有者。',
             'cannot_change_own_access' => '你不能更改自己的访问权限。',
@@ -261,6 +261,7 @@ return [
             'member_removed' => '成员移除成功。',
             'wrong_email' => '此邀请是发给另一个邮箱地址的。',
             'already_member' => '你已经是此工作区的成员。',
+            'other_account' => '你的账号属于另一家公司，因此无法加入此工作区。请让邀请你的人改为邀请另一个工作邮箱。',
             'invite_accepted' => '欢迎！你现在是此工作区的成员了。',
             'invite_workspace_gone' => '该工作区已删除，此邀请已失效。',
             'invite_declined' => '邀请已拒绝。',

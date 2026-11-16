@@ -204,7 +204,7 @@ return [
         ],
 
         'pending' => [
-            'title' => 'Ausstehende Einladungen',
+            'title' => 'Einladung noch nicht angenommen',
             'description' => 'Einladungen, die auf Annahme warten',
             'empty' => 'Keine ausstehenden Einladungen',
         ],
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => 'Für diese E-Mail existiert bereits eine Einladung.',
-            'email_belongs_to_account' => 'Diese E-Mail gehört bereits zu einem anderen Social HQ-Konto. Bitte eine dedizierte Arbeits-E-Mail verwenden.',
+            'already_member' => 'Diese Person ist bereits Mitglied dieses Workspace.',
             'cannot_remove_self' => 'Du kannst dich nicht selbst entfernen.',
             'cannot_remove_owner' => 'Du kannst den Kontoinhaber nicht entfernen.',
             'cannot_change_own_access' => 'Du kannst deinen eigenen Zugriff nicht ändern.',
@@ -261,6 +261,7 @@ return [
             'member_removed' => 'Mitglied erfolgreich entfernt.',
             'wrong_email' => 'Diese Einladung gilt für eine andere E-Mail-Adresse.',
             'already_member' => 'Du bist bereits Mitglied dieses Workspace.',
+            'other_account' => 'Dein Konto gehört zu einem anderen Unternehmen und kann diesem Workspace daher nicht beitreten. Bitte die einladende Person, stattdessen eine eigene Arbeits-E-Mail einzuladen.',
             'invite_accepted' => 'Willkommen! Du bist jetzt Mitglied des Workspace.',
             'invite_workspace_gone' => 'Diese Einladung ist nicht mehr gültig, weil der Workspace gelöscht wurde.',
             'invite_declined' => 'Einladung abgelehnt.',

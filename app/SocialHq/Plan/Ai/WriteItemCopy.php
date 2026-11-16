@@ -27,9 +27,15 @@ final class WriteItemCopy
 {
     public const int DEFAULT_MAX_HASHTAGS = 8;
 
-    public static function execute(PlanItem $item, User $user): ?ItemVersion
+    /**
+     * @param  string|null  $instruction  what the team asked for in its own words ("shorter", "add the price"), or null
+     */
+    public static function execute(PlanItem $item, User $user, ?string $instruction = null): ?ItemVersion
     {
         $item->loadMissing(['event', 'socialAccount', 'latestVersion']);
+
+        // One line, and nothing that could close the prompt's quoted block.
+        $instruction = Str::squish(str_replace('"""', '"', (string) $instruction));
 
         $latest = $item->latestVersion;
         $isVideo = $item->creative === CreativeKind::Video;
@@ -40,12 +46,13 @@ final class WriteItemCopy
         $response = AiTenant::run($item->workspace, fn () => (new CopyWriter(
             language: $user->locale->promptLanguage(),
             context: self::context($item),
-            brandKnowledge: BrandKnowledge::forPrompt($item->workspace, self::focus($item)),
+            brandKnowledge: BrandKnowledge::forPrompt($item->workspace, trim(self::focus($item)."\n{$instruction}")),
             isVideo: $isVideo,
             isRewrite: $latest !== null,
             maxLength: $maxLength === null ? null : self::captionBudget($maxLength, $maxHashtags, $latest?->hashtags),
             maxHashtags: $maxHashtags,
             visualStyle: BrandLook::of($item->workspace)?->copyLine() ?? '',
+            instruction: $instruction,
         ))->prompt($latest === null ? 'Write the copy for this post.' : 'Rewrite the copy for this post.'));
 
         $caption = trim((string) data_get($response, 'caption'));

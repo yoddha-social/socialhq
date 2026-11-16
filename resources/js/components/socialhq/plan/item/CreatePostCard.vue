@@ -27,6 +27,8 @@ const http = useHttp<
     {
         content: string;
         media: MediaItem[];
+        /** Approved files the post's format can't carry (a PDF on a Facebook post). */
+        left_out: string[];
         scheduled_on: string;
         /** The item's posting time as a wall clock in the user's zone, or null. */
         scheduled_at: string | null;
@@ -74,6 +76,14 @@ const createPost = async (): Promise<void> => {
             },
         });
         router.reload({ only: ['item'] });
+
+        if (draft.left_out.length > 0) {
+            toast.warning(
+                trans('socialhq_production.post.left_out', {
+                    names: draft.left_out.join(', '),
+                }),
+            );
+        }
     } catch (exception) {
         toast.error(
             extractErrorMessage(exception) ??
@@ -110,7 +120,7 @@ const createPost = async (): Promise<void> => {
         <Button
             v-if="abilities.canWork"
             class="w-full"
-            :variant="ready ? 'default' : 'outline'"
+            :variant="ready && !item.post_created_at ? 'default' : 'outline'"
             :class="ready ? '' : 'text-muted-foreground'"
             :disabled="!ready"
             :aria-describedby="
@@ -121,7 +131,13 @@ const createPost = async (): Promise<void> => {
             @click="createPost"
         >
             <IconSend2 />
-            {{ $t('socialhq_production.post.create') }}
+            {{
+                $t(
+                    item.post_created_at
+                        ? 'socialhq_production.post.create_another'
+                        : 'socialhq_production.post.create',
+                )
+            }}
         </Button>
     </section>
 </template>

@@ -48,6 +48,18 @@ test('users can authenticate using the login screen', function () {
     $response->assertRedirect(route('app.calendar', absolute: false));
 });
 
+test('the login email is matched without regard to case or spaces', function () {
+    $user = User::factory()->create(['email' => 'owner+1@qa-tenant.test']);
+
+    $this->post(route('login.store'), [
+        'email' => '  Owner+1@QA-Tenant.test ',
+        'password' => 'password',
+        'locale' => 'en',
+    ])->assertSessionHasNoErrors();
+
+    $this->assertAuthenticatedAs($user);
+});
+
 test('login with a valid invite param redirects to the invite page instead of the calendar', function () {
     $inviterAccount = Account::factory()->create();
     $inviter = User::factory()->create(['account_id' => $inviterAccount->id]);

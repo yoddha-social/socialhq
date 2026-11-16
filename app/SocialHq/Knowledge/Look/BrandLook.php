@@ -43,6 +43,26 @@ class BrandLook extends Model
         return $this->belongsTo(Workspace::class);
     }
 
+    /**
+     * A colour as typed, written the way it is stored: "#rrggbb" in lower
+     * case. Designers often copy hex without the "#", or in its 3-digit
+     * form; anything else is returned as typed for validation to refuse.
+     */
+    public static function normalizeHex(mixed $value): mixed
+    {
+        if (! is_string($value) || preg_match('/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i', trim($value), $match) !== 1) {
+            return $value;
+        }
+
+        $digits = strtolower($match[1]);
+
+        if (strlen($digits) === 3) {
+            $digits = preg_replace('/(.)/', '$1$1', $digits);
+        }
+
+        return "#{$digits}";
+    }
+
     public static function of(Workspace $workspace): ?self
     {
         return self::query()->where('workspace_id', $workspace->id)->first();

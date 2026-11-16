@@ -3,9 +3,10 @@ import { router, useForm } from '@inertiajs/vue3';
 import { IconPhoto, IconPlus, IconTrash, IconUpload } from '@tabler/icons-vue';
 import { computed, ref, watch } from 'vue';
 
-import type {
-    BrandColour,
-    BrandLookProp,
+import {
+    normalizeHex,
+    type BrandColour,
+    type BrandLookProp,
 } from '@/components/socialhq/brandSources';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,7 +36,6 @@ const props = defineProps<{
     canEdit: boolean;
 }>();
 
-const HEX = /^#[0-9a-fA-F]{6}$/;
 const LOGO_ACCEPT = 'image/png,image/jpeg,image/webp,image/svg+xml,.svg';
 
 const form = useForm<{
@@ -84,9 +84,9 @@ const colourError = (index: number): string | undefined =>
     errors.value[`colours.${index}.hex`] ??
     errors.value[`colours.${index}.name`];
 
-/** The swatch: the typed value while it is a full hex colour. */
+/** The swatch: the typed value while it is a hex colour (with or without "#"). */
 const swatchOf = (colour: BrandColour): string =>
-    HEX.test(colour.hex) ? colour.hex : '#ffffff';
+    normalizeHex(colour.hex) ?? '#ffffff';
 
 const addColour = (): void => {
     if (canAddColour.value) {
@@ -105,8 +105,15 @@ const pickColour = (index: number, event: Event): void => {
 const save = (): void => {
     form.put(updateLook.url(), {
         preserveScroll: true,
+        // Show what was stored (a colour typed without "#" comes back with it).
         onSuccess: () => {
-            form.defaults();
+            form.defaults({
+                colours: props.look.colours.map((colour) => ({ ...colour })),
+                heading_font: props.look.heading_font,
+                body_font: props.look.body_font,
+                style_notes: props.look.style_notes,
+            });
+            form.reset();
         },
     });
 };
@@ -188,7 +195,7 @@ const removeLogo = (): void => {
                         role="img"
                     />
                 </div>
-                <div v-if="canEdit" class="flex flex-col gap-2">
+                <div v-if="canEdit" class="relative flex flex-col gap-2">
                     <div class="flex flex-wrap gap-2">
                         <Button
                             type="button"

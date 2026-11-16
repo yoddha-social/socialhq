@@ -16,9 +16,9 @@ return [
     */
 
     'reset' => 'Je wachtwoord is opnieuw ingesteld.',
-    'sent' => 'We hebben je een link gestuurd om je wachtwoord opnieuw in te stellen.',
+    'sent' => 'Als er een account bij dit e-mailadres hoort, hebben we een herstellink gestuurd.',
     'throttled' => 'Wacht even voordat je het opnieuw probeert.',
-    'token' => 'Deze token om het wachtwoord opnieuw in te stellen is ongeldig.',
+    'token' => 'Deze herstellink is verlopen of al gebruikt.',
     'user' => 'We kunnen geen gebruiker met dat e-mailadres vinden.',
 
 ];

@@ -106,11 +106,15 @@ test('an approver adds a queue request to the queue and rejects another', functi
     waitForApprovalsGone($page, "post-card-{$queued->id}");
 
     $page->click("@post-reject-{$timed->id}");
+    waitForApprovalsTestId($page, "post-reject-reason-{$timed->id}");
+    $page->fill("@post-reject-reason-{$timed->id}", 'Add the price.')
+        ->click("@post-reject-confirm-{$timed->id}");
     waitForApprovalsGone($page, "post-card-{$timed->id}");
 
     expect($queued->fresh()->status)->toBe(PostStatus::Scheduled)
         ->and($queued->fresh()->approved_by)->toBe($owner->id)
-        ->and($timed->fresh()->status)->toBe(PostStatus::Draft);
+        ->and($timed->fresh()->status)->toBe(PostStatus::Draft)
+        ->and($timed->fresh()->notes()->sole()->body)->toBe('Add the price.');
 
     $page->assertSeeIn('@publish-tab-count-approvals', '0')
         ->assertNoJavaScriptErrors();

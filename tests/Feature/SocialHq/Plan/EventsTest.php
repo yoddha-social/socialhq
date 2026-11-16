@@ -14,6 +14,7 @@ use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\PlanItem;
 use App\Support\Timezone;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 
 beforeEach(function () {
     $this->owner = User::factory()->create();
@@ -259,7 +260,12 @@ test('approvers add, edit, confirm and delete dates', function () {
         ->and($event->region)->toBe(EventRegion::Brand)
         ->and($event->key)->toBe('store-anniversary')
         ->and($event->created_by)->toBe($this->owner->id)
-        ->and($event->isVerified())->toBeFalse();
+        // An approver typed it in: it starts confirmed, by them.
+        ->and($event->isVerified())->toBeTrue()
+        ->and($event->verified_by)->toBe($this->owner->id);
+
+    $this->actingAs($this->owner)->delete(route('socialhq.plan.events.unverify', $event->id))->assertRedirect();
+    expect($event->fresh()->isVerified())->toBeFalse();
 
     $this->actingAs($this->owner)->post(route('socialhq.plan.events.verify', $event->id))->assertRedirect();
     expect($event->fresh()->verified_by)->toBe($this->owner->id);
@@ -300,6 +306,120 @@ test('adding a date checks the dates and refuses a duplicate', function () {
     $this->actingAs($this->owner)->post(route('socialhq.plan.events.store'), eventPayload($this->day))->assertSessionHasErrors('name');
 
     expect(CalendarEvent::query()->count())->toBe(1);
+});
+
+test('the source link error uses the field\'s name on the page', function () {
+    $this->actingAs($this->owner)
+        ->post(route('socialhq.plan.events.store'), eventPayload($this->day, ['source_url' => 'not a link']))
+        ->assertSessionHasErrors(['source_url' => __('socialhq_events.errors.source_url')]);
+});
+
+/**
+ * The events page's "Confirm all shown" request for a month.
+ *
+ * @return array<string, mixed>
+ */
+function confirmShownPayload(CarbonImmutable $month, array $overrides = []): array
+{
+    return ['view' => 'month', 'month' => $month->format('Y-m'), 'country' => null, 'filter' => 'all', ...$overrides];
+}
+
+test('confirm all shown confirms the shown month\'s unconfirmed dates in one query', function () {
+    $other = Workspace::factory()->create(['account_id' => $this->account->id, 'user_id' => $this->owner->id]);
+    $nepal = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'region' => 'nepal', 'country_code' => 'NP', 'starts_on' => $this->day, 'ends_on' => $this->day]);
+    $international = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'region' => 'international', 'country_code' => null, 'starts_on' => $this->day->addDay(), 'ends_on' => $this->day->addDay()]);
+    $own = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'workspace_id' => $this->workspace->id, 'category' => 'brand', 'region' => 'brand', 'starts_on' => $this->day, 'ends_on' => $this->day]);
+    $nextMonth = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'starts_on' => $this->day->addMonthNoOverflow()->startOfMonth(), 'ends_on' => $this->day->addMonthNoOverflow()->startOfMonth()]);
+    $theirs = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'workspace_id' => $other->id, 'starts_on' => $this->day, 'ends_on' => $this->day]);
+    $foreign = CalendarEvent::factory()->create(['starts_on' => $this->day, 'ends_on' => $this->day]);
+    $deleted = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'starts_on' => $this->day, 'ends_on' => $this->day]);
+    $deleted->delete();
+    $updatedAt = $nepal->fresh()->updated_at;
+
+    $updates = 0;
+    DB::listen(function ($query) use (&$updates): void {
+        if (str_starts_with(strtolower($query->sql), 'update') && str_contains($query->sql, 'shq_events')) {
+            $updates++;
+        }
+    });
+
+    $this->travel(5)->minutes();
+
+    $this->actingAs($this->owner)
+        ->post(route('socialhq.plan.events.verify-shown'), confirmShownPayload($this->day))
+        ->assertRedirect()
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('flash.banner', trans_choice('socialhq_events.confirm_shown.done', 3, ['count' => 3]));
+
+    expect($updates)->toBe(1)
+        ->and($nepal->fresh()->verified_by)->toBe($this->owner->id)
+        ->and($nepal->fresh()->updated_at->equalTo($updatedAt))->toBeTrue()
+        ->and($international->fresh()->isVerified())->toBeTrue()
+        ->and($own->fresh()->isVerified())->toBeTrue()
+        ->and($nextMonth->fresh()->isVerified())->toBeFalse()
+        ->and($theirs->fresh()->isVerified())->toBeFalse()
+        ->and($foreign->fresh()->isVerified())->toBeFalse()
+        ->and(CalendarEvent::query()->withTrashed()->find($deleted->id)->isVerified())->toBeFalse();
+});
+
+test('confirm all shown keeps to the page\'s filter and country', function () {
+    $nepal = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'region' => 'nepal', 'country_code' => 'NP', 'starts_on' => $this->day, 'ends_on' => $this->day]);
+    $international = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'region' => 'international', 'country_code' => null, 'starts_on' => $this->day, 'ends_on' => $this->day]);
+    $australia = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'region' => 'country', 'country_code' => 'AU', 'starts_on' => $this->day, 'ends_on' => $this->day]);
+
+    $this->actingAs($this->owner)
+        ->post(route('socialhq.plan.events.verify-shown'), confirmShownPayload($this->day, ['filter' => 'nepal']))
+        ->assertRedirect();
+
+    expect($nepal->fresh()->isVerified())->toBeTrue()
+        ->and($international->fresh()->isVerified())->toBeFalse()
+        ->and($australia->fresh()->isVerified())->toBeFalse();
+
+    // Australia's dates plus the ones without a country, as the page lists them.
+    $this->actingAs($this->owner)
+        ->post(route('socialhq.plan.events.verify-shown'), confirmShownPayload($this->day, ['country' => 'AU']))
+        ->assertRedirect();
+
+    expect($international->fresh()->isVerified())->toBeTrue()
+        ->and($australia->fresh()->isVerified())->toBeTrue();
+});
+
+test('confirm all shown covers the next 90 days in that view', function () {
+    $today = CarbonImmutable::now(Timezone::normalize($this->owner->timezone));
+    $soon = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'starts_on' => $today->addDays(60), 'ends_on' => $today->addDays(60)]);
+    $later = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'starts_on' => $today->addDays(120), 'ends_on' => $today->addDays(120)]);
+
+    $this->actingAs($this->owner)
+        ->post(route('socialhq.plan.events.verify-shown'), ['view' => 'upcoming', 'filter' => 'all'])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    expect($soon->fresh()->isVerified())->toBeTrue()
+        ->and($later->fresh()->isVerified())->toBeFalse();
+});
+
+test('confirm all shown is for approvers, and a brand\'s approver confirms only that brand\'s dates', function () {
+    // A second brand, so an admin of this one alone doesn't approve in every brand.
+    Workspace::factory()->create(['account_id' => $this->account->id, 'user_id' => $this->owner->id]);
+    $shared = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'starts_on' => $this->day, 'ends_on' => $this->day]);
+    $own = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'workspace_id' => $this->workspace->id, 'category' => 'brand', 'region' => 'brand', 'starts_on' => $this->day, 'ends_on' => $this->day]);
+
+    $this->actingAs(workspaceMember($this->workspace, 'approval'))
+        ->post(route('socialhq.plan.events.verify-shown'), confirmShownPayload($this->day))
+        ->assertForbidden();
+
+    $this->actingAs($this->owner)
+        ->post(route('socialhq.plan.events.verify-shown'), confirmShownPayload($this->day, ['filter' => 'everything']))
+        ->assertSessionHasErrors('filter');
+
+    expect($own->fresh()->isVerified())->toBeFalse();
+
+    $this->actingAs(workspaceMember($this->workspace, 'admin'))
+        ->post(route('socialhq.plan.events.verify-shown'), confirmShownPayload($this->day))
+        ->assertRedirect();
+
+    expect($own->fresh()->isVerified())->toBeTrue()
+        ->and($shared->fresh()->isVerified())->toBeFalse();
 });
 
 test('members cannot change dates', function () {

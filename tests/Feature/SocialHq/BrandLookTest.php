@@ -58,8 +58,20 @@ test('an admin saves colours, fonts and style notes, and the page shows them', f
         ->where('look.logo', null));
 });
 
+test('a colour typed without "#" or in its 3-digit form is stored as "#rrggbb"', function () {
+    saveLook($this->owner, ['colours' => [['name' => 'Brown', 'hex' => '6F3B17'], ['name' => 'White', 'hex' => ' #FfF '], ['name' => 'Teal', 'hex' => '0a9']]])
+        ->assertSessionHasNoErrors();
+
+    expect(BrandLook::of($this->workspace)->colourList())->toBe([
+        ['name' => 'Brown', 'hex' => '#6f3b17'],
+        ['name' => 'White', 'hex' => '#ffffff'],
+        ['name' => 'Teal', 'hex' => '#00aa99'],
+    ]);
+});
+
 test('colours must be hex values, at most eight', function () {
     saveLook($this->owner, ['colours' => [['name' => 'Red', 'hex' => 'red']]])->assertSessionHasErrors('colours.0.hex');
+    saveLook($this->owner, ['colours' => [['name' => 'Odd', 'hex' => '#12345']]])->assertSessionHasErrors('colours.0.hex');
     saveLook($this->owner, ['colours' => array_fill(0, 9, ['name' => 'Teal', 'hex' => '#14b8a6'])])->assertSessionHasErrors('colours');
 
     expect(BrandLook::of($this->workspace))->toBeNull();
@@ -129,6 +141,9 @@ test('a file that is not an image, or an SVG with entities, is refused', functio
     $entities = '<?xml version="1.0"?><!DOCTYPE svg [<!ENTITY x SYSTEM "file:///etc/passwd">]><svg xmlns="http://www.w3.org/2000/svg"><text>&x;</text></svg>';
     $this->post(route('socialhq.brand.look.logo.store'), ['logo' => UploadedFile::fake()->createWithContent('logo.svg', $entities)])
         ->assertSessionHasErrors('logo');
+
+    $this->post(route('socialhq.brand.look.logo.store'), ['logo' => UploadedFile::fake()->createWithContent('logo.png', '')])
+        ->assertSessionHasErrors(['logo' => __('socialhq_knowledge.look.errors.logo_empty')]);
 
     expect(BrandLook::of($this->workspace))->toBeNull()
         ->and(Storage::disk(LogoStorage::DISK)->allFiles())->toBe([]);

@@ -81,13 +81,8 @@ $direction = Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr';
                   </a>
                 </div>
                 <div role="separator" style="line-height: 24px">&zwj;</div>
-                <p style="line-height: 24px">
-                  {{ __('mail.email_verification.ignore') }}
-                </p>
                 <p style="margin-bottom: 0; line-height: 24px">
-                  {{ __('mail.layout.signoff') }}
-                  <br>
-                  {{ __('mail.layout.team') }}
+                  {{ __('mail.email_verification.ignore') }}
                 </p>
               </td>
             </tr>

@@ -108,14 +108,19 @@ test('a brief of another workspace is not found', function () {
     $this->actingAs($this->owner)->postJson(route('socialhq.plan.items.brief.ai', $other->item_id))->assertNotFound();
 });
 
-test('draft brief with AI returns a draft from the copy without saving it', function () {
-    BriefWriter::fake([['on_screen_text' => 'Happy Dashain', 'direction' => 'Marigold and brass', 'references' => 'Last year\'s Tihar post']]);
+test('draft brief with AI returns a draft from the copy without saving it, its references only links it was given', function () {
+    BriefWriter::fake([[
+        'on_screen_text' => 'Happy Dashain',
+        'direction' => 'Marigold and brass',
+        // A described post and an invented link go; the link from the copy stays.
+        'references' => "Last year's Tihar post\n- https://momo.example/menu\nhttps://invented.example/post",
+    ]]);
     $brief = Brief::factory()->for($this->item, 'item')->create(['direction' => 'Keep the logo small']);
-    ItemVersion::factory()->for($this->item, 'item')->create(['caption' => 'Momos for the whole family this Dashain']);
+    ItemVersion::factory()->for($this->item, 'item')->create(['caption' => 'Momos for the whole family this Dashain: https://momo.example/menu']);
 
     $this->actingAs($this->owner)->postJson(route('socialhq.plan.items.brief.ai', $this->item->id))
         ->assertOk()
-        ->assertJson(['on_screen_text' => 'Happy Dashain', 'direction' => 'Marigold and brass', 'references' => 'Last year\'s Tihar post']);
+        ->assertJson(['on_screen_text' => 'Happy Dashain', 'direction' => 'Marigold and brass', 'references' => 'https://momo.example/menu']);
 
     expect($brief->fresh()->direction)->toBe('Keep the logo small')
         ->and($brief->fresh()->on_screen_text)->toBeNull();

@@ -7,8 +7,6 @@ return [
     'layout' => [
         'tagline' => 'أُرسل بواسطة فريق :brand',
         'manage_notifications' => 'إدارة الإشعارات',
-        'signoff' => 'مع التحية،',
-        'team' => 'فريق Social HQ',
     ],
 
     'account_disconnected' => [
@@ -96,6 +94,7 @@ return [
         'heading' => 'لم تتم الموافقة على منشورك',
         'body' => ':name أعاد منشورك في مساحة العمل :workspace إلى المسودات.',
         'channel' => 'القناة',
+        'reason' => 'السبب',
         'button' => 'عرض في المسودات',
     ],
 
@@ -152,6 +151,7 @@ return [
         'preview' => 'تمت دعوتك للانضمام إلى :workspace',
         'heading' => 'تمت دعوتك!',
         'intro' => 'تمت دعوتك للتعاون في مساحة العمل <strong>:workspace</strong>.',
+        'intro_from' => 'وصلتك دعوة من <strong>:inviter</strong> للتعاون في مساحة العمل <strong>:workspace</strong>.',
         'role' => 'تمت دعوتك بصفة <strong>:role</strong>.',
         'roles' => ['admin' => 'مشرف', 'member' => 'عضو', 'needs_approval' => 'عضو (منشوراته تحتاج إلى موافقة)'],
         'button' => 'قبول الدعوة',
@@ -205,6 +205,20 @@ return [
         'note' => 'Their note: :note',
         'button' => 'See your request',
         'ask_again' => '{1} You can ask again after an hour.|[0,*] You can ask again after :hours hours.',
+    ],
+
+    'socialhq_account_exists' => [
+        'subject' => 'You already have a :app account',
+        'title' => 'You already have an account',
+        'preview' => 'Someone tried to create a :app account with your email address.',
+        'heading' => 'You already have a :app account',
+        'greeting' => 'Hi :name,',
+        'body' => 'Someone just tried to create a :app account with this email address (:email). You already have one, so nothing new was created.',
+        'forgot' => 'If you forgot your password, set a new one with this link. It works for 60 minutes.',
+        'button' => 'Reset your password',
+        'log_in' => 'Remember your password?',
+        'log_in_link' => 'Log in',
+        'not_you' => 'If it wasn\'t you, ignore this email: your account hasn\'t changed.',
     ],
 
 ];

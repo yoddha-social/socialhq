@@ -16,9 +16,9 @@ return [
     */
 
     'reset' => 'Parolanız sıfırlandı.',
-    'sent' => 'Parola sıfırlama bağlantınızı e-postayla gönderdik.',
+    'sent' => 'Bu e-posta adresine ait bir hesap varsa sıfırlama bağlantısı gönderdik.',
     'throttled' => 'Yeniden denemeden önce lütfen bekleyin.',
-    'token' => 'Bu parola sıfırlama tokenı geçersiz.',
+    'token' => 'Bu sıfırlama bağlantısının süresi dolmuş ya da bağlantı zaten kullanılmış.',
     'user' => 'Bu e-posta adresine sahip bir kullanıcı bulamıyoruz.',
 
 ];

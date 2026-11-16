@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\SocialHq\Http\Requests;
 
 use App\SocialHq\Knowledge\KnowledgeKind;
+use App\SocialHq\Knowledge\Look\BrandLook;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -16,6 +17,16 @@ use Illuminate\Validation\Rule;
  */
 class AcceptWebsiteSuggestionRequest extends FormRequest
 {
+    /**
+     * An edited colour may be typed without "#" or in its 3-digit form.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('hex')) {
+            $this->merge(['hex' => BrandLook::normalizeHex($this->input('hex'))]);
+        }
+    }
+
     /**
      * @return array<string, ValidationRule|array<mixed>|string>
      */

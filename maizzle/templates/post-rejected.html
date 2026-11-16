@@ -8,6 +8,15 @@
       @{{ __('mail.post_rejected.body', ['name' => $approverName, 'workspace' => $workspaceName]) }}
     </p>
 
+    @if(filled($reason))
+      <div class="email-context">
+        <p class="m-0 text-sm font-semibold text-foreground">
+          @{{ __('mail.post_rejected.reason') }}
+        </p>
+        <p class="m-0 mt-2 leading-6 text-foreground" style="white-space: pre-line;">@{{ $reason }}</p>
+      </div>
+    @endif
+
     @if($channel)
       <p class="m-0 mt-4 text-sm font-semibold text-foreground">
         @{{ __('mail.post_rejected.channel') }}

@@ -20,7 +20,8 @@ const emit = defineEmits<{
 
 <template>
     <div
-        class="grid grid-cols-2 gap-3 px-4 pt-1 pb-6 sm:grid-cols-3 sm:gap-4 sm:px-20"
+        class="grid grid-cols-2 gap-3 px-4 pt-1 pb-6 sm:gap-4 sm:px-20"
+        :class="platforms.length < 3 ? 'sm:grid-cols-2' : 'sm:grid-cols-3'"
         data-testid="channel-platform-grid"
     >
         <div
@@ -53,7 +54,9 @@ const emit = defineEmits<{
                 :aria-label="
                     $t('channels.details.more', { network: platform.label })
                 "
-                :title="$t('channels.details.more', { network: platform.label })"
+                :title="
+                    $t('channels.details.more', { network: platform.label })
+                "
                 :data-testid="`connect-info-${platform.value}`"
                 @click="emit('details', platform.value)"
             >

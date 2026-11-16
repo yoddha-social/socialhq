@@ -35,14 +35,21 @@ final class CompanyAiPage
             'providers' => $credentials->map(fn (ProviderCredential $credential): array => [
                 'id' => $credential->id,
                 'provider' => $credential->provider,
+                'label' => $credential->label,
+                'tier' => $credential->tier->value,
+                // null: every task the plan offers.
+                'tasks' => $credential->tasks,
+                'servedTasks' => array_map(fn (AiTask $task): string => $task->value, $credential->servedTasks()),
+                'models' => (object) ($credential->models ?? []),
                 'last4' => $credential->last4,
                 'status' => $credential->status->value,
                 'lastError' => $credential->last_error,
                 'lastTestedAt' => $credential->last_tested_at?->toIso8601String(),
                 'options' => ['accountId' => data_get($credential->options, 'account_id')],
-                'retired' => $credential->catalogue() === null,
+                'retired' => $credential->catalogue()?->offers($credential->tier) !== true,
             ])->values(),
             'tasks' => self::taskSummary($credentials, $usesPlatform),
+            'maxKeys' => (int) config('socialhq.company_ai.max_keys', 20),
             'budget' => [
                 'monthlyUsd' => $ai?->monthly_budget_usd === null ? null : (float) $ai->monthly_budget_usd,
                 'duration' => $ai->budget_duration ?? (string) config('socialhq.company_ai.budget_duration', '30d'),
@@ -52,22 +59,25 @@ final class CompanyAiPage
     }
 
     /**
-     * Which provider each task uses first: the company's first provider
-     * that serves it, "platform" for a company on the platform's AI, or
-     * null when the task has none.
+     * Which key each task uses first: the company's first key that serves
+     * it, "platform" for a company on the platform's AI, or null when the
+     * task has none. `count` is how many of the company's keys serve it.
      *
      * @param  Collection<int, ProviderCredential>  $credentials
-     * @return list<array{task: string, provider: string|null}>
+     * @return list<array{task: string, provider: string|null, label: string|null, count: int}>
      */
     private static function taskSummary(Collection $credentials, bool $usesPlatform): array
     {
         return array_map(function (AiTask $task) use ($credentials, $usesPlatform): array {
-            $first = $credentials->first(fn (ProviderCredential $credential): bool => (bool) $credential->catalogue()?->serves($task));
+            $serving = $credentials->filter(fn (ProviderCredential $credential): bool => $credential->serves($task));
+            $first = $serving->first();
             $platformServes = $usesPlatform && in_array($task->value, (array) config('socialhq.ai.litellm.tasks', []), true);
 
             return [
                 'task' => $task->value,
                 'provider' => $first?->provider ?? ($credentials->isEmpty() && $platformServes ? 'platform' : null),
+                'label' => $first?->label,
+                'count' => $serving->count(),
             ];
         }, AiTask::cases());
     }

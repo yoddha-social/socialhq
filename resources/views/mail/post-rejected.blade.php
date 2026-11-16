@@ -67,6 +67,14 @@ $direction = Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr';
                 <p style="margin: 0; line-height: 24px">
                   {{ __('mail.post_rejected.body', ['name' => $approverName, 'workspace' => $workspaceName]) }}
                 </p>
+                @if(filled($reason))
+                <div style="margin-top: 16px; border-radius: 8px; background-color: #f7f6f3; padding: 16px">
+                  <p style="margin: 0; font-size: 14px; font-weight: 600; color: #292928">
+                    {{ __('mail.post_rejected.reason') }}
+                  </p>
+                  <p style="white-space: pre-line; margin: 8px 0 0; line-height: 24px; color: #292928">{{ $reason }}</p>
+                </div>
+                @endif
                 @if($channel)
                 <p style="margin: 16px 0 0; font-size: 14px; font-weight: 600; color: #292928">
                   {{ __('mail.post_rejected.channel') }}

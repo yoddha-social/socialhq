@@ -20,7 +20,6 @@ import {
 } from '@tabler/icons-vue';
 import { type Component, computed, inject, ref, watch } from 'vue';
 
-import { reject as rejectPostRoute } from '@/actions/App/Http/Controllers/App/PostApprovalController';
 import { edit as editPostRoute } from '@/actions/App/Http/Controllers/App/PostController';
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import MediaLightbox from '@/components/media/MediaLightbox.vue';
@@ -36,6 +35,7 @@ import PostFailurePopover from '@/components/publish/PostFailurePopover.vue';
 import PostMetricsBand from '@/components/publish/PostMetricsBand.vue';
 import PostRecurrenceDialog from '@/components/publish/PostRecurrenceDialog.vue';
 import PostRecurrenceSummary from '@/components/publish/PostRecurrenceSummary.vue';
+import RejectPostButton from '@/components/socialhq/approvals/RejectPostButton.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -61,7 +61,6 @@ import {
     editPostCardUrlKey,
     schedulePostCard,
     sharePostCardLink,
-    toastFirstError,
 } from '@/composables/usePostCardActions';
 import { getPostStatusConfig } from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
@@ -292,14 +291,6 @@ const hasFailure = computed(() => props.post.status === PostStatus.Failed);
 const APPROVAL_RELOAD = {
     only: ['posts', 'counts', 'queue', 'hasData'],
     reset: ['posts'],
-};
-
-const rejectPost = (): void => {
-    router.put(
-        rejectPostRoute.url(props.post.id),
-        {},
-        { ...APPROVAL_RELOAD, preserveScroll: true, onError: toastFirstError },
-    );
 };
 
 const revertRequest = (): void => {
@@ -780,15 +771,10 @@ defineExpose({ openDetails });
                         </Tooltip>
                         <template v-if="isPending && canApprove">
                             <ApprovePostButton :post="post" :test-key="post.id" />
-                            <Button
-                                variant="outline"
-                                class="text-destructive-text"
-                                :data-testid="`post-reject-${post.id}`"
-                                @click="rejectPost"
-                            >
-                                <IconX class="size-4" />
-                                {{ $t('posts.approvals.reject') }}
-                            </Button>
+                            <RejectPostButton
+                                :post-id="post.id"
+                                :test-key="post.id"
+                            />
                         </template>
                         <Button
                             v-else-if="isPending"

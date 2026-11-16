@@ -48,7 +48,7 @@ class SocialController extends Controller
 
     protected function ensurePlatformEnabled(): void
     {
-        if (! $this->platform->isEnabled()) {
+        if (! $this->platform->canStartConnect()) {
             abort(SymfonyResponse::HTTP_FORBIDDEN, 'This platform is currently unavailable.');
         }
     }

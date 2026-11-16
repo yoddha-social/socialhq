@@ -112,6 +112,8 @@ return [
         'confirm_password' => '비밀번호 확인',
         'confirm_placeholder' => '비밀번호 확인',
         'submit' => '비밀번호 재설정',
+        'mismatch' => '두 비밀번호가 일치하지 않습니다.',
+        'send_new_link' => '새 링크 보내기',
     ],
 
     'verify_email' => [

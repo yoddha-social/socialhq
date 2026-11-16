@@ -204,7 +204,7 @@ return [
         ],
 
         'pending' => [
-            'title' => 'Bekleyen Davetler',
+            'title' => 'Davet henüz kabul edilmedi',
             'description' => 'Kabul edilmeyi bekleyen davetler',
             'empty' => 'Bekleyen davet yok',
         ],
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => 'Bu e-posta için zaten bir davet var.',
-            'email_belongs_to_account' => 'Bu e-posta zaten başka bir Social HQ hesabına ait. Bunun yerine özel bir iş e-postası isteyin.',
+            'already_member' => 'Bu kişi zaten bu çalışma alanının bir üyesi.',
             'cannot_remove_self' => 'Kendinizi kaldıramazsınız.',
             'cannot_remove_owner' => 'Hesap sahibini kaldıramazsınız.',
             'cannot_change_own_access' => 'Kendi erişiminizi değiştiremezsiniz.',
@@ -261,6 +261,7 @@ return [
             'member_removed' => 'Üye başarıyla kaldırıldı.',
             'wrong_email' => 'Bu davet farklı bir e-posta adresi için.',
             'already_member' => 'Zaten bu çalışma alanının bir üyesisiniz.',
+            'other_account' => 'Hesabın başka bir şirkete ait olduğu için bu çalışma alanına katılamaz. Seni davet eden kişiden başka bir iş e-postasını davet etmesini iste.',
             'invite_accepted' => 'Hoş geldiniz! Artık çalışma alanının bir üyesisiniz.',
             'invite_workspace_gone' => 'Çalışma alanı silindiği için bu davet artık geçerli değil.',
             'invite_declined' => 'Davet reddedildi.',

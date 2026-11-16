@@ -7,8 +7,6 @@ return [
     'layout' => [
         'tagline' => ':brandチームより送信',
         'manage_notifications' => '通知設定',
-        'signoff' => 'よろしくお願いいたします。',
-        'team' => 'Social HQ チーム',
     ],
 
     'account_disconnected' => [
@@ -96,6 +94,7 @@ return [
         'heading' => '投稿は承認されませんでした',
         'body' => ':nameさんがワークスペース「:workspace」のあなたの投稿を下書きに戻しました。',
         'channel' => 'チャンネル',
+        'reason' => '理由',
         'button' => '下書きで見る',
     ],
 
@@ -152,6 +151,7 @@ return [
         'preview' => ':workspace への招待が届いています',
         'heading' => '招待が届いています',
         'intro' => 'ワークスペース <strong>:workspace</strong> での共同作業に招待されました。',
+        'intro_from' => '<strong>:inviter</strong> さんから、ワークスペース <strong>:workspace</strong> での共同作業に招待されました。',
         'role' => '<strong>:role</strong> として招待されました。',
         'roles' => ['admin' => '管理者', 'member' => 'メンバー', 'needs_approval' => 'メンバー（投稿は承認が必要）'],
         'button' => '招待を承認',
@@ -205,6 +205,20 @@ return [
         'note' => 'Their note: :note',
         'button' => 'See your request',
         'ask_again' => '{1} You can ask again after an hour.|[0,*] You can ask again after :hours hours.',
+    ],
+
+    'socialhq_account_exists' => [
+        'subject' => 'You already have a :app account',
+        'title' => 'You already have an account',
+        'preview' => 'Someone tried to create a :app account with your email address.',
+        'heading' => 'You already have a :app account',
+        'greeting' => 'Hi :name,',
+        'body' => 'Someone just tried to create a :app account with this email address (:email). You already have one, so nothing new was created.',
+        'forgot' => 'If you forgot your password, set a new one with this link. It works for 60 minutes.',
+        'button' => 'Reset your password',
+        'log_in' => 'Remember your password?',
+        'log_in_link' => 'Log in',
+        'not_you' => 'If it wasn\'t you, ignore this email: your account hasn\'t changed.',
     ],
 
 ];

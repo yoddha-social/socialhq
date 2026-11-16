@@ -112,6 +112,8 @@ return [
         'confirm_password' => 'Parolayı Onayla',
         'confirm_placeholder' => 'Parolayı onayla',
         'submit' => 'Parolayı sıfırla',
+        'mismatch' => 'İki parola eşleşmiyor.',
+        'send_new_link' => 'Yeni bağlantı gönder',
     ],
 
     'verify_email' => [

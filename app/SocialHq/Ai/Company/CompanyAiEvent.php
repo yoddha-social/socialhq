@@ -29,6 +29,8 @@ class CompanyAiEvent extends Model
 
     public const PROVIDER_MOVED = 'provider_moved';
 
+    public const PROVIDER_CHANGED = 'provider_changed';
+
     public const BUDGET_CHANGED = 'budget_changed';
 
     public const GATEWAY_CREATED = 'gateway_created';

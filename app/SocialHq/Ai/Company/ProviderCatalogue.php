@@ -8,15 +8,15 @@ use App\SocialHq\Ai\AiTask;
 use SensitiveParameter;
 
 /**
- * One provider a company may bring a key for, from
- * config('socialhq.company_ai.providers'): which tasks it serves, the
- * LiteLLM model of each, the fields its key needs and the checkbox the
- * owner must tick first.
+ * One provider a company may bring keys for, from
+ * config('socialhq.company_ai.providers'): the plans (tiers) a key may be
+ * on, per plan the tasks it serves with the LiteLLM model of each and the
+ * checkbox the owner must tick first, and the fields its key needs.
  */
 final readonly class ProviderCatalogue
 {
     /** Confirmations an owner must tick before the key is sent anywhere. */
-    public const CONFIRMATIONS = ['training_off', 'billing_on'];
+    public const CONFIRMATIONS = ['training_off', 'billing_on', 'may_train', 'openrouter_privacy'];
 
     /**
      * @param  array<string, mixed>  $config
@@ -55,9 +55,24 @@ final readonly class ProviderCatalogue
         return (string) data_get($this->config, 'litellm_provider', $this->id);
     }
 
-    public function confirmation(): ?string
+    /**
+     * The plans a key for this provider may be on, free first.
+     *
+     * @return list<CredentialTier>
+     */
+    public function tiers(): array
     {
-        $confirm = data_get($this->config, 'confirm');
+        return array_values(array_filter(CredentialTier::cases(), fn (CredentialTier $tier): bool => $this->offers($tier)));
+    }
+
+    public function offers(CredentialTier $tier): bool
+    {
+        return is_array(data_get($this->config, "tiers.{$tier->value}"));
+    }
+
+    public function confirmation(CredentialTier $tier): ?string
+    {
+        $confirm = data_get($this->config, "tiers.{$tier->value}.confirm");
 
         return in_array($confirm, self::CONFIRMATIONS, true) ? $confirm : null;
     }
@@ -67,24 +82,57 @@ final readonly class ProviderCatalogue
         return in_array('account_id', (array) data_get($this->config, 'fields', []), true);
     }
 
-    public function serves(AiTask $task): bool
+    public function serves(AiTask $task, CredentialTier $tier): bool
     {
-        return filled($this->model($task));
+        return filled($this->model($task, $tier));
     }
 
     /**
      * @return list<AiTask>
      */
-    public function tasks(): array
+    public function tasks(CredentialTier $tier): array
     {
-        return array_values(array_filter(AiTask::cases(), fn (AiTask $task): bool => $this->serves($task)));
+        return array_values(array_filter(AiTask::cases(), fn (AiTask $task): bool => $this->serves($task, $tier)));
     }
 
-    public function model(AiTask $task): ?string
+    /**
+     * Every task any plan of this provider serves: the only tasks a key of
+     * it can have deployments for, whatever plan it was on before.
+     *
+     * @return list<AiTask>
+     */
+    public function tasksOfAnyTier(): array
     {
-        $model = data_get($this->config, "tasks.{$task->value}.model");
+        return array_values(array_filter(AiTask::cases(), fn (AiTask $task): bool => array_any(CredentialTier::cases(), fn (CredentialTier $tier): bool => $this->serves($task, $tier))));
+    }
+
+    /**
+     * The catalogue's LiteLLM model for a task on a plan ("groq/openai/gpt-oss-120b").
+     */
+    public function model(AiTask $task, CredentialTier $tier): ?string
+    {
+        $model = data_get($this->config, "tiers.{$tier->value}.tasks.{$task->value}.model");
 
         return is_string($model) && $model !== '' ? $model : null;
+    }
+
+    /**
+     * A model id as the provider names it, without LiteLLM's provider
+     * prefix: what the owner sees and types.
+     */
+    public function shortModel(string $model): string
+    {
+        $prefix = "{$this->litellmProvider()}/";
+
+        return str_starts_with($model, $prefix) ? substr($model, strlen($prefix)) : $model;
+    }
+
+    /**
+     * The LiteLLM model for a model id the owner typed.
+     */
+    public function fullModel(string $model): string
+    {
+        return "{$this->litellmProvider()}/{$this->shortModel($model)}";
     }
 
     /**
@@ -106,33 +154,29 @@ final readonly class ProviderCatalogue
     }
 
     /**
-     * The litellm_params of the deployment serving one task.
+     * The litellm_params of the deployment serving one task. A free plan's
+     * calls are priced at zero, so they never use up the company's budget.
      *
      * @return array<string, mixed>
      */
-    public function deploymentParams(AiTask $task, string $credentialName, int $order): array
+    public function deploymentParams(AiTask $task, CredentialTier $tier, string $model, string $credentialName, int $order): array
     {
+        $free = $tier === CredentialTier::Free ? ['input_cost_per_token' => 0, 'output_cost_per_token' => 0] : [];
+
         return array_filter([
             ...(array) data_get($this->config, 'params', []),
-            'model' => $this->model($task),
+            ...$free,
+            'model' => $model,
             'litellm_credential_name' => $credentialName,
             'order' => $order,
-            'timeout' => data_get($this->config, "tasks.{$task->value}.timeout"),
+            'timeout' => data_get($this->config, "tiers.{$tier->value}.tasks.{$task->value}.timeout"),
         ], fn (mixed $value): bool => $value !== null);
-    }
-
-    /**
-     * The model a key test calls: the write model, which every provider has.
-     */
-    public function testModel(): string
-    {
-        return (string) ($this->model(AiTask::Write) ?? $this->model($this->tasks()[0]));
     }
 
     /**
      * For the Settings › AI page. No secrets here: the catalogue has none.
      *
-     * @return array{id: string, logo: string, consoleUrl: string, steps: int, confirmation: string|null, needsAccountId: bool, tasks: list<string>}
+     * @return array{id: string, logo: string, consoleUrl: string, steps: int, needsAccountId: bool, tiers: list<array{tier: string, confirmation: string|null, tasks: list<array{task: string, model: string}>}>}
      */
     public function toProps(): array
     {
@@ -141,9 +185,15 @@ final readonly class ProviderCatalogue
             'logo' => (string) data_get($this->config, 'logo', $this->id),
             'consoleUrl' => (string) data_get($this->config, 'console_url', ''),
             'steps' => (int) data_get($this->config, 'steps', 0),
-            'confirmation' => $this->confirmation(),
             'needsAccountId' => $this->needsAccountId(),
-            'tasks' => array_map(fn (AiTask $task): string => $task->value, $this->tasks()),
+            'tiers' => array_map(fn (CredentialTier $tier): array => [
+                'tier' => $tier->value,
+                'confirmation' => $this->confirmation($tier),
+                'tasks' => array_map(fn (AiTask $task): array => [
+                    'task' => $task->value,
+                    'model' => $this->shortModel((string) $this->model($task, $tier)),
+                ], $this->tasks($tier)),
+            ], $this->tiers()),
         ];
     }
 }

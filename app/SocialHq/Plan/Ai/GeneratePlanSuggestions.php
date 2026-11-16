@@ -6,6 +6,7 @@ namespace App\SocialHq\Plan\Ai;
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\User\Locale;
+use App\Enums\User\WeekStart;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\SocialHq\Ai\AiTenant;
@@ -113,7 +114,7 @@ class GeneratePlanSuggestions implements ShouldQueue
             }
 
             $options = PlannerOptions::forPlan($plan, PlanOptions::profile($plan->workspace));
-            [$accepted, $rejections] = $this->check($plan, $options, array_slice(array_values($items), 0, ContentPlanner::MAX_ITEMS), $today, $user->timezone);
+            [$accepted, $rejections] = $this->check($plan, $options, array_slice(array_values($items), 0, ContentPlanner::MAX_ITEMS), $today, $user->timezone, $user->week_starts_on ?? WeekStart::DEFAULT);
 
             // Only untouched suggestions inside the run's days are replaced; one with copy or a brief
             // keeps its work (starting work accepts it, but older rows may predate that).
@@ -157,7 +158,7 @@ class GeneratePlanSuggestions implements ShouldQueue
      * @param  list<mixed>  $items
      * @return array{0: list<array<string, mixed>>, 1: list<array{title: string, date: string, channel: string, reason: string}>}
      */
-    private function check(ContentPlan $plan, PlannerOptions $options, array $items, CarbonImmutable $today, ?string $userZone): array
+    private function check(ContentPlan $plan, PlannerOptions $options, array $items, CarbonImmutable $today, ?string $userZone, WeekStart $weekStart): array
     {
         $month = CarbonImmutable::createFromFormat('!Y-m-d', $plan->month->toDateString(), 'UTC');
         $end = PlanMonth::end($month);
@@ -186,6 +187,11 @@ class GeneratePlanSuggestions implements ShouldQueue
         /** @var array<string, true> $titles titles already in the month, compared without case */
         $titles = $planned->mapWithKeys(fn (PlanItem $item): array => [self::titleKey($item->title) => true])->all();
 
+        /** @var array<string, int> $weekly items per channel and calendar week (the requester's week start), for the cadence */
+        $weekly = $planned
+            ->countBy(fn (PlanItem $item): string => self::weekSlot($item->social_account_id, CarbonImmutable::parse($item->scheduled_on), $weekStart))
+            ->all();
+
         $accepted = [];
         $rejections = [];
 
@@ -204,6 +210,8 @@ class GeneratePlanSuggestions implements ShouldQueue
             $confirmed = $matches?->filter(fn (CalendarEvent $candidate): bool => $candidate->isVerified());
             $event = $date === null ? null : $confirmed?->first(fn (CalendarEvent $candidate): bool => self::fitsEvent($date, $candidate));
             $slot = $channel === null || $date === null ? null : "{$channel->id}|{$date->toDateString()}";
+            $weekSlot = $channel === null || $date === null ? null : self::weekSlot($channel->id, $date, $weekStart);
+            $perWeek = $channel === null ? null : data_get($cadence, $channel->id);
 
             $reason = match (true) {
                 $title === '' => 'missing_title',
@@ -219,6 +227,7 @@ class GeneratePlanSuggestions implements ShouldQueue
                 $eventKey !== '' && $event === null => 'event_date_mismatch',
                 isset($titles[self::titleKey($title)]) => 'duplicate_title',
                 isset($taken[$slot]) => 'duplicate_day',
+                is_int($perWeek) && data_get($weekly, $weekSlot, 0) >= $perWeek => 'over_cadence',
                 default => null,
             };
 
@@ -234,9 +243,15 @@ class GeneratePlanSuggestions implements ShouldQueue
             }
 
             $taken[$slot] = true;
+            $weekly[$weekSlot] = data_get($weekly, $weekSlot, 0) + 1;
             $titles[self::titleKey($title)] = true;
             $pillar = trim((string) data_get($item, 'pillar'));
             $time = SuggestedTime::normalize(data_get($item, 'suggested_time'));
+
+            // A time already gone today (in the audience's zone) is dropped, not the item: the team picks a new one.
+            if ($time !== null && SuggestedTime::isZone($zone) && SuggestedTime::at($date->toDateString(), $time, $zone)->lessThanOrEqualTo(now())) {
+                $time = null;
+            }
 
             $accepted[] = [
                 'workspace_id' => $workspace->id,
@@ -263,11 +278,19 @@ class GeneratePlanSuggestions implements ShouldQueue
     }
 
     /**
+     * One channel's calendar week, starting on the requester's first day of the week.
+     */
+    private static function weekSlot(?string $channelId, CarbonImmutable $date, WeekStart $weekStart): string
+    {
+        return "{$channelId}|{$date->startOfWeek($weekStart->firstDay())->toDateString()}";
+    }
+
+    /**
      * Suggestions a new draft replaces: untouched ones (no copy, no brief) inside the run's days.
      *
      * @return HasMany<PlanItem, ContentPlan>
      */
-    private static function replaceableSuggestions(ContentPlan $plan, PlannerOptions $options): HasMany
+    public static function replaceableSuggestions(ContentPlan $plan, PlannerOptions $options): HasMany
     {
         return $plan->items()
             ->where('status', ItemStatus::Suggested)

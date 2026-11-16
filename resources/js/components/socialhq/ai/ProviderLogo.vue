@@ -6,18 +6,26 @@ import Gemini from '@thesvg/vue/gemini';
 import Groq from '@thesvg/vue/groq';
 import Mistral from '@thesvg/vue/mistral';
 import OpenAi from '@thesvg/vue/openai';
+import OpenRouter from '@thesvg/vue/openrouter';
 import { computed, type Component } from 'vue';
 
 const props = defineProps<{ logo: string }>();
 
-/** One-color logos follow the theme; the others keep their own colors. */
-const logos: Record<string, { component: Component; themed: boolean }> = {
+/**
+ * One-color logos follow the theme; the others keep their own colors.
+ * OpenRouter's is drawn with white strokes, so those follow it too.
+ */
+const logos: Record<
+    string,
+    { component: Component; themed: boolean; stroked?: boolean }
+> = {
     anthropic: { component: Anthropic, themed: true },
     cloudflare: { component: Cloudflare, themed: false },
     gemini: { component: Gemini, themed: false },
     groq: { component: Groq, themed: false },
     mistral: { component: Mistral, themed: false },
     openai: { component: OpenAi, themed: true },
+    openrouter: { component: OpenRouter, themed: true, stroked: true },
 };
 
 const entry = computed(() => logos[props.logo] ?? null);
@@ -32,7 +40,10 @@ const entry = computed(() => logos[props.logo] ?? null);
             :is="entry.component"
             v-if="entry"
             class="size-6"
-            :class="{ 'text-neutral-900 [&_path]:fill-current': entry.themed }"
+            :class="{
+                'text-neutral-900 [&_path]:fill-current': entry.themed,
+                '[&_path]:stroke-current': entry.stroked,
+            }"
         />
         <IconSparkles v-else class="size-5 text-muted-foreground" />
     </span>

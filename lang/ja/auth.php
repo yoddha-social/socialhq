@@ -112,6 +112,8 @@ return [
         'confirm_password' => 'パスワードの確認',
         'confirm_placeholder' => 'パスワードを確認',
         'submit' => 'パスワードを再設定',
+        'mismatch' => '2つのパスワードが一致しません。',
+        'send_new_link' => '新しいリンクを送信',
     ],
 
     'verify_email' => [

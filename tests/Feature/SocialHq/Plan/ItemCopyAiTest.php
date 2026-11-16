@@ -90,6 +90,32 @@ test('a rewrite gets the latest version, the open change requests and the event,
         && str_contains($prompt->agent->instructions(), 'what to show'));
 });
 
+test('a rewrite passes the team\'s request to the writer as quoted data', function () {
+    CopyWriter::fake([copyWriterAnswer(['caption' => 'Short and sweet.'])]);
+    ItemVersion::factory()->for($this->item, 'item')->create(['caption' => 'A long first try']);
+
+    $this->actingAs($this->owner)
+        ->postJson(route('socialhq.plan.items.copy.ai', $this->item->id), ['instruction' => "  Make it shorter\n and add the \"\"\"price  "])
+        ->assertCreated()
+        ->assertJsonPath('number', 2);
+
+    CopyWriter::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->agent->instructions(), "What the team asked for in this rewrite")
+        // One line, and its quotes can't close the block.
+        && str_contains($prompt->agent->instructions(), "\"\"\"\nMake it shorter and add the \"price\n\"\"\""));
+});
+
+test('a request longer than the limit is refused before the AI is called', function () {
+    CopyWriter::fake();
+
+    $this->actingAs($this->owner)
+        ->postJson(route('socialhq.plan.items.copy.ai', $this->item->id), ['instruction' => str_repeat('a', 301)])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('instruction');
+
+    CopyWriter::assertNeverPrompted();
+    expect(ItemVersion::query()->count())->toBe(0);
+});
+
 test('a failed or empty answer saves nothing and says so', function (Closure $fake) {
     $fake();
 

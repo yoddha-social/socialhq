@@ -470,6 +470,29 @@ test('picking a day and typing a time schedules a custom date with the user time
     $page->assertNoJavaScriptErrors();
 });
 
+test('saving a draft keeps the date and time set in the composer', function () {
+    [$user, $workspace] = composerQueueWorkspace();
+    $channel = composerQueueChannel($workspace, composerQueueSchedule());
+    $user->update(['time_format' => TimeFormat::TwentyFourHour, 'timezone' => 'UTC']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.create'));
+    composerQueueOpenWith($page, $channel);
+    $page->fill("@composer-caption-{$channel->id}", 'Planned for later');
+    composerScheduleOpenPicker($page);
+    $day = composerSchedulePickFutureDay($page);
+    $page->fill('@composer-schedule-time-input', '1715')
+        ->click('@composer-schedule-done')
+        ->click('@composer-save-draft');
+    waitForComposerQueueClosed($page);
+
+    $post = Post::query()->where('workspace_id', $workspace->id)->sole();
+
+    expect($post->status)->toBe(PostStatus::Draft)
+        ->and($post->scheduled_at?->utc()->format('Y-m-d H:i'))->toBe("{$day} 17:15");
+    $page->assertNoJavaScriptErrors();
+});
+
 test('the picker calendar starts the week on the user preference', function (WeekStart $weekStart, string $firstWeekday, int $dayOfWeek) {
     [$user, $workspace] = composerQueueWorkspace();
     composerQueueChannel($workspace, composerQueueSchedule());

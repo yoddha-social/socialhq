@@ -5,16 +5,20 @@
     </x-heading>
 
     <p class="m-0 leading-6">
-      {!! __('mail.workspace_invite.intro', ['workspace' => e($workspaceName)]) !!}
+      @if(($inviterName ?? '') !== '')
+        {!! __('mail.workspace_invite.intro_from', ['inviter' => e($inviterName), 'workspace' => e($workspaceName)]) !!}
+      @else
+        {!! __('mail.workspace_invite.intro', ['workspace' => e($workspaceName)]) !!}
+      @endif
     </p>
 
     <p class="m-0 mt-4 leading-6">
       @if($isAdmin)
-        {!! __('mail.workspace_invite.role', ['role' => '<strong>'.e(__('mail.workspace_invite.roles.admin')).'</strong>']) !!}
+        {!! __('mail.workspace_invite.role', ['role' => e(__('mail.workspace_invite.roles.admin'))]) !!}
       @elseif($requiresApproval)
-        {!! __('mail.workspace_invite.role', ['role' => '<strong>'.e(__('mail.workspace_invite.roles.needs_approval')).'</strong>']) !!}
+        {!! __('mail.workspace_invite.role', ['role' => e(__('mail.workspace_invite.roles.needs_approval'))]) !!}
       @else
-        {!! __('mail.workspace_invite.role', ['role' => '<strong>'.e(__('mail.workspace_invite.roles.member')).'</strong>']) !!}
+        {!! __('mail.workspace_invite.role', ['role' => e(__('mail.workspace_invite.roles.member'))]) !!}
       @endif
     </p>
 

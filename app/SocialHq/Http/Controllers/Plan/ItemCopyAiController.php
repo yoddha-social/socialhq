@@ -7,29 +7,30 @@ namespace App\SocialHq\Http\Controllers\Plan;
 use App\Http\Controllers\Controller;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiTask;
+use App\SocialHq\Http\Requests\Plan\WriteItemCopyRequest;
 use App\SocialHq\Plan\Ai\WriteItemCopy;
 use App\SocialHq\Plan\PlanAccess;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Laravel\Ai\Exceptions\AiException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 /**
- * "Write with AI" / "Rewrite with AI": the copy comes back as a new version.
+ * "Write with AI" / "Rewrite with AI", with the team's optional request:
+ * the copy comes back as a new version.
  */
 class ItemCopyAiController extends Controller
 {
-    public function __invoke(Request $request, int $item): JsonResponse
+    public function __invoke(WriteItemCopyRequest $request, int $item): JsonResponse
     {
         $planItem = PlanAccess::item($request, $item);
 
         abort_unless(AiRouter::isAvailable(AiTask::Write), Response::HTTP_NOT_FOUND);
 
         try {
-            $version = WriteItemCopy::execute($planItem, $request->user());
+            $version = WriteItemCopy::execute($planItem, $request->user(), $request->validated('instruction'));
         } catch (AiException|RequestException|ConnectionException) {
             $version = null;
         } catch (Throwable $exception) {

@@ -24,8 +24,11 @@ import { settings as channelSettings } from '@/routes/app/channels';
 import { Platform } from '@/types/platform';
 import type { AvailablePlatform } from '@/types/social-account';
 
+/**
+ * Steps that ask before closing. Instagram's "How would you like to connect"
+ * chooser is not one: nothing has started until a way is picked (Social HQ).
+ */
 const IN_PROGRESS_NETWORKS: Partial<Record<ConnectChannelStep, string>> = {
-    instagram: Platform.Instagram,
     'instagram-facebook': Platform.Instagram,
     telegram: Platform.Telegram,
 };
@@ -121,7 +124,13 @@ const customize = (accountId: string): void => {
                 state.flow === 'goal'
                     ? 'gap-0 overflow-hidden p-0 outline-none sm:max-w-[800px]'
                     : [
-                          'flex flex-col gap-0 overflow-hidden px-0 pt-4 outline-none pb-0 max-sm:my-0 max-sm:h-dvh max-sm:max-w-full max-sm:rounded-none sm:my-6 sm:h-[min(700px,calc(100dvh-48px))] sm:max-w-[840px] sm:rounded-xl',
+                          'flex flex-col gap-0 overflow-hidden px-0 pt-4 outline-none pb-0 max-sm:my-0 max-sm:h-dvh max-sm:max-w-full max-sm:rounded-none sm:my-6 sm:max-w-[840px] sm:rounded-xl',
+                          // The network grid takes the height it needs, so a
+                          // server offering a few networks leaves no empty
+                          // block; the other steps keep a steady height.
+                          state.step === 'grid'
+                              ? 'sm:max-h-[min(700px,calc(100dvh-48px))]'
+                              : 'sm:h-[min(700px,calc(100dvh-48px))]',
                           state.step === 'grid' || state.step === 'details'
                               ? 'bg-muted pt-0 sm:border-8 sm:border-card sm:bg-card dark:sm:border-8 dark:sm:border-background dark:sm:bg-background'
                               : '',

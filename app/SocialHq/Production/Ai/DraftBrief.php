@@ -52,22 +52,41 @@ final class DraftBrief
             ], fn (mixed $value): bool => filled($value)),
         ], fn (mixed $value): bool => filled($value));
 
+        // What the brief is about: the item, and the caption it illustrates.
+        $brandKnowledge = BrandKnowledge::forPrompt($brief->workspace, collect([$item->title, $item->angle, $version?->caption])->filter()->implode("\n"));
+        $brandLook = BrandLook::promptFor($brief->workspace);
+
         // The brief's workspace decides whose AI it uses, whatever workspace the user has open.
         $response = AiTenant::run($brief->workspace, fn () => (new BriefWriter(
             language: $user->locale->promptLanguage(),
             context: $context,
-            // What the brief is about: the item, and the caption it illustrates.
-            brandKnowledge: BrandKnowledge::forPrompt($brief->workspace, collect([$item->title, $item->angle, $version?->caption])->filter()->implode("\n")),
+            brandKnowledge: $brandKnowledge,
             isVideo: $brief->kind === BriefKind::Video,
-            brandLook: BrandLook::promptFor($brief->workspace),
+            brandLook: $brandLook,
         ))->prompt('Draft the brief for this post.'));
+
+        $given = implode("\n", [json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $brandKnowledge, $brandLook]);
 
         $draft = [
             'on_screen_text' => Str::substr(trim((string) data_get($response, 'on_screen_text')), 0, 5000),
             'direction' => Str::substr(trim((string) data_get($response, 'direction')), 0, 10000),
-            'references' => Str::substr(trim((string) data_get($response, 'references')), 0, 5000),
+            'references' => Str::substr(self::givenLinks((string) data_get($response, 'references'), $given), 0, 5000),
         ];
 
         return $draft['on_screen_text'] === '' && $draft['direction'] === '' ? null : $draft;
+    }
+
+    /**
+     * The references the answer may keep: links, one per line, that appear in
+     * what the writer was given. An invented link or a described reference
+     * ("our anniversary post last year") is dropped.
+     */
+    public static function givenLinks(string $references, string $given): string
+    {
+        return collect(preg_split('/\R/u', $references) ?: [])
+            ->map(fn (string $line): string => trim($line, " \t-*•"))
+            ->filter(fn (string $line): bool => preg_match('~^https?://\S+$~i', $line) === 1 && str_contains($given, $line))
+            ->unique()
+            ->implode("\n");
     }
 }

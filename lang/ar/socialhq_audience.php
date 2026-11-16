@@ -11,9 +11,9 @@ return [
     'edit_label' => 'Edit where your audience is',
     'empty' => 'No places yet. Posting times follow your own time zone (:zone) until you add some.',
     'empty_member' => 'No places yet. Posting times follow your own time zone (:zone) until a workspace admin adds some.',
-    'main_help' => 'Posting times are written in :zone, the time zone of your largest audience.',
+    'main_help' => 'Posting times are written in :zone time, the time zone of your largest audience.',
     'share' => ':share%',
-    'total' => ':total% of your audience',
+    'total' => 'These places cover :total% of your audience.',
     'dialog' => [
         'title' => 'Where your audience is',
         'description' => 'Add the countries and cities your audience lives in, with roughly what share of it is there.',

@@ -52,8 +52,9 @@ test('a second invite differing only by case is refused', function () {
     expect(Invite::query()->count())->toBe(1);
 });
 
-test('an invite to a registered email in another case is refused', function () {
-    User::factory()->create(['email' => 'Bob@Acme.com']);
+test('an invite to a member registered in another case is refused', function () {
+    $member = User::factory()->create(['email' => 'Bob@Acme.com', 'account_id' => $this->account->id]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
 
     $this->actingAs($this->owner)->post(route('app.invites.store'), [
         'email' => 'bob@acme.com',

@@ -7,8 +7,6 @@ return [
     'layout' => [
         'tagline' => '由 :brand 团队发送',
         'manage_notifications' => '管理通知',
-        'signoff' => '祝好，',
-        'team' => 'Social HQ 团队',
     ],
 
     'account_disconnected' => [
@@ -96,6 +94,7 @@ return [
         'heading' => '你的帖子未获批准',
         'body' => ':name 已将你在工作区 :workspace 中的帖子退回草稿。',
         'channel' => '频道',
+        'reason' => '原因',
         'button' => '在草稿中查看',
     ],
 
@@ -152,6 +151,7 @@ return [
         'preview' => '你被邀请加入 :workspace',
         'heading' => '你收到一份邀请',
         'intro' => '你被邀请加入工作区 <strong>:workspace</strong> 一起协作。',
+        'intro_from' => '<strong>:inviter</strong> 邀请你加入工作区 <strong>:workspace</strong> 一起协作。',
         'role' => '你被邀请的角色是 <strong>:role</strong>。',
         'roles' => ['admin' => '管理员', 'member' => '成员', 'needs_approval' => '成员（帖子需要审批）'],
         'button' => '接受邀请',
@@ -205,6 +205,20 @@ return [
         'note' => 'Their note: :note',
         'button' => 'See your request',
         'ask_again' => '{1} You can ask again after an hour.|[0,*] You can ask again after :hours hours.',
+    ],
+
+    'socialhq_account_exists' => [
+        'subject' => 'You already have a :app account',
+        'title' => 'You already have an account',
+        'preview' => 'Someone tried to create a :app account with your email address.',
+        'heading' => 'You already have a :app account',
+        'greeting' => 'Hi :name,',
+        'body' => 'Someone just tried to create a :app account with this email address (:email). You already have one, so nothing new was created.',
+        'forgot' => 'If you forgot your password, set a new one with this link. It works for 60 minutes.',
+        'button' => 'Reset your password',
+        'log_in' => 'Remember your password?',
+        'log_in_link' => 'Log in',
+        'not_you' => 'If it wasn\'t you, ignore this email: your account hasn\'t changed.',
     ],
 
 ];

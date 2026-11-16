@@ -313,6 +313,7 @@ test('uploads are checked for size, row count, number of imports and type by con
     $upload(oldCalendarCsv([['Date'], [$date]], 'calendar.xlsx'))->assertUnprocessable()->assertJsonValidationErrors(['file' => 'isn\'t a CSV']);
     $upload(oldCalendarXlsx(['Sheet1' => [['Date'], [$date]]], 'calendar.csv'))->assertUnprocessable()->assertJsonValidationErrors(['file' => 'isn\'t a CSV']);
     $upload(UploadedFile::fake()->create('calendar.xls', 10, 'application/vnd.ms-excel'))->assertUnprocessable()->assertJsonValidationErrors('file');
+    $upload(UploadedFile::fake()->createWithContent('calendar.csv', ''))->assertUnprocessable()->assertJsonValidationErrors(['file' => 'This file is empty']);
 
     config(['socialhq.knowledge.calendars.max_imports' => 1]);
     CalendarImport::factory()->create(['workspace_id' => $this->workspace->id]);

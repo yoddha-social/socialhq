@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/AuthLayout.vue';
+import { clearFieldError } from '@/lib/formErrors';
 import { login } from '@/routes';
 import { email } from '@/routes/password';
 
@@ -27,10 +28,13 @@ defineProps<{
         <div class="flex flex-col gap-6">
             <Form
                 v-bind="email.form()"
-                v-slot="{ errors, processing }"
+                v-slot="{ errors, processing, clearErrors }"
                 class="flex flex-col gap-4"
             >
-                <div class="grid gap-2">
+                <div
+                    class="grid gap-2"
+                    @input="clearFieldError($event, clearErrors)"
+                >
                     <Label for="email">{{
                         $t('auth.forgot_password.email')
                     }}</Label>

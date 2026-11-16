@@ -18,11 +18,12 @@ const tabs: { key: PlanTab; href: () => string }[] = [
 </script>
 
 <template>
+    <!-- Below md the filters get their own row under the tabs, so they never cover them. -->
     <div
-        class="mx-4 flex min-w-0 shrink-0 items-center justify-between gap-x-4 shadow-[inset_0_-1px_0_var(--color-border-strong)] md:mx-8"
+        class="mx-4 flex min-w-0 shrink-0 flex-col gap-x-4 md:mx-8 md:flex-row md:items-center md:justify-between md:shadow-[inset_0_-1px_0_var(--color-border-strong)]"
     >
         <nav
-            class="flex min-w-0 gap-4 overflow-x-auto"
+            class="flex min-w-0 gap-4 overflow-x-auto max-md:shadow-[inset_0_-1px_0_var(--color-border-strong)]"
             :aria-label="$t('socialhq_plan.tabs.label')"
             data-testid="plan-tabs"
         >
@@ -42,7 +43,10 @@ const tabs: { key: PlanTab; href: () => string }[] = [
                 {{ $t(`socialhq_plan.tabs.${tab.key}`) }}
             </Link>
         </nav>
-        <div class="flex shrink-0 items-center gap-2 py-1">
+        <div
+            v-if="$slots.filters"
+            class="flex min-w-0 flex-wrap items-center gap-2 py-1 max-md:pt-2 md:shrink-0"
+        >
             <slot name="filters" />
         </div>
     </div>

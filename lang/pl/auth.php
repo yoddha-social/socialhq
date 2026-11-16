@@ -112,6 +112,8 @@ return [
         'confirm_password' => 'Potwierdź hasło',
         'confirm_placeholder' => 'Potwierdź hasło',
         'submit' => 'Zresetuj hasło',
+        'mismatch' => 'Hasła nie są takie same.',
+        'send_new_link' => 'Wyślij nowy link',
     ],
 
     'verify_email' => [

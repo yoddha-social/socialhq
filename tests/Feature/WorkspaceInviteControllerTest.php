@@ -88,7 +88,7 @@ test('store invite creates invite and sends email', function () {
     Mail::assertQueued(WorkspaceInviteMail::class);
 });
 
-test('store invite blocks an email that already belongs to a registered user', function () {
+test('store invite sends an invite to an email with an account elsewhere, without saying so', function () {
     User::factory()->create(['email' => 'existing@example.com']);
 
     $response = $this->actingAs($this->user)->post(route('app.invites.store'), [
@@ -96,9 +96,27 @@ test('store invite blocks an email that already belongs to a registered user', f
         ...membershipPivot('member'),
     ]);
 
-    $response->assertSessionHasErrors('email');
-    $this->assertDatabaseMissing('invites', ['email' => 'existing@example.com']);
-    Mail::assertNothingQueued();
+    $response->assertSessionHasNoErrors()->assertSessionHas('flash.banner', __('settings.members.flash.invite_sent'));
+    $this->assertDatabaseHas('invites', ['email' => 'existing@example.com']);
+    Mail::assertQueued(WorkspaceInviteMail::class);
+});
+
+test('store invite to your own email says you are already a member', function () {
+    $this->actingAs($this->user)->post(route('app.invites.store'), [
+        'email' => strtoupper($this->user->email),
+        ...membershipPivot('member'),
+    ])->assertSessionHasErrors(['email' => __('settings.members.flash.already_member')]);
+
+    $this->assertDatabaseCount('invites', 0);
+});
+
+test('store invite refuses an email without a dot in its domain', function () {
+    $this->actingAs($this->user)->post(route('app.invites.store'), [
+        'email' => 'newmember@example',
+        ...membershipPivot('member'),
+    ])->assertSessionHasErrors('email');
+
+    $this->assertDatabaseCount('invites', 0);
 });
 
 test('store invite requires both access flags', function () {
@@ -162,7 +180,7 @@ test('store invite fails if user is already member', function () {
         ...membershipPivot('member'),
     ]);
 
-    $response->assertSessionHasErrors('email');
+    $response->assertSessionHasErrors(['email' => __('settings.members.errors.already_member')]);
 });
 
 // Destroy invite tests

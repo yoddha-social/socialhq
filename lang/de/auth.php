@@ -112,6 +112,8 @@ return [
         'confirm_password' => 'Passwort bestätigen',
         'confirm_placeholder' => 'Passwort bestätigen',
         'submit' => 'Passwort zurücksetzen',
+        'mismatch' => 'Die beiden Passwörter stimmen nicht überein.',
+        'send_new_link' => 'Neuen Link senden',
     ],
 
     'verify_email' => [

@@ -6,14 +6,13 @@ import {
 } from '@tabler/icons-vue';
 import { computed, ref, watch } from 'vue';
 
+import { localizedDay } from '@/components/socialhq/localizedDay';
 import { Button } from '@/components/ui/button';
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import dayjs from '@/dayjs';
-import { activeLocale } from '@/language';
 
 const props = defineProps<{
     month: string;
@@ -24,10 +23,7 @@ const emit = defineEmits<{
     go: [month: string];
 }>();
 
-const localized = (value: dayjs.ConfigType): dayjs.Dayjs =>
-    dayjs(value).locale(activeLocale.value.toLowerCase());
-
-const current = computed(() => localized(`${props.month}-01`));
+const current = computed(() => localizedDay(`${props.month}-01`));
 const todayMonth = computed(() => props.today.slice(0, 7));
 
 const title = computed(() => current.value.format('MMMM YYYY'));
@@ -43,7 +39,7 @@ watch(pickerOpen, (isOpen) => {
 
 const monthsOfPickerYear = computed(() =>
     Array.from({ length: 12 }, (_, index) => {
-        const month = localized(`${pickerYear.value}-01-01`).add(
+        const month = localizedDay(`${pickerYear.value}-01-01`).add(
             index,
             'month',
         );

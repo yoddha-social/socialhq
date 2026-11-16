@@ -23,13 +23,16 @@ export const wordDiff = (before: string, after: string): DiffPart[] => {
         ].filter((part) => part.text !== '') as DiffPart[];
     }
 
+    // Compared without their trailing whitespace, trimmed once up front.
+    const wordsA = a.map((token) => token.trim());
+    const wordsB = b.map((token) => token.trim());
     const width = b.length + 1;
     const table = new Uint32Array((a.length + 1) * width);
 
     for (let i = a.length - 1; i >= 0; i--) {
         for (let j = b.length - 1; j >= 0; j--) {
             table[i * width + j] =
-                a[i].trim() === b[j].trim()
+                wordsA[i] === wordsB[j]
                     ? table[(i + 1) * width + j + 1] + 1
                     : Math.max(
                           table[(i + 1) * width + j],
@@ -53,7 +56,7 @@ export const wordDiff = (before: string, after: string): DiffPart[] => {
     let j = 0;
 
     while (i < a.length && j < b.length) {
-        if (a[i].trim() === b[j].trim()) {
+        if (wordsA[i] === wordsB[j]) {
             push(b[j], 'same');
             i++;
             j++;

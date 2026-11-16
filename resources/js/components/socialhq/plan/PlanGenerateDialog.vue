@@ -5,6 +5,7 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
+import { localizedDay } from '@/components/socialhq/localizedDay';
 import type {
     PlanAudience,
     PlanGenerateOptions,
@@ -25,8 +26,6 @@ import {
 } from '@/components/ui/native-select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import dayjs from '@/dayjs';
-import { activeLocale } from '@/language';
 import { generate } from '@/routes/socialhq/plan';
 
 type SourceSwitch = 'old_calendars' | 'past_posts' | 'audience_events';
@@ -59,9 +58,7 @@ const generateError = computed(
 );
 
 const days = computed(() => {
-    const start = dayjs(`${props.month}-01`).locale(
-        activeLocale.value.toLowerCase(),
-    );
+    const start = localizedDay(`${props.month}-01`);
 
     return Array.from({ length: start.daysInMonth() }, (_, index) => {
         const day = start.add(index, 'day');

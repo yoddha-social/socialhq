@@ -80,10 +80,15 @@ export interface PlanOwner {
     photo_url: string | null;
 }
 
+/** PlanAccess::abilities(), as every plan page gets them. */
 export interface PlanAbilities {
     canWork: boolean;
     canApprove: boolean;
     canManageBrand: boolean;
+}
+
+/** The month page adds whether "Generate with AI" shows (PlanPage). */
+export interface PlanMonthAbilities extends PlanAbilities {
     canGenerate: boolean;
 }
 

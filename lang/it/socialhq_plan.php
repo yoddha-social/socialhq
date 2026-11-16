@@ -169,6 +169,7 @@ return [
         'cancel' => 'Cancel',
         'add' => 'Add item',
         'save' => 'Save changes',
+        'item_gone' => 'This item is no longer in the plan. New AI suggestions may have replaced it, or someone deleted it.',
     ],
     'delete' => [
         'title' => 'Delete this item?',

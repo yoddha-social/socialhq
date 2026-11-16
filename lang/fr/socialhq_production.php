@@ -5,8 +5,6 @@ declare(strict_types=1);
 // Social HQ copy, English only: bin/socialhq-sync-lang copies it to the other locales.
 
 return [
-    'title' => 'Production',
-
     'item' => [
         'back' => 'Back to :month',
         'no_channel' => 'No channel',
@@ -79,7 +77,6 @@ return [
             'by' => ':name, :time',
             'view' => 'View',
             'compare' => 'Compare',
-            'compare_title' => 'Compare versions',
             'compare_with' => 'Compare with',
             'use' => 'Copy into editor',
             'close' => 'Close',
@@ -161,6 +158,8 @@ return [
         'download' => 'Download',
         'uploaded_by' => ':name, :time',
         'upload_failed' => 'Couldn\'t upload :name. Try again.',
+        'upload_too_large' => ':name is larger than uploads allow. Upload a smaller or compressed file.',
+        'upload_rate_limited' => 'You\'ve uploaded many files in a short time. Wait a minute, then upload the rest.',
         'errors' => [
             'type' => 'This file type isn\'t accepted. Upload an image, an MP4 or MOV video, or a PDF.',
             'not_accepting' => 'Uploads are closed while this round is in review, and once the creative is approved.',

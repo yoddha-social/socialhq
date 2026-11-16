@@ -4,11 +4,11 @@ import { IconSearch } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, ref } from 'vue';
 
+import { serverMessageOf } from '@/components/socialhq/requestErrors';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { extractErrorMessage } from '@/lib/httpError';
 import { formatFullNumber } from '@/lib/utils';
 import { search as searchKnowledge } from '@/routes/socialhq/brand';
 
@@ -71,12 +71,23 @@ const check = async (): Promise<void> => {
     failed.value = '';
 
     try {
-        result.value = await http.post(searchKnowledge.url());
+        const response = await http.post(searchKnowledge.url());
+
+        // A 422 (an empty or too long topic) resolves with nothing and fills
+        // http.errors instead of throwing.
+        if (response === undefined) {
+            result.value = null;
+            failed.value =
+                http.errors.focus ?? trans('socialhq_knowledge.check.failed');
+
+            return;
+        }
+
+        result.value = response;
     } catch (exception) {
         result.value = null;
         failed.value =
-            http.errors.focus ??
-            extractErrorMessage(exception) ??
+            serverMessageOf(exception) ??
             trans('socialhq_knowledge.check.failed');
     }
 };

@@ -9,10 +9,13 @@ import type {
     PlanAbilities,
     PlanItemDetail,
 } from '@/components/socialhq/plan/item/types';
+import {
+    firstErrorOf,
+    serverMessageOf,
+} from '@/components/socialhq/requestErrors';
 import { Button } from '@/components/ui/button';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import date from '@/date';
-import { extractErrorMessage } from '@/lib/httpError';
 import { store as preparePost } from '@/routes/socialhq/plan/items/post';
 import type { MediaItem } from '@/types/media';
 
@@ -55,8 +58,13 @@ const createPost = async (): Promise<void> => {
     try {
         const draft = await http.post(preparePost.url(props.item.id));
 
+        // A 422 resolves with nothing and fills http.errors.
         if (!draft) {
-            toast.error(trans('socialhq_production.post.failed'));
+            toast.error(
+                firstErrorOf(
+                    http.errors as Record<string, string | undefined>,
+                ) ?? trans('socialhq_production.post.failed'),
+            );
 
             return;
         }
@@ -76,7 +84,7 @@ const createPost = async (): Promise<void> => {
         router.reload({ only: ['item'] });
     } catch (exception) {
         toast.error(
-            extractErrorMessage(exception) ??
+            serverMessageOf(exception) ??
                 trans('socialhq_production.post.failed'),
         );
     }

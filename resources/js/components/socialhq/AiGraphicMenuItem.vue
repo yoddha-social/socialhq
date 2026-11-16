@@ -8,19 +8,10 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 // Social HQ: "Generate with AI" in the media menu, shown when an image
 // provider is set up and the user may create posts here.
 
-interface AiGraphicsProps {
-    aiGraphics?: { available?: boolean };
-}
-
 const emit = defineEmits<{ select: [] }>();
 
 const page = usePage();
-const available = computed(() =>
-    Boolean(
-        (page.props.socialhq as AiGraphicsProps | undefined)?.aiGraphics
-            ?.available,
-    ),
-);
+const available = computed(() => page.props.socialhq.aiGraphics.available);
 </script>
 
 <template>

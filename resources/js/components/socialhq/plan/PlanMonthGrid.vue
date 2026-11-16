@@ -2,6 +2,7 @@
 import { IconPlus } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
+import { localizedDay } from '@/components/socialhq/localizedDay';
 import PlanEventChip from '@/components/socialhq/plan/PlanEventChip.vue';
 import PlanItemCard from '@/components/socialhq/plan/PlanItemCard.vue';
 import type {
@@ -11,7 +12,6 @@ import type {
 } from '@/components/socialhq/plan/types';
 import { useAtLeastBreakpoint } from '@/composables/useBreakpoint';
 import dayjs from '@/dayjs';
-import { activeLocale } from '@/language';
 
 const props = defineProps<{
     month: string;
@@ -32,10 +32,7 @@ const emit = defineEmits<{
 
 const isDesktop = useAtLeastBreakpoint('md');
 
-const localized = (value: dayjs.ConfigType): dayjs.Dayjs =>
-    dayjs(value).locale(activeLocale.value.toLowerCase());
-
-const monthStart = computed(() => localized(`${props.month}-01`));
+const monthStart = computed(() => localizedDay(`${props.month}-01`));
 
 const dayKey = (day: dayjs.Dayjs): string => day.format('YYYY-MM-DD');
 

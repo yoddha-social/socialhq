@@ -35,19 +35,9 @@ import { index as accessRequestsIndex } from '@/routes/socialhq/access-requests'
 // Social HQ: the workspace (brand) switcher at the top of the sidebar.
 // Upstream keeps it in a submenu of the user menu, where it is hard to find.
 
-interface Workspace {
-    id: string;
-    name: string;
-    logo_url: string | null;
-}
-
 const page = usePage();
-const currentWorkspace = computed<Workspace | null>(
-    () => page.props.auth.currentWorkspace as Workspace | null,
-);
-const workspaces = computed<Workspace[]>(
-    () => (page.props.auth.workspaces as Workspace[] | undefined) ?? [],
-);
+const currentWorkspace = computed(() => page.props.auth.currentWorkspace);
+const workspaces = computed(() => page.props.auth.workspaces ?? []);
 
 const { canCreateWorkspace, canManageWorkspace } = useWorkspaceAbilities();
 const { createOrUpgrade } = useWorkspaceLimit(() => workspaces.value.length);

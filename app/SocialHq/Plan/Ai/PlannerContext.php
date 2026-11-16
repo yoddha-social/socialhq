@@ -65,7 +65,8 @@ final class PlannerContext
         $options = PlannerOptions::forPlan($plan, $profile);
         $channels = PlanOptions::channels($workspace);
         $cadence = PlanOptions::cadence($profile, $channels);
-        $events = PlanOptions::events($workspace, $options->from, $options->to, $options->eventCountries($profile));
+        // Events up to EVENT_LEAD_DAYS after the range too: their posts may go out in it.
+        $events = PlanOptions::events($workspace, $options->from, $options->to->addDays(GeneratePlanSuggestions::EVENT_LEAD_DAYS), $options->eventCountries($profile));
         $pillars = PlanOptions::pillars($profile);
 
         return [

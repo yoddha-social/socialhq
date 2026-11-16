@@ -27,7 +27,8 @@ final class PlanOptions
 
     public const MAX_PILLAR_LENGTH = 40;
 
-    public const MAX_POSTS_PER_WEEK = 14;
+    /** One post per channel per day at most (the planner refuses a second one), so 7 a week. */
+    public const MAX_POSTS_PER_WEEK = 7;
 
     /**
      * Channels a new item can go to: the workspace's connected accounts, in the sidebar's order.

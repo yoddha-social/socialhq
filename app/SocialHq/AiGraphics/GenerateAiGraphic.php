@@ -134,8 +134,7 @@ class GenerateAiGraphic implements ShouldQueue
             @unlink($path);
         }
 
-        $resultPath = "socialhq/ai-graphics/results/{$graphic->id}.{$extension}";
-        Storage::disk('local')->put($resultPath, $bytes);
+        $resultPath = AiGraphicResults::store($graphic, $bytes, $extension);
 
         $graphic->update(['status' => AiGraphic::GENERATED, 'media_id' => $media->id, 'result_path' => $resultPath]);
         MediaImportStatus::complete($graphic->import_id, $media);

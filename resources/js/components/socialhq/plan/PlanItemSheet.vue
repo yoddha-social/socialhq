@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { Link, router, useForm } from '@inertiajs/vue3';
 import { IconArrowBackUp, IconExternalLink, IconX } from '@tabler/icons-vue';
+import { trans } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
+import { toast } from 'vue-sonner';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import {
@@ -63,6 +65,14 @@ const open = defineModel<boolean>('open', { default: false });
 
 const confirmDelete = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 const statusProcessing = ref(false);
+
+/**
+ * The item the sheet was opened on (null for a new one). It stays fixed while the
+ * sheet is open, so an item that disappears (new AI suggestions replace it while
+ * generation runs, or someone deletes it) never turns the edit into an "Add".
+ */
+const editingId = ref<number | null>(null);
+const deleting = ref(false);
 
 const form = useForm({
     scheduled_on: '',
@@ -179,12 +189,14 @@ const pillarOptions = computed(() =>
         : props.pillars,
 );
 
-const isNew = computed(() => props.item === null);
+const isNew = computed(() => editingId.value === null);
 
 const fill = (): void => {
     form.clearErrors();
 
     const item = props.item;
+    editingId.value = item?.id ?? null;
+    deleting.value = false;
     const channelId = item?.social_account_id ?? props.channels[0]?.id ?? '';
 
     form.scheduled_on =
@@ -212,6 +224,21 @@ watch(open, (isOpen) => {
     }
 });
 
+watch(
+    () => props.item,
+    (item) => {
+        if (!open.value || editingId.value === null || item !== null) {
+            return;
+        }
+
+        open.value = false;
+
+        if (!deleting.value) {
+            toast.info(trans('socialhq_plan.sheet.item_gone'));
+        }
+    },
+);
+
 const onChannelChange = (): void => {
     if (!contentTypes.value.some((type) => type.value === form.content_type)) {
         form.content_type = contentTypes.value[0]?.value ?? '';
@@ -236,10 +263,10 @@ const save = (): void => {
         owner_id: data.owner_id || null,
     }));
 
-    if (props.item) {
-        form.put(updateItem.url(props.item.id), options);
-    } else {
+    if (editingId.value === null) {
         form.post(storeItem.url(props.month), options);
+    } else if (props.item) {
+        form.put(updateItem.url(props.item.id), options);
     }
 };
 
@@ -271,9 +298,40 @@ const toggleDropped = (): void => {
     );
 };
 
+/**
+ * Marks the delete so the sheet closes quietly when the item leaves the list.
+ * Settles in onFinish, after any outcome.
+ */
+const deleteItem = (url: string) => (): Promise<void> =>
+    new Promise((resolve, reject) => {
+        let deleted = false;
+        deleting.value = true;
+
+        router.delete(url, {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                deleted = true;
+            },
+            onError: toastFirstError,
+            onHttpException: toastRequestFailed,
+            onNetworkError: toastRequestFailed,
+            onFinish: () => {
+                if (deleted) {
+                    resolve();
+                } else {
+                    deleting.value = false;
+                    reject();
+                }
+            },
+        });
+    });
+
 const askDelete = (): void => {
     if (props.item) {
-        confirmDelete.value?.open({ url: destroyItem.url(props.item.id) });
+        const url = destroyItem.url(props.item.id);
+
+        confirmDelete.value?.open({ url, request: deleteItem(url) });
     }
 };
 </script>

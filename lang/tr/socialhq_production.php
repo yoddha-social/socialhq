@@ -5,8 +5,6 @@ declare(strict_types=1);
 // Social HQ copy, English only: bin/socialhq-sync-lang copies it to the other locales.
 
 return [
-    'title' => 'Production',
-
     'item' => [
         'back' => 'Back to :month',
         'no_channel' => 'No channel',
@@ -79,7 +77,6 @@ return [
             'by' => ':name, :time',
             'view' => 'View',
             'compare' => 'Compare',
-            'compare_title' => 'Compare versions',
             'compare_with' => 'Compare with',
             'use' => 'Copy into editor',
             'close' => 'Close',

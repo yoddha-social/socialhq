@@ -57,7 +57,6 @@ return [
         'brand_only' => 'This brand only',
     ],
     'until' => 'Until :date',
-    'source' => 'Source',
     'today' => 'Today',
 
     'actions' => [

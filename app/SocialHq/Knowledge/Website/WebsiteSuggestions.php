@@ -34,6 +34,9 @@ final class WebsiteSuggestions
     /** Longest value per profile field, as the profile form allows. */
     public const PROFILE_LIMITS = ['about' => 2000, 'audience' => 1000, 'voice' => 1000];
 
+    /** The brand look's text fields, as long as UpdateBrandLookRequest allows. */
+    public const LOOK_LIMITS = ['heading_font' => 80, 'body_font' => 80, 'style_notes' => 2000];
+
     /**
      * @param  list<string>  $colourCandidates  Colours found in the site's markup
      * @param  int  $pages  Pages that can be kept as the "Website" document
@@ -93,7 +96,7 @@ final class WebsiteSuggestions
             $suggestions[] = ['key' => "colour-{$colours}", 'type' => 'colour', 'name' => self::text(data_get($colour, 'name'), 40), 'hex' => $hex];
         }
 
-        foreach (['heading_font' => 80, 'body_font' => 80] as $field => $limit) {
+        foreach (['heading_font' => self::LOOK_LIMITS['heading_font'], 'body_font' => self::LOOK_LIMITS['body_font']] as $field => $limit) {
             $value = self::text(data_get($response, "theme.{$field}"), $limit);
 
             if ($value !== '' && $value !== trim((string) $look?->{$field})) {
@@ -101,7 +104,7 @@ final class WebsiteSuggestions
             }
         }
 
-        $style = self::text(data_get($response, 'theme.style_notes'), 2000);
+        $style = self::text(data_get($response, 'theme.style_notes'), self::LOOK_LIMITS['style_notes']);
 
         if ($style !== '' && $style !== trim((string) $look?->style_notes)) {
             $suggestions[] = ['key' => 'style', 'type' => 'style', 'field' => 'style_notes', 'value' => $style];

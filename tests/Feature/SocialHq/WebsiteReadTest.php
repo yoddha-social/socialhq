@@ -201,6 +201,24 @@ test('an admin accepts, edits or skips each suggestion, once', function () {
     expect(KnowledgeEntry::query()->count())->toBe(1);
 });
 
+test('an edited value must fit the field it goes into', function () {
+    fakeAcmeSite();
+    WebsiteReader::fake([websiteSuggestionAnswer()]);
+    readWebsite($this->owner);
+    $crawl = WebsiteCrawl::query()->sole();
+    $accept = fn (string $key, string $value): TestResponse => $this->post(route('socialhq.brand.website.accept', [$crawl->id, $key]), ['value' => $value]);
+
+    $accept('font-heading_font', str_repeat('P', 81))->assertSessionHasErrors(['value' => 'The Heading font field must not be greater than 80 characters.']);
+    $accept('profile-audience', str_repeat('a', 1001))->assertSessionHasErrors('value');
+
+    expect(BrandLook::of($this->workspace))->toBeNull()
+        ->and(BrandProfile::query()->exists())->toBeFalse()
+        ->and(suggestionByKey($crawl, 'font-heading_font')['status'])->toBe('open');
+
+    $accept('font-heading_font', str_repeat('P', 80))->assertSessionHasNoErrors();
+    expect(BrandLook::of($this->workspace)->heading_font)->toBe(str_repeat('P', 80));
+});
+
 test('keeping the website\'s text leaves no file behind when the decision fails', function () {
     fakeAcmeSite();
     WebsiteReader::fake([websiteSuggestionAnswer()]);

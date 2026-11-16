@@ -2,6 +2,7 @@
 import { useHttp, usePage } from '@inertiajs/vue3';
 import { IconPhotoPlus, IconShieldCheck, IconX } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
+import { RadioGroupItem } from 'reka-ui';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import { serverMessageOf, statusOf } from '@/components/socialhq/requestErrors';
@@ -16,6 +17,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { RadioGroup } from '@/components/ui/radio-group';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
@@ -269,6 +271,18 @@ const onPaste = (event: ClipboardEvent): void => {
     if (images.length > 0) {
         event.preventDefault();
         addFiles(images);
+    }
+};
+
+type GraphicFormat = (typeof FORMATS)[number];
+
+const isFormat = (value: unknown): value is GraphicFormat =>
+    FORMATS.includes(value as GraphicFormat);
+
+// The radio group (arrow keys move and select) hands back any value.
+const selectFormat = (value: unknown): void => {
+    if (isFormat(value)) {
+        http.format = value;
     }
 };
 
@@ -583,30 +597,28 @@ const submit = async (): Promise<void> => {
 
                 <div class="grid gap-2">
                     <Label>{{ $t('socialhq.ai_graphics.format_label') }}</Label>
-                    <div
-                        class="grid grid-cols-4 gap-2"
-                        role="radiogroup"
+                    <RadioGroup
+                        class="grid-cols-4 gap-2"
+                        :model-value="http.format"
+                        :disabled="busy"
                         :aria-label="$t('socialhq.ai_graphics.format_label')"
+                        @update:model-value="selectFormat"
                     >
-                        <button
+                        <RadioGroupItem
                             v-for="format in FORMATS"
                             :key="format"
-                            type="button"
-                            role="radio"
-                            :aria-checked="http.format === format"
-                            :disabled="busy"
+                            :value="format"
                             :class="[
-                                'rounded-lg border px-2 py-1.5 text-sm transition-control',
+                                'rounded-lg border px-2 py-1.5 text-sm transition-control focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60',
                                 http.format === format
                                     ? 'border-primary bg-primary-subtle text-primary-text'
                                     : 'border-border hover:bg-accent',
                             ]"
                             :data-testid="`socialhq-ai-graphic-format-${format}`"
-                            @click="http.format = format"
                         >
                             {{ $t(`socialhq.ai_graphics.formats.${format}`) }}
-                        </button>
-                    </div>
+                        </RadioGroupItem>
+                    </RadioGroup>
                 </div>
 
                 <p

@@ -12,6 +12,7 @@ use App\SocialHq\Knowledge\Documents\DocumentStorage;
 use App\SocialHq\Knowledge\Documents\KnowledgeDocument;
 use App\SocialHq\Knowledge\KnowledgeEntry;
 use App\SocialHq\Knowledge\Look\BrandLook;
+use App\SocialHq\Knowledge\Website\CrawledPage;
 use App\SocialHq\Knowledge\Website\CrawlFailure;
 use App\SocialHq\Knowledge\Website\CrawlStatus;
 use App\SocialHq\Knowledge\Website\WebsiteCrawl;
@@ -294,6 +295,20 @@ test('redirects to another site or to a loopback address are not followed', func
     expect(WebsiteCrawl::query()->sole()->status)->toBe(CrawlStatus::Ready);
     Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '127.0.0.1') || str_contains($request->url(), 'elsewhere.example'));
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://www.acme.example/contact-us');
+});
+
+test('a redirect to another port of the site, or a page compressed anyway, is not read', function () {
+    fakeAcmeSite([
+        'acme.example/about' => Http::response('', 301, ['Location' => 'https://acme.example:8443/about']),
+        'acme.example/products' => Http::response(gzencode(sitePage('<p>The Trailblazer 40 is a waterproof trekking bag that costs Rs 7,500.</p>')), 200, ['Content-Type' => 'text/html', 'Content-Encoding' => 'gzip']),
+    ]);
+    WebsiteReader::fake([websiteSuggestionAnswer()]);
+
+    readWebsite($this->owner);
+
+    expect(WebsiteCrawl::query()->sole()->status)->toBe(CrawlStatus::Ready)
+        ->and(CrawledPage::query()->pluck('url')->all())->not->toContain('https://acme.example/products');
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), ':8443'));
 });
 
 test('a site whose robots.txt disallows everything is not read', function () {

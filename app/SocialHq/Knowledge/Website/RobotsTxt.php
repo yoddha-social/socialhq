@@ -13,6 +13,9 @@ final readonly class RobotsTxt
 {
     public const USER_AGENT = 'socialhqbot';
 
+    /** Rules kept for our group; a file with more is cut there. */
+    public const MAX_RULES = 500;
+
     /**
      * @param  list<array{allow: bool, pattern: string}>  $rules
      * @param  list<string>  $sitemaps
@@ -85,7 +88,7 @@ final readonly class RobotsTxt
         $chosen = $ours !== [] ? $ours : array_values(array_filter($groups, fn (array $group): bool => in_array('*', $group['agents'], true)));
 
         return new self(
-            array_merge(...array_map(fn (array $group): array => $group['rules'], $chosen ?: [['rules' => []]])),
+            array_slice(array_merge(...array_map(fn (array $group): array => $group['rules'], $chosen ?: [['rules' => []]])), 0, self::MAX_RULES),
             collect($chosen)->pluck('delay')->filter(fn (?float $delay): bool => $delay !== null)->max(),
             array_values(array_unique($sitemaps)),
         );
@@ -113,12 +116,44 @@ final readonly class RobotsTxt
         return $best === null || $best['allow'];
     }
 
+    /**
+     * Whether a rule's pattern matches the path: "*" is any run of
+     * characters, a final "$" anchors the end. Matched piece by piece from
+     * the left (each piece at its first place after the last), never with
+     * a backtracking regex, so a hostile robots.txt costs linear time.
+     */
     private static function matches(string $pattern, string $path): bool
     {
         $anchored = str_ends_with($pattern, '$');
-        $pattern = $anchored ? substr($pattern, 0, -1) : $pattern;
-        $regex = '#^'.implode('.*', array_map(fn (string $part): string => preg_quote(rawurldecode($part), '#'), explode('*', $pattern))).($anchored ? '$' : '').'#';
+        $pieces = array_map(rawurldecode(...), explode('*', $anchored ? substr($pattern, 0, -1) : $pattern));
+        $path = rawurldecode($path);
+        $first = array_shift($pieces);
 
-        return preg_match($regex, rawurldecode($path)) === 1;
+        if (! str_starts_with($path, $first)) {
+            return false;
+        }
+
+        if ($pieces === []) {
+            return ! $anchored || $path === $first;
+        }
+
+        $last = array_pop($pieces);
+        $at = strlen($first);
+
+        foreach ($pieces as $piece) {
+            $found = strpos($path, $piece, $at);
+
+            if ($found === false) {
+                return false;
+            }
+
+            $at = $found + strlen($piece);
+        }
+
+        if ($anchored) {
+            return strlen($path) - strlen($last) >= $at && str_ends_with($path, $last);
+        }
+
+        return $last === '' || strpos($path, $last, $at) !== false;
     }
 }

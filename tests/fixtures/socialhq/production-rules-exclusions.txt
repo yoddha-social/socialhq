@@ -1,0 +1,214 @@
+# Upstream tests skipped by .github/workflows/socialhq-production-rules.yml.
+# They assert TryPost's rules, which Social HQ replaces in production, so they
+# fail there by design. One test per line, "<TestFile>::<test description>",
+# optionally followed by " with data set "<dataset>"" (as Pest prints it) to skip
+# only that dataset. bin/socialhq-production-rules-filter turns the list into
+# the --exclude-filter pattern.
+# Found by running the suites with the four rules on (2026-11-16 audit, M21).
+# A test removed upstream can be dropped from here; one that starts failing in
+# that job is a regression to look at, not a line to add without a reason.
+
+# AccountLimitAndAccessParityTest: agents: an API key or MCP grant, admins' too, sends posts for approval and can neither approve nor manage repurposes (SOCIALHQ_AGENT_POSTS_REVIEWED); and members who are not admins always need approval and never approve (SOCIALHQ_MEMBERS_ALWAYS_REVIEWED): TryPost's "member who publishes directly" no longer exists.
+AccountLimitAndAccessParityTest::the workspace owner is an admin who publishes directly through api and mcp
+AccountLimitAndAccessParityTest::the workspace says what the caller may do through mcp with data set "dataset "member""
+
+# ApiRouteSweepTest: agents: an API key or MCP grant, admins' too, sends posts for approval and can neither approve nor manage repurposes (SOCIALHQ_AGENT_POSTS_REVIEWED).
+ApiRouteSweepTest::a malformed id inside a body is a validation error, never a database error
+
+# ApprovalRequestEmailTest: members who are not admins always need approval and never approve (SOCIALHQ_MEMBERS_ALWAYS_REVIEWED): TryPost's "member who publishes directly" no longer exists.
+ApprovalRequestEmailTest::a draft or a direct publisher sends no approval email
+ApprovalRequestEmailTest::a multi-channel request sends every approver one email per post
+ApprovalRequestEmailTest::editing a scheduled post into pending emails approvers once
+
+# ApprovalsParityTest: agents: an API key or MCP grant, admins' too, sends posts for approval and can neither approve nor manage repurposes (SOCIALHQ_AGENT_POSTS_REVIEWED); and members who are not admins always need approval and never approve (SOCIALHQ_MEMBERS_ALWAYS_REVIEWED): TryPost's "member who publishes directly" no longer exists.
+ApprovalsParityTest::a member who publishes directly can approve through mcp but the api refuses non-admin members
+ApprovalsParityTest::a member who publishes directly can reject through the web
+ApprovalsParityTest::a post that is no longer pending cannot be approved through api or mcp
+ApprovalsParityTest::an approver approves with a new time through web, api and mcp
+ApprovalsParityTest::an approver approves with the requested time through web, api and mcp
+ApprovalsParityTest::an approver rejects through web, api and mcp and the post goes back to a draft
+ApprovalsParityTest::an approver still sees every pending request through mcp and the api
+ApprovalsParityTest::approving a post that is no longer pending gives the same message on api and mcp
+ApprovalsParityTest::approving with an invalid time gives the same validation message on api and mcp
+ApprovalsParityTest::approving with both a time and publish now gives the same validation message on api and mcp
+ApprovalsParityTest::the requester and an approver still reach a pending request on web and mcp
+
+# AttachMediaApprovalTest: members who are not admins always need approval and never approve (SOCIALHQ_MEMBERS_ALWAYS_REVIEWED): TryPost's "member who publishes directly" no longer exists.
+AttachMediaApprovalTest::a direct publisher attaching media keeps the post scheduled
+
+# CaptionAdapterTest: only the owner of an approved company creates workspaces or uses AI (SOCIALHQ_COMPANIES_REQUIRED); upstream's fixtures have no company (no approved company, so no AI: the caption is truncated instead).
+CaptionAdapterTest::a tighter limit still gets its own call instead of reusing a longer answer
+CaptionAdapterTest::ai shortens the caption
+CaptionAdapterTest::two networks sharing a character limit ask the shortener once, not twice
+
+# CrossCuttingParityTest: agents: an API key or MCP grant, admins' too, sends posts for approval and can neither approve nor manage repurposes (SOCIALHQ_AGENT_POSTS_REVIEWED).
+CrossCuttingParityTest::the repurposes list paginates with the app default and exposes per_page
+
+# FullPostParityTest: agents: an API key or MCP grant, admins' too, sends posts for approval and can neither approve nor manage repurposes (SOCIALHQ_AGENT_POSTS_REVIEWED). Only the api datasets fail, but the whole tests are skipped: the mcp datasets pass because TryPostServer::actingAs() carries no token, so the tool tests never act as an agent (tests/Feature/SocialHq/McpAgentOverHttpTest.php covers the real endpoint).
+FullPostParityTest::a batch with per-network caption, media and settings reaches each network as customized through the api and through mcp
+FullPostParityTest::a complete post published now through the api and through mcp reaches the network with every setting
+FullPostParityTest::a complete post scheduled through the api and through mcp reaches the network with every setting once due
+FullPostParityTest::a draft completed and published through api and mcp updates reaches the network with every setting
+
+# McpAuthorizationParityTest: members who are not admins always need approval and never approve (SOCIALHQ_MEMBERS_ALWAYS_REVIEWED): TryPost's "member who publishes directly" no longer exists (the "member" role is refused on the web, so the test's TryPost expectation fails before comparing MCP).
+McpAuthorizationParityTest::every mcp tool allows and refuses each role exactly like its web route with data set "dataset "approve-post-tool" / ('member')"
+McpAuthorizationParityTest::every mcp tool allows and refuses each role exactly like its web route with data set "dataset "reject-post-tool" / ('member')"
+McpAuthorizationParityTest::every mcp tool allows and refuses each role exactly like its web route with data set "dataset "delete-post-tool" / ('member')"
+McpAuthorizationParityTest::every mcp tool allows and refuses each role exactly like its web route with data set "dataset "activate-repurpose-tool" / ('member')"
+McpAuthorizationParityTest::every mcp tool allows and refuses each role exactly like its web route with data set "dataset "create-repurpose-tool" / ('member')"
+McpAuthorizationParityTest::every mcp tool allows and refuses each role exactly like its web route with data set "dataset "delete-repurpose-tool" / ('member')"
+McpAuthorizationParityTest::every mcp tool allows and refuses each role exactly like its web route with data set "dataset "disable-repurpose-tool" / ('member')"
+McpAuthorizationParityTest::every mcp tool allows and refuses each role exactly like its web route with data set "dataset "get-repurpose-tool" / ('member')"
+McpAuthorizationParityTest::every mcp tool allows and refuses each role exactly like its web route with data set "dataset "list-repurpose-items-tool" / ('member')"
+McpAuthorizationParityTest::every mcp tool allows and refuses each role exactly like its web route with data set "dataset "list-repurpose-source-formats-tool" / ('member')"
+McpAuthorizationParityTest::every mcp tool allows and refuses each role exactly like its web route with data set "dataset "list-repurposes-tool" / ('member')"
+McpAuthorizationParityTest::every mcp tool allows and refuses each role exactly like its web route with data set "dataset "pause-repurpose-tool" / ('member')"
+McpAuthorizationParityTest::every mcp tool allows and refuses each role exactly like its web route with data set "dataset "resume-repurpose-tool" / ('member')"
+McpAuthorizationParityTest::every mcp tool allows and refuses each role exactly like its web route with data set "dataset "update-repurpose-tool" / ('member')"
+McpAuthorizationParityTest::every mcp tool allows and refuses each role exactly like its web route with data set "dataset "reorder-queue-tool" / ('member')"
+McpAuthorizationParityTest::every mcp tool allows and refuses each role exactly like its web route with data set "dataset "move-post-to-slot-tool" / ('member')"
+McpAuthorizationParityTest::every mcp tool allows and refuses each role exactly like its web route with data set "dataset "set-post-recurrence-tool" / ('member')"
+
+# NetworkRulesParityTest: agents: an API key or MCP grant, admins' too, sends posts for approval and can neither approve nor manage repurposes (SOCIALHQ_AGENT_POSTS_REVIEWED).
+NetworkRulesParityTest::a google business event is stored the same way through api and mcp
+NetworkRulesParityTest::a linkedin document post stores its title the same way and refuses one over 300 characters through api and mcp
+NetworkRulesParityTest::a scheduled discord message without a channel is refused by api and mcp and accepted with one
+NetworkRulesParityTest::a scheduled pinterest pin without a board is refused by api and mcp and accepted with one
+NetworkRulesParityTest::a scheduled tiktok post without content_type is validated as the type its media decides through api and mcp
+NetworkRulesParityTest::a story skips caption length and hashtag limits that a feed post enforces, in api and mcp alike
+NetworkRulesParityTest::an x account without long posts is capped at 280 and one with a premium subscription at 25000 through api and mcp
+NetworkRulesParityTest::facebook and instagram stories accept a photo through api and mcp
+NetworkRulesParityTest::instagram allows five hashtags when scheduling and refuses six through api and mcp, drafts keep six
+NetworkRulesParityTest::instagram feed accepts the boundary ratios through api and mcp
+NetworkRulesParityTest::scheduling a youtube short with no text and no title is refused by api and mcp
+NetworkRulesParityTest::the mastodon content warning counts toward the 500 character limit through api and mcp
+NetworkRulesParityTest::tiktok flags and auto music are stored the same way through api and mcp
+NetworkRulesParityTest::tiktok photo carousels reject mixed media and more than 35 photos through api and mcp
+
+# PostApiPlatformMetaTest: agents: an API key or MCP grant, admins' too, sends posts for approval and can neither approve nor manage repurposes (SOCIALHQ_AGENT_POSTS_REVIEWED).
+PostApiPlatformMetaTest::it accepts changing an independent Instagram reel to a feed image during scheduling
+PostApiPlatformMetaTest::it ignores instagram reel-only meta on a feed post
+PostApiPlatformMetaTest::it publishes a Discord post when the channel is set
+PostApiPlatformMetaTest::it publishes a LinkedIn document post that has a PDF
+PostApiPlatformMetaTest::it publishes a valid LinkedIn document without resubmitting content_type
+PostApiPlatformMetaTest::it schedules a stored instagram story with more than five hashtags
+PostApiPlatformMetaTest::it youtube description checks effective API metadata before scheduling or publishing with data set "dataset "replaced description" / ('scheduled')"
+PostApiPlatformMetaTest::it youtube description checks effective API metadata before scheduling or publishing with data set "dataset "replaced description" / ('publishing')"
+PostApiPlatformMetaTest::it youtube description checks effective API metadata before scheduling or publishing with data set "dataset "cleared description" / ('scheduled')"
+PostApiPlatformMetaTest::it youtube description checks effective API metadata before scheduling or publishing with data set "dataset "cleared description" / ('publishing')"
+
+# PostApiTest: agents: an API key or MCP grant, admins' too, sends posts for approval and can neither approve nor manage repurposes (SOCIALHQ_AGENT_POSTS_REVIEWED).
+PostApiTest::it accepts scheduled status reusing an existing future scheduled_at
+PostApiTest::it publishes an unscheduled draft without requiring scheduled_at
+PostApiTest::it schedules an unscheduled draft with an explicit future scheduled_at
+
+# PostApprovalActionsTest: members who are not admins always need approval and never approve (SOCIALHQ_MEMBERS_ALWAYS_REVIEWED): TryPost's "member who publishes directly" no longer exists.
+PostApprovalActionsTest::a direct publisher who is not an admin can approve
+
+# PostApprovalApiTest: agents: an API key or MCP grant, admins' too, sends posts for approval and can neither approve nor manage repurposes (SOCIALHQ_AGENT_POSTS_REVIEWED).
+PostApprovalApiTest::an approver approves and rejects through the api
+PostApprovalApiTest::approving a post that is not pending is unprocessable
+PostApprovalApiTest::approving while another approval holds the post is a conflict
+PostApprovalApiTest::rejecting while another approval holds the post is a conflict
+
+# PostApprovalGateTest: members who are not admins always need approval and never approve (SOCIALHQ_MEMBERS_ALWAYS_REVIEWED): TryPost's "member who publishes directly" no longer exists.
+PostApprovalGateTest::a direct publisher is never gated
+
+# PostNoteControllerTest: members who are not admins always need approval and never approve (SOCIALHQ_MEMBERS_ALWAYS_REVIEWED): TryPost's "member who publishes directly" no longer exists.
+PostNoteControllerTest::a note on a pending request emails only the approvers and the requester
+
+# PostNotesParityTest: members who are not admins always need approval and never approve (SOCIALHQ_MEMBERS_ALWAYS_REVIEWED): TryPost's "member who publishes directly" no longer exists.
+PostNotesParityTest::a note added through mcp by the requester on their pending request emails only the approvers
+PostNotesParityTest::a note added through the api on a pending request emails only the approvers and the requester
+
+# PostQueueApiTest: agents: an API key or MCP grant, admins' too, sends posts for approval and can neither approve nor manage repurposes (SOCIALHQ_AGENT_POSTS_REVIEWED).
+PostQueueApiTest::batch create with queue next queues each post
+PostQueueApiTest::single create with queue next queues the post on a slot
+PostQueueApiTest::update with queue next and a null scheduled_at keeps the slot of a queued post
+PostQueueApiTest::update with queue next queues a draft
+
+# PostRecurrenceTest: agents: an API key or MCP grant, admins' too, sends posts for approval and can neither approve nor manage repurposes (SOCIALHQ_AGENT_POSTS_REVIEWED).
+PostRecurrenceTest::publishing now from any entry point keeps the rhythm of the original time with data set "dataset "api""
+
+# PostsParityTest: agents: an API key or MCP grant, admins' too, sends posts for approval and can neither approve nor manage repurposes (SOCIALHQ_AGENT_POSTS_REVIEWED).
+PostsParityTest::a scheduled post created through the api and through the mcp batch tool is stored the same way
+PostsParityTest::publishing now through the api update and the mcp update tool gives the same result
+PostsParityTest::the api and mcp post payload carries the author, the group and the approval state with only id and name
+
+# ProcessItemTest: members who are not admins always need approval and never approve (SOCIALHQ_MEMBERS_ALWAYS_REVIEWED): TryPost's "member who publishes directly" no longer exists.
+ProcessItemTest::a requester repurpose run emails each approver once with every post, never the creator
+
+# RepurposeApiTest: agents: an API key or MCP grant, admins' too, sends posts for approval and can neither approve nor manage repurposes (SOCIALHQ_AGENT_POSTS_REVIEWED).
+RepurposeApiTest::a draft accepts a destination that is still missing its required meta
+RepurposeApiTest::a repurpose can be created, read, updated and deleted
+RepurposeApiTest::activating returns the same body when PostHog is enabled
+RepurposeApiTest::activating without a destination fails validation
+RepurposeApiTest::an active repurpose cannot drop the meta its destination needs to publish
+RepurposeApiTest::destination meta survives a round trip through the api
+RepurposeApiTest::items are paginated at the documented page size
+RepurposeApiTest::the api activity list carries each replicated post status
+RepurposeApiTest::the api exposes why a repurpose stopped and refuses to resume it while broken
+RepurposeApiTest::the api refuses a transition the interface would never offer
+RepurposeApiTest::the index lists the workspace repurposes
+RepurposeApiTest::the publishing mode round-trips through the api
+RepurposeApiTest::the source formats a repurpose can watch are listed
+RepurposeApiTest::the status transitions are exposed
+
+# RepurposeParityTest: agents: an API key or MCP grant, admins' too, sends posts for approval and can neither approve nor manage repurposes (SOCIALHQ_AGENT_POSTS_REVIEWED).
+RepurposeParityTest::a reply media url in a repurpose destination is refused by the web update, the api and mcp
+RepurposeParityTest::a repurpose created through the api and mcp is a draft with the same source and format, and activating without destinations is refused alike
+RepurposeParityTest::activate, pause, resume, disable and delete reach the same states through every surface
+RepurposeParityTest::google business is refused as a destination by the web update, the api and mcp
+RepurposeParityTest::pausing a draft is refused with the same message on every surface
+RepurposeParityTest::showing one repurpose returns the same id, status and source on the api and mcp
+RepurposeParityTest::the activity items are the same on the api and mcp
+RepurposeParityTest::the api and mcp list the same repurposes
+RepurposeParityTest::the source formats are the same list on the api and mcp and match what the web offers for an instagram source
+RepurposeParityTest::updating destinations through the api and mcp stores the same destinations
+
+# SchedulingParityTest: agents: an API key or MCP grant, admins' too, sends posts for approval and can neither approve nor manage repurposes (SOCIALHQ_AGENT_POSTS_REVIEWED).
+SchedulingParityTest::a busy channel lock answers 409 on the api and an error on the mcp tools, and changes nothing
+SchedulingParityTest::a custom time scheduled through the api and the mcp batch tool is stored the same way
+SchedulingParityTest::a custom time scheduled through the api and the single-post mcp create tool is stored the same way
+SchedulingParityTest::a post that is not scheduled cannot get a recurrence on any surface
+SchedulingParityTest::an invalid recurrence is refused with the web messages on every surface
+SchedulingParityTest::free slots stop at the queue horizon and every listed slot is accepted by move to slot on the api and the mcp tool
+SchedulingParityTest::moving a post onto a taken, pending-held or off-schedule slot, or another workspace post, is refused on every surface
+SchedulingParityTest::moving a scheduled post onto a free slot through the web, the api and the mcp tool makes it a queue post there
+SchedulingParityTest::publishing at a custom time through the api and the mcp publish tool is stored the same way
+SchedulingParityTest::queue next through the api and the mcp batch tool takes the first two free slots
+SchedulingParityTest::queue_slot stores a queue post in that free slot on the api and the mcp tool
+SchedulingParityTest::queueing an existing draft through the api, the mcp update tool and the mcp publish tool all take free slots
+SchedulingParityTest::reordering the queue through the web, the api and the mcp tool swaps the posts among their slots
+SchedulingParityTest::reordering with ids that are not the head of the queue is refused with the web message on every surface
+SchedulingParityTest::scheduling an existing draft at a custom time through the api and the mcp update tool is stored the same way
+SchedulingParityTest::setting a recurrence through the web, the api and the mcp tool stores the same rule
+SchedulingParityTest::the recurrence ceiling is checked in the channel time zone on every surface
+SchedulingParityTest::the single-post mcp create tool queues next like the api
+
+# SourceInvariantsTest: agents: an API key or MCP grant, admins' too, sends posts for approval and can neither approve nor manage repurposes (SOCIALHQ_AGENT_POSTS_REVIEWED).
+SourceInvariantsTest::a source and format already watched is refused on any surface
+SourceInvariantsTest::the source cannot be a destination of itself on any surface
+
+# ThreadsParityTest: agents: an API key or MCP grant, admins' too, sends posts for approval and can neither approve nor manage repurposes (SOCIALHQ_AGENT_POSTS_REVIEWED).
+ThreadsParityTest::a scheduled thread with text replies is stored the same way on every thread network through api and mcp
+
+# WorkspaceControllerTest: only the owner of an approved company creates workspaces or uses AI (SOCIALHQ_COMPANIES_REQUIRED); upstream's fixtures have no company.
+WorkspaceControllerTest::create workspace shows form for user with no workspaces
+WorkspaceControllerTest::create workspace shows form when user already has workspace in self-hosted mode
+WorkspaceControllerTest::store ignores retired brand fields
+WorkspaceControllerTest::store persists the name and redirects to channels
+WorkspaceControllerTest::store redirects additional workspace to /accounts
+WorkspaceControllerTest::store workspace creates first workspace
+WorkspaceControllerTest::store workspace creates second workspace in self-hosted mode
+WorkspaceControllerTest::store workspace sets new workspace as current
+WorkspaceControllerTest::store workspace validates name is required
+
+# WorkspaceInviteControllerTest: members who are not admins always need approval and never approve (SOCIALHQ_MEMBERS_ALWAYS_REVIEWED): TryPost's "member who publishes directly" no longer exists.
+WorkspaceInviteControllerTest::removing admin access revokes the member api keys
+
+# WorkspaceParityTest: agents: an API key or MCP grant, admins' too, sends posts for approval and can neither approve nor manage repurposes (SOCIALHQ_AGENT_POSTS_REVIEWED).
+WorkspaceParityTest::showing the workspace returns the same fields on the api and mcp, without logo or members
+
+# WorkspaceRolePermissionsTest: only the owner of an approved company creates workspaces or uses AI (SOCIALHQ_COMPANIES_REQUIRED); upstream's fixtures have no company (EnsureCompanyApproved redirects to "start a company" before the 403).
+WorkspaceRolePermissionsTest::a member cannot open the create workspace form

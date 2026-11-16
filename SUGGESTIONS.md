@@ -1,6 +1,7 @@
 # Suggestions for later (from the overnight build, 2026-11-05/06)
 
-Ideas outside tonight's scope, for you to decide on. Nothing here is built.
+Ideas outside tonight's scope, for you to decide on. None of these is built yet;
+items built since were removed (checked against the code on 2026-11-16).
 
 ## AI and providers
 - **Mistral account limit.** Your Mistral key works, but Mistral answers every chat call
@@ -16,8 +17,9 @@ Ideas outside tonight's scope, for you to decide on. Nothing here is built.
   the other's queues or cooldowns.
 - **Embeddings for the knowledge base**: pick a fixed model and set
   `LITELLM_EMBEDDING_DIMENSIONS` (≤ 2000 for an indexed pgvector column; Gemini's native
-  3072 can't be indexed) before storing any vectors. The compose files use
-  `postgres:16-alpine`, which has no pgvector; switch to `pgvector/pgvector:pg16`.
+  3072 can't be indexed) before storing any vectors. Production already runs
+  `pgvector/pgvector` (socialhq-deploy); the dev `compose.yaml` still uses
+  `postgres:16-alpine`, which has no pgvector.
 
 ## Events dataset
 - The two-day weekend (Saturday + Sunday off since April 2026, a fuel-saving measure) is
@@ -47,8 +49,6 @@ Ideas outside tonight's scope, for you to decide on. Nothing here is built.
   ideas board) when there are more than a few hundred.
 - **An AI attempt log** (`shq_ai_runs`: task, provider, model, tokens, outcome) would
   help debug provider failures; today only LiteLLM's spend logs and the app log have it.
-- **Deploy:** brief files live on the app's private `local` disk; make sure
-  `storage/app/private` is on a persistent volume (or move it to a private R2 bucket).
 - **Calendar drag and drop** on the plan grid (the move endpoint exists; the UI uses the
   date field in the side sheet).
 

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Prints the --exclude-filter pattern for .github/workflows/socialhq-production-rules.yml
+# from tests/fixtures/socialhq/production-rules-exclusions.txt: a test there is
+# skipped with all its datasets, or only the dataset its line names.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+grep -vE '^[[:space:]]*(#|$)' tests/fixtures/socialhq/production-rules-exclusions.txt \
+  | while IFS= read -r line; do
+      file="${line%%::*}"
+      test="$(printf '%s' "${line#*::}" | sed -E 's/[][\\.^$*+?(){}|]/\\&/g')"
+      case "$line" in
+        *' with data set '*) printf '\\\\%s::%s$\n' "$file" "$test" ;;
+        *) printf '\\\\%s::%s( |$)\n' "$file" "$test" ;;
+      esac
+    done \
+  | paste -sd'|' -

@@ -6,6 +6,10 @@ don't merge TryPost's feature releases; we take its security fixes one by one
 came with TryPost, so we know where one of its fixes may conflict with ours.
 Change a TryPost file when that is the right place, and add a row.
 
+Row numbers have gaps on purpose: parallel branches each get a reserved range
+(see `docs/history/overnight/2026-11-05/LANE-RULES.md`), and unused numbers in a
+range stay unused. No row is lost.
+
 | # | File | Change | Why |
 |---|---|---|---|
 | 1 | `bootstrap/providers.php` | Registers `App\SocialHq\SocialHqServiceProvider` (2 lines) | Loads the Social HQ module |
@@ -20,14 +24,14 @@ Change a TryPost file when that is the right place, and add a row.
 | 10 | `app/Actions/Post/Approval/NotifyApprovalRequested.php` | Emails the requester too when an agent made the request (1 line + import) | An admin's own agent posts reach the admin's inbox |
 | 11 | `resources/js/components/members/MemberAccessFields.vue` | Shows `socialhq/MembersReviewedNote.vue` instead of the publishing choice when members are always reviewed (about 8 lines) | The choice no longer applies |
 | 12 | `phpunit.xml` | Turns our approval rules off for the test run (2 lines) | Upstream's tests expect TryPost's rules; ours switch them on |
-| 13 | `resources/js/components/posts/composer/MediaSourceMenu.vue` | Adds `socialhq/AiGraphicMenuItem.vue` under "Upload from computer" and `socialhq/AiGraphicDialog.vue` after the menu (9 lines) | "Generate with AI" graphics in the media menu of ideas and posts (rows 8–12 are in the approval-gate branch) |
+| 13 | `resources/js/components/posts/composer/MediaSourceMenu.vue` | Adds `socialhq/AiGraphicMenuItem.vue` under "Upload from computer" and `socialhq/AiGraphicDialog.vue` after the menu (9 lines) | "Generate with AI" graphics in the media menu of ideas and posts |
 | 14 | `composer.json` | Removes `boost:update` from `post-update-cmd` (1 line) | It rewrote AGENTS.md and the Boost skills on every `composer update`, undoing our edits. Run it by hand and review the diff |
 | 15 | `app/Ai/Agents/IdeaGenerator.php`, `MediaAltTextGenerator.php`, `PostContentShortener.php`, `PostWritingAssistant.php` | `use UsesAiTask;` and an `aiTask()` method naming the agent's AI task (about 10 lines each) | `App\SocialHq\Ai\AiRouter` picks the providers per task: the LiteLLM model group, or the direct route, approved providers only |
 | 16 | `app/Http/Middleware/App/HandleInertiaRequests.php` | `aiEnabled` (which nothing read) replaced by `aiTasks`: `write`, `structured` and `vision` from `AiRouter::isAvailable()` (7 lines) | With LiteLLM there is no provider key in the app, and a company's AI may serve some tasks only: each AI button hides when its task can't run (row 125) |
 | 17 | `tests/Unit/Ai/Agents/AgentProviderResolutionTest.php` | Asserts every agent routes through an AI task (it asserted that none overrides `provider()`) | The rule changed with row 15 |
 | 18 | `phpunit.xml` | `SOCIALHQ_AI_GATEWAY=direct` and `SOCIALHQ_AI_APPROVED_PROVIDERS` for the test providers (2 lines) | Tests call the SDK's fakes and `Http::fake()`, never LiteLLM |
 | 19 | `.env.example` | "Social HQ AI routing" block under the AI settings | Documents the gateway, the approved list and the routes |
-| 20 | `app/Actions/User/CreateUser.php` | A sign-up allowed by `SignupRules` joins the team's account with no workspace and opens an access request, instead of getting an account of its own (about 12 lines) | Self sign-up with company emails, let in by an admin (rows 13 to 19 are in the AI branches) |
+| 20 | `app/Actions/User/CreateUser.php` | A sign-up allowed by `SignupRules` joins the team's account with no workspace and opens an access request, instead of getting an account of its own (about 12 lines) | Self sign-up with company emails, let in by an admin |
 | 21 | `app/Http/Requests/App/Auth/RegisterRequest.php` | Without an invite (posted or in the session), refuses emails `SignupRules` doesn't allow (5 lines) | Same |
 | 22 | `app/Http/Middleware/App/EnsureRegistrationEnabled.php` | Lets registration through on a self-hosted install when sign-up is open (1 line) | Same |
 | 23 | `app/Http/Controllers/Auth/Concerns/PreservesInvite.php` | Google and GitHub sign-ups follow the same allow list (6 lines) | Same |
@@ -69,7 +73,7 @@ Change a TryPost file when that is the right place, and add a row.
 | 90 | `app/Models/Traits/HasWorkspace.php` | `switchWorkspace()` also sets the `currentWorkspace` relation (1 line) | The relation stayed on the old workspace for the rest of the request; browser tests reuse the signed-in user across requests, so the sidebar kept the old name |
 | 91 | `.github/workflows/tests.yml` | Runs on every PR and on pushes to `main` only; read-only token; job timeouts; failed browser test files get one retry, reported as a flaky warning | Stacked PRs got no CI; random browser failures kept every run red |
 | 92 | `.github/workflows/lint.yml` | Checks instead of fixing: Pint, ESLint and `vue-tsc` on the whole repo (after generating Wayfinder routes), Prettier on the files a change touches unless they weren't clean before; every PR; read-only token | The old job ran the fixers, so it could never fail; much of the TryPost base isn't Prettier-clean |
-| 93 | `.github/workflows/release-docker.yml` | Deleted | TryPost's own image release; ours is `socialhq-image.yml` |
+| 93 | `.github/workflows/release-docker.yml` | Deleted | TryPost's own image release; ours is `socialhq-image.yml`, which started as a copy, so git shows the pair as a rename |
 | 94 | `tests/Browser/CalendarDragAndDropTest.php` | "The hour under way" test uses the app's five-minute rule and accepts either outcome in the minute when the page's clock may differ (8 lines) | It used six minutes, so it failed whenever it ran in minute :54 of an hour |
 | 95 | `tests/Browser/{SidebarMenu,SidebarLanguageSwitch,WelcomeMcp,McpSettings,ComposerMediaSources,AuthLanguageSwitcher,InsightsShareChart}Test.php` | Expect the Social HQ name, share card file name and support links (18 lines) | The rebrand changed that copy; the tests still asserted TryPost's |
 | 99 | `app/Console/Commands/ProcessScheduledPosts.php` | Skips due posts and limit retries of a paused company (one query for the paused workspaces, 2 checks, 1 import) | A paused company publishes nothing; its posts wait, and go out once it is restored |
@@ -94,11 +98,25 @@ Change a TryPost file when that is the right place, and add a row.
 | 132 | `tests/Feature/{SocialLoginControllerTest,SocialLoginInviteMismatchTest,RegistrationLocaleTest}.php`, `tests/Feature/Offer/ClaimOfferTest.php`, `tests/Feature/Auth/{SignupPreferencesTest,SignupUtmTrackingTest,SignupClickIdTrackingTest}.php` | Their fake Google users carry `email_verified: true` (`setRaw`, 38 lines) | `OAuthSignIn::googleVerifiedEmail()` now requires the claim to be true; a missing claim proved the address before |
 | 136 | `tests/fixtures/single-line-copy.php` | Budget for the events page's "No longer listed" badge (`socialhq_events.badges.delisted`, 1 line) | `SingleLineCopyTest` keeps it on one line once it is translated |
 | 148 | `resources/js/composables/useSettingsNavigation.ts` | Row 119's AI item reads `page.props.socialhq.companyAi.canManage` without a cast: the `socialhq` prop is typed once in `components/socialhq/types.ts`, which adds it to `SharedData` (`@/types`) (3 lines fewer) | Typed shared props (audit 2026-11-16) |
+| 154 | `docker/supervisord.prod.conf`, `docker/supervisord.dev.conf` | `user=www-data` on Horizon, the scheduler and Reverb (1 line each) | They ran as root. The local disk makes private (0700) directories, so a job that was first to create one left it root-owned and php-fpm (www-data) could no longer store, read or delete there; `throw => false` hid it. The production entrypoint already hands `storage/` to www-data on every start, which heals old volumes. `tests/Unit/SocialHq/ContainerRuntimeTest.php` |
+| 155 | `.env.example` | A "Social HQ" block at the end: every key `config/socialhq.php` reads that rows 19 and 120 do not cover, commented out at its default, including the `LITELLM_MASTER_KEY` fallback in local development; `CHANGELOG_ENABLED=false` (it said `true`, against row 35) | 44 of the 55 keys were undocumented. `tests/Unit/SocialHq/EnvExampleTest.php` fails when a key is missing |
+| 156 | `compose.prod.yaml`, `Caddyfile`, `DEPLOYMENT.md` deleted; `README.md` (note at the top), `docker/Dockerfile` (`VITE_APP_NAME` defaults to "Social HQ"), `docker/entrypoint.sh` and `MEDIA_INTEGRATIONS_SETUP.md` (a comment and a link that named the deleted files) | They deployed plain TryPost (`ghcr.io/trypostit/trypost:latest`, `APP_NAME: TryPost`) and documented TryPost Cloud's `post_platforms` merge. Our deployment is `yoddha-social/socialhq-deploy`; the README says so |
+| 157 | `AGENTS.md`; `docs/upstream/AGENTS-upstream.md` (new); `.gitignore` (`/docs/` becomes `/docs/*` with `!/docs/history/` and `!/docs/upstream/`, so our docs there are tracked); `.github/FUNDING.yml` and `.github/copilot-instructions.md` deleted | AGENTS.md: a "This fork" section overrides the Boost block's Herd and Laravel Cloud lines (the block itself is untouched, so `boost:update` diffs stay clean); Stripe Checkout, offers, plans and the workspace limit, PostHog person properties and the TryPost.it docs line moved to `docs/upstream/AGENTS-upstream.md` (the "AI usage is not metered" rule stays); the changelog is described as off (row 35); the `codex/independent-social-posts` branch exception and "do not create a `.ai/` rules folder" are gone. FUNDING.yml was TryPost's sponsor button; the Copilot review instructions were hand-written for TryPost, not generated by Boost | CLAUDE.md imports AGENTS.md into every session: about 16 KB of it was about TryPost Cloud, and several lines contradicted the fork. During a security intake, compare upstream's AGENTS.md with both files |
+| 158 | `compose.yaml` | Postgres, Redis and Mailpit publish on `127.0.0.1` only (4 lines + comments) | Docker's published ports bypass ufw: on the dev server they were open to the internet, Postgres with the password `password`, Redis with none, and Mailpit's inbox with every reset link. Reach them through an SSH tunnel |
+| 159 | `composer.json`, `composer.lock` | `"php": "^8.4"` (was `^8.2`); the lock's content hash and platform line follow (`composer update --lock`, no package changed) | `openspout/openspout` (row 80) needs PHP 8.4 or later, so `^8.2` promised installs the lock can't satisfy |
+| 160 | `.github/workflows/tests.yml`, `lint.yml`, `.github/actions/setup-laravel/action.yml`, `docker/Dockerfile` | Every third-party action pinned to a full commit SHA with its version in a comment; the PHP base image pinned by index digest (`PHP_IMAGE_DIGEST`, next to `PHP_VERSION`) and `composer:2` replaced by `composer:2.11@sha256:…` | A moved tag (or a compromised action) can no longer change what CI runs or what goes into the image. Bump a pin on purpose: a new SHA from `gh api repos/<owner>/<repo>/git/ref/tags/<tag>` (dereference annotated tags), a new digest from `docker buildx imagetools inspect` |
 
 Files we **added** aren't listed here; they're under the module paths in
-SOCIALHQ.md, plus `config/socialhq.php`, `routes/socialhq.php`, `CLAUDE.md`,
+SOCIALHQ.md, plus `config/socialhq.php`, `routes/socialhq.php`,
+`routes/socialhq/`, `database/factories/SocialHq/`, `database/data/socialhq/`,
+`resources/views/prompts/socialhq/`, `maizzle/templates/socialhq-*` and the
+compiled `resources/views/mail/socialhq-*`, `lang/*/socialhq*.php`,
+`public/images/socialhq/`, `tests/fixtures/socialhq/`, `CLAUDE.md`,
+`SUGGESTIONS.md`, `plans/`, `docs/history/`, `docs/upstream/`,
 `.claude/hooks/`, `.claude/rules/`, `.claude/settings.json`,
-`.ai/skills/socialhq-*`, `bin/socialhq-*` and `.github/workflows/socialhq-*.yml`.
+`.ai/skills/socialhq-*` (linked from `.claude/skills/` and `.agents/skills/`),
+`bin/socialhq-*` and `.github/workflows/socialhq-*.yml`. The Claude hooks
+(`.claude/hooks/lib/common.sh`) use the same list.
 
 ## Security intake
 

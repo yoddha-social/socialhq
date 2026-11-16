@@ -201,6 +201,19 @@ test('an admin accepts, edits or skips each suggestion, once', function () {
     expect(KnowledgeEntry::query()->count())->toBe(1);
 });
 
+test('keeping the website\'s text leaves no file behind when the decision fails', function () {
+    fakeAcmeSite();
+    WebsiteReader::fake([websiteSuggestionAnswer()]);
+    readWebsite($this->owner);
+    $crawl = WebsiteCrawl::query()->sole();
+    WebsiteCrawl::updating(fn () => throw new RuntimeException('database down'));
+
+    $this->post(route('socialhq.brand.website.accept', [$crawl->id, 'document']))->assertServerError();
+
+    expect(KnowledgeDocument::query()->count())->toBe(0)
+        ->and(Storage::disk(DocumentStorage::DISK)->allFiles())->toBe([]);
+});
+
 test('a site that hasn\'t changed is not read into the AI again', function () {
     fakeAcmeSite();
     WebsiteReader::fake([websiteSuggestionAnswer(), websiteSuggestionAnswer()]);

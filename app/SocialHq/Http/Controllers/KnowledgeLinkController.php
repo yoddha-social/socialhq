@@ -10,6 +10,7 @@ use App\SocialHq\Http\Requests\StoreKnowledgeLinkRequest;
 use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\Documents\DocumentsPage;
 use App\SocialHq\Knowledge\Documents\DocumentStatus;
+use App\SocialHq\Knowledge\Documents\DocumentStorage;
 use App\SocialHq\Knowledge\Documents\DocumentType;
 use App\SocialHq\Knowledge\Documents\KnowledgeDocument;
 use App\SocialHq\Knowledge\Sources\ReadLinkedDocument;
@@ -48,7 +49,7 @@ class KnowledgeLinkController extends Controller
             'workspace_id' => $workspace->id,
             'title' => $title ?: $fallback,
             'auto_title' => $title === '',
-            'file_name' => ($title ?: $fallback).'.txt',
+            'file_name' => DocumentStorage::fileName($title ?: $fallback, 'txt'),
             'mime' => DocumentType::Text->mime(),
             'size' => 0,
             'path' => '',

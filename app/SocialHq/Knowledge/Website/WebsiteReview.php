@@ -179,6 +179,8 @@ final class WebsiteReview
         $previous = $document->path;
         $path = DocumentStorage::directory((string) $workspace->id).'/'.Str::uuid()->toString().'.txt';
         DocumentStorage::disk()->put($path, $text);
+        // Written inside the decision's transaction: it goes if that rolls back.
+        DB::afterRollBack(fn () => DocumentStorage::disk()->delete($path));
         $host = (string) preg_replace('/^www\./', '', strtolower((string) Uri::of($crawl->url)->host()));
 
         $document->forceFill([

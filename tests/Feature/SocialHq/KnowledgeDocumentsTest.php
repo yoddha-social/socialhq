@@ -353,6 +353,16 @@ test('deleting a document removes its file and excerpts, and deleting the worksp
         ->and(KnowledgeChunk::query()->count())->toBe(0);
 });
 
+test('an upload whose document can\'t be saved leaves no file behind', function () {
+    $this->withoutExceptionHandling();
+    KnowledgeDocument::creating(fn () => throw new RuntimeException('database down'));
+
+    expect(fn () => uploadDocument($this->owner, UploadedFile::fake()->createWithContent('notes.txt', str_repeat('Trailblazer bags for the trail. ', 5))))
+        ->toThrow(RuntimeException::class);
+
+    expect(Storage::disk(DocumentStorage::DISK)->allFiles())->toBe([]);
+});
+
 test('search ranks the matching entry and excerpt first, in English and Nepali', function () {
     $this->travel(-1)->days();
     $bags = docEntry($this->workspace, ['title' => 'Trekking bags', 'body' => 'Waterproof bags for the Annapurna trails.']);

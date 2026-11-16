@@ -20,6 +20,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 /**
  * Brand knowledge documents of the current workspace: workspace admins
@@ -46,18 +47,25 @@ class KnowledgeDocumentController extends Controller
 
         $title = trim((string) $request->validated('title')) ?: pathinfo($fileName, PATHINFO_FILENAME);
 
-        $document = KnowledgeDocument::query()->create([
-            'workspace_id' => $workspace->id,
-            'title' => Str::limit($title, 120, '') ?: $fileName,
-            'file_name' => $fileName,
-            'mime' => $type->mime(),
-            'size' => (int) $file->getSize(),
-            'path' => $path,
-            'status' => DocumentStatus::Processing,
-            'use_in_ai' => true,
-            'created_by' => $request->user()->id,
-            'updated_by' => $request->user()->id,
-        ]);
+        try {
+            $document = KnowledgeDocument::query()->create([
+                'workspace_id' => $workspace->id,
+                'title' => Str::limit($title, 120, '') ?: $fileName,
+                'file_name' => $fileName,
+                'mime' => $type->mime(),
+                'size' => (int) $file->getSize(),
+                'path' => $path,
+                'status' => DocumentStatus::Processing,
+                'use_in_ai' => true,
+                'created_by' => $request->user()->id,
+                'updated_by' => $request->user()->id,
+            ]);
+        } catch (Throwable $failed) {
+            // No row to go with the file.
+            DocumentStorage::disk()->delete($path);
+
+            throw $failed;
+        }
 
         ExtractKnowledgeDocument::dispatch($document->id);
 
@@ -71,7 +79,7 @@ class KnowledgeDocumentController extends Controller
 
         abort_unless(filled($found->path) && DocumentStorage::disk()->exists($found->path), Response::HTTP_NOT_FOUND);
 
-        return DocumentStorage::disk()->download($found->path, $found->file_name, [
+        return DocumentStorage::disk()->download($found->path, DocumentStorage::downloadName($found->file_name), [
             'Content-Type' => $found->mime,
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, no-store',

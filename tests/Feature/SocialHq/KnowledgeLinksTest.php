@@ -206,6 +206,90 @@ test('Read again keeps the excerpts of an unchanged file and reads a changed one
     expect($document->fresh()->title)->toBe('Our prices');
 });
 
+test('Read again that fails keeps the excerpts read before and says the last read failed', function () {
+    $answers = [
+        googleTextExport('Trailblazer 40 costs Rs 7,500.', 'Price list'),
+        ['', 403],
+        googleTextExport('Hi', 'Price list'),
+    ];
+    Http::fake(['docs.google.com/*' => function () use (&$answers) {
+        return Http::response(...array_shift($answers));
+    }]);
+
+    addGoogleLink($this->owner, 'https://docs.google.com/document/d/'.GOOGLE_FILE_ID.'/edit');
+    $document = KnowledgeDocument::query()->sole();
+    $chunkIds = KnowledgeChunk::query()->pluck('id')->all();
+    $files = Storage::disk(DocumentStorage::DISK)->allFiles();
+
+    // No longer shared, then emptied: each time the old text stays in use.
+    foreach ([DocumentFailure::NotShared, DocumentFailure::NoText] as $failure) {
+        $this->post(route('socialhq.brand.documents.refresh', $document->id))->assertRedirect();
+        $document->refresh();
+
+        expect($document->status)->toBe(DocumentStatus::Ready)
+            ->and($document->failure)->toBe($failure)
+            ->and($document->chunk_count)->toBe(1)
+            ->and(KnowledgeChunk::query()->pluck('id')->all())->toBe($chunkIds)
+            ->and(Storage::disk(DocumentStorage::DISK)->allFiles())->toBe($files);
+    }
+
+    $this->get(route('socialhq.brand.index'))->assertInertia(fn ($page) => $page
+        ->where('documents.items.0.status', 'ready')
+        ->where('documents.items.0.failure', 'no_text'));
+});
+
+test('a crash while saving the text counts as unreadable, and a failed first read keeps no excerpts or file', function () {
+    Http::fake(['docs.google.com/*' => Http::response(...googleTextExport('Trailblazer 40 costs Rs 7,500.', 'Price list'))]);
+    $crashed = false;
+    KnowledgeDocument::saving(function (KnowledgeDocument $document) use (&$crashed): void {
+        if (! $crashed && $document->status === DocumentStatus::Ready) {
+            $crashed = true;
+
+            throw new RuntimeException('boom');
+        }
+    });
+
+    addGoogleLink($this->owner, 'https://docs.google.com/document/d/'.GOOGLE_FILE_ID.'/edit');
+    $document = KnowledgeDocument::query()->sole();
+
+    expect($crashed)->toBeTrue()
+        ->and($document->status)->toBe(DocumentStatus::Failed)
+        ->and($document->failure)->toBe(DocumentFailure::Unreadable)
+        ->and(KnowledgeChunk::query()->count())->toBe(0)
+        ->and(Storage::disk(DocumentStorage::DISK)->allFiles())->toBe([]);
+});
+
+test('a document deleted while it is read leaves no file behind', function () {
+    Http::fake(['docs.google.com/*' => function () {
+        // Deleted by another admin while Google answers (a query: no model events).
+        KnowledgeDocument::query()->toBase()->delete();
+
+        return Http::response(...googleTextExport('Trailblazer 40 costs Rs 7,500.', 'Price list'));
+    }]);
+
+    addGoogleLink($this->owner, 'https://docs.google.com/document/d/'.GOOGLE_FILE_ID.'/edit');
+
+    expect(KnowledgeDocument::query()->count())->toBe(0)
+        ->and(KnowledgeChunk::query()->count())->toBe(0)
+        ->and(Storage::disk(DocumentStorage::DISK)->allFiles())->toBe([]);
+});
+
+test('a title with a slash still downloads, under a name without it', function () {
+    Http::fake(['docs.google.com/*' => Http::response(...googleTextExport('Trailblazer 40 costs Rs 7,500.', 'Price list'))]);
+
+    addGoogleLink($this->owner, 'https://docs.google.com/document/d/'.GOOGLE_FILE_ID.'/edit', ['title' => 'Prices 2083/84']);
+    $document = KnowledgeDocument::query()->sole();
+
+    expect($document->title)->toBe('Prices 2083/84')
+        ->and($document->file_name)->toBe('Prices 2083-84.txt');
+
+    // A name stored before names were cleaned.
+    $document->update(['file_name' => 'a/b\\c.txt']);
+    $this->get(route('socialhq.brand.documents.show', $document->id))
+        ->assertOk()
+        ->assertDownload('a-b-c.txt');
+});
+
 test('links count toward the documents limit, and the same file is added once', function () {
     config(['socialhq.knowledge.documents.max_documents' => 1]);
     Http::fake(['docs.google.com/*' => Http::response(...googleTextExport('Open daily from ten in the morning.'))]);

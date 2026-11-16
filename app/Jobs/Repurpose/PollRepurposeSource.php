@@ -16,6 +16,7 @@ use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
 use App\Services\Repurpose\SourceFetcherFactory;
 use App\Services\Social\TokenRedactor;
+use App\SocialHq\Companies\CompanyAccess;
 use Carbon\CarbonInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -100,6 +101,8 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
         return Repurpose::query()
             ->where('source_social_account_id', $this->account->id)
             ->where('status', Status::Active)
+            // Social HQ: a paused company downloads nothing and makes no posts until it is restored.
+            ->whereNotIn('workspace_id', array_keys(CompanyAccess::pausedWorkspaceIds()))
             ->get();
     }
 

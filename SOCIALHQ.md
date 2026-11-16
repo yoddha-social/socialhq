@@ -407,8 +407,14 @@ first person asks for a company, is granted, and approves it.
    asks for approval there, and its API keys get a 403. An invite link
    kept in the session counts as the invite only for its own email.
    Platform admins follow their own
-   company's rules but always reach the platform pages. Scheduled posts of
-   a paused company still publish.
+   company's rules but always reach the platform pages.
+5. A paused company publishes nothing: its due posts and limit retries wait
+   (`posts:process-scheduled`), and its repurposes neither read their
+   source nor make posts. Restoring sends its posts that came due while it
+   was paused (still scheduled, time passed) back to drafts, content and
+   channels kept and schedule cleared, so a dated post never goes out late
+   and nothing publishes at once; the flash tells the platform admin how
+   many. Posts scheduled after the restore publish as planned.
 
 Google or GitHub sign-in to an account whose email isn't confirmed yet
 (someone registered the address with a password and never confirmed it)

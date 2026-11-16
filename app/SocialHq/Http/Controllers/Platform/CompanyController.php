@@ -104,8 +104,16 @@ class CompanyController extends Controller
     {
         $found = $this->find($request, $company);
 
-        if (! CompanyDecisions::restore($found, $request->user())) {
+        $drafted = CompanyDecisions::restore($found, $request->user());
+
+        if ($drafted === null) {
             return $this->notChanged($found);
+        }
+
+        if ($drafted > 0) {
+            return back()
+                ->with('flash.banner', trans_choice('socialhq_companies.platform.flash.restored_drafts', $drafted, ['name' => $found->name, 'count' => $drafted]))
+                ->with('flash.bannerStyle', 'success');
         }
 
         return $this->done('restored', $found);

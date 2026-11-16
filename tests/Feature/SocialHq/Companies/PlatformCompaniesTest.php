@@ -265,23 +265,40 @@ test('the company emails render', function () {
         ->toContain('You can ask again after 24 hours.');
 });
 
-test('a paused company\'s scheduled posts wait until it is restored', function () {
+test('a paused company\'s posts wait, and those that came due go back to drafts on restore', function () {
     Bus::fake([PublishPost::class]);
     [$company, $owner] = approvedCompanyWithMember();
-    $post = Post::factory()->scheduled()->create([
+    $overdue = Post::factory()->scheduled()->create([
         'workspace_id' => $owner->current_workspace_id,
         'user_id' => $owner->id,
-        'scheduled_at' => now()->subMinute(),
+        'content' => 'Happy Dashain!',
+        'scheduled_at' => now()->addMinutes(5),
+    ]);
+    $later = Post::factory()->scheduled()->create([
+        'workspace_id' => $owner->current_workspace_id,
+        'user_id' => $owner->id,
+        'scheduled_at' => now()->addDays(3),
     ]);
 
     CompanyDecisions::suspend($company, $this->admin, 'Unpaid invoice.');
+    $this->travel(10)->minutes();
     $this->artisan('posts:process-scheduled')->assertSuccessful();
 
     Bus::assertNotDispatched(PublishPost::class);
-    expect($post->fresh()->status)->toBe(PostStatus::Scheduled);
+    expect($overdue->fresh()->status)->toBe(PostStatus::Scheduled);
 
-    CompanyDecisions::restore($company->fresh(), $this->admin);
+    $this->actingAs($this->admin)
+        ->post(route('socialhq.platform.companies.restore', $company->id))
+        ->assertSessionHas('flash.banner', 'Everest Bank works again. 1 post that came due while it was paused went back to drafts.');
     $this->artisan('posts:process-scheduled')->assertSuccessful();
 
-    Bus::assertDispatched(PublishPost::class);
+    Bus::assertNotDispatched(PublishPost::class);
+    expect($overdue->fresh())
+        ->status->toBe(PostStatus::Draft)
+        ->scheduled_at->toBeNull()
+        ->content->toBe('Happy Dashain!')
+        ->social_account_id->toBe($overdue->social_account_id)
+        ->and($later->fresh())
+        ->status->toBe(PostStatus::Scheduled)
+        ->scheduled_at->not->toBeNull();
 });

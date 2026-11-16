@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\SocialHq\Companies;
 
 use App\Enums\Notification\Type;
+use App\Enums\Post\Status as PostStatus;
 use App\Jobs\SendNotification;
+use App\Models\Post;
 use App\Models\User;
+use App\Models\Workspace;
 use App\SocialHq\Ai\Company\CompanyAi;
 use App\SocialHq\Ai\Company\Jobs\BlockCompanyAi;
+use App\Support\PostApproval;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\DB;
 
@@ -57,12 +61,46 @@ final class CompanyDecisions
         return $decided !== null;
     }
 
-    public static function restore(Company $company, User $admin): bool
+    /**
+     * Lets a paused company work again. Its posts that came due while it was
+     * paused (still scheduled, their time passed) go back to drafts with
+     * their content and channels, so a dated post (a festival greeting)
+     * never goes out late and nothing publishes all at once.
+     *
+     * @return int|null how many posts went back to drafts, or null when the company wasn't paused (any more)
+     */
+    public static function restore(Company $company, User $admin): ?int
     {
         $decided = self::decide($company, $admin, CompanyStatus::Suspended, CompanyStatus::Approved, CompanyEvent::RESTORED, null);
-        $decided !== null && self::blockAi($decided, false);
 
-        return $decided !== null;
+        if ($decided === null) {
+            return null;
+        }
+
+        self::blockAi($decided, false);
+
+        return self::draftOverduePosts($decided);
+    }
+
+    private static function draftOverduePosts(Company $company): int
+    {
+        $moved = 0;
+
+        Post::query()
+            ->whereIn('workspace_id', Workspace::query()->where('account_id', $company->account_id)->select('id'))
+            ->due()
+            ->lazyById()
+            ->each(function (Post $post) use (&$moved): void {
+                $post->update([
+                    'status' => PostStatus::Draft,
+                    'scheduled_at' => null,
+                    'schedule_mode' => null,
+                    ...PostApproval::transition(PostStatus::Scheduled, PostStatus::Draft, null),
+                ]);
+                $moved++;
+            });
+
+        return $moved;
     }
 
     /**

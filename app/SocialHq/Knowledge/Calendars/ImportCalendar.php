@@ -12,8 +12,8 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
- * The second step of an import: read the uploaded file again with the
- * team's column mapping, store its rows as past posts in one transaction,
+ * The second step of an import: take the upload's sheets as read (kept by
+ * CalendarStorage::putSheets) with the team's column mapping, store its rows as past posts in one transaction,
  * then delete the file. Rows that can't be used are skipped with a reason;
  * the first ones are kept for the page.
  */
@@ -77,6 +77,17 @@ final class ImportCalendar
                 throw ValidationException::withMessages(['rows' => __('socialhq_calendars.errors.already_imported')]);
             }
 
+            // Two uploads of one file: the first to be imported wins.
+            $same = $locked->content_hash === null ? null : CalendarImport::query()
+                ->where('workspace_id', $locked->workspace_id)
+                ->imported()
+                ->where('content_hash', $locked->content_hash)
+                ->first();
+
+            if ($same !== null) {
+                throw ValidationException::withMessages(['rows' => __('socialhq_calendars.errors.same_file', ['name' => $same->file_name])]);
+            }
+
             foreach (array_chunk($rows, self::INSERT_CHUNK) as $chunk) {
                 PastPost::query()->insert(array_map(fn (array $row): array => [...$row, 'calendar_import_id' => $import->id], $chunk));
             }
@@ -114,7 +125,7 @@ final class ImportCalendar
         }
 
         try {
-            $sheets = CalendarSpreadsheet::read(CalendarStorage::disk()->path($path), $import->file_type);
+            $sheets = CalendarStorage::sheets($path) ?? CalendarSpreadsheet::read(CalendarStorage::disk()->path($path), $import->file_type);
         } catch (CalendarFileProblem $problem) {
             throw ValidationException::withMessages(['rows' => $problem->userMessage()]);
         }

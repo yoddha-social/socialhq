@@ -177,6 +177,8 @@ class SocialHqServiceProvider extends ServiceProvider
 
         // Brand knowledge documents: 20 uploads an hour per person; "Check what the AI reads" 30 a minute.
         RateLimiter::for('socialhq-knowledge-uploads', fn (Request $request): Limit => Limit::perHour(20)->by((string) $request->user()?->id));
+        // Old calendars: an upload and its confirmation each count, 30 imports an hour per person.
+        RateLimiter::for('socialhq-calendar-imports', fn (Request $request): Limit => Limit::perHour(60)->by((string) $request->user()?->id));
         RateLimiter::for('socialhq-knowledge-search', fn (Request $request): Limit => Limit::perMinute(30)->by((string) $request->user()?->id));
         // "Read our website": 5 runs an hour per person (each reads up to 25 pages and makes one AI call).
         RateLimiter::for('socialhq-website-reads', fn (Request $request): Limit => Limit::perHour(5)->by((string) $request->user()?->id));

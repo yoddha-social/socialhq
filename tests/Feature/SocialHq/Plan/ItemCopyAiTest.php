@@ -99,7 +99,7 @@ test('a rewrite passes the team\'s request to the writer as quoted data', functi
         ->assertCreated()
         ->assertJsonPath('number', 2);
 
-    CopyWriter::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->agent->instructions(), "What the team asked for in this rewrite")
+    CopyWriter::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->agent->instructions(), 'What the team asked for in this rewrite')
         // One line, and its quotes can't close the block.
         && str_contains($prompt->agent->instructions(), "\"\"\"\nMake it shorter and add the \"price\n\"\"\""));
 });

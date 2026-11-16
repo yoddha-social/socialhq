@@ -40,7 +40,7 @@ test('a reason given when rejecting becomes the approver\'s note and goes in the
     $post = rejectReasonRequest($this);
 
     $this->actingAs($this->owner)
-        ->put(route('app.posts.reject', $post), ['reason' => "  Add the price <b>and</b> where to buy.  "])
+        ->put(route('app.posts.reject', $post), ['reason' => '  Add the price <b>and</b> where to buy.  '])
         ->assertRedirect();
 
     $post->refresh();

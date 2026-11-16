@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\SocialHq\Http\Requests\CompanyAi;
 
+use App\SocialHq\Ai\AiTask;
 use App\SocialHq\Ai\Company\CompanyAiAccess;
 use App\SocialHq\Ai\Company\CredentialTier;
 use App\SocialHq\Ai\Company\ProviderCatalogue;
 use App\SocialHq\Ai\Company\ProviderCredential;
 use App\SocialHq\Ai\Company\ProviderKeySettings;
-use App\SocialHq\Ai\AiTask;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;

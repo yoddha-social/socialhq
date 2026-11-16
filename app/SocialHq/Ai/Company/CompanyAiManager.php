@@ -449,7 +449,7 @@ class CompanyAiManager
         $sure = $known !== null;
 
         try {
-            foreach (array_unique([...$tasks, ...array_keys($wanted)]) as $taskValue) {
+            foreach (self::inTaskOrder([...$tasks, ...array_keys($wanted)]) as $taskValue) {
                 $fingerprint = isset($wanted[$taskValue]) ? self::fingerprint($wanted[$taskValue]) : null;
 
                 if ($known !== null && data_get($held, $taskValue) === $fingerprint) {
@@ -488,7 +488,7 @@ class CompanyAiManager
     {
         $tasks = $credential->deployments === null ? $this->possibleTasks($credential->catalogue()) : array_keys($credential->deployments);
 
-        foreach ($tasks as $taskValue) {
+        foreach (self::inTaskOrder($tasks) as $taskValue) {
             $this->gateway->deleteDeployment(self::deploymentId($credential->litellm_credential_name, AiTask::from($taskValue)));
         }
     }
@@ -499,6 +499,21 @@ class CompanyAiManager
     private function possibleTasks(?ProviderCatalogue $provider): array
     {
         return array_map(fn (AiTask $task): string => $task->value, $provider?->tasksOfAnyTier() ?? AiTask::cases());
+    }
+
+    /**
+     * Task values once each, in AiTask's order: MySQL reorders a JSON object's
+     * keys, so the stored order can't decide the order of calls.
+     *
+     * @param  list<string>  $taskValues
+     * @return list<string>
+     */
+    private static function inTaskOrder(array $taskValues): array
+    {
+        return array_values(array_filter(
+            array_map(fn (AiTask $task): string => $task->value, AiTask::cases()),
+            fn (string $value): bool => in_array($value, $taskValues, true),
+        ));
     }
 
     /**

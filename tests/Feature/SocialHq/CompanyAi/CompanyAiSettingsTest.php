@@ -345,7 +345,7 @@ test('a change removes and adds only the deployments that differ', function () {
     $name = $first->litellm_credential_name;
 
     expect($deploymentCalls(0))->toBe(["new {$name}-write", "new {$name}-structured", "new {$name}-vision"])
-        ->and(array_keys($first->fresh()->deployments))->toBe(['write', 'structured', 'vision']);
+        ->and(array_keys($first->fresh()->deployments))->toEqualCanonicalizing(['write', 'structured', 'vision']);
 
     $before = count(Http::recorded());
     $this->actingAs($this->owner)->post(route('socialhq.ai-settings.providers.store'), companyAiKey(['label' => 'Groq two', 'provider_key' => 'gsk_TestProviderKey000000000000000002']));
@@ -360,7 +360,7 @@ test('a change removes and adds only the deployments that differ', function () {
         ->assertSessionHasNoErrors();
 
     expect($deploymentCalls($before))->toBe(["delete {$name}-structured", "delete {$name}-vision"])
-        ->and(array_keys($first->fresh()->deployments))->toBe(['write']);
+        ->and(array_keys($first->fresh()->deployments))->toEqualCanonicalizing(['write']);
 
     $before = count(Http::recorded());
     $this->actingAs($this->owner)->delete(route('socialhq.ai-settings.providers.destroy', $first->id));
@@ -383,7 +383,7 @@ test('a key whose deployments are not known has them all removed and added once'
     $manager->syncDeployments($this->owner->account, CompanyAi::forAccount($this->owner->account));
 
     expect($deletes)->toBe(3)
-        ->and(array_keys($credential->fresh()->deployments))->toBe(['write', 'structured', 'vision'])
+        ->and(array_keys($credential->fresh()->deployments))->toEqualCanonicalizing(['write', 'structured', 'vision'])
         ->and(count(Http::recorded()))->toBe($before);
 });
 

@@ -58,8 +58,9 @@ final class PlanOptions
 
     /**
      * Events the brand sees that overlap the days given, confirmed or not, in
-     * date order. With countries, only the events of those countries and the
-     * international ones (no country).
+     * date order, without dates their source no longer lists (the source
+     * corrected or dropped them). With countries, only the events of those
+     * countries and the international ones (no country).
      *
      * @param  list<string>|null  $countries  ISO 3166-1 alpha-2 codes, or null for every event
      * @return Collection<int, CalendarEvent>
@@ -67,7 +68,9 @@ final class PlanOptions
     public static function events(Workspace $workspace, CarbonImmutable $from, CarbonImmutable $to, ?array $countries = null): Collection
     {
         // The audience's countries plus every event without one (international, brand-only).
-        return EventsForMonth::forWorkspace($workspace, $from, $to, $countries);
+        return EventsForMonth::forWorkspace($workspace, $from, $to, $countries)
+            ->reject(fn (CalendarEvent $event): bool => $event->isDelisted())
+            ->values();
     }
 
     public static function profile(Workspace $workspace): ?BrandProfile

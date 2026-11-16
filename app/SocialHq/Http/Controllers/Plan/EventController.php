@@ -113,11 +113,13 @@ class EventController extends Controller
                 PlanItem::query()->where('event_id', $found->id)->where('workspace_id', '!=', $workspace->id)->update(['event_id' => null]);
             }
 
+            // A person's edit makes a date its source dropped the team's own again.
             $found->update([
                 ...self::attributes($request->validated()),
                 'workspace_id' => $brandOnly ? $workspace->id : null,
                 'region' => $region,
                 'country_code' => $country,
+                'delisted_at' => null,
             ]);
         });
 
@@ -175,6 +177,7 @@ class EventController extends Controller
             'verified' => $event->isVerified(),
             'verified_by' => $event->verifier?->name,
             'verified_at' => $event->verified_at?->toIso8601String(),
+            'delisted' => $event->isDelisted(),
         ];
     }
 

@@ -55,6 +55,7 @@ return [
         'confirmed_by' => 'Confirmed by :name',
         'confirmed' => 'Confirmed',
         'brand_only' => 'This brand only',
+        'delisted' => 'No longer listed',
     ],
     'until' => 'Until :date',
     'source' => 'Source',
@@ -122,11 +123,12 @@ return [
         'duplicate' => 'There\'s already an event with this name on that day. Use another name or day.',
         'brand_kind_shared' => 'A brand date belongs to one brand. Switch on Only this brand, or pick another kind.',
         'changed' => 'This date changed after you opened the page. Reload it to check the new date, then confirm.',
+        'delisted' => 'Its source no longer lists this date, so it can\'t be confirmed as it is. To keep it, edit it to make it your own date; otherwise delete it.',
     ],
 
     'import' => [
         'done' => 'Official dates imported: :created new, :updated updated, :skipped unchanged.',
-        'missing' => '{1} One date is no longer in the official list; it stays until you delete it.|[0,*] :count dates are no longer in the official list; they stay until you delete them.',
+        'missing' => '{1} One date is no longer in the official list. It\'s marked No longer listed, and the AI stops planning around it.|[0,*] :count dates are no longer in the official list. They\'re marked No longer listed, and the AI stops planning around them.',
         'failed' => 'Couldn\'t import the official dates. Try again; if it keeps failing, tell whoever runs Social HQ.',
     ],
 
@@ -145,7 +147,7 @@ return [
         'cancel' => 'Cancel',
         'import' => 'Import holidays',
         'done' => 'Public holidays imported for :countries: :created new, :updated updated, :skipped unchanged. Check each date before planning around it.',
-        'missing' => '{1} One holiday is no longer listed by Nager.Date; it stays until you delete it.|[0,*] :count holidays are no longer listed by Nager.Date; they stay until you delete them.',
+        'missing' => '{1} One holiday is no longer listed by Nager.Date. It\'s marked No longer listed, and the AI stops planning around it.|[0,*] :count holidays are no longer listed by Nager.Date. They\'re marked No longer listed, and the AI stops planning around them.',
         'unavailable' => 'Couldn\'t reach Nager.Date for :countries, so nothing was imported. Try again in a few minutes.',
         'failed' => 'Couldn\'t import these holidays. Try again; if it keeps failing, tell whoever runs Social HQ.',
         'errors' => [

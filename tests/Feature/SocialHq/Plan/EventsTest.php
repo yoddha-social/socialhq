@@ -537,3 +537,11 @@ function shownDates(CalendarEvent $event): array
 {
     return ['name' => $event->name, 'starts_on' => $event->starts_on->toDateString(), 'ends_on' => $event->ends_on->toDateString()];
 }
+
+test('changing a date\'s Bikram Sambat date clears its confirmation', function () {
+    $event = CalendarEvent::factory()->verified()->create(['account_id' => $this->account->id, 'starts_on' => $this->day, 'ends_on' => $this->day, 'bs_date' => '2083-07-20']);
+
+    $event->update(['bs_date' => '2083-07-21']);
+
+    expect($event->fresh()->isVerified())->toBeFalse();
+});

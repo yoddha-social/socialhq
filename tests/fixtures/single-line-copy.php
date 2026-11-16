@@ -265,6 +265,7 @@ return [
     'socialhq_events.actions.unconfirm' => 17,
     'socialhq_events.badges.brand_only' => 15,
     'socialhq_events.badges.confirmed' => 9,
+    'socialhq_events.badges.delisted' => 16,
     'socialhq_events.badges.needs_check' => 11,
     'socialhq_events.badges.public_holiday' => 14,
     'socialhq_events.categories.brand' => 10,

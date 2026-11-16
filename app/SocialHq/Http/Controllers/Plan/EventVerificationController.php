@@ -40,6 +40,10 @@ class EventVerificationController extends Controller
                 throw ValidationException::withMessages(['event' => __('socialhq_events.errors.changed')]);
             }
 
+            if ($locked->isDelisted()) {
+                throw ValidationException::withMessages(['event' => __('socialhq_events.errors.delisted')]);
+            }
+
             if (! $locked->isVerified()) {
                 self::saveQuietly($locked, ['verified_at' => now(), 'verified_by' => $request->user()->id]);
             }

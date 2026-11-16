@@ -22,7 +22,11 @@ porting" are the original notes from the Rails reference.
 - Deleting is a soft delete, so a re-import doesn't bring a date back. There is
   no unique index (account-wide rows have a null `workspace_id`): the page checks
   for a duplicate with the account row locked. Imported dates that left the list
-  are counted (`missing`), never deleted.
+  (the source corrected or dropped them) are never deleted: unless a person
+  edited them, they are flagged (`delisted_at`), lose their confirmation, can't
+  be confirmed and stay out of `PlanOptions::events`, until the source lists
+  them again or a person edits them (`WriteImportedEvent::delist`, counted as
+  `missing`). Changing `bs_date` clears a confirmation too.
 - A shared date can't be of the `brand` kind.
 - A day in both CSVs (Christmas, Women's Day) is imported once, from the Nepal file.
 - Each event has a `country_code` (NP, another ISO code, or null for international).

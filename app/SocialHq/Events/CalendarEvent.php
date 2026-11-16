@@ -16,12 +16,15 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * One dated occurrence of a festival, holiday or day the brands may post
  * about. Dates come from official sources and a person confirms them in the
- * app; AI never calculates them. Changing the date or the name clears the
- * confirmation.
+ * app; AI never calculates them. Changing the date (AD or BS) or the name
+ * clears the confirmation.
  *
  * import_key and import_date record the row of the official list an event
  * came from (null for dates people added); the app never changes them.
  * Deleting only hides an event, so a re-import doesn't bring it back.
+ * delisted_at is set when an imported date left its source's list (the
+ * source corrected it, or dropped it): it loses its confirmation and stays
+ * out of planning until the source lists it again or a person edits it.
  *
  * country_code (ISO 3166-1 alpha-2) is the country that observes it: NP for
  * Nepal's dates, another code for a country's public holidays (Nager.Date),
@@ -41,7 +44,7 @@ class CalendarEvent extends Model
     protected static function booted(): void
     {
         static::updating(function (CalendarEvent $event): void {
-            if ($event->isDirty(['starts_on', 'ends_on', 'name']) && ! $event->isDirty('verified_at')) {
+            if ($event->isDirty(['starts_on', 'ends_on', 'bs_date', 'name']) && ! $event->isDirty('verified_at')) {
                 $event->verified_at = null;
                 $event->verified_by = null;
             }
@@ -58,12 +61,18 @@ class CalendarEvent extends Model
             'import_date' => 'immutable_date',
             'public_holiday' => 'boolean',
             'verified_at' => 'immutable_datetime',
+            'delisted_at' => 'immutable_datetime',
         ];
     }
 
     public function isVerified(): bool
     {
         return $this->verified_at !== null;
+    }
+
+    public function isDelisted(): bool
+    {
+        return $this->delisted_at !== null;
     }
 
     /**
@@ -138,6 +147,16 @@ class CalendarEvent extends Model
     public function scopeFromOfficialList(Builder $query): void
     {
         $query->where(fn (Builder $query) => $query->whereNull('country_code')->orWhere('country_code', self::NEPAL));
+    }
+
+    /**
+     * Dates still in their source's list (or never imported).
+     *
+     * @param  Builder<CalendarEvent>  $query
+     */
+    public function scopeListed(Builder $query): void
+    {
+        $query->whereNull('delisted_at');
     }
 
     /**

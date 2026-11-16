@@ -34,13 +34,18 @@ import {
     settings as workspaceSettings,
 } from '@/routes/app/workspace';
 import { show as companyAi } from '@/routes/socialhq/ai-settings';
+import { show as aiUsage } from '@/routes/socialhq/ai-usage';
 import { index as brandKnowledge } from '@/routes/socialhq/brand';
 import type { NavItem } from '@/types';
 
 export interface SettingsNavGroup {
     key: string;
     label: string;
-    items: (NavItem & { name: string; count?: number })[];
+    items: (NavItem & {
+        name: string;
+        count?: number;
+        children?: (NavItem & { name: string })[];
+    })[];
 }
 
 export const useSettingsNavigation = () => {
@@ -143,6 +148,14 @@ export const useSettingsNavigation = () => {
                                   title: trans('socialhq_ai.nav'),
                                   href: companyAi.url(),
                                   icon: IconSparkles,
+                                  // Settings › AI › Usage: each AI request and how it was routed.
+                                  children: [
+                                      {
+                                          name: 'socialhq_ai_usage',
+                                          title: trans('socialhq_ai_usage.nav'),
+                                          href: aiUsage.url(),
+                                      },
+                                  ],
                               },
                           ]
                         : []),

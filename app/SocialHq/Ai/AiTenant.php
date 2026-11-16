@@ -34,6 +34,14 @@ final class AiTenant
     private static array $stack = [];
 
     /**
+     * The workspace run() was given, alongside $stack (null when it got an
+     * account or the platform). Only the usage log reads it.
+     *
+     * @var list<string|null>
+     */
+    private static array $workspaces = [];
+
+    /**
      * Runs the callback with AI calls billed to this company.
      *
      * @template TResult
@@ -50,12 +58,29 @@ final class AiTenant
             $tenant === self::PLATFORM => self::PLATFORM,
             default => self::NONE,
         };
+        self::$workspaces[] = $tenant instanceof Workspace ? $tenant->id : null;
 
         try {
             return $callback();
         } finally {
             array_pop(self::$stack);
+            array_pop(self::$workspaces);
         }
+    }
+
+    /**
+     * The workspace (brand) AI calls run for, when known: the one run() was
+     * given, else the signed-in user's current workspace.
+     */
+    public static function currentWorkspaceId(): ?string
+    {
+        if (self::$workspaces !== []) {
+            return self::$workspaces[array_key_last(self::$workspaces)];
+        }
+
+        $user = auth()->user();
+
+        return $user instanceof User ? $user->current_workspace_id : null;
     }
 
     /**

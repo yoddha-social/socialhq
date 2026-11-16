@@ -34,11 +34,19 @@ final class ModelCapabilities
     /**
      * Whether every model the task's route may reach accepts a temperature.
      * A target without a model uses its provider's default text model.
+     * Pass the route when the caller already has it.
+     *
+     * Through the LiteLLM gateway the "model" is a group name (shq-write),
+     * which no pattern here matches: the temperature is always sent, and
+     * LiteLLM's `drop_params: true` (socialhq-deploy/litellm/config.yaml)
+     * drops it for a deployment whose model rejects it. Keep that setting.
+     *
+     * @param  array<string, string|null>|null  $route
      */
-    public static function acceptsTemperatureFor(AiTask $task): bool
+    public static function acceptsTemperatureFor(AiTask $task, ?array $route = null): bool
     {
         try {
-            $route = AiRouter::route($task);
+            $route ??= AiRouter::route($task);
         } catch (AiUnavailableException) {
             return true;
         }

@@ -8,6 +8,7 @@ declare(strict_types=1);
 | answer 404 to anyone who isn't a platform admin.
 */
 
+use App\SocialHq\Http\Controllers\Platform\AiUsageController;
 use App\SocialHq\Http\Controllers\Platform\CompanyController;
 use Illuminate\Support\Facades\Route;
 
@@ -17,3 +18,6 @@ Route::post('companies/{company}/decline', [CompanyController::class, 'decline']
 Route::post('companies/{company}/suspend', [CompanyController::class, 'suspend'])->whereNumber('company')->name('companies.suspend');
 Route::post('companies/{company}/restore', [CompanyController::class, 'restore'])->whereNumber('company')->name('companies.restore');
 Route::put('companies/{company}/platform-ai', [CompanyController::class, 'platformAi'])->whereNumber('company')->name('companies.platform-ai');
+
+// Every company's AI calls (Settings › AI › Usage across companies).
+Route::get('ai-usage', AiUsageController::class)->name('ai-usage.index');

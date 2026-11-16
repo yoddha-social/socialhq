@@ -15,6 +15,7 @@ use App\SocialHq\Ai\Company\CompanyAiAccess;
 use App\SocialHq\Ai\Company\CompanyRouting;
 use App\SocialHq\Ai\Company\Jobs\TearDownCompanyAi;
 use App\SocialHq\Ai\Company\ProviderCredential;
+use App\SocialHq\Ai\Usage\AiUsageLogging;
 use App\SocialHq\AiGraphics\AiGraphics;
 use App\SocialHq\Approval\ApprovalRules;
 use App\SocialHq\Approval\RecordApprovalEvents;
@@ -95,6 +96,8 @@ class SocialHqServiceProvider extends ServiceProvider
 
         // No SDK request reaches a provider outside SOCIALHQ_AI_APPROVED_PROVIDERS, whoever makes it.
         Event::listen(ApprovedProvidersGuard::EVENTS, [ApprovedProvidersGuard::class, 'handle']);
+        // Settings › AI › Usage: one row per AI call (after the guard, so refused calls aren't logged as sent).
+        AiUsageLogging::register($this->app);
 
         if ($this->app->runningInConsole()) {
             $this->commands([AiRoutesCommand::class, ImportEventsCommand::class, PruneCalendarUploadsCommand::class, PlatformAdminCommand::class, SecretsKeyCommand::class]);

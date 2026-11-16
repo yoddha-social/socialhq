@@ -28,6 +28,7 @@ adds the planning and AI layer:
 | Interface copy | `lang/en/socialhq.php` (see below) |
 | Image build | `.github/workflows/socialhq-image.yml` (tags `shq-v*`) |
 | Dependency audit | `.github/workflows/socialhq-audit.yml` (PRs and weekly) |
+| Upstream tests under our rules | `.github/workflows/socialhq-production-rules.yml`: TryPost's post, API, MCP, parity and repurpose suites with the approval and company rules on (`phpunit.xml` turns them off); tests that assert TryPost's rules are listed with the reason in `tests/fixtures/socialhq/production-rules-exclusions.txt` |
 | Claude Code setup | `CLAUDE.md`, `.claude/settings.json`, `.claude/hooks/`, `.claude/rules/`; skills in `.ai/skills/socialhq-*` (linked into `.claude/skills/` and `.agents/skills/`), checked by `bin/socialhq-lint-skills` |
 
 Changes to files that came with TryPost are listed in [PATCHES.md](PATCHES.md),

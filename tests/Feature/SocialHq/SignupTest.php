@@ -347,6 +347,21 @@ test('signing up by email is limited per address', function () {
     signUp('someone6@other.test')->assertTooManyRequests();
 });
 
+test('signing up by email is limited to 20 tries an hour per address, past the minute limit', function () {
+    foreach (range(1, 4) as $minute) {
+        foreach (range(1, 5) as $attempt) {
+            signUp("someone{$minute}x{$attempt}@other.test")->assertSessionHasErrors('email');
+        }
+
+        $this->travel(61)->seconds();
+    }
+
+    signUp('one-more@other.test')->assertTooManyRequests();
+
+    $this->travel(1)->hours();
+    signUp('next-hour@other.test')->assertSessionHasErrors('email');
+});
+
 test('a declined person who signs up again does not email the admins again within the hour', function () {
     Bus::fake([SendNotification::class]);
 
@@ -506,7 +521,7 @@ test('declining deletes the files of the person\'s avatar', function () {
     Storage::assertMissing($avatar->path);
 });
 
-test('the pending count for the shared props is one query, and 0 for members who cannot decide', function () {
+test('the pending count for the shared props is a count for those who decide, and 0 after one query for others', function () {
     signUp('asha@acme.test');
     verifyEmailOf(User::query()->where('email', 'asha@acme.test')->firstOrFail());
     $member = workspaceMember($this->workspace);
@@ -521,7 +536,7 @@ test('the pending count for the shared props is one query, and 0 for members who
     ];
 
     expect($counts)->toBe([1, 1, 0])
-        ->and(DB::getQueryLog())->toHaveCount(3);
+        ->and(DB::getQueryLog())->toHaveCount(5);
 });
 
 test('approving without a workspace says to pick one', function () {

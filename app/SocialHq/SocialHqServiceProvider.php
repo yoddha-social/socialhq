@@ -190,9 +190,10 @@ class SocialHqServiceProvider extends ServiceProvider
         $this->callAfterResolving(Schedule::class, fn (Schedule $schedule) => $schedule->command(PruneCalendarUploadsCommand::class)->hourly()->withoutOverlapping());
 
         // One share for the whole module: a second Inertia::share('socialhq') would replace this one.
-        Inertia::share('socialhq', fn (): array => [
-            'approvals' => ['membersAlwaysReviewed' => ApprovalRules::membersAlwaysReviewed()],
-            'aiGraphics' => [
+        // Each part is a closure, so a partial reload that doesn't ask for it runs none of its queries.
+        Inertia::share('socialhq', [
+            'approvals' => fn (): array => ['membersAlwaysReviewed' => ApprovalRules::membersAlwaysReviewed()],
+            'aiGraphics' => fn (): array => [
                 'available' => (function (): bool {
                     $user = auth()->user();
 
@@ -201,26 +202,30 @@ class SocialHqServiceProvider extends ServiceProvider
                 'maxReferences' => (int) config('socialhq.ai_graphics.max_reference_images', 3),
                 'maxReferenceKilobytes' => (int) config('socialhq.ai_graphics.max_reference_kilobytes', 10240),
             ],
-            'companyAi' => [
+            'companyAi' => fn (): array => [
                 // Settings › AI is the account owner's, for an approved company only.
                 'canManage' => CompanyAiAccess::canManage(auth()->user() instanceof User ? auth()->user() : null),
             ],
-            'signup' => [
-                // The login page's "Sign up": the company lists, or asking to start a company.
-                'open' => SignupRules::isOpen() || CompanyRequests::enabled(),
-                // Whether a work email joins its team's company (the company name field then says it may stay empty).
-                'joinsByEmail' => SignupRules::isOpen(),
-                // The register page's company name field (the server still decides on submit).
-                'companyRequests' => CompanySignup::showsCompanyField(),
-                // One query, 0 for anyone who can't decide (the workspace menu and the Members banner read it).
-                'pendingRequests' => auth()->user() instanceof User ? AccessRequests::pendingCountFor(auth()->user()) : 0,
-            ],
+            'signup' => function (): array {
+                $joinsByEmail = SignupRules::isOpen();
+
+                return [
+                    // The login page's "Sign up": the company lists, or asking to start a company.
+                    'open' => $joinsByEmail || CompanyRequests::enabled(),
+                    // Whether a work email joins its team's company (the company name field then says it may stay empty).
+                    'joinsByEmail' => $joinsByEmail,
+                    // The register page's company name field (the server still decides on submit).
+                    'companyRequests' => CompanySignup::showsCompanyField(),
+                    // 0 for anyone who can't decide (the workspace menu and the Members banner read it).
+                    'pendingRequests' => auth()->user() instanceof User ? AccessRequests::pendingCountFor(auth()->user()) : 0,
+                ];
+            },
             // The platform admin link in the user menu, with the requests waiting for a decision.
-            'platform' => (function (): array {
+            'platform' => function (): array {
                 $isAdmin = PlatformAdmins::is(auth()->user());
 
                 return ['admin' => $isAdmin, 'pendingCompanies' => $isAdmin ? CompanyRequests::awaitingDecisionCount() : 0];
-            })(),
+            },
         ]);
     }
 }

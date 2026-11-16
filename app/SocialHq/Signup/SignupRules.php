@@ -11,6 +11,7 @@ use App\SocialHq\Companies\Company;
 use App\SocialHq\Companies\CompanyAccess;
 use App\SocialHq\Companies\CompanyRequests;
 use App\SocialHq\Companies\CompanyStatus;
+use App\SocialHq\Support\PerRequest;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
@@ -167,8 +168,13 @@ final class SignupRules
     {
         $request = request();
 
-        return $request->hasSession()
-            && self::isOpenInvite(Invite::fromId((string) $request->session()->get('pending_invite_id')));
+        if (! $request->hasSession()) {
+            return false;
+        }
+
+        $inviteId = (string) $request->session()->get('pending_invite_id');
+
+        return PerRequest::remember("session-invite:{$inviteId}", fn (): bool => self::isOpenInvite(Invite::fromId($inviteId)));
     }
 
     /**

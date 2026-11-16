@@ -33,10 +33,6 @@ const MAX_POLLS = 300;
 
 type Phase = 'idle' | 'checking' | 'generating';
 
-interface AiGraphicsProps {
-    aiGraphics?: { maxReferences?: number; maxReferenceKilobytes?: number };
-}
-
 const open = defineModel<boolean>('open', { required: true });
 
 const emit = defineEmits<{
@@ -44,15 +40,9 @@ const emit = defineEmits<{
 }>();
 
 const page = usePage();
-const maxImages = computed(
-    () =>
-        (page.props.socialhq as AiGraphicsProps | undefined)?.aiGraphics
-            ?.maxReferences ?? 3,
-);
+const maxImages = computed(() => page.props.socialhq.aiGraphics.maxReferences);
 const maxKilobytes = computed(
-    () =>
-        (page.props.socialhq as AiGraphicsProps | undefined)?.aiGraphics
-            ?.maxReferenceKilobytes ?? 10240,
+    () => page.props.socialhq.aiGraphics.maxReferenceKilobytes,
 );
 
 const http = useHttp<

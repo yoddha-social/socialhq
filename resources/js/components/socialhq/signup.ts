@@ -1,20 +1,12 @@
 import { usePage } from '@inertiajs/vue3';
 import { computed, type ComputedRef } from 'vue';
 
-interface SocialHqProps {
-    signup?: {
-        open?: boolean;
-        joinsByEmail?: boolean;
-        companyRequests?: boolean;
-        pendingRequests?: number;
-    };
-    platform?: { admin?: boolean; pendingCompanies?: number };
-}
+import type { SocialHqSharedProps } from '@/components/socialhq/types';
 
-const socialHqProps = (): ComputedRef<SocialHqProps | undefined> => {
+const socialHqProps = (): ComputedRef<SocialHqSharedProps> => {
     const page = usePage();
 
-    return computed(() => page.props.socialhq as SocialHqProps | undefined);
+    return computed(() => page.props.socialhq);
 };
 
 /**
@@ -25,7 +17,7 @@ const socialHqProps = (): ComputedRef<SocialHqProps | undefined> => {
 export const useSignupOpen = (): ComputedRef<boolean> => {
     const props = socialHqProps();
 
-    return computed(() => Boolean(props.value?.signup?.open));
+    return computed(() => props.value.signup.open);
 };
 
 /**
@@ -34,7 +26,7 @@ export const useSignupOpen = (): ComputedRef<boolean> => {
 export const usePendingAccessRequests = (): ComputedRef<number> => {
     const props = socialHqProps();
 
-    return computed(() => Number(props.value?.signup?.pendingRequests ?? 0));
+    return computed(() => props.value.signup.pendingRequests);
 };
 
 /**
@@ -48,8 +40,8 @@ export const useCompanySignup = (): ComputedRef<{
     const props = socialHqProps();
 
     return computed(() => ({
-        asks: Boolean(props.value?.signup?.companyRequests),
-        joinsByEmail: Boolean(props.value?.signup?.joinsByEmail),
+        asks: props.value.signup.companyRequests,
+        joinsByEmail: props.value.signup.joinsByEmail,
     }));
 };
 
@@ -63,7 +55,7 @@ export const usePlatformAdmin = (): ComputedRef<{
     const props = socialHqProps();
 
     return computed(() => ({
-        admin: Boolean(props.value?.platform?.admin),
-        pendingCompanies: Number(props.value?.platform?.pendingCompanies ?? 0),
+        admin: props.value.platform.admin,
+        pendingCompanies: props.value.platform.pendingCompanies,
     }));
 };

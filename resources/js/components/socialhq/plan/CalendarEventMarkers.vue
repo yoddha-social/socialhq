@@ -47,11 +47,7 @@ const REGROW_MARGIN = 24;
 const page = usePage();
 
 const events = computed<CalendarEventMarker[]>(() => {
-    const byDay = (page.props as Record<string, unknown>).shqEvents as
-        | Record<string, CalendarEventMarker[]>
-        | undefined;
-
-    return byDay?.[props.day] ?? [];
+    return page.props.shqEvents?.[props.day] ?? [];
 });
 
 const first = computed(() => events.value[0]);

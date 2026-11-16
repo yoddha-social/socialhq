@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace App\SocialHq\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\Workspace;
+use App\SocialHq\Http\Controllers\Concerns\WorksOnBrandKnowledge;
 use App\SocialHq\Http\Requests\StoreKnowledgeDocumentRequest;
 use App\SocialHq\Http\Requests\UpdateKnowledgeDocumentRequest;
-use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\Documents\DocumentsPage;
 use App\SocialHq\Knowledge\Documents\DocumentStatus;
 use App\SocialHq\Knowledge\Documents\DocumentStorage;
@@ -29,6 +28,8 @@ use Throwable;
  */
 class KnowledgeDocumentController extends Controller
 {
+    use WorksOnBrandKnowledge;
+
     public function store(StoreKnowledgeDocumentRequest $request): RedirectResponse
     {
         $workspace = $this->workspace($request, edit: true);
@@ -107,17 +108,6 @@ class KnowledgeDocumentController extends Controller
         return $this->saved(__('socialhq_knowledge.documents.flash.deleted'));
     }
 
-    private function workspace(Request $request, bool $edit): Workspace
-    {
-        $user = $request->user();
-        $workspace = $user->currentWorkspace;
-
-        abort_if($workspace === null, Response::HTTP_NOT_FOUND);
-        abort_unless($edit ? BrandKnowledge::canEdit($user, $workspace) : BrandKnowledge::canView($user, $workspace), Response::HTTP_FORBIDDEN);
-
-        return $workspace;
-    }
-
     /**
      * A document of the current workspace, which the user may change.
      */
@@ -134,13 +124,5 @@ class KnowledgeDocumentController extends Controller
     private static function plainName(string $name): string
     {
         return trim((string) preg_replace('/\p{Cc}/u', '', basename(str_replace('\\', '/', $name))));
-    }
-
-    private function saved(string $message): RedirectResponse
-    {
-        session()->flash('flash.banner', $message);
-        session()->flash('flash.bannerStyle', 'success');
-
-        return back();
     }
 }

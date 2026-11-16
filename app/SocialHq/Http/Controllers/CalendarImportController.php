@@ -6,9 +6,9 @@ namespace App\SocialHq\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Workspace;
+use App\SocialHq\Http\Controllers\Concerns\WorksOnBrandKnowledge;
 use App\SocialHq\Http\Requests\ConfirmCalendarImportRequest;
 use App\SocialHq\Http\Requests\StoreCalendarImportRequest;
-use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\Calendars\CalendarFileProblem;
 use App\SocialHq\Knowledge\Calendars\CalendarImport;
 use App\SocialHq\Knowledge\Calendars\CalendarSheet;
@@ -33,6 +33,8 @@ use Throwable;
  */
 class CalendarImportController extends Controller
 {
+    use WorksOnBrandKnowledge;
+
     /** Sample rows shown in the mapping step. */
     public const int SAMPLE_ROWS = 5;
 
@@ -144,17 +146,6 @@ class CalendarImportController extends Controller
     private static function maxImports(): int
     {
         return max(1, (int) config('socialhq.knowledge.calendars.max_imports', 50));
-    }
-
-    private function workspace(Request $request, bool $edit): Workspace
-    {
-        $user = $request->user();
-        $workspace = $user->currentWorkspace;
-
-        abort_if($workspace === null, Response::HTTP_NOT_FOUND);
-        abort_unless($edit ? BrandKnowledge::canEdit($user, $workspace) : BrandKnowledge::canView($user, $workspace), Response::HTTP_FORBIDDEN);
-
-        return $workspace;
     }
 
     /**

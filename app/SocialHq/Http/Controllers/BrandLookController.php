@@ -6,9 +6,9 @@ namespace App\SocialHq\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Workspace;
+use App\SocialHq\Http\Controllers\Concerns\WorksOnBrandKnowledge;
 use App\SocialHq\Http\Requests\StoreBrandLogoRequest;
 use App\SocialHq\Http\Requests\UpdateBrandLookRequest;
-use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\Look\BrandLook;
 use App\SocialHq\Knowledge\Look\LogoStorage;
 use Illuminate\Http\RedirectResponse;
@@ -24,6 +24,8 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class BrandLookController extends Controller
 {
+    use WorksOnBrandKnowledge;
+
     public function update(UpdateBrandLookRequest $request): RedirectResponse
     {
         $workspace = $this->workspace($request, edit: true);
@@ -91,24 +93,5 @@ class BrandLookController extends Controller
         });
 
         return $this->saved(__('socialhq_knowledge.look.flash.logo_removed'));
-    }
-
-    private function workspace(Request $request, bool $edit): Workspace
-    {
-        $user = $request->user();
-        $workspace = $user->currentWorkspace;
-
-        abort_if($workspace === null, Response::HTTP_NOT_FOUND);
-        abort_unless($edit ? BrandKnowledge::canEdit($user, $workspace) : BrandKnowledge::canView($user, $workspace), Response::HTTP_FORBIDDEN);
-
-        return $workspace;
-    }
-
-    private function saved(string $message): RedirectResponse
-    {
-        session()->flash('flash.banner', $message);
-        session()->flash('flash.bannerStyle', 'success');
-
-        return back();
     }
 }

@@ -11,9 +11,9 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import DatePicker from '@/components/DatePicker.vue';
+import { reviewBadgeVariant } from '@/components/socialhq/plan/copyStatus';
 import type {
     BriefDetail,
-    BriefStage,
     PlanAbilities,
     PlanPerson,
 } from '@/components/socialhq/plan/item/types';
@@ -90,23 +90,6 @@ watch(
         form.reset();
     },
 );
-
-const stageVariant = (
-    stage: BriefStage,
-): 'secondary' | 'info' | 'warning' | 'success' | 'outline' => {
-    switch (stage) {
-        case 'in_progress':
-            return 'secondary';
-        case 'in_review':
-            return 'info';
-        case 'changes_requested':
-            return 'warning';
-        case 'approved':
-            return 'success';
-        default:
-            return 'outline';
-    }
-};
 
 const referenceLinks = computed(() =>
     form.references
@@ -240,7 +223,7 @@ const replaceWithDraft = (): void => {
                 {{ $t('socialhq_production.brief.title') }}
                 <Badge
                     v-if="brief"
-                    :variant="stageVariant(brief.stage)"
+                    :variant="reviewBadgeVariant(brief.stage)"
                     data-testid="item-brief-stage"
                 >
                     {{ $t(`socialhq_production.brief.stages.${brief.stage}`) }}

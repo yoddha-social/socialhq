@@ -33,7 +33,6 @@ import PlanViewToggle, {
 } from '@/components/socialhq/plan/PlanViewToggle.vue';
 import PlanWhatWorkedPanel from '@/components/socialhq/plan/PlanWhatWorkedPanel.vue';
 import type {
-    PlanAbilities,
     PlanAudience,
     PlanChannel,
     PlanData,
@@ -41,6 +40,7 @@ import type {
     PlanGenerateOptions,
     PlanItem,
     PlanLookups,
+    PlanMonthAbilities,
     PlanOwner,
     WhatWorked,
 } from '@/components/socialhq/plan/types';
@@ -79,7 +79,7 @@ const props = defineProps<{
     pillars: string[];
     cadence: Record<string, number | null>;
     creatives: string[];
-    abilities: PlanAbilities;
+    abilities: PlanMonthAbilities;
     ai: { available: boolean; hourlyLimit: number };
     audience: PlanAudience;
     generateDefaults: PlanGenerateOptions;

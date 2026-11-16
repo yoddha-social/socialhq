@@ -97,7 +97,7 @@ final class WebsiteReview
         switch (data_get($suggestion, 'type')) {
             case 'profile':
                 $field = (string) data_get($suggestion, 'field');
-                $value = self::required($pick('value'), 'value');
+                $value = self::fits(self::required($pick('value'), 'value'), WebsiteSuggestions::PROFILE_LIMITS[$field] ?? 0, __("socialhq.brand.profile.{$field}"));
                 BrandProfile::query()->updateOrCreate(['workspace_id' => $workspace->id], [$field => $value, 'updated_by' => $user->id]);
 
                 return [...$suggestion, 'value' => $value];
@@ -133,8 +133,9 @@ final class WebsiteReview
 
             case 'font':
             case 'style':
-                $value = self::required($pick('value'), 'value');
-                BrandLook::query()->updateOrCreate(['workspace_id' => $workspace->id], [(string) data_get($suggestion, 'field') => $value, 'updated_by' => $user->id]);
+                $field = (string) data_get($suggestion, 'field');
+                $value = self::fits(self::required($pick('value'), 'value'), WebsiteSuggestions::LOOK_LIMITS[$field] ?? 0, __("socialhq_knowledge.look.{$field}"));
+                BrandLook::query()->updateOrCreate(['workspace_id' => $workspace->id], [$field => $value, 'updated_by' => $user->id]);
 
                 return [...$suggestion, 'value' => $value];
 
@@ -151,6 +152,19 @@ final class WebsiteReview
     {
         if ($value === '') {
             throw ValidationException::withMessages([$field => __('socialhq_knowledge.website.errors.empty')]);
+        }
+
+        return $value;
+    }
+
+    /**
+     * The value, when it fits the field it goes into (the limits of the
+     * profile and brand look forms; an unknown field takes nothing).
+     */
+    private static function fits(string $value, int $limit, string $label): string
+    {
+        if (mb_strlen($value) > $limit) {
+            throw ValidationException::withMessages(['value' => __('validation.max.string', ['attribute' => $label, 'max' => $limit])]);
         }
 
         return $value;
@@ -179,6 +193,8 @@ final class WebsiteReview
         $previous = $document->path;
         $path = DocumentStorage::directory((string) $workspace->id).'/'.Str::uuid()->toString().'.txt';
         DocumentStorage::disk()->put($path, $text);
+        // Written inside the decision's transaction: it goes if that rolls back.
+        DB::afterRollBack(fn () => DocumentStorage::disk()->delete($path));
         $host = (string) preg_replace('/^www\./', '', strtolower((string) Uri::of($crawl->url)->host()));
 
         $document->forceFill([

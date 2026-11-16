@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\SocialHq\Knowledge\Look;
 
+use App\SocialHq\Knowledge\SafeXml;
 use DOMAttr;
-use DOMDocument;
 use DOMElement;
 use DOMNode;
 
@@ -51,20 +51,10 @@ final class SvgSanitizer
      */
     public static function sanitize(string $content): ?string
     {
-        if (stripos($content, '<!DOCTYPE') !== false || stripos($content, '<!ENTITY') !== false) {
+        $document = SafeXml::load($content);
+
+        if ($document === null) {
             return null;
-        }
-
-        $document = new DOMDocument;
-        $previous = libxml_use_internal_errors(true);
-
-        try {
-            if (! $document->loadXML($content, LIBXML_NONET | LIBXML_COMPACT)) {
-                return null;
-            }
-        } finally {
-            libxml_clear_errors();
-            libxml_use_internal_errors($previous);
         }
 
         $root = $document->documentElement;
@@ -154,7 +144,12 @@ final class SvgSanitizer
      */
     private static function safeCss(string $css): bool
     {
-        $lower = strtolower((string) preg_replace('/\s+|\\\\/', '', $css));
+        // A CSS escape (\75 rl, @\69mport) spells a word past the checks below.
+        if (str_contains($css, '\\')) {
+            return false;
+        }
+
+        $lower = strtolower((string) preg_replace('/\s+/', '', $css));
 
         if (str_contains($lower, '@import') || str_contains($lower, 'javascript:') || str_contains($lower, 'expression(')
             || str_contains($lower, '<') || str_contains($lower, 'behavior:') || str_contains($lower, '-moz-binding')) {

@@ -6,9 +6,9 @@ namespace App\SocialHq\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Workspace;
+use App\SocialHq\Http\Controllers\Concerns\WorksOnBrandKnowledge;
 use App\SocialHq\Http\Requests\ConfirmCalendarImportRequest;
 use App\SocialHq\Http\Requests\StoreCalendarImportRequest;
-use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\Calendars\CalendarFileProblem;
 use App\SocialHq\Knowledge\Calendars\CalendarImport;
 use App\SocialHq\Knowledge\Calendars\CalendarSheet;
@@ -23,6 +23,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 /**
  * Old calendars on the Brand knowledge page, as JSON for the import dialog:
@@ -32,6 +33,8 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class CalendarImportController extends Controller
 {
+    use WorksOnBrandKnowledge;
+
     /** Sample rows shown in the mapping step. */
     public const int SAMPLE_ROWS = 5;
 
@@ -46,6 +49,14 @@ class CalendarImportController extends Controller
 
         $file = $request->file('file');
         $type = (string) CalendarSpreadsheet::detectType((string) $file->getRealPath(), $file->getClientOriginalExtension());
+        $hash = (string) hash_file('sha256', (string) $file->getRealPath());
+
+        // The same file twice would duplicate its past posts.
+        $earlier = CalendarImport::query()->where('workspace_id', $workspace->id)->imported()->where('content_hash', $hash)->first();
+
+        if ($earlier !== null) {
+            throw ValidationException::withMessages(['file' => __('socialhq_calendars.errors.same_file', ['name' => $earlier->file_name])]);
+        }
 
         try {
             $sheets = CalendarSpreadsheet::read((string) $file->getRealPath(), $type);
@@ -53,16 +64,23 @@ class CalendarImportController extends Controller
             throw ValidationException::withMessages(['file' => $problem->userMessage()]);
         }
 
-        $path = CalendarStorage::newPath($workspace, $type);
-        CalendarStorage::disk()->putFileAs(dirname($path), $file, basename($path));
+        // The sheets as read wait for the mapping, so confirming never parses the file again.
+        $path = CalendarStorage::putSheets($workspace, $sheets);
 
-        $import = CalendarImport::query()->create([
-            'workspace_id' => $workspace->id,
-            'file_name' => mb_substr($file->getClientOriginalName(), 0, 255),
-            'file_type' => $type,
-            'path' => $path,
-            'created_by' => $request->user()->id,
-        ]);
+        try {
+            $import = CalendarImport::query()->create([
+                'workspace_id' => $workspace->id,
+                'file_name' => mb_substr($file->getClientOriginalName(), 0, 255),
+                'file_type' => $type,
+                'path' => $path,
+                'content_hash' => $hash,
+                'created_by' => $request->user()->id,
+            ]);
+        } catch (Throwable $failed) {
+            CalendarStorage::disk()->delete($path);
+
+            throw $failed;
+        }
 
         return response()->json([
             'id' => $import->id,
@@ -128,17 +146,6 @@ class CalendarImportController extends Controller
     private static function maxImports(): int
     {
         return max(1, (int) config('socialhq.knowledge.calendars.max_imports', 50));
-    }
-
-    private function workspace(Request $request, bool $edit): Workspace
-    {
-        $user = $request->user();
-        $workspace = $user->currentWorkspace;
-
-        abort_if($workspace === null, Response::HTTP_NOT_FOUND);
-        abort_unless($edit ? BrandKnowledge::canEdit($user, $workspace) : BrandKnowledge::canView($user, $workspace), Response::HTTP_FORBIDDEN);
-
-        return $workspace;
     }
 
     /**

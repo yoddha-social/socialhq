@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\SocialHq\Knowledge\Calendars;
 
+use App\SocialHq\Knowledge\Documents\DocumentFailure;
+use App\SocialHq\Knowledge\Documents\DocumentUnreadable;
+use App\SocialHq\Knowledge\Documents\ZipGuard;
 use DateTimeInterface;
 use finfo;
 use OpenSpout\Common\Entity\Cell;
@@ -37,6 +40,9 @@ final class CalendarSpreadsheet
 
     /** At most this many sheets with data are offered. */
     public const int MAX_SHEETS = 10;
+
+    /** Columns read per row; cells further right are left out. */
+    public const int MAX_COLUMNS = 200;
 
     /** Rows read per sheet, empty ones included, before giving up on the rest. */
     private const int MAX_SCANNED_ROWS = 200_000;
@@ -75,6 +81,11 @@ final class CalendarSpreadsheet
     public static function read(string $path, string $type): array
     {
         $maxRows = self::maxRows();
+
+        if ($type === self::XLSX) {
+            self::assertSafeZip($path);
+        }
+
         $reader = self::reader($path, $type);
 
         try {
@@ -134,9 +145,13 @@ final class CalendarSpreadsheet
             }
 
             // Cells may have holes (a column the sheet never wrote): keep each at its column.
-            $cells = array_fill(0, $row->getNumCells(), null);
+            $cells = array_fill(0, min($row->getNumCells(), self::MAX_COLUMNS), null);
 
             foreach ($row->cells as $column => $cell) {
+                if ($column >= self::MAX_COLUMNS) {
+                    break;
+                }
+
                 $cells[$column] = self::value($cell);
             }
 
@@ -271,6 +286,21 @@ final class CalendarSpreadsheet
     private static function withoutCutCharacter(string $sample): string
     {
         return strlen($sample) < 65536 ? $sample : (string) preg_replace('/[\x80-\xFF]{1,3}$/', '', $sample);
+    }
+
+    /**
+     * Refuses a workbook that expands to more than we read (ZipGuard), every
+     * part capped: OpenSpout reads the shared strings into memory.
+     *
+     * @throws CalendarFileProblem
+     */
+    private static function assertSafeZip(string $path): void
+    {
+        try {
+            ZipGuard::assertSafe($path, capEachPart: true);
+        } catch (DocumentUnreadable $refused) {
+            throw new CalendarFileProblem($refused->failure === DocumentFailure::TooBig ? 'expands_too_much' : 'unreadable');
+        }
     }
 
     private static function isWorkbook(string $path): bool

@@ -19,12 +19,16 @@ use Symfony\Component\DomCrawler\UriResolver;
  * the address checked), a size cap on the bytes received and a time cap.
  *
  * Redirects are followed here, one hop at a time, and each target must be
- * a host the caller allows (the same site, or Google's own hosts); any
- * other target stops the fetch with SourceUnavailable::REDIRECT_ELSEWHERE.
+ * a host the caller allows (the same site, or Google's own hosts) on its
+ * scheme's default port; any other target stops the fetch with
+ * SourceUnavailable::REDIRECT_ELSEWHERE. A body sent compressed although
+ * we asked for none is SourceUnavailable::ENCODED (it is never decoded).
  */
 final class SourceFetcher
 {
     private const MAX_HOPS = 3;
+
+    private const array DEFAULT_PORTS = ['http' => 80, 'https' => 443];
 
     public function __construct(private readonly SafeHttpFetcher $fetcher) {}
 
@@ -71,13 +75,22 @@ final class SourceFetcher
             $location = trim($response->header('Location'));
 
             if (! $response->redirect() || $location === '') {
+                // Asked for identity: a body compressed anyway would be read as binary text.
+                $encoding = strtolower(trim($response->header('Content-Encoding')));
+
+                if ($response->body() !== '' && ! in_array($encoding, ['', 'identity'], true)) {
+                    throw new SourceUnavailable(SourceUnavailable::ENCODED, $current);
+                }
+
                 return new FetchedSource($current, $response);
             }
 
             $next = (string) UriResolver::resolve($location, $current);
             $uri = Uri::of($next);
+            $scheme = strtolower((string) $uri->scheme());
 
-            if (! in_array(strtolower((string) $uri->scheme()), ['http', 'https'], true) || ! $allowsHost(strtolower((string) $uri->host()))) {
+            // The same host on another port is another service: only the scheme's own port.
+            if (! in_array($scheme, ['http', 'https'], true) || ! in_array($uri->port(), [null, self::DEFAULT_PORTS[$scheme]], true) || ! $allowsHost(strtolower((string) $uri->host()))) {
                 throw new SourceUnavailable(SourceUnavailable::REDIRECT_ELSEWHERE, $next);
             }
 

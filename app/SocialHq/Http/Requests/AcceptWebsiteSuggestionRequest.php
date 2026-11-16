@@ -12,7 +12,9 @@ use Illuminate\Validation\Rule;
 /**
  * Accepting a website suggestion, as suggested or edited: only the fields
  * of the suggestion's type are read (WebsiteReview), each within the limit
- * of the form it ends up in.
+ * of the form it ends up in. `value` goes into a profile field, a font or
+ * the style notes: 2000 is the longest of them, and WebsiteReview holds it
+ * to its own field's limit (a font takes 80).
  */
 class AcceptWebsiteSuggestionRequest extends FormRequest
 {

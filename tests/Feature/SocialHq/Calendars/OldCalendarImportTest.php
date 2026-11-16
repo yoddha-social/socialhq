@@ -382,3 +382,89 @@ test('uploads never imported are deleted after a day, and a deleted brand takes 
 
     Storage::disk('local')->assertMissing($kept);
 });
+
+/**
+ * An XLSX whose shared strings part expands to $bytes of one repeated letter.
+ */
+function oldCalendarZipBomb(int $bytes): UploadedFile
+{
+    $path = tempnam(sys_get_temp_dir(), 'shq-cal');
+    $zip = new ZipArchive;
+    $zip->open($path, ZipArchive::OVERWRITE);
+    $zip->addFromString('xl/workbook.xml', '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"/>');
+    $zip->addFromString('xl/sharedStrings.xml', str_repeat('a', $bytes));
+    $zip->close();
+
+    return new UploadedFile($path, 'calendar.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
+}
+
+test('an xlsx that expands too much is refused before it is read', function () {
+    $upload = fn (UploadedFile $file) => $this->actingAs($this->owner)->post(route('socialhq.brand.calendars.store'), ['file' => $file], ['Accept' => 'application/json']);
+
+    // A part over the part limit (the shared strings are read whole).
+    config(['socialhq.knowledge.documents.max_part_bytes' => 1024 * 1024]);
+    $upload(oldCalendarZipBomb(2 * 1024 * 1024))->assertUnprocessable()->assertJsonValidationErrors(['file' => 'holds more than we can read']);
+
+    // Under every size limit, but a thousand times smaller compressed than expanded.
+    config(['socialhq.knowledge.documents.max_part_bytes' => 20 * 1024 * 1024]);
+    $upload(oldCalendarZipBomb(12 * 1024 * 1024))->assertUnprocessable()->assertJsonValidationErrors(['file' => 'holds more than we can read']);
+
+    expect(CalendarImport::query()->count())->toBe(0)
+        ->and(Storage::disk('local')->allFiles())->toBe([]);
+});
+
+test('columns past the 200th are left out', function () {
+    $date = $this->lastYear->format('Y-m-d');
+    $header = ['Date', 'Title', ...array_map(fn (int $column): string => "Extra {$column}", range(3, 260))];
+
+    $this->actingAs($this->owner)
+        ->post(route('socialhq.brand.calendars.store'), ['file' => oldCalendarXlsx(['Plan' => [$header, [$date, 'Dashain menu']]])], ['Accept' => 'application/json'])
+        ->assertCreated()
+        ->assertJsonCount(200, 'sheets.0.columns')
+        ->assertJsonPath('sheets.0.columns.199.label', 'Extra 200');
+});
+
+test('the upload keeps the sheets as read, so importing never reads the spreadsheet again', function () {
+    $date = $this->lastYear->format('Y-m-d');
+    $upload = $this->actingAs($this->owner)
+        ->post(route('socialhq.brand.calendars.store'), ['file' => oldCalendarXlsx(['Plan' => [['Date', 'Title'], [$date, 'Dashain menu']]])], ['Accept' => 'application/json'])
+        ->assertCreated()
+        ->json();
+    $path = (string) CalendarImport::query()->whereKey($upload['id'])->value('path');
+
+    expect($path)->toEndWith('.json')
+        ->and(json_decode((string) Storage::disk('local')->get($path), true))->toHaveCount(1);
+
+    $this->actingAs($this->owner)->putJson(route('socialhq.brand.calendars.update', $upload['id']), [
+        'sheet' => 0, 'mapping' => $upload['sheets'][0]['mapping'], 'date_order' => $upload['sheets'][0]['date_order'],
+    ])->assertOk();
+
+    expect(PastPost::query()->sole()->posted_on->toDateString())->toBe($date);
+});
+
+test('the same file is imported only once per brand', function () {
+    $date = $this->lastYear->format('Y-m-d');
+    $rows = [['Date', 'Title'], [$date, 'Dashain menu']];
+    $upload = fn () => $this->actingAs($this->owner)->post(route('socialhq.brand.calendars.store'), ['file' => oldCalendarCsv($rows, 'again.csv')], ['Accept' => 'application/json']);
+
+    // Two uploads of it waiting at once: the second to be confirmed is refused.
+    $first = $upload()->assertCreated()->json();
+    $second = $upload()->assertCreated()->json();
+    $confirm = fn (array $pending) => $this->actingAs($this->owner)->putJson(route('socialhq.brand.calendars.update', $pending['id']), [
+        'sheet' => 0, 'mapping' => $pending['sheets'][0]['mapping'], 'date_order' => $pending['sheets'][0]['date_order'],
+    ]);
+
+    $confirm($first)->assertOk();
+    $confirm($second)->assertUnprocessable()->assertJsonValidationErrors(['rows' => 'already imported this file']);
+
+    // Once imported, uploading it again is refused at once.
+    $upload()->assertUnprocessable()->assertJsonValidationErrors(['file' => 'already imported this file as "again.csv"']);
+
+    expect(PastPost::query()->count())->toBe(1);
+});
+
+test('uploading and importing calendars is rate limited', function () {
+    foreach (['socialhq.brand.calendars.store', 'socialhq.brand.calendars.update'] as $name) {
+        expect(app('router')->getRoutes()->getByName($name)->gatherMiddleware())->toContain('throttle:socialhq-calendar-imports');
+    }
+});

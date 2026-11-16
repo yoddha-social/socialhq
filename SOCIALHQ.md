@@ -155,10 +155,13 @@ workspace they work for and pass the text to their own prompt view.
 
 **Old calendars** (same page): admins import past content calendars as CSV
 or XLSX (up to 5 MB and 5,000 rows, 50 per brand; `knowledge.calendars` in
-`config/socialhq.php`). The upload waits on the private `local` disk while
-the admin matches columns (guessed from English and Nepali headers; only
-the date is required) and the date order; importing stores the rows in
-`shq_past_posts` and deletes the file. Rows without a readable AD date, in
+`config/socialhq.php`; an XLSX is checked by `ZipGuard` before it is read,
+and rows keep 200 columns at most). The file is read once: its sheets wait
+on the private `local` disk (JSON) while the admin matches columns (guessed
+from English and Nepali headers; only the date is required) and the date
+order; importing stores the rows in `shq_past_posts` and deletes the file.
+The same file (by hash) is imported once per brand. Uploading and
+importing share a limit of 60 an hour per person. Rows without a readable AD date, in
 the future or with a Bikram Sambat year (2070–2099) are skipped with a
 reason; dates are never converted. Uploads never imported are pruned after
 a day (`socialhq:calendars:prune`, hourly). The planner gets up to 60 rows
@@ -189,7 +192,9 @@ a 403 means the file isn't shared ("Share it as 'Anyone with the link can
 view', or upload the file"). The text is stored as a .txt document
 (`source` `google_doc` / `google_sheet` / `google_slides`) and goes through
 the same extraction, limits and count as an upload. "Read again" re-reads
-it; unchanged text (same hash) keeps its excerpts. The title follows the
+it; unchanged text (same hash) keeps its excerpts, and a read that fails
+keeps the document ready with the excerpts read before ("We couldn't read
+it again"; only a first read fails the document). The title follows the
 file's name until an admin renames it. Code: `app/SocialHq/Knowledge/Sources/`.
 
 **Brand look** (same page). The logo (PNG, JPEG, WebP or SVG, checked by
@@ -244,7 +249,9 @@ the entries and up to 6 excerpts that match (best first, under
 (`SOCIALHQ_KNOWLEDGE_PROMPT_CHARACTERS_FOCUSED`). Without one, nothing
 changes and documents stay out. Search is `KnowledgeSearch`, today BM25 over
 words in PHP (`LexicalKnowledgeSearch`, Unicode words so Nepali works, entry
-titles count triple). "Check what the AI reads" on the page shows what a topic
+titles count triple), scoring word counts stored with each entry and excerpt
+(`terms`, written with the text; older rows are filled the first time
+search reads them). "Check what the AI reads" on the page shows what a topic
 gets. Embeddings (the `embed` task, pgvector) would add meaning ("cost" finding
 "price", English finding Nepali): a vector per entry and excerpt, blended with
 the word scores, bound in place of the lexical class.

@@ -42,7 +42,6 @@ final readonly class PageText
      */
     public function __construct(
         public string $title,
-        public string $description,
         public string $text,
         public array $links,
         public array $colours,
@@ -58,7 +57,7 @@ final readonly class PageText
             // The XML declaration makes libxml read the page as UTF-8.
             $document->loadHTML('<?xml encoding="UTF-8">'.mb_scrub($html, 'UTF-8'), LIBXML_NONET | LIBXML_COMPACT | LIBXML_NOERROR | LIBXML_NOWARNING);
         } catch (Throwable) {
-            return new self('', '', '', [], [], []);
+            return new self('', '', [], [], []);
         } finally {
             libxml_clear_errors();
             libxml_use_internal_errors($previous);
@@ -66,7 +65,6 @@ final readonly class PageText
 
         $xpath = new DOMXPath($document);
         $title = self::clean((string) $xpath->evaluate('string(//title)'));
-        $description = self::clean((string) $xpath->evaluate('string(//meta[@name="description"]/@content)'));
         $colours = self::colours($xpath);
         $fonts = self::fonts($xpath);
         $links = self::links($xpath, $url);
@@ -90,7 +88,7 @@ final readonly class PageText
         $root = self::mainElement($xpath);
         $text = $root === null ? '' : DocumentText::clean(self::text($root));
 
-        return new self($title, $description, $text, $links, $colours, $fonts);
+        return new self($title, $text, $links, $colours, $fonts);
     }
 
     private static function isBoilerplate(DOMElement $element): bool

@@ -7,6 +7,7 @@ namespace App\SocialHq\Knowledge\Documents;
 use DOMDocument;
 use DOMElement;
 use DOMNode;
+use App\SocialHq\Knowledge\SafeXml;
 use Smalot\PdfParser\Config;
 use Smalot\PdfParser\Parser;
 use Throwable;
@@ -303,42 +304,11 @@ final class DocumentText
     }
 
     /**
-     * Opens an Office file, refusing one whose parts add up to more than we
-     * read (sizes from the zip's directory; each read is capped as well).
+     * Opens an Office file once ZipGuard has checked its sizes.
      */
     private static function openZip(string $path): ZipArchive
     {
-        $zip = new ZipArchive;
-
-        if ($zip->open($path, ZipArchive::RDONLY) !== true) {
-            throw DocumentFailure::Unreadable->exception();
-        }
-
-        $total = 0;
-
-        for ($index = 0; $index < $zip->numFiles; $index++) {
-            $stat = $zip->statIndex($index);
-
-            if ($stat === false) {
-                continue;
-            }
-
-            if (($stat['encryption_method'] ?? 0) !== 0) {
-                $zip->close();
-
-                throw DocumentFailure::Protected->exception();
-            }
-
-            $total += (int) $stat['size'];
-        }
-
-        if ($zip->numFiles > 10000 || $total > self::maxExpandedBytes()) {
-            $zip->close();
-
-            throw DocumentFailure::TooBig->exception();
-        }
-
-        return $zip;
+        return ZipGuard::open($path);
     }
 
     /**
@@ -346,7 +316,7 @@ final class DocumentText
      */
     private static function read(ZipArchive $zip, string $name): string
     {
-        $limit = self::maxPartBytes();
+        $limit = ZipGuard::maxPartBytes();
         $stat = $zip->statName($name);
 
         if ($stat === false) {
@@ -371,37 +341,11 @@ final class DocumentText
     }
 
     /**
-     * Parses one XML part without network access, refusing any DTD (Office
-     * parts never have one; it is how entity bombs get in).
+     * Parses one XML part without network access or DTD (Office parts never
+     * have one; it is how entity bombs get in).
      */
     private static function xml(string $content): DOMDocument
     {
-        if (stripos($content, '<!DOCTYPE') !== false) {
-            throw DocumentFailure::Unreadable->exception();
-        }
-
-        $document = new DOMDocument;
-        $previous = libxml_use_internal_errors(true);
-
-        try {
-            if (! $document->loadXML($content, LIBXML_NONET | LIBXML_COMPACT)) {
-                throw DocumentFailure::Unreadable->exception();
-            }
-        } finally {
-            libxml_clear_errors();
-            libxml_use_internal_errors($previous);
-        }
-
-        return $document;
-    }
-
-    private static function maxExpandedBytes(): int
-    {
-        return (int) config('socialhq.knowledge.documents.max_expanded_bytes', 100 * 1024 * 1024);
-    }
-
-    private static function maxPartBytes(): int
-    {
-        return (int) config('socialhq.knowledge.documents.max_part_bytes', 20 * 1024 * 1024);
+        return SafeXml::load($content) ?? throw DocumentFailure::Unreadable->exception();
     }
 }

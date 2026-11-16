@@ -6,6 +6,7 @@ namespace App\SocialHq\Knowledge\Sources;
 
 use App\SocialHq\Knowledge\Documents\DocumentFailure;
 use App\SocialHq\Knowledge\Documents\DocumentUnreadable;
+use App\SocialHq\Knowledge\Documents\ZipGuard;
 use DateTimeInterface;
 use OpenSpout\Common\Entity\Cell\ErrorCell;
 use OpenSpout\Common\Entity\Cell\FormulaCell;
@@ -13,7 +14,6 @@ use OpenSpout\Reader\SheetWithVisibilityInterface;
 use OpenSpout\Reader\XLSX\Options;
 use OpenSpout\Reader\XLSX\Reader;
 use Throwable;
-use ZipArchive;
 
 /**
  * The text of a Google Sheets workbook (exported as XLSX): each visible
@@ -28,7 +28,8 @@ final class SheetText
      */
     public static function fromXlsx(string $path): string
     {
-        self::assertReasonableZip($path);
+        // Shared strings are read whole: every part is capped, not only the total.
+        ZipGuard::assertSafe($path, capEachPart: true);
 
         $maxRows = max(1, (int) config('socialhq.knowledge.calendars.max_rows', 5000));
         $reader = new Reader(new Options(SHOULD_FORMAT_DATES: false));
@@ -89,33 +90,5 @@ final class SheetText
             $value instanceof DateTimeInterface => $value->format($value->format('His') === '000000' ? 'Y-m-d' : 'Y-m-d H:i'),
             default => '',
         };
-    }
-
-    /**
-     * Refuses a workbook whose parts add up to more than documents may expand to.
-     *
-     * @throws DocumentUnreadable
-     */
-    private static function assertReasonableZip(string $path): void
-    {
-        $zip = new ZipArchive;
-
-        if ($zip->open($path, ZipArchive::RDONLY) !== true) {
-            throw DocumentFailure::Unreadable->exception();
-        }
-
-        try {
-            $total = 0;
-
-            for ($index = 0; $index < $zip->numFiles; $index++) {
-                $total += (int) data_get($zip->statIndex($index) ?: [], 'size', 0);
-            }
-
-            if ($zip->numFiles > 10000 || $total > (int) config('socialhq.knowledge.documents.max_expanded_bytes', 100 * 1024 * 1024)) {
-                throw DocumentFailure::TooBig->exception();
-            }
-        } finally {
-            $zip->close();
-        }
     }
 }

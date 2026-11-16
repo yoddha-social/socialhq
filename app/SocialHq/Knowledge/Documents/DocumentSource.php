@@ -21,11 +21,4 @@ enum DocumentSource: string
         return in_array($this, [self::GoogleDoc, self::GoogleSheet, self::GoogleSlides], true);
     }
 
-    /**
-     * Documents that count toward the per-brand limit: the website's text is one extra.
-     */
-    public function countsTowardLimit(): bool
-    {
-        return $this !== self::Website;
-    }
 }

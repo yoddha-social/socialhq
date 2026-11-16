@@ -40,6 +40,38 @@ final class Tokens
         return $tokens;
     }
 
+    /**
+     * How often each word occurs, each occurrence counting $weight.
+     *
+     * @return array<string, int>
+     */
+    public static function frequencies(string $text, int $weight = 1): array
+    {
+        $counts = [];
+
+        foreach (self::of($text) as $token) {
+            $counts[$token] = ($counts[$token] ?? 0) + $weight;
+        }
+
+        return $counts;
+    }
+
+    /**
+     * Two sets of counts added together.
+     *
+     * @param  array<string, int>  $left
+     * @param  array<string, int>  $right
+     * @return array<string, int>
+     */
+    public static function add(array $left, array $right): array
+    {
+        foreach ($right as $token => $count) {
+            $left[$token] = ($left[$token] ?? 0) + $count;
+        }
+
+        return $left;
+    }
+
     private static function stem(string $word): string
     {
         if (strlen($word) > 3 && str_ends_with($word, 's') && ! str_ends_with($word, 'ss') && ! str_ends_with($word, 'us') && ! str_ends_with($word, 'is')) {

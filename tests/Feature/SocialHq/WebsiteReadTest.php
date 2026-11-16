@@ -12,6 +12,7 @@ use App\SocialHq\Knowledge\Documents\DocumentStorage;
 use App\SocialHq\Knowledge\Documents\KnowledgeDocument;
 use App\SocialHq\Knowledge\KnowledgeEntry;
 use App\SocialHq\Knowledge\Look\BrandLook;
+use App\SocialHq\Knowledge\Website\CrawledPage;
 use App\SocialHq\Knowledge\Website\CrawlFailure;
 use App\SocialHq\Knowledge\Website\CrawlStatus;
 use App\SocialHq\Knowledge\Website\WebsiteCrawl;
@@ -201,6 +202,37 @@ test('an admin accepts, edits or skips each suggestion, once', function () {
     expect(KnowledgeEntry::query()->count())->toBe(1);
 });
 
+test('an edited value must fit the field it goes into', function () {
+    fakeAcmeSite();
+    WebsiteReader::fake([websiteSuggestionAnswer()]);
+    readWebsite($this->owner);
+    $crawl = WebsiteCrawl::query()->sole();
+    $accept = fn (string $key, string $value): TestResponse => $this->post(route('socialhq.brand.website.accept', [$crawl->id, $key]), ['value' => $value]);
+
+    $accept('font-heading_font', str_repeat('P', 81))->assertSessionHasErrors(['value' => 'The Heading font field must not be greater than 80 characters.']);
+    $accept('profile-audience', str_repeat('a', 1001))->assertSessionHasErrors('value');
+
+    expect(BrandLook::of($this->workspace))->toBeNull()
+        ->and(BrandProfile::query()->exists())->toBeFalse()
+        ->and(suggestionByKey($crawl, 'font-heading_font')['status'])->toBe('open');
+
+    $accept('font-heading_font', str_repeat('P', 80))->assertSessionHasNoErrors();
+    expect(BrandLook::of($this->workspace)->heading_font)->toBe(str_repeat('P', 80));
+});
+
+test('keeping the website\'s text leaves no file behind when the decision fails', function () {
+    fakeAcmeSite();
+    WebsiteReader::fake([websiteSuggestionAnswer()]);
+    readWebsite($this->owner);
+    $crawl = WebsiteCrawl::query()->sole();
+    WebsiteCrawl::updating(fn () => throw new RuntimeException('database down'));
+
+    $this->post(route('socialhq.brand.website.accept', [$crawl->id, 'document']))->assertServerError();
+
+    expect(KnowledgeDocument::query()->count())->toBe(0)
+        ->and(Storage::disk(DocumentStorage::DISK)->allFiles())->toBe([]);
+});
+
 test('a site that hasn\'t changed is not read into the AI again', function () {
     fakeAcmeSite();
     WebsiteReader::fake([websiteSuggestionAnswer(), websiteSuggestionAnswer()]);
@@ -263,6 +295,20 @@ test('redirects to another site or to a loopback address are not followed', func
     expect(WebsiteCrawl::query()->sole()->status)->toBe(CrawlStatus::Ready);
     Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '127.0.0.1') || str_contains($request->url(), 'elsewhere.example'));
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://www.acme.example/contact-us');
+});
+
+test('a redirect to another port of the site, or a page compressed anyway, is not read', function () {
+    fakeAcmeSite([
+        'acme.example/about' => Http::response('', 301, ['Location' => 'https://acme.example:8443/about']),
+        'acme.example/products' => Http::response(gzencode(sitePage('<p>The Trailblazer 40 is a waterproof trekking bag that costs Rs 7,500.</p>')), 200, ['Content-Type' => 'text/html', 'Content-Encoding' => 'gzip']),
+    ]);
+    WebsiteReader::fake([websiteSuggestionAnswer()]);
+
+    readWebsite($this->owner);
+
+    expect(WebsiteCrawl::query()->sole()->status)->toBe(CrawlStatus::Ready)
+        ->and(CrawledPage::query()->pluck('url')->all())->not->toContain('https://acme.example/products');
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), ':8443'));
 });
 
 test('a site whose robots.txt disallows everything is not read', function () {

@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace App\SocialHq\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\Workspace;
+use App\SocialHq\Http\Controllers\Concerns\WorksOnBrandKnowledge;
 use App\SocialHq\Http\Requests\StoreKnowledgeDocumentRequest;
 use App\SocialHq\Http\Requests\UpdateKnowledgeDocumentRequest;
-use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\Documents\DocumentsPage;
 use App\SocialHq\Knowledge\Documents\DocumentStatus;
 use App\SocialHq\Knowledge\Documents\DocumentStorage;
@@ -20,6 +19,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 /**
  * Brand knowledge documents of the current workspace: workspace admins
@@ -28,6 +28,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class KnowledgeDocumentController extends Controller
 {
+    use WorksOnBrandKnowledge;
+
     public function store(StoreKnowledgeDocumentRequest $request): RedirectResponse
     {
         $workspace = $this->workspace($request, edit: true);
@@ -46,18 +48,25 @@ class KnowledgeDocumentController extends Controller
 
         $title = trim((string) $request->validated('title')) ?: pathinfo($fileName, PATHINFO_FILENAME);
 
-        $document = KnowledgeDocument::query()->create([
-            'workspace_id' => $workspace->id,
-            'title' => Str::limit($title, 120, '') ?: $fileName,
-            'file_name' => $fileName,
-            'mime' => $type->mime(),
-            'size' => (int) $file->getSize(),
-            'path' => $path,
-            'status' => DocumentStatus::Processing,
-            'use_in_ai' => true,
-            'created_by' => $request->user()->id,
-            'updated_by' => $request->user()->id,
-        ]);
+        try {
+            $document = KnowledgeDocument::query()->create([
+                'workspace_id' => $workspace->id,
+                'title' => Str::limit($title, 120, '') ?: $fileName,
+                'file_name' => $fileName,
+                'mime' => $type->mime(),
+                'size' => (int) $file->getSize(),
+                'path' => $path,
+                'status' => DocumentStatus::Processing,
+                'use_in_ai' => true,
+                'created_by' => $request->user()->id,
+                'updated_by' => $request->user()->id,
+            ]);
+        } catch (Throwable $failed) {
+            // No row to go with the file.
+            DocumentStorage::disk()->delete($path);
+
+            throw $failed;
+        }
 
         ExtractKnowledgeDocument::dispatch($document->id);
 
@@ -71,7 +80,7 @@ class KnowledgeDocumentController extends Controller
 
         abort_unless(filled($found->path) && DocumentStorage::disk()->exists($found->path), Response::HTTP_NOT_FOUND);
 
-        return DocumentStorage::disk()->download($found->path, $found->file_name, [
+        return DocumentStorage::disk()->download($found->path, DocumentStorage::downloadName($found->file_name), [
             'Content-Type' => $found->mime,
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, no-store',
@@ -99,17 +108,6 @@ class KnowledgeDocumentController extends Controller
         return $this->saved(__('socialhq_knowledge.documents.flash.deleted'));
     }
 
-    private function workspace(Request $request, bool $edit): Workspace
-    {
-        $user = $request->user();
-        $workspace = $user->currentWorkspace;
-
-        abort_if($workspace === null, Response::HTTP_NOT_FOUND);
-        abort_unless($edit ? BrandKnowledge::canEdit($user, $workspace) : BrandKnowledge::canView($user, $workspace), Response::HTTP_FORBIDDEN);
-
-        return $workspace;
-    }
-
     /**
      * A document of the current workspace, which the user may change.
      */
@@ -126,13 +124,5 @@ class KnowledgeDocumentController extends Controller
     private static function plainName(string $name): string
     {
         return trim((string) preg_replace('/\p{Cc}/u', '', basename(str_replace('\\', '/', $name))));
-    }
-
-    private function saved(string $message): RedirectResponse
-    {
-        session()->flash('flash.banner', $message);
-        session()->flash('flash.bannerStyle', 'success');
-
-        return back();
     }
 }

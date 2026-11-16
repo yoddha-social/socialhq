@@ -399,7 +399,14 @@ first person asks for a company, is granted, and approves it.
    and for members the owner), and its API keys and MCP grants get a 403.
    Someone with no workspace who can't create one (an invited person's
    empty account) gets a page that says to ask for an invite or, if their
-   account is empty, to ask for a company. Platform admins follow their own
+   account is empty, to ask for a company. An account that owns
+   workspaces but has no company row (sign-up never makes one: the
+   register and Google/GitHub controllers tell `CreateUser` it is a self
+   sign-up, which either joins a team, asks for a company or gets no
+   workspace) is not approved: its people get the same page, its owner
+   asks for approval there, and its API keys get a 403. An invite link
+   kept in the session counts as the invite only for its own email.
+   Platform admins follow their own
    company's rules but always reach the platform pages. Scheduled posts of
    a paused company still publish.
 

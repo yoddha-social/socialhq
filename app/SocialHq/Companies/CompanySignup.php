@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\SocialHq\Companies;
 
 use App\Actions\User\CreateUser;
-use App\Models\Account;
 use App\Models\User;
 use App\SocialHq\Signup\SignupRules;
 use Closure;
@@ -36,16 +35,16 @@ final class CompanySignup
 
     /**
      * Whether this registration asks for a company: company requests are
-     * on, there's no invite (posted or in the session), and the email isn't
-     * on the sign-up lists (those join their team's company, as before).
+     * on, there's no invite (posted or in the session: RegisterRequest::invite()),
+     * and the email isn't on the sign-up lists (those join their team's
+     * company, as before).
      *
-     * @param  Closure(): bool  $hasPostedInvite
+     * @param  Closure(): bool  $hasInvite
      */
-    public static function asksForCompany(mixed $email, Closure $hasPostedInvite): bool
+    public static function asksForCompany(mixed $email, Closure $hasInvite): bool
     {
         return CompanyRequests::enabled()
-            && ! $hasPostedInvite()
-            && ! SignupRules::hasSessionInvite()
+            && ! $hasInvite()
             && ! SignupRules::allows(is_string($email) ? $email : null);
     }
 
@@ -70,7 +69,7 @@ final class CompanySignup
             self::sendResetLink($email);
         } else {
             try {
-                $user = CreateUser::execute($data, $attributionParameters);
+                $user = CreateUser::execute([...$data, 'self_signup' => true], $attributionParameters);
                 event(new Registered($user));
             } catch (UniqueConstraintViolationException) {
                 // Someone registered the same email a moment earlier.
@@ -84,16 +83,16 @@ final class CompanySignup
     }
 
     /**
-     * The company name CreateUser opens a request with, or null when this
-     * registration doesn't ask for a company (an invite, the allow list, a
-     * command, the SaaS mode).
+     * The company name CreateUser opens a request with for a self sign-up
+     * that doesn't join its team (the allow list), or null when company
+     * requests are off (or in the SaaS mode). CreateUser asks only for self
+     * sign-ups, never for invites or users created by commands.
      *
      * @param  array<string, mixed>  $data
      */
-    public static function companyToRequest(array $data, bool $isInvite): ?string
+    public static function companyToRequest(array $data): ?string
     {
-        if ($isInvite || ! CompanyRequests::enabled() || SignupRules::hasSessionInvite()
-            || ! request()->routeIs('register.store', 'auth.google.callback', 'auth.github.callback')) {
+        if (! CompanyRequests::enabled()) {
             return null;
         }
 
@@ -104,11 +103,6 @@ final class CompanySignup
         }
 
         return $name !== '' ? $name : Str::before((string) data_get($data, 'email'), '@');
-    }
-
-    public static function open(User $user, Account $account, string $name): Company
-    {
-        return CompanyRequests::open($user, $account, $name);
     }
 
     private static function sendResetLink(string $email): void

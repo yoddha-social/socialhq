@@ -89,22 +89,25 @@ class CompanyRequestController extends Controller
     }
 
     /**
-     * Someone with no workspace who can't create one: how to get in.
+     * Someone with no workspace who can't create one, or whose account owns
+     * workspaces without being an approved company: how to get in.
      */
     public function start(Request $request): Response|RedirectResponse
     {
         $user = $request->user();
+        $unapproved = CompanyAccess::hasWorkspacesWithoutCompany($user);
 
         if ($user->can('create', Workspace::class)) {
             return redirect()->route('app.workspaces.create');
         }
 
-        if ($user->current_workspace_id !== null) {
+        if ($user->current_workspace_id !== null && ! $unapproved) {
             return redirect()->route('app.home');
         }
 
         return Inertia::render('socialhq/CompanyStart', [
             'canAskForCompany' => CompanyAccess::mayAskForCompany($user),
+            'unapproved' => $unapproved,
             'isPlatformAdmin' => PlatformAdmins::is($user),
         ]);
     }

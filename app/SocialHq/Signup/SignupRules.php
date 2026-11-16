@@ -84,16 +84,18 @@ final class SignupRules
 
     /**
      * Validation rule for the register form's email on a self-hosted
-     * install: without an invite (posted, or kept in the session), only
-     * allowed emails pass. Put it before `unique` with `bail`.
+     * install: without an open invite, only allowed emails pass. The
+     * caller's invite is the one the email is checked against (posted, or
+     * kept in the session: RegisterRequest::invite()), never a session
+     * invite on its own. Put it before `unique` with `bail`.
      *
-     * @param  Closure(): bool  $hasPostedInvite
+     * @param  Closure(): bool  $hasInvite
      * @return Closure(string, mixed, Closure(string): mixed): void
      */
-    public static function allowListRule(Closure $hasPostedInvite): Closure
+    public static function allowListRule(Closure $hasInvite): Closure
     {
-        return function (string $attribute, mixed $value, Closure $fail) use ($hasPostedInvite): void {
-            if (! config('trypost.self_hosted') || $hasPostedInvite() || self::hasSessionInvite()) {
+        return function (string $attribute, mixed $value, Closure $fail) use ($hasInvite): void {
+            if (! config('trypost.self_hosted') || $hasInvite()) {
                 return;
             }
 
@@ -156,16 +158,12 @@ final class SignupRules
     }
 
     /**
-     * The account a new user joins instead of getting their own: only for
-     * self sign-up through the register form or Google/GitHub, never for
-     * invites or users created by commands.
+     * The account a self sign-up (the register form or Google/GitHub with
+     * no invite, as their controllers tell CreateUser) joins instead of
+     * getting its own. Never asked for invites or users created by commands.
      */
-    public static function accountToJoin(?string $email, bool $isInvite): ?Account
+    public static function accountToJoin(?string $email): ?Account
     {
-        if ($isInvite || self::hasSessionInvite() || ! request()->routeIs('register.store', 'auth.google.callback', 'auth.github.callback')) {
-            return null;
-        }
-
         return self::allows($email) ? self::account() : null;
     }
 

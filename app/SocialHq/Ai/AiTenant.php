@@ -34,6 +34,14 @@ final class AiTenant
     private static array $stack = [];
 
     /**
+     * The workspace each run() was given (null when it was an account), for
+     * LiteLLM's spend logs.
+     *
+     * @var list<string|null>
+     */
+    private static array $workspaces = [];
+
+    /**
      * Runs the callback with AI calls billed to this company.
      *
      * @template TResult
@@ -50,11 +58,13 @@ final class AiTenant
             $tenant === self::PLATFORM => self::PLATFORM,
             default => self::NONE,
         };
+        self::$workspaces[] = $tenant instanceof Workspace ? $tenant->id : null;
 
         try {
             return $callback();
         } finally {
             array_pop(self::$stack);
+            array_pop(self::$workspaces);
         }
     }
 
@@ -72,5 +82,20 @@ final class AiTenant
         $user = auth()->user();
 
         return $user instanceof User ? $user->currentWorkspace?->account : null;
+    }
+
+    /**
+     * The id of the workspace AI calls run for, when known: the one run()
+     * was given, or on the web the user's current workspace.
+     */
+    public static function workspaceId(): ?string
+    {
+        if (self::$stack !== []) {
+            return self::$workspaces[array_key_last(self::$workspaces)];
+        }
+
+        $user = auth()->user();
+
+        return $user instanceof User ? $user->current_workspace_id : null;
     }
 }

@@ -11,6 +11,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Http\Requests\App\Ai\AssistPostContentRequest;
 use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Services\PostHogService;
+use App\SocialHq\Ai\AiResponses;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
@@ -46,8 +47,9 @@ class PostAiAssistantController extends Controller
                     ? $workspace->socialAccounts()->find($request->input('social_account_id'))
                     : null,
             );
-        } catch (AiException|RequestException|ConnectionException) {
-            return response()->json(['message' => __('posts.composer.assistant_error')], Response::HTTP_BAD_GATEWAY);
+        } catch (AiException|RequestException|ConnectionException $exception) {
+            // Social HQ: AI not set up for the company is a 409 with how to set it up; other failures are reported.
+            return AiResponses::failed($exception, __('posts.composer.assistant_error'));
         }
 
         rescue(function () use ($request, $workspace, $mode): void {

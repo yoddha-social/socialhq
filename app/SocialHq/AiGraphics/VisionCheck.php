@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\SocialHq\AiGraphics;
 
+use App\SocialHq\Ai\AiUnavailableException;
 use Illuminate\Support\Str;
 use Laravel\Ai\Files\Image;
 use Throwable;
@@ -32,7 +33,10 @@ final class VisionCheck
                 timeout: 60,
             );
         } catch (Throwable $exception) {
-            report($exception);
+            // No AI set up for the company is a configuration state, not an error to report.
+            if (! $exception instanceof AiUnavailableException || ! $exception->isConfigurationState()) {
+                report($exception);
+            }
 
             return __('socialhq.ai_graphics.errors.check_unavailable');
         }

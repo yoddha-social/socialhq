@@ -10,9 +10,11 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ContentSanitizer;
 use App\SocialHq\Ai\AiTenant;
+use App\SocialHq\Ai\AiUnavailableException;
 use App\Support\Hashtags;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Throwable;
 
 class CaptionAdapter
 {
@@ -60,6 +62,8 @@ class CaptionAdapter
         $shortened = $this->shortened[$key] ??= rescue(
             // Social HQ: a queued job has no signed-in user; the workspace decides whose AI it uses.
             fn (): string => AiTenant::run($workspace, fn (): string => $this->ask($caption, $platform, $limit)),
+            // Social HQ: no AI set up for the company is a configuration state, not an error to report.
+            report: fn (Throwable $exception): bool => ! ($exception instanceof AiUnavailableException && $exception->isConfigurationState()),
         );
 
         return filled($shortened) && $this->fits($shortened, $platform, $limit) ? $shortened : null;

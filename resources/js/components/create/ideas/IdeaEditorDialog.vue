@@ -21,6 +21,7 @@ import MediaEditorDialog, {
 } from '@/components/posts/composer/MediaEditorDialog.vue';
 import MediaSourceMenu from '@/components/posts/composer/MediaSourceMenu.vue';
 import EmojiPicker from '@/components/posts/EmojiPicker.vue';
+import { useAiTask } from '@/components/socialhq/aiTasks';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -163,6 +164,8 @@ form.transform((data) => ({
 }));
 const open = ref(true);
 const assistantOpen = ref(false);
+// Social HQ: the writing assistant shows only while the company's AI can write.
+const canUseAssistant = useAiTask('write');
 
 const closeAssistant = (): void => {
     assistantOpen.value = false;
@@ -568,6 +571,7 @@ const iconButtonClass =
                                 $t('create.ideas.editor.body_placeholder')
                             }}</span>
                             <button
+                                v-if="canUseAssistant"
                                 type="button"
                                 class="pointer-events-auto inline-flex h-6 items-center gap-1 rounded-md bg-primary-subtle px-2 text-xs font-medium text-primary-text transition-control hover:brightness-95"
                                 :aria-pressed="assistantOpen"
@@ -659,6 +663,7 @@ const iconButtonClass =
                         </PopoverContent>
                     </Popover>
                     <Button
+                        v-if="canUseAssistant"
                         type="button"
                         variant="ghost"
                         size="sm"

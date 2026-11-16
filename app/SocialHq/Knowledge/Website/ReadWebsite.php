@@ -108,7 +108,11 @@ class ReadWebsite implements ShouldQueue
             $response = AiTenant::run($workspace, fn () => (new WebsiteReader(($user->locale ?? Locale::DEFAULT)->promptLanguage()))
                 ->prompt((string) json_encode([...$site, 'team_has' => self::teamHas($workspace)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)));
         } catch (AiUnavailableException $exception) {
-            report($exception);
+            // No AI set up for the company is a configuration state, not an error to report.
+            if (! $exception->isConfigurationState()) {
+                report($exception);
+            }
+
             $this->markFailed($crawl, CrawlFailure::AiUnavailable);
 
             return;

@@ -22,6 +22,13 @@ return [
         ],
     ],
 
+    'ai' => [
+        'task_unavailable' => [
+            'owner' => 'Your company\'s AI can\'t do this yet. To use it, add an AI provider that can in Settings › AI.',
+            'member' => 'Your company\'s AI can\'t do this yet. Ask your company\'s owner to add an AI provider that can in Settings › AI.',
+        ],
+    ],
+
     'ai_graphics' => [
         'menu_item' => 'Generate with AI',
         'title' => 'Generate a graphic with AI',

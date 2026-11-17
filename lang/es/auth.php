@@ -100,6 +100,8 @@ return [
         'confirm_password' => 'Confirmar contraseña',
         'confirm_placeholder' => 'Confirmar contraseña',
         'submit' => 'Restablecer contraseña',
+        'mismatch' => 'Las dos contraseñas no coinciden.',
+        'send_new_link' => 'Enviar un enlace nuevo',
     ],
 
     'verify_email' => [

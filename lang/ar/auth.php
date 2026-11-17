@@ -112,6 +112,8 @@ return [
         'confirm_password' => 'تأكيد كلمة المرور',
         'confirm_placeholder' => 'تأكيد كلمة المرور',
         'submit' => 'إعادة تعيين كلمة المرور',
+        'mismatch' => 'كلمتا المرور غير متطابقتين.',
+        'send_new_link' => 'أرسل رابطًا جديدًا',
     ],
 
     'verify_email' => [

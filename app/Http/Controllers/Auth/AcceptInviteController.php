@@ -8,6 +8,7 @@ use App\Actions\Invite\AcceptInvite;
 use App\Actions\Invite\DeclineInvite;
 use App\Actions\Invite\ResolveInviteWorkspaces;
 use App\Actions\Invite\SettleAfterInvite;
+use App\Enums\Invite\Result;
 use App\Http\Controllers\Controller;
 use App\Models\Invite;
 use Illuminate\Http\RedirectResponse;
@@ -20,8 +21,9 @@ class AcceptInviteController extends Controller
     /**
      * Display the invite view.
      */
-    public function show(Invite $invite): Response
+    public function show(Request $request, Invite $invite): Response
     {
+        $user = $request->user();
         $workspaces = ResolveInviteWorkspaces::execute($invite);
         $expired = $workspaces->isEmpty();
 
@@ -50,6 +52,8 @@ class AcceptInviteController extends Controller
                     'requires_approval' => $invite->requires_approval,
                 ],
             ],
+            // Social HQ: only the invited person, signed in, learns their account can't move.
+            'otherAccount' => $user !== null && $invite->isFor($user->email) && AcceptInvite::holdsOtherAccount($user, $invite),
         ]);
     }
 
@@ -59,6 +63,13 @@ class AcceptInviteController extends Controller
     public function accept(Request $request, Invite $invite): RedirectResponse
     {
         $result = AcceptInvite::execute($request->user(), $invite);
+
+        // Social HQ: nothing changed for someone who stays in their own company.
+        if ($result === Result::OtherAccount) {
+            return redirect()->route('app.invites.show', $invite)
+                ->with('flash.banner', $result->flashBanner())
+                ->with('flash.bannerStyle', $result->flashStyle());
+        }
 
         return SettleAfterInvite::flashAndRedirect(
             $request->user(),
@@ -72,7 +83,16 @@ class AcceptInviteController extends Controller
      */
     public function decline(Request $request, Invite $invite): RedirectResponse
     {
+        // Social HQ: someone in another company only drops the invite; their own account is never settled here.
+        $staysInOwnCompany = $invite->isFor($request->user()->email) && AcceptInvite::holdsOtherAccount($request->user(), $invite);
+
         $result = DeclineInvite::execute($request->user(), $invite);
+
+        if ($staysInOwnCompany) {
+            return redirect()->route('app.home')
+                ->with('flash.banner', $result->flashBanner())
+                ->with('flash.bannerStyle', $result->flashStyle());
+        }
 
         return SettleAfterInvite::flashAndRedirect(
             $request->user(),

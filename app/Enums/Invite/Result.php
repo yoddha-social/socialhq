@@ -12,6 +12,8 @@ enum Result
     case AlreadyMember;
     case Accepted;
     case Declined;
+    // Social HQ: the user's own account holds something (AcceptInvite::holdsOtherAccount).
+    case OtherAccount;
 
     public function flashBanner(): string
     {
@@ -21,6 +23,7 @@ enum Result
             self::AlreadyAccepted, self::AlreadyMember => __('settings.members.flash.already_member'),
             self::Accepted => __('settings.members.flash.invite_accepted'),
             self::Declined => __('settings.members.flash.invite_declined'),
+            self::OtherAccount => __('settings.members.flash.other_account'),
         };
     }
 
@@ -30,7 +33,7 @@ enum Result
     public function flashStyle(): string
     {
         return match ($this) {
-            self::WrongEmail, self::Gone => 'danger',
+            self::WrongEmail, self::Gone, self::OtherAccount => 'danger',
             self::AlreadyAccepted, self::AlreadyMember, self::Declined => 'info',
             self::Accepted => 'success',
         };

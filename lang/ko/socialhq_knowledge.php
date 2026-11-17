@@ -75,12 +75,13 @@ return [
         ],
         'errors' => [
             'type' => 'This file type isn\'t supported. Upload a PDF, Word (.docx), PowerPoint (.pptx), text or Markdown file.',
+            'empty' => 'This file is empty. Choose a file with text in it.',
             'required' => 'Choose a file to upload.',
             'too_large' => 'This file is larger than :size MB. Upload a smaller file, or split it into parts.',
             'too_many' => 'You\'ve uploaded :count documents, the most a brand can have. To upload another, delete one you no longer need.',
         ],
         'flash' => [
-            'uploaded' => 'Uploaded ":title". It\'s ready once it has been read.',
+            'uploaded' => 'Uploaded ":title". We\'re reading it now: the list shows when it\'s ready, or what to fix.',
             'saved' => 'Document saved.',
             'deleted' => 'Document deleted.',
         ],
@@ -107,7 +108,7 @@ return [
             'already_added' => 'You\'ve already added this file. To get its latest text, choose Read again on it.',
         ],
         'flash' => [
-            'added' => 'Added ":title". It\'s ready once it has been read.',
+            'added' => 'Added ":title". We\'re reading it now: the list shows when it\'s ready, or what to fix.',
             'reading' => 'Reading ":title" again.',
         ],
     ],
@@ -151,6 +152,7 @@ return [
             'hex' => 'Enter a colour as # and six hex digits, like #0b1f3a.',
             'too_many_colours' => 'A brand can have up to :count colours. Remove one before you add another.',
             'logo_type' => 'This file isn\'t a logo we can use. Upload a PNG, JPEG, WebP or SVG image.',
+            'logo_empty' => 'This file is empty. Choose your logo file again.',
             'logo_required' => 'Choose a logo to upload.',
             'logo_size' => 'This file is larger than :size MB. Upload a smaller logo.',
         ],

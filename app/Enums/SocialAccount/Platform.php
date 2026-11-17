@@ -7,6 +7,7 @@ namespace App\Enums\SocialAccount;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\YouTube\Category;
+use App\SocialHq\Channels\ConnectCredentials;
 use App\Support\Hashtags;
 use Illuminate\Support\Str;
 
@@ -521,16 +522,25 @@ enum Platform: string
      * LinkedIn company pages and Instagram-via-Facebook are reached through the
      * unified network card (identity picker / method dialog), never a standalone
      * card. That card stands for the whole network, so it shows whenever any
-     * variant capability is enabled (self-hosters may run with only one).
+     * variant capability can connect (self-hosters may run with only one).
      */
     public function isConnectable(): bool
     {
         return match ($this) {
             self::LinkedInPage, self::InstagramFacebook => false,
-            self::LinkedIn => self::LinkedIn->isEnabled() || self::LinkedInPage->isEnabled(),
-            self::Instagram => self::Instagram->isEnabled() || self::InstagramFacebook->isEnabled(),
-            default => $this->isEnabled(),
+            self::LinkedIn => self::LinkedIn->canStartConnect() || self::LinkedInPage->canStartConnect(),
+            self::Instagram => self::Instagram->canStartConnect() || self::InstagramFacebook->canStartConnect(),
+            default => $this->canStartConnect(),
         };
+    }
+
+    /**
+     * Enabled and, in Social HQ, with the server's credentials for its connect
+     * flow configured (ConnectCredentials, PATCHES.md).
+     */
+    public function canStartConnect(): bool
+    {
+        return $this->isEnabled() && ConnectCredentials::configured($this);
     }
 
     /**
@@ -542,8 +552,8 @@ enum Platform: string
     public static function instagramConnectMethods(): array
     {
         return array_values(array_filter([
-            self::Instagram->isEnabled() ? self::Instagram->value : null,
-            self::InstagramFacebook->isEnabled() ? self::InstagramFacebook->value : null,
+            self::Instagram->canStartConnect() ? self::Instagram->value : null,
+            self::InstagramFacebook->canStartConnect() ? self::InstagramFacebook->value : null,
         ]));
     }
 

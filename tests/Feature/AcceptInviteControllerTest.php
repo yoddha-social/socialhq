@@ -417,3 +417,63 @@ test('decline invite fails for wrong email', function () {
     // Invite should NOT be deleted
     expect(Invite::find($invite->id))->not->toBeNull();
 });
+
+test('someone whose account holds a workspace is told on the invite page and can\'t accept', function () {
+    $otherAccount = Account::factory()->create();
+    $user = User::factory()->create(['email' => 'invitee@example.com', 'account_id' => $otherAccount->id]);
+    $otherAccount->update(['owner_id' => $user->id]);
+    $ownWorkspace = Workspace::factory()->create(['account_id' => $otherAccount->id, 'user_id' => $user->id]);
+    $ownWorkspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $ownWorkspace->id]);
+
+    $invite = Invite::factory()->create([
+        'account_id' => $this->account->id,
+        'invited_by' => $this->owner->id,
+        'email' => 'invitee@example.com',
+        'workspaces' => [$this->workspace->id],
+    ]);
+
+    $this->actingAs($user)->get(route('app.invites.show', $invite))
+        ->assertInertia(fn ($page) => $page->where('otherAccount', true));
+
+    $this->actingAs($user)->post(route('app.invites.accept', $invite))
+        ->assertRedirect(route('app.invites.show', $invite))
+        ->assertSessionHas('flash.banner', __('settings.members.flash.other_account'));
+
+    expect($user->fresh()->account_id)->toBe($otherAccount->id)
+        ->and($invite->fresh()->accepted_at)->toBeNull()
+        ->and($this->workspace->members()->where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+test('a member of another company declines an invite without leaving their company', function () {
+    $otherAccount = Account::factory()->create();
+    $otherOwner = User::factory()->create(['account_id' => $otherAccount->id]);
+    $otherAccount->update(['owner_id' => $otherOwner->id]);
+    $user = User::factory()->create(['email' => 'invitee@example.com', 'account_id' => $otherAccount->id]);
+
+    $invite = Invite::factory()->create([
+        'account_id' => $this->account->id,
+        'invited_by' => $this->owner->id,
+        'email' => 'invitee@example.com',
+        'workspaces' => [$this->workspace->id],
+    ]);
+
+    $this->actingAs($user)->post(route('app.invites.decline', $invite))
+        ->assertRedirect(route('app.home'));
+
+    expect(Invite::find($invite->id))->toBeNull()
+        ->and(User::find($user->id)?->account_id)->toBe($otherAccount->id);
+});
+
+test('the invite page does not flag an empty account', function () {
+    $user = User::factory()->create(['email' => 'invitee@example.com']);
+    $invite = Invite::factory()->create([
+        'account_id' => $this->account->id,
+        'invited_by' => $this->owner->id,
+        'email' => 'invitee@example.com',
+        'workspaces' => [$this->workspace->id],
+    ]);
+
+    $this->actingAs($user)->get(route('app.invites.show', $invite))
+        ->assertInertia(fn ($page) => $page->where('otherAccount', false));
+});

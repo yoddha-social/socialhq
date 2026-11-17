@@ -7,8 +7,6 @@ return [
     'layout' => [
         'tagline' => ':brand 팀에서 보냄',
         'manage_notifications' => '알림 관리',
-        'signoff' => '감사합니다.',
-        'team' => 'Social HQ 팀',
     ],
 
     'account_disconnected' => [
@@ -96,6 +94,7 @@ return [
         'heading' => '게시물이 승인되지 않았습니다',
         'body' => ':name님이 :workspace 워크스페이스의 게시물을 초안으로 되돌렸습니다.',
         'channel' => '채널',
+        'reason' => '사유',
         'button' => '초안에서 보기',
     ],
 
@@ -152,6 +151,7 @@ return [
         'preview' => ':workspace에 초대되었습니다',
         'heading' => '초대를 받았습니다',
         'intro' => '워크스페이스 <strong>:workspace</strong>에서 함께 일하도록 초대되었습니다.',
+        'intro_from' => '<strong>:inviter</strong> 님이 워크스페이스 <strong>:workspace</strong>에서 함께 일하도록 초대했습니다.',
         'role' => '<strong>:role</strong> 역할로 초대되었습니다.',
         'roles' => ['admin' => '관리자', 'member' => '멤버', 'needs_approval' => '멤버(게시물 승인 필요)'],
         'button' => '초대 수락',
@@ -205,6 +205,20 @@ return [
         'note' => 'Their note: :note',
         'button' => 'See your request',
         'ask_again' => '{1} You can ask again after an hour.|[0,*] You can ask again after :hours hours.',
+    ],
+
+    'socialhq_account_exists' => [
+        'subject' => 'You already have a :app account',
+        'title' => 'You already have an account',
+        'preview' => 'Someone tried to create a :app account with your email address.',
+        'heading' => 'You already have a :app account',
+        'greeting' => 'Hi :name,',
+        'body' => 'Someone just tried to create a :app account with this email address (:email). You already have one, so nothing new was created.',
+        'forgot' => 'If you forgot your password, set a new one with this link. It works for 60 minutes.',
+        'button' => 'Reset your password',
+        'log_in' => 'Remember your password?',
+        'log_in_link' => 'Log in',
+        'not_you' => 'If it wasn\'t you, ignore this email: your account hasn\'t changed.',
     ],
 
 ];

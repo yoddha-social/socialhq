@@ -110,19 +110,20 @@ class LiteLlmAdmin
     /**
      * Sends one short request with a key that is not stored anywhere yet.
      *
+     * @param  string  $model  the LiteLLM model to call ("groq/openai/gpt-oss-120b")
      * @param  array<string, string>  $options
      */
-    public function testKey(ProviderCatalogue $provider, #[SensitiveParameter] string $key, array $options = []): KeyTestResult
+    public function testKey(ProviderCatalogue $provider, string $model, #[SensitiveParameter] string $key, array $options = []): KeyTestResult
     {
-        return $this->testConnection(['model' => $provider->testModel(), ...$provider->credentialValues($key, $options)]);
+        return $this->testConnection(['model' => $model, ...$provider->credentialValues($key, $options)]);
     }
 
     /**
      * Sends one short request with a key already stored as a credential.
      */
-    public function testCredential(ProviderCatalogue $provider, string $credentialName): KeyTestResult
+    public function testCredential(string $model, string $credentialName): KeyTestResult
     {
-        return $this->testConnection(['model' => $provider->testModel(), 'litellm_credential_name' => $credentialName]);
+        return $this->testConnection(['model' => $model, 'litellm_credential_name' => $credentialName]);
     }
 
     /**

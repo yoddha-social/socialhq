@@ -204,7 +204,7 @@ return [
         ],
 
         'pending' => [
-            'title' => 'Invitaciones pendientes',
+            'title' => 'Invitación aún no aceptada',
             'description' => 'Invitaciones en espera de aceptación',
             'empty' => 'No hay invitaciones pendientes',
         ],
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => 'Ya existe una invitación para este correo.',
-            'email_belongs_to_account' => 'Este correo ya pertenece a otra cuenta de Social HQ. Pide un correo de trabajo dedicado.',
+            'already_member' => 'Esta persona ya es miembro de este workspace.',
             'cannot_remove_self' => 'No puedes eliminarte a ti mismo.',
             'cannot_remove_owner' => 'No puedes eliminar al propietario de la cuenta.',
             'cannot_change_own_access' => 'No puedes cambiar tu propio acceso.',
@@ -261,6 +261,7 @@ return [
             'member_removed' => '¡Miembro eliminado correctamente!',
             'wrong_email' => 'Esta invitación es para otro correo electrónico.',
             'already_member' => 'Ya eres miembro de este workspace.',
+            'other_account' => 'Tu cuenta pertenece a otra empresa, así que no puede unirse a este workspace. Pide a quien te invitó que invite otro correo de trabajo.',
             'invite_accepted' => '¡Bienvenido! Ahora eres miembro del workspace.',
             'invite_workspace_gone' => 'Esta invitación ya no es válida porque el workspace fue eliminado.',
             'invite_declined' => 'Invitación rechazada.',

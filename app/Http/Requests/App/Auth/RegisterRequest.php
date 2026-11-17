@@ -13,6 +13,7 @@ use App\SocialHq\Companies\CompanySignup;
 use App\SocialHq\Signup\SignupRules;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\Validator;
@@ -28,6 +29,16 @@ class RegisterRequest extends FormRequest
     }
 
     /**
+     * Social HQ: emails are stored in lower case, so a capital letter is lowered instead of refused.
+     */
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('email'))) {
+            $this->merge(['email' => Str::lower(trim($this->input('email')))]);
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
@@ -40,9 +51,10 @@ class RegisterRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             // Social HQ: the sign-up allow list runs before `unique` and stops there (bail), so an email that may not sign up never learns whether it has an account.
+            // `email:strict` refuses a domain without a dot (user@host) and IP literals, with no DNS lookup.
             'email' => $asksForCompany
-                ? ['bail', 'required', 'string', 'lowercase', 'email', 'max:255']
-                : ['bail', 'required', 'string', 'lowercase', 'email', 'max:255', SignupRules::allowListRule(fn (): bool => SignupRules::isOpenInvite($this->invite())), 'unique:'.User::class],
+                ? ['bail', 'required', 'string', 'email:strict', 'max:255']
+                : ['bail', 'required', 'string', 'email:strict', 'max:255', SignupRules::allowListRule(fn (): bool => SignupRules::isOpenInvite($this->invite())), 'unique:'.User::class],
             'company_name' => $asksForCompany ? ['required', 'string', 'max:120'] : ['exclude'],
             'password' => ['required', Rules\Password::defaults()],
             'locale' => ['required', Rule::enum(Locale::class)],

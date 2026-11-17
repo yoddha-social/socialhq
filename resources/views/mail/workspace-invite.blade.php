@@ -65,15 +65,19 @@ $direction = Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr';
               <td align="{{ $direction === 'rtl' ? 'right' : 'left' }}" class="sm-p-6" style="border-radius: 12px; border: 1px solid #eae8e5; background-color: #ffffff; padding: 32px; font-size: 16px; line-height: 24px; color: #292928">
                 <h1 style="margin: 0 0 24px; font-family: Outfit, Inter, Arial, Helvetica, sans-serif; font-size: 24px; font-weight: 600; line-height: 32px; color: #292928"> {{ __('mail.workspace_invite.heading') }}</h1>
                 <p style="margin: 0; line-height: 24px">
+                  @if(($inviterName ?? '') !== '')
+                  {!! __('mail.workspace_invite.intro_from', ['inviter' => e($inviterName), 'workspace' => e($workspaceName)]) !!}
+                  @else
                   {!! __('mail.workspace_invite.intro', ['workspace' => e($workspaceName)]) !!}
+                  @endif
                 </p>
                 <p style="margin: 16px 0 0; line-height: 24px">
                   @if($isAdmin)
-                  {!! __('mail.workspace_invite.role', ['role' => '<strong>'.e(__('mail.workspace_invite.roles.admin')).'</strong>']) !!}
+                  {!! __('mail.workspace_invite.role', ['role' => e(__('mail.workspace_invite.roles.admin'))]) !!}
                   @elseif($requiresApproval)
-                  {!! __('mail.workspace_invite.role', ['role' => '<strong>'.e(__('mail.workspace_invite.roles.needs_approval')).'</strong>']) !!}
+                  {!! __('mail.workspace_invite.role', ['role' => e(__('mail.workspace_invite.roles.needs_approval'))]) !!}
                   @else
-                  {!! __('mail.workspace_invite.role', ['role' => '<strong>'.e(__('mail.workspace_invite.roles.member')).'</strong>']) !!}
+                  {!! __('mail.workspace_invite.role', ['role' => e(__('mail.workspace_invite.roles.member'))]) !!}
                   @endif
                 </p>
                 <div role="separator" style="line-height: 24px">&zwj;</div>

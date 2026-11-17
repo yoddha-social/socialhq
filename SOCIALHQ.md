@@ -61,7 +61,9 @@ TryPost's four agents carry it too (PATCHES.md row 15). Code:
   two LiteLLM entries). Any other target is dropped, and
   `ApprovedProvidersGuard` refuses any SDK request to another provider before
   it is sent, even from code that skips `AiRouter`. A key for a provider that
-  trains on prompts (the Gemini free tier) is never called. Mistral is in the
+  trains on prompts (the Gemini free tier) is never called with the
+  platform's keys (a company may choose one for its own, see Settings › AI).
+  Mistral is in the
   LiteLLM chain only with "Anonymous improvement data" off in its console.
 - **Gateway tasks** (`SOCIALHQ_AI_GATEWAY_TASKS`, default
   `write,structured,vision`): the gateway serves only these. `image` and
@@ -78,12 +80,29 @@ TryPost's four agents carry it too (PATCHES.md row 15). Code:
   a platform admin allowed it (`uses_platform_ai`); otherwise AI buttons
   hide and a call says "add an AI provider in Settings › AI". Written
   routes (`SOCIALHQ_AI_ROUTE_<TASK>`) apply to the platform only.
-- **Settings › AI** (owner of an approved company): add a key from the
+- **Settings › AI** (owner of an approved company): add keys from the
   catalogue (`socialhq.company_ai.providers`: Groq, Cloudflare Workers AI,
-  Mistral with its training opt-out ticked, paid Gemini with billing
-  ticked, OpenAI, Anthropic), tested through LiteLLM before anything is
-  saved; Test, Replace, Remove, order (LiteLLM's deployment `order`),
-  monthly budget (the team's `max_budget`) and spend. Provider keys live
+  Mistral with its training opt-out ticked, Gemini, OpenRouter, OpenAI,
+  Anthropic), up to 20, several for one provider too (more free quota, or
+  a key per team). Each key has a name (unique in the company), a plan
+  (free or paid, as the provider offers: Gemini paid needs billing ticked;
+  the Gemini free tier and OpenRouter's free models need "may train on what
+  we send" ticked, the company's own choice; OpenRouter paid needs its
+  training providers turned off), the tasks it serves (a subset of the
+  plan's) and, per task, a model id instead of the catalogue's. A free
+  key's deployments carry zero prices, so they never use up the budget. A
+  key is tested through LiteLLM before anything is saved, and again with
+  the stored key when an edit changes the model a test calls; Edit (name,
+  plan, tasks, models), Test, Replace, Remove, order (LiteLLM's deployment
+  `order`: keys are tried top to bottom, the next one on an error or rate
+  limit), monthly budget (the team's `max_budget`) and spend. Each key is
+  its own LiteLLM credential (`<team>-<provider>-<random>`; keys added
+  before names keep `<team>-<provider>`) with deployments
+  `<credential>-<task>`. Each key's row records a fingerprint of every
+  deployment it added (`deployments`), so a change removes and adds only
+  the deployments that differ; a key whose row doesn't know (older keys, or
+  after a failed add) has all of its deployments removed and added once.
+  Provider keys live
   only in LiteLLM (credentials, encrypted with its salt key); the app keeps
   the last 4 characters. The team key is encrypted with
   `SOCIALHQ_SECRETS_KEY` (`SecretBox`, never APP_KEY). Every change is in
@@ -263,7 +282,10 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   loads `database/data/socialhq/events/` (the BS 2083 holiday notice and
   international days, a source per row; `php artisan socialhq:events:import`
   does the same). Every imported date starts as "Needs check" until an approver
-  confirms it; changing a date or name clears the confirmation. Re-importing
+  confirms it ("Confirm all shown" confirms, in one query, the unconfirmed dates
+  of the list's period, country and filter that the approver may change); a
+  date added by hand (only approvers add dates) starts confirmed. Changing a
+  date or name clears the confirmation. Re-importing
   never brings back a date the team edited, moved or deleted. The AI never
   calculates a date and plans only around confirmed ones. The publish calendar
   shows a marker on days with events (PATCHES rows 60–63).
@@ -401,8 +423,9 @@ first person asks for a company, is granted, and approves it.
    here"). The register form adds "Company name"; the server decides on
    submit (`CompanySignup`). That path never logs in and always ends on
    "Check your email": a new email gets its account, a pending company and
-   the confirmation link; an email that has an account gets a password reset
-   link, so the form never says which. Google and GitHub prove the email, so
+   the confirmation link; an email that has an account gets "You already have
+   an account" (`AccountExists`, with login and reset links, at most one a
+   minute), so the form never says which. Google and GitHub prove the email, so
    they create the pending company at once, named after the person; the
    owner renames it while it waits.
 2. Platform admins are emailed once the owner's email is confirmed (once an

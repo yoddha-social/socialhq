@@ -41,6 +41,8 @@ class UpdateCalendarEventRequest extends FormRequest
             'category.not_in' => __('socialhq_events.errors.brand_kind_shared'),
             'ends_on.after_or_equal' => __('socialhq_events.errors.ends_before_start'),
             'ends_on.before_or_equal' => __('socialhq_events.errors.too_long'),
+            'source_url.url' => __('socialhq_events.errors.source_url'),
+            'source_url.max' => __('socialhq_events.errors.source_url_long'),
         ];
     }
 

@@ -26,7 +26,7 @@ class ProviderCredentialTestController extends Controller
 
         return $this->attempt('provider', function () use ($request, $credential, $manager): RedirectResponse {
             $result = $manager->test($credential, $request->user());
-            $provider = __("socialhq_ai.providers.{$credential->provider}.name");
+            $provider = $credential->displayName();
 
             if ($result->ok) {
                 return $this->done(__('socialhq_ai.flash.test_passed', ['provider' => $provider]));

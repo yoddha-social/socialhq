@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useHttp } from '@inertiajs/vue3';
+import { useHttp, usePage } from '@inertiajs/vue3';
 import { IconLoader2, IconRefresh, IconSparkles, IconX } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
@@ -23,6 +23,19 @@ import type { IdeaDraft } from '@/types/idea';
 const emit = defineEmits<{
     use: [idea: IdeaDraft];
 }>();
+
+const page = usePage();
+
+/**
+ * Social HQ: the brand profile's "what the brand is" and audience, sent by
+ * the Ideas page (ideaGeneratorDefaults), fill the form; both stay editable.
+ */
+const defaults = computed(
+    () =>
+        page.props.ideaGeneratorDefaults as
+            | { business: string; audience: string }
+            | undefined,
+);
 
 const open = ref(false);
 const error = ref('');
@@ -48,8 +61,8 @@ watch(open, (isOpen) => {
 
     error.value = '';
     idea.value = null;
-    http.business = '';
-    http.audience = '';
+    http.business = defaults.value?.business ?? '';
+    http.audience = defaults.value?.audience ?? '';
     http.notes = '';
     http.clearErrors();
 });
@@ -62,12 +75,9 @@ onBeforeUnmount(() => {
     http.cancel();
 });
 
-const canSubmit = computed(
-    () =>
-        !http.processing &&
-        http.business.trim().length > 0 &&
-        http.audience.trim().length > 0,
-);
+// Empty fields are sent too: the server's validation message then shows
+// under the field, instead of a button that does nothing.
+const canSubmit = computed(() => !http.processing);
 
 const submit = async (): Promise<void> => {
     if (!canSubmit.value) {
@@ -86,9 +96,13 @@ const submit = async (): Promise<void> => {
         }
 
         if (!result) {
+            const { business, audience, ...others } = http.errors;
+
             error.value =
-                Object.values(http.errors)[0] ??
-                trans('create.ideas.errors.generate_failed');
+                business || audience
+                    ? (Object.values(others)[0] ?? '')
+                    : (Object.values(others)[0] ??
+                      trans('create.ideas.errors.generate_failed'));
 
             return;
         }
@@ -254,8 +268,22 @@ const useIdea = (): void => {
                                 $t('create.ideas.generate.audience_placeholder')
                             "
                             :disabled="http.processing"
+                            :aria-invalid="http.errors.audience ? true : undefined"
+                            :aria-describedby="
+                                http.errors.audience
+                                    ? 'ideas-generate-audience-error'
+                                    : undefined
+                            "
                             data-testid="ideas-generate-audience"
                         />
+                        <p
+                            v-if="http.errors.audience"
+                            id="ideas-generate-audience-error"
+                            class="text-sm text-destructive"
+                            data-testid="ideas-generate-audience-error"
+                        >
+                            {{ http.errors.audience }}
+                        </p>
                     </div>
 
                     <div class="space-y-1.5">
@@ -273,8 +301,22 @@ const useIdea = (): void => {
                                 $t('create.ideas.generate.business_placeholder')
                             "
                             :disabled="http.processing"
+                            :aria-invalid="http.errors.business ? true : undefined"
+                            :aria-describedby="
+                                http.errors.business
+                                    ? 'ideas-generate-business-error'
+                                    : undefined
+                            "
                             data-testid="ideas-generate-business"
                         />
+                        <p
+                            v-if="http.errors.business"
+                            id="ideas-generate-business-error"
+                            class="text-sm text-destructive"
+                            data-testid="ideas-generate-business-error"
+                        >
+                            {{ http.errors.business }}
+                        </p>
                     </div>
 
                     <div class="space-y-1.5">

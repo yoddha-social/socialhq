@@ -204,7 +204,7 @@ return [
         ],
 
         'pending' => [
-            'title' => 'Pending Invites',
+            'title' => 'Invite not accepted yet',
             'description' => 'Invites awaiting acceptance',
             'empty' => 'No pending invites',
         ],
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => 'An invite already exists for this email.',
-            'email_belongs_to_account' => 'This email already belongs to another Social HQ account. Ask for a dedicated work email instead.',
+            'already_member' => 'This person is already a member of this workspace.',
             'cannot_remove_self' => 'You cannot remove yourself.',
             'cannot_remove_owner' => 'You cannot remove the account owner.',
             'cannot_change_own_access' => 'You cannot change your own access.',
@@ -261,6 +261,7 @@ return [
             'member_removed' => 'Member removed successfully.',
             'wrong_email' => 'This invite is for a different email address.',
             'already_member' => 'You are already a member of this workspace.',
+            'other_account' => 'Your account belongs to another company, so it can\'t join this workspace. Ask the person who invited you to invite a separate work email instead.',
             'invite_accepted' => 'Welcome! You are now a member of the workspace.',
             'invite_workspace_gone' => 'This invite is no longer valid because the workspace was deleted.',
             'invite_declined' => 'Invite declined.',

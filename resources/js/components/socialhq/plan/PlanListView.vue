@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { Link } from '@inertiajs/vue3';
 import {
     IconArrowBackUp,
     IconArrowDown,
     IconArrowUp,
     IconArrowsSort,
     IconCheck,
+    IconPencil,
     IconSparkles,
     IconX,
 } from '@tabler/icons-vue';
@@ -28,6 +30,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAtLeastBreakpoint } from '@/composables/useBreakpoint';
 import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
+import { show as showItem } from '@/routes/socialhq/plan/items';
 
 const props = defineProps<{
     items: PlanItem[];
@@ -105,8 +108,22 @@ const weeks = computed(() =>
     groupByWeek(props.items, sort.value, props.lookups),
 );
 
-/** The table on md+, stacked cards below it: one is rendered, never both. */
-const isWide = useAtLeastBreakpoint('md');
+/**
+ * The table where its columns fit beside the sidebar (xl+), stacked cards
+ * below: one is rendered, never both. Neither scrolls on its own: the page
+ * scrolls, so the sticky header and week rows stick to the page.
+ */
+const isWide = useAtLeastBreakpoint('xl');
+const isWidest = useAtLeastBreakpoint('2xl');
+
+/** Columns on screen now. A fixed-layout table counts a colspan's hidden columns too, and gives them width. */
+const visibleColumnCount = computed(
+    () =>
+        COLUMNS.filter(
+            (column) =>
+                isWidest.value || !column.class.includes('2xl:table-cell'),
+        ).length,
+);
 
 const localized = (value: string) =>
     dayjs(value).locale(activeLocale.value.toLowerCase());
@@ -140,15 +157,24 @@ const COLUMNS: {
     label: string;
     class: string;
 }[] = [
-    { key: 'date', label: 'socialhq_plan.list.date', class: 'w-24' },
+    { key: 'date', label: 'socialhq_plan.list.date', class: 'w-20' },
     // The title comes right after the day and takes the width the others
-    // leave (the table's min width keeps at least 16rem for it).
+    // leave (about 15rem beside an open sidebar at xl); the event shows under
+    // it, and the pillar too until 2xl gives the pillar its own column.
     { key: null, label: 'socialhq_plan.list.title', class: '' },
-    { key: null, label: 'socialhq_plan.list.time', class: 'w-40' },
-    { key: 'channel', label: 'socialhq_plan.list.channel', class: 'w-44' },
-    { key: 'pillar', label: 'socialhq_plan.list.pillar', class: 'w-32' },
-    { key: 'owner', label: 'socialhq_plan.list.owner', class: 'w-36' },
-    { key: null, label: 'socialhq_plan.list.event', class: 'w-32' },
+    { key: null, label: 'socialhq_plan.list.time', class: 'w-36' },
+    { key: 'channel', label: 'socialhq_plan.list.channel', class: 'w-36' },
+    {
+        key: 'pillar',
+        label: 'socialhq_plan.list.pillar',
+        class: 'hidden w-28 2xl:table-cell',
+    },
+    // Only where there is room for it; the side sheet shows the owner.
+    {
+        key: 'owner',
+        label: 'socialhq_plan.list.owner',
+        class: 'hidden w-32 2xl:table-cell',
+    },
     { key: null, label: 'socialhq_plan.list.copy', class: 'w-28' },
     { key: 'status', label: 'socialhq_plan.list.status', class: 'w-40' },
 ];
@@ -158,13 +184,10 @@ const actionClass =
 </script>
 
 <template>
-    <div
-        class="min-h-0 flex-1 overflow-auto overscroll-contain"
-        data-testid="plan-list-view"
-    >
+    <div class="flex-auto" data-testid="plan-list-view">
         <table
             v-if="isWide"
-            class="w-full min-w-[1360px] table-fixed border-separate border-spacing-0 text-sm"
+            class="w-full table-fixed border-separate border-spacing-0 text-sm"
         >
             <thead>
                 <tr>
@@ -221,7 +244,7 @@ const actionClass =
             >
                 <tr>
                     <th
-                        :colspan="COLUMNS.length"
+                        :colspan="visibleColumnCount"
                         scope="rowgroup"
                         class="sticky top-9 z-10 h-8 border-b bg-muted px-2 text-start text-xs font-medium text-foreground"
                     >
@@ -259,20 +282,40 @@ const actionClass =
                     >
                         {{ dayLabel(item.scheduled_on) }}
                     </td>
-                    <td class="border-b px-2">
+                    <td class="border-b px-2 py-1.5">
                         <span class="flex min-w-0 items-center gap-1.5">
                             <IconSparkles
                                 v-if="item.source === 'ai'"
                                 class="size-3.5 shrink-0 text-primary-text"
                                 aria-hidden="true"
                             />
-                            <!-- The row opens on click; this button is how a keyboard or screen reader opens it. -->
+                            <!-- The title is a real link to the item page (it opens in a new tab too);
+                                 the rest of the row opens the side sheet. Link sets its own click
+                                 handler, so the wrapper keeps the click from reaching the row. -->
+                            <span class="flex min-w-0" @click.stop>
+                                <Link
+                                    :href="showItem.url(item.id)"
+                                    class="min-w-0 truncate rounded-sm font-medium hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                    :class="{
+                                        'line-through':
+                                            item.status === 'dropped',
+                                    }"
+                                    :title="item.title"
+                                    :data-testid="`plan-row-link-${item.id}`"
+                                >
+                                    {{ item.title }}
+                                </Link>
+                            </span>
+                            <!-- How a keyboard or screen reader opens the side sheet. -->
                             <button
                                 type="button"
-                                class="min-w-0 truncate rounded-sm text-start font-medium hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                                :class="{
-                                    'line-through': item.status === 'dropped',
-                                }"
+                                :class="actionClass"
+                                class="ms-auto text-muted-foreground opacity-0 group-hover/row:opacity-100 hover:bg-accent hover:text-foreground focus-visible:opacity-100"
+                                :title="
+                                    $t('socialhq_plan.list.open_row', {
+                                        title: item.title,
+                                    })
+                                "
                                 :aria-label="
                                     $t('socialhq_plan.list.open_row', {
                                         title: item.title,
@@ -281,17 +324,46 @@ const actionClass =
                                 :data-testid="`plan-row-open-${item.id}`"
                                 @click.stop="openItem(item)"
                             >
-                                {{ item.title }}
+                                <IconPencil
+                                    class="size-3.5"
+                                    aria-hidden="true"
+                                />
                             </button>
                         </span>
+                        <span
+                            v-if="eventOf(item) || item.pillar"
+                            class="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"
+                        >
+                            <span
+                                v-if="item.pillar"
+                                class="flex min-w-0 shrink-0 items-center gap-1 2xl:hidden"
+                            >
+                                <span
+                                    class="size-1.5 shrink-0 rounded-full"
+                                    :class="
+                                        pillarColor(
+                                            item.pillar,
+                                            lookups.pillars,
+                                        )?.dot
+                                    "
+                                />
+                                {{ item.pillar }}
+                            </span>
+                            <span
+                                v-if="eventOf(item)"
+                                class="min-w-0 truncate"
+                                :title="eventOf(item)?.name"
+                                >{{ eventOf(item)?.name }}</span
+                            >
+                        </span>
                     </td>
-                    <td
-                        class="border-b px-2 text-xs whitespace-nowrap text-muted-foreground"
-                    >
+                    <td class="border-b px-2 text-xs text-muted-foreground">
+                        <!-- Both times on their own line: the viewer's is never cut. -->
                         <PlanItemTime
                             v-if="item.suggested_at"
                             :item="item"
                             plain
+                            stacked
                             class="max-w-full"
                         />
                         <span v-else class="opacity-60">–</span>
@@ -314,7 +386,7 @@ const actionClass =
                             </span>
                         </span>
                     </td>
-                    <td class="border-b px-2">
+                    <td class="hidden border-b px-2 2xl:table-cell">
                         <span
                             v-if="item.pillar"
                             class="flex min-w-0 items-center gap-1.5"
@@ -329,7 +401,7 @@ const actionClass =
                             <span class="truncate">{{ item.pillar }}</span>
                         </span>
                     </td>
-                    <td class="border-b px-2">
+                    <td class="hidden border-b px-2 2xl:table-cell">
                         <span
                             v-if="ownerOf(item)"
                             class="flex min-w-0 items-center gap-1.5"
@@ -343,14 +415,6 @@ const actionClass =
                                 ownerOf(item)?.name
                             }}</span>
                         </span>
-                    </td>
-                    <td class="border-b px-2">
-                        <span
-                            v-if="eventOf(item)"
-                            class="block truncate text-xs text-muted-foreground"
-                            :title="eventOf(item)?.name"
-                            >{{ eventOf(item)?.name }}</span
-                        >
                     </td>
                     <td class="border-b px-2">
                         <span class="flex min-w-0 items-center gap-1.5">
@@ -536,20 +600,36 @@ const actionClass =
                                 :item="item"
                                 class="min-w-0"
                             />
+                            <button
+                                type="button"
+                                :class="actionClass"
+                                class="-my-1 ms-auto text-muted-foreground hover:bg-accent hover:text-foreground"
+                                :title="
+                                    $t('socialhq_plan.list.open_row', {
+                                        title: item.title,
+                                    })
+                                "
+                                :aria-label="
+                                    $t('socialhq_plan.list.open_row', {
+                                        title: item.title,
+                                    })
+                                "
+                                :data-testid="`plan-row-open-${item.id}`"
+                                @click="openItem(item)"
+                            >
+                                <IconPencil
+                                    class="size-3.5"
+                                    aria-hidden="true"
+                                />
+                            </button>
                         </div>
-                        <button
-                            type="button"
+                        <Link
+                            :href="showItem.url(item.id)"
                             class="flex min-w-0 items-start gap-1.5 rounded-sm text-start text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                             :class="{
                                 'line-through': item.status === 'dropped',
                             }"
-                            :aria-label="
-                                $t('socialhq_plan.list.open_row', {
-                                    title: item.title,
-                                })
-                            "
-                            :data-testid="`plan-row-open-${item.id}`"
-                            @click="openItem(item)"
+                            :data-testid="`plan-row-link-${item.id}`"
                         >
                             <IconSparkles
                                 v-if="item.source === 'ai'"
@@ -557,7 +637,7 @@ const actionClass =
                                 aria-hidden="true"
                             />
                             <span class="line-clamp-2">{{ item.title }}</span>
-                        </button>
+                        </Link>
                         <div
                             class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"
                         >

@@ -11,6 +11,7 @@ use App\SocialHq\Ai\AiUnavailableException;
 use App\SocialHq\Ai\ApprovedProvidersGuard;
 use App\SocialHq\Ai\Company\CompanyAi;
 use App\SocialHq\Ai\Company\CompanyAiManager;
+use App\SocialHq\Ai\Company\CredentialTier;
 use App\SocialHq\Ai\Company\Jobs\BlockCompanyAi;
 use App\SocialHq\Ai\Company\Jobs\TearDownCompanyAi;
 use App\SocialHq\Ai\Company\ProviderCredential;
@@ -53,7 +54,9 @@ function hardeningCompanyAi(Company $company): CompanyAi
     ProviderCredential::factory()->create([
         'account_id' => $company->account_id,
         'provider' => 'groq',
-        'litellm_credential_name' => CompanyAiManager::credentialName((string) $ai->litellm_team_id, 'groq'),
+        // Named the way keys were before a company could add several per provider.
+        'litellm_credential_name' => "{$ai->litellm_team_id}-groq",
+        'tier' => CredentialTier::Free,
     ]);
 
     return $ai;
@@ -121,10 +124,10 @@ test('deleting a company\'s account removes its key, deployments, provider keys 
 
     $this->owner->account->delete();
 
-    Bus::assertDispatched(TearDownCompanyAi::class, fn (TearDownCompanyAi $job): bool => $job->teamId === $teamId && $job->providers === ['groq']);
+    Bus::assertDispatched(TearDownCompanyAi::class, fn (TearDownCompanyAi $job): bool => $job->teamId === $teamId && $job->credentialNames === ["{$teamId}-groq"]);
 
     Http::fake(['litellm.test/*' => Http::response(['ok' => true])]);
-    (new TearDownCompanyAi($teamId, ['groq']))->handle(app(CompanyAiManager::class));
+    (new TearDownCompanyAi($teamId, ["{$teamId}-groq"]))->handle(app(CompanyAiManager::class));
 
     Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/key/delete') && $request['key_aliases'] === ["socialhq-{$teamId}"]);
     Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), "/credentials/{$teamId}-groq") && $request->method() === 'DELETE');
@@ -146,12 +149,18 @@ test('a provider that fails to add leaves the company\'s other providers in plac
     });
 
     $this->actingAs($this->owner)
-        ->post(route('socialhq.ai-settings.providers.store'), ['provider' => 'openai', 'provider_key' => 'sk-proj-TestKey00000000000000000000000001']);
+        ->post(route('socialhq.ai-settings.providers.store'), ['provider' => 'openai', 'label' => 'OpenAI', 'tier' => 'paid', 'tasks' => ['write', 'structured', 'vision', 'image', 'embed'], 'provider_key' => 'sk-proj-TestKey00000000000000000000000001']);
 
     expect(ProviderCredential::query()->pluck('provider')->all())->toBe(['groq']);
 
     $groqAdds = collect(Http::recorded())
         ->filter(fn (array $pair): bool => str_ends_with($pair[0]->url(), '/model/new') && data_get($pair[0]->data(), 'model_info.id') === "{$teamId}-groq-write")
         ->count();
-    expect($groqAdds)->toBe(2);
+    // Groq's deployment, added once when its unknown state was settled, is the last call for it: it stays.
+    $lastGroqCall = collect(Http::recorded())
+        ->filter(fn (array $pair): bool => in_array("{$teamId}-groq-write", [data_get($pair[0]->data(), 'id'), data_get($pair[0]->data(), 'model_info.id')], true))
+        ->last();
+
+    expect($groqAdds)->toBe(1)
+        ->and($lastGroqCall[0]->url())->toEndWith('/model/new');
 });

@@ -38,6 +38,7 @@ class WorkspaceInvite extends Mailable implements ShouldQueue
                 'title' => __('mail.workspace_invite.title', ['workspace' => $workspaceName]),
                 'previewText' => __('mail.workspace_invite.preview', ['workspace' => $workspaceName]),
                 'workspaceName' => $workspaceName,
+                'inviterName' => (string) $this->invite->invitedBy?->name,
                 'isAdmin' => (bool) $this->invite->is_admin,
                 'requiresApproval' => (bool) $this->invite->requires_approval,
                 'url' => route('app.invites.show', $this->invite),

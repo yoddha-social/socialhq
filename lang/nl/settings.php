@@ -204,7 +204,7 @@ return [
         ],
 
         'pending' => [
-            'title' => 'Openstaande uitnodigingen',
+            'title' => 'Uitnodiging nog niet geaccepteerd',
             'description' => 'Uitnodigingen die op acceptatie wachten',
             'empty' => 'Geen openstaande uitnodigingen',
         ],
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => 'Er bestaat al een uitnodiging voor dit e-mailadres.',
-            'email_belongs_to_account' => 'Dit e-mailadres behoort al tot een ander Social HQ-account. Vraag om een speciaal werk-e-mailadres.',
+            'already_member' => 'Deze persoon is al lid van deze workspace.',
             'cannot_remove_self' => 'Je kunt jezelf niet verwijderen.',
             'cannot_remove_owner' => 'Je kunt de accounteigenaar niet verwijderen.',
             'cannot_change_own_access' => 'Je kunt je eigen toegang niet wijzigen.',
@@ -261,6 +261,7 @@ return [
             'member_removed' => 'Lid succesvol verwijderd.',
             'wrong_email' => 'Deze uitnodiging is voor een ander e-mailadres.',
             'already_member' => 'Je bent al lid van deze workspace.',
+            'other_account' => 'Je account hoort bij een ander bedrijf en kan daarom niet bij deze workspace. Vraag degene die je uitnodigde om een ander werk-e-mailadres uit te nodigen.',
             'invite_accepted' => 'Welkom! Je bent nu lid van de workspace.',
             'invite_workspace_gone' => 'Deze uitnodiging is niet meer geldig omdat de workspace is verwijderd.',
             'invite_declined' => 'Uitnodiging geweigerd.',

@@ -132,10 +132,7 @@ const save = (): void => {
             class="sm:max-w-2xl"
             data-testid="socialhq-audience-dialog"
         >
-            <form
-                class="flex max-h-[80vh] flex-col gap-5 overflow-x-hidden overflow-y-auto px-1"
-                @submit.prevent="save"
-            >
+            <form class="flex flex-col gap-5" @submit.prevent="save">
                 <DialogHeader>
                     <DialogTitle>{{
                         $t('socialhq_audience.dialog.title')

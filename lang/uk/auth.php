@@ -112,6 +112,8 @@ return [
         'confirm_password' => 'Підтвердіть пароль',
         'confirm_placeholder' => 'Підтвердіть пароль',
         'submit' => 'Скинути пароль',
+        'mismatch' => 'Паролі не збігаються.',
+        'send_new_link' => 'Надіслати нове посилання',
     ],
 
     'verify_email' => [

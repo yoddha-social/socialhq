@@ -10,14 +10,18 @@ use App\Models\Workspace;
 use App\SocialHq\Companies\Company;
 use App\SocialHq\Companies\CompanyEvent;
 use App\SocialHq\Companies\CompanyStatus;
+use App\SocialHq\Companies\Mail\AccountExists;
 use App\SocialHq\Companies\Mail\CompanyRequested;
 use App\SocialHq\Companies\PlatformAdmins;
 use App\SocialHq\Signup\AccessRequest;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
@@ -120,18 +124,51 @@ test('someone off the lists asks for a company: a pending company, no workspace,
         ->assertInertia(fn ($page) => $page->component('socialhq/CompanyRequested')->where('email', 'mina@himaltea.test'));
 });
 
-test('asking for a company with an email that has an account says the same and sends a reset link', function () {
+test('asking for a company with an email that has an account says the same and emails "you already have an account"', function () {
     Notification::fake();
+    Mail::fake();
     $existing = User::factory()->create(['email' => 'mina@himaltea.test']);
 
-    registerForCompany('mina@himaltea.test')
+    registerForCompany('Mina@HimalTea.test')
         ->assertSessionHasNoErrors()
         ->assertRedirect(route('socialhq.company.requested'));
+    registerForCompany('mina@himaltea.test')->assertRedirect(route('socialhq.company.requested'));
 
     $this->assertGuest();
     expect(User::query()->where('email', 'mina@himaltea.test')->count())->toBe(1)
         ->and(Company::query()->where('account_id', $existing->account_id)->exists())->toBeFalse();
-    Notification::assertSentTo($existing, ResetPassword::class);
+    Notification::assertNotSentTo($existing, ResetPassword::class);
+    // Once a minute at most, like the password broker.
+    Mail::assertSentCount(1);
+    Mail::assertSent(AccountExists::class, fn (AccountExists $mail): bool => $mail->hasTo($existing->email)
+        && str_contains($mail->resetUrl, '/reset-password/')
+        && Password::broker()->tokenExists($existing, Str::between($mail->resetUrl, '/reset-password/', '?')));
+});
+
+test('the "you already have an account" email renders the reset link, the login link and no notification settings', function () {
+    $html = (new AccountExists('Mina <Gurung>', 'mina@himaltea.test', 'https://example.test/reset-password/abc'))->render();
+
+    expect($html)->toContain('https://example.test/reset-password/abc')
+        ->toContain(route('login'))
+        ->toContain(e(__('mail.socialhq_account_exists.greeting', ['name' => 'Mina <Gurung>'])))
+        ->toContain(e(__('mail.socialhq_account_exists.button')))
+        ->not->toContain('Mina <Gurung>')
+        ->not->toContain(__('mail.layout.manage_notifications'));
+});
+
+test('confirming the email shows "Email confirmed" on the waiting page', function () {
+    registerForCompany('mina@himaltea.test');
+    $user = User::query()->where('email', 'mina@himaltea.test')->firstOrFail();
+
+    $this->actingAs($user)->get(URL::temporarySignedRoute(
+        'verification.verify',
+        now()->addMinutes(60),
+        ['id' => $user->id, 'hash' => sha1($user->email)],
+    ))->assertRedirect(route('app.calendar').'?verified=1');
+
+    $this->get(route('app.calendar', ['verified' => 1]))->assertRedirect(route('socialhq.company.waiting'));
+    $this->get(route('socialhq.company.waiting'))
+        ->assertInertia(fn ($page) => $page->component('socialhq/CompanyPending')->where('status', 'email-confirmed'));
 });
 
 test('without a company name the form asks for one', function () {

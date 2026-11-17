@@ -16,6 +16,7 @@ Route::get('events', [EventController::class, 'index'])->name('events.index');
 Route::post('events', [EventController::class, 'store'])->name('events.store');
 Route::post('events/import', [EventImportController::class, 'store'])->name('events.import');
 Route::post('events/countries', [EventCountryImportController::class, 'store'])->name('events.countries.store');
+Route::post('events/confirm-shown', [EventVerificationController::class, 'storeShown'])->name('events.verify-shown');
 Route::put('events/{event}', [EventController::class, 'update'])->whereNumber('event')->name('events.update');
 Route::delete('events/{event}', [EventController::class, 'destroy'])->whereNumber('event')->name('events.destroy');
 Route::post('events/{event}/verify', [EventVerificationController::class, 'store'])->whereNumber('event')->name('events.verify');

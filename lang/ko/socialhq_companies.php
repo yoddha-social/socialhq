@@ -30,12 +30,14 @@ return [
 
     'waiting' => [
         'page_title' => 'Waiting for approval',
+        'declined_page_title' => 'Company not approved',
         'pending_title' => 'Your company is waiting for approval',
         'pending_description' => ':company · you signed up as :email',
         'verify_first' => 'First confirm your email: we sent you a link. Platform admins hear about your company once it\'s confirmed.',
         'notified' => 'Platform admins have your request. We\'ll email you as soon as they decide.',
         'resend' => 'Resend confirmation email',
         'link_sent' => 'A new confirmation link is on its way.',
+        'email_confirmed' => 'Email confirmed.',
         'name_label' => 'Company name',
         'save_name' => 'Save name',
         'declined_title' => 'Your company wasn\'t approved',

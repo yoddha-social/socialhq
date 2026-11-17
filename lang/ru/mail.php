@@ -7,8 +7,6 @@ return [
     'layout' => [
         'tagline' => 'Отправлено командой :brand',
         'manage_notifications' => 'Управлять уведомлениями',
-        'signoff' => 'С уважением,',
-        'team' => 'Команда Social HQ',
     ],
 
     'account_disconnected' => [
@@ -96,6 +94,7 @@ return [
         'heading' => 'Ваша публикация не одобрена',
         'body' => ':name вернул(а) вашу публикацию в рабочем пространстве :workspace в черновики.',
         'channel' => 'Канал',
+        'reason' => 'Причина',
         'button' => 'Посмотреть в черновиках',
     ],
 
@@ -152,6 +151,7 @@ return [
         'preview' => 'Вас пригласили присоединиться к :workspace',
         'heading' => 'Вас пригласили!',
         'intro' => 'Вас пригласили к совместной работе в рабочем пространстве <strong>:workspace</strong>.',
+        'intro_from' => 'Вы получили приглашение от <strong>:inviter</strong> к совместной работе в рабочем пространстве <strong>:workspace</strong>.',
         'role' => 'Вас пригласили как <strong>:role</strong>.',
         'roles' => ['admin' => 'Администратор', 'member' => 'Участник', 'needs_approval' => 'Участник (публикации требуют одобрения)'],
         'button' => 'Принять приглашение',
@@ -205,6 +205,20 @@ return [
         'note' => 'Their note: :note',
         'button' => 'See your request',
         'ask_again' => '{1} You can ask again after an hour.|[0,*] You can ask again after :hours hours.',
+    ],
+
+    'socialhq_account_exists' => [
+        'subject' => 'You already have a :app account',
+        'title' => 'You already have an account',
+        'preview' => 'Someone tried to create a :app account with your email address.',
+        'heading' => 'You already have a :app account',
+        'greeting' => 'Hi :name,',
+        'body' => 'Someone just tried to create a :app account with this email address (:email). You already have one, so nothing new was created.',
+        'forgot' => 'If you forgot your password, set a new one with this link. It works for 60 minutes.',
+        'button' => 'Reset your password',
+        'log_in' => 'Remember your password?',
+        'log_in_link' => 'Log in',
+        'not_you' => 'If it wasn\'t you, ignore this email: your account hasn\'t changed.',
     ],
 
 ];

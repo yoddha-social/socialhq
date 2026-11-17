@@ -239,6 +239,8 @@ test('a scanned PDF with no text fails with a reason the page shows', function (
 test('a file is refused when its content is not one of the supported types', function () {
     uploadDocument($this->owner, UploadedFile::fake()->createWithContent('brochure.pdf', (string) file_get_contents(base_path('tests/fixtures/1x1.png'))))
         ->assertSessionHasErrors(['file' => __('socialhq_knowledge.documents.errors.type')]);
+    uploadDocument($this->owner, UploadedFile::fake()->createWithContent('empty.txt', ''))
+        ->assertSessionHasErrors(['file' => __('socialhq_knowledge.documents.errors.empty')]);
     // A zip that is no Office file, and a PDF named as Word.
     uploadDocument($this->owner, UploadedFile::fake()->createWithContent('notes.docx', officeZip(['notes.xml' => '<a/>'])))->assertSessionHasErrors('file');
     uploadDocument($this->owner, UploadedFile::fake()->createWithContent('brochure.docx', (string) file_get_contents(base_path('tests/fixtures/socialhq/brochure.pdf'))))->assertSessionHasErrors('file');

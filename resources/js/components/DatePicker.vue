@@ -48,6 +48,11 @@ const props = defineProps({
         type: String,
         default: '',
     },
+    /** The first day that can be picked (YYYY-MM-DD); earlier days are disabled. */
+    min: {
+        type: String,
+        default: '',
+    },
 });
 
 const emit = defineEmits<{
@@ -71,6 +76,7 @@ const parseInput = (value: string) => {
 };
 
 const internalDate = ref(parseInput(props.modelValue));
+const minDate = computed(() => parseInput(props.min));
 const popoverOpen = ref(false);
 
 const selectedHour = ref(
@@ -201,6 +207,7 @@ const displayText = computed(() => {
             <Calendar
                 v-model="internalDate as any"
                 :placeholder="internalDate as any"
+                :min-value="minDate as any"
                 layout="month-and-year"
                 :locale="calendarLocale"
                 :calendar-label="$t('common.date_picker.label')"

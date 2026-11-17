@@ -183,3 +183,34 @@ test('editing a pending custom time request starts on custom with its date', fun
         ->and(composerApprovalSubmitText($page))->toBe('Save and request approval');
     $page->assertNoJavaScriptErrors();
 });
+
+test('a requester whose channel has no posting times starts on a set time they can send', function () {
+    [$workspace, , $requester] = composerApprovalSetup();
+    $channel = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $workspace->id,
+        'timezone' => 'UTC',
+        'posting_schedule' => PostingSchedule::empty(),
+    ]);
+    $this->actingAs($requester);
+
+    $page = visit(route('app.posts.create'));
+    waitForComposerApprovalTestId($page, 'composer-add-account');
+    $page->click('@composer-add-account')
+        ->click("@composer-account-option-{$channel->id}")
+        ->fill("@composer-caption-{$channel->id}", 'No slots here');
+    waitForComposerApprovalTestId($page, 'composer-submit');
+
+    expect($page->script('document.querySelector("[data-testid=composer-submit]").dataset.scheduleMode'))->toBe('custom')
+        ->and($page->script('document.querySelector("[data-testid=composer-submit]").disabled'))->toBeFalse()
+        ->and($page->script('document.querySelector("[data-testid=composer-schedule-trigger-icon]").dataset.icon'))->toBe('pin')
+        ->and($page->script('document.querySelector("[data-testid=composer-schedule-trigger]").textContent.trim()'))->not->toBe('Now');
+
+    $page->click('@composer-submit');
+    waitForComposerApprovalClosed($page);
+
+    $post = Post::query()->where('workspace_id', $workspace->id)->sole();
+
+    expect($post->status)->toBe(PostStatus::PendingApproval)
+        ->and($post->scheduled_at?->isFuture())->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+});

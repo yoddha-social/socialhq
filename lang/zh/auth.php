@@ -112,6 +112,8 @@ return [
         'confirm_password' => '确认密码',
         'confirm_placeholder' => '确认密码',
         'submit' => '重置密码',
+        'mismatch' => '两次输入的密码不一致。',
+        'send_new_link' => '发送新链接',
     ],
 
     'verify_email' => [

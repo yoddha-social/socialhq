@@ -17,15 +17,17 @@ use App\SocialHq\Secrets\SecretsKeyMissing;
 use Closure;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use SensitiveParameter;
 use Throwable;
 
 /**
  * Everything an owner does on Settings › AI. A provider key is tested
  * through LiteLLM before anything is saved, then stored only in LiteLLM (a
- * credential); the app keeps its last four characters. Each change is
- * logged in shq_company_ai_events and makes the company's next AI call
- * decide its route again.
+ * credential, one per key: a company may add several for one provider);
+ * the app keeps its last four characters. Each change is logged in
+ * shq_company_ai_events and makes the company's next AI call decide its
+ * route again.
  *
  * One change per company at a time (a cache lock), so two clicks can't
  * create two teams or two credentials.
@@ -60,11 +62,12 @@ class CompanyAiManager
      *
      * @throws ProviderKeyRefused|GatewayException|SecretsKeyMissing
      */
-    public function add(Account $account, User $user, ProviderCatalogue $provider, #[SensitiveParameter] string $key, array $options = []): ProviderCredential
+    public function add(Account $account, User $user, ProviderCatalogue $provider, ProviderKeySettings $settings, #[SensitiveParameter] string $key, array $options = []): ProviderCredential
     {
-        return $this->locked($account, function () use ($account, $user, $provider, $key, $options): ProviderCredential {
+        return $this->locked($account, function () use ($account, $user, $provider, $settings, $key, $options): ProviderCredential {
             $this->assertCanSetUp();
-            $this->assertKeyPasses($account, $user, $provider, $key, $options);
+            $draft = new ProviderCredential(['provider' => $provider->id, ...$settings->attributes()]);
+            $this->assertKeyPasses($account, $user, $provider, (string) $draft->testModel(), $key, $options);
 
             $ai = $this->ensureGateway($account, $user);
             $name = self::credentialName((string) $ai->litellm_team_id, $provider->id);
@@ -73,30 +76,37 @@ class CompanyAiManager
 
             try {
                 $credential = ProviderCredential::query()->create([
+                    ...$settings->attributes(),
                     'account_id' => $account->id,
                     'provider' => $provider->id,
                     'litellm_credential_name' => $name,
+                    // A new credential name: LiteLLM holds no deployment for it yet.
+                    'deployments' => [],
                     'last4' => self::last4($key),
                     'options' => $options === [] ? null : $options,
                     'status' => CredentialStatus::Ok,
                     'last_tested_at' => now(),
                     'position' => (int) ProviderCredential::query()->forAccount($account)->max('position') + 1,
-                    'data_confirmed_at' => $provider->confirmation() !== null ? now() : null,
+                    'data_confirmed_at' => $provider->confirmation($settings->tier) !== null ? now() : null,
                     'added_by' => $user->id,
                 ]);
 
                 $this->syncDeployments($account, $ai);
             } catch (Throwable $exception) {
-                isset($credential) && $credential->delete();
-                rescue(fn () => $this->removeDeployments((string) $ai->litellm_team_id, $provider->id), report: false);
+                if (isset($credential)) {
+                    $credential->refresh();
+                    rescue(fn () => $this->removeDeployments($credential), report: false);
+                    $credential->delete();
+                }
+
                 rescue(fn () => $this->gateway->deleteCredential($name), report: false);
-                // The failed sync may have removed other providers' deployments: put them back.
+                // The failed sync may have stopped before other keys' changes: finish them.
                 rescue(fn () => $this->syncDeployments($account, $ai));
 
                 throw $exception;
             }
 
-            CompanyAiEvent::record($account, $user, CompanyAiEvent::PROVIDER_ADDED, $provider->id, ['last4' => $credential->last4]);
+            CompanyAiEvent::record($account, $user, CompanyAiEvent::PROVIDER_ADDED, $provider->id, $this->details($credential));
 
             return $credential;
         });
@@ -114,7 +124,7 @@ class CompanyAiManager
         return $this->locked($account, function () use ($credential, $account, $user, $key, $options): ProviderCredential {
             $this->assertCanSetUp();
             $provider = $this->catalogueOf($credential);
-            $this->assertKeyPasses($account, $user, $provider, $key, $options);
+            $this->assertKeyPasses($account, $user, $provider, $this->testModelOf($credential), $key, $options);
 
             $this->gateway->saveCredential($credential->litellm_credential_name, $provider->litellmProvider(), $provider->credentialValues($key, $options), replace: true);
 
@@ -124,12 +134,59 @@ class CompanyAiManager
                 'status' => CredentialStatus::Ok,
                 'last_tested_at' => now(),
                 'last_error' => null,
-                'data_confirmed_at' => $provider->confirmation() !== null ? now() : $credential->data_confirmed_at,
+                'data_confirmed_at' => $provider->confirmation($credential->tier) !== null ? now() : $credential->data_confirmed_at,
             ]);
 
             // Deployments may hold a copy of the old credential: add them again.
+            $held = $credential->deployments;
+            ProviderCredential::withoutTimestamps(fn (): bool => $credential->forceFill(['deployments' => $held === null ? null : array_fill_keys(array_keys($held), 'replaced')])->saveQuietly());
             $this->syncDeployments($account, CompanyAi::forAccount($account));
-            CompanyAiEvent::record($account, $user, CompanyAiEvent::PROVIDER_REPLACED, $credential->provider, ['last4' => $credential->last4]);
+            CompanyAiEvent::record($account, $user, CompanyAiEvent::PROVIDER_REPLACED, $credential->provider, $this->details($credential));
+
+            return $credential;
+        });
+    }
+
+    /**
+     * Renames a key, or changes its plan, tasks or models. When the model
+     * a test calls changes, the stored key is tested with it first, so a
+     * typo in a model id is refused instead of failing every call.
+     *
+     * @throws ProviderKeyRefused|GatewayException|SecretsKeyMissing
+     */
+    public function configure(ProviderCredential $credential, User $user, ProviderKeySettings $settings): ProviderCredential
+    {
+        $account = $credential->account()->firstOrFail();
+
+        return $this->locked($account, function () use ($credential, $account, $user, $settings): ProviderCredential {
+            $this->assertCanSetUp();
+            $provider = $this->catalogueOf($credential);
+            $draft = (clone $credential)->fill($settings->attributes());
+            $testModel = $this->testModelOf($draft);
+
+            if ($testModel !== $credential->testModel()) {
+                $result = $this->gateway->testCredential($testModel, $credential->litellm_credential_name);
+
+                if (! $result->ok) {
+                    CompanyAiEvent::record($account, $user, CompanyAiEvent::PROVIDER_REFUSED, $credential->provider, ['reason' => $result->errorKey, 'label' => $settings->label]);
+
+                    throw new ProviderKeyRefused((string) $result->errorKey);
+                }
+            }
+
+            $before = $credential->only(['label', 'tier', 'tasks', 'models']);
+            $tierChanged = $credential->tier !== $settings->tier;
+
+            $credential->update([
+                ...$settings->attributes(),
+                'data_confirmed_at' => $tierChanged && $provider->confirmation($settings->tier) !== null ? now() : $credential->data_confirmed_at,
+            ]);
+
+            if ($before !== $credential->only(['label', 'tier', 'tasks', 'models'])) {
+                $this->syncDeployments($account, CompanyAi::forAccount($account));
+            }
+
+            CompanyAiEvent::record($account, $user, CompanyAiEvent::PROVIDER_CHANGED, $credential->provider, $this->details($credential));
 
             return $credential;
         });
@@ -142,7 +199,8 @@ class CompanyAiManager
      */
     public function test(ProviderCredential $credential, User $user): KeyTestResult
     {
-        $result = $this->gateway->testCredential($this->catalogueOf($credential), $credential->litellm_credential_name);
+        $this->catalogueOf($credential);
+        $result = $this->gateway->testCredential($this->testModelOf($credential), $credential->litellm_credential_name);
 
         $credential->update([
             'status' => $result->ok ? CredentialStatus::Ok : CredentialStatus::Failed,
@@ -150,7 +208,7 @@ class CompanyAiManager
             'last_tested_at' => now(),
         ]);
 
-        CompanyAiEvent::record($credential->account()->firstOrFail(), $user, CompanyAiEvent::PROVIDER_TESTED, $credential->provider, ['result' => $result->errorKey ?? 'ok']);
+        CompanyAiEvent::record($credential->account()->firstOrFail(), $user, CompanyAiEvent::PROVIDER_TESTED, $credential->provider, ['result' => $result->errorKey ?? 'ok', 'label' => $credential->label]);
 
         return $result;
     }
@@ -164,11 +222,7 @@ class CompanyAiManager
 
         $this->locked($account, function () use ($credential, $account, $user): void {
             $ai = CompanyAi::forAccount($account);
-
-            if ($ai?->litellm_team_id !== null) {
-                $this->removeDeployments($ai->litellm_team_id, $credential->provider);
-            }
-
+            $this->removeDeployments($credential);
             $this->gateway->deleteCredential($credential->litellm_credential_name);
             $credential->delete();
 
@@ -178,7 +232,7 @@ class CompanyAiManager
                 $this->syncDeployments($account, $ai);
             }
 
-            CompanyAiEvent::record($account, $user, CompanyAiEvent::PROVIDER_REMOVED, $credential->provider, ['last4' => $credential->last4]);
+            CompanyAiEvent::record($account, $user, CompanyAiEvent::PROVIDER_REMOVED, $credential->provider, $this->details($credential));
         });
     }
 
@@ -212,7 +266,7 @@ class CompanyAiManager
             });
 
             $this->syncDeployments($account, CompanyAi::forAccount($account));
-            CompanyAiEvent::record($account, $user, CompanyAiEvent::PROVIDER_MOVED, $credential->provider, ['direction' => $direction, 'past' => $other->provider]);
+            CompanyAiEvent::record($account, $user, CompanyAiEvent::PROVIDER_MOVED, $credential->provider, ['direction' => $direction, 'label' => $credential->label, 'past' => $other->label ?? $other->provider]);
         });
     }
 
@@ -283,9 +337,10 @@ class CompanyAiManager
     }
 
     /**
-     * Adds the company's deployments again in the current fallback order:
-     * one per provider and task it serves, embeddings from the first
-     * provider that has them only.
+     * Brings the company's deployments in line with its keys, in the current
+     * fallback order: one per key and task it serves, embeddings from the
+     * first key that has them only. Only deployments that differ from what
+     * the key's row says LiteLLM holds are removed and added.
      *
      * @throws GatewayException
      */
@@ -297,41 +352,52 @@ class CompanyAiManager
 
         $teamId = (string) $ai->litellm_team_id;
         $credentials = ProviderCredential::query()->forAccount($account)->inFallbackOrder()->get();
-        $embedder = $credentials->first(fn (ProviderCredential $credential): bool => (bool) $credential->catalogue()?->serves(AiTask::Embed));
+        $embedder = $credentials->first(fn (ProviderCredential $credential): bool => $credential->serves(AiTask::Embed));
 
-        foreach ($credentials->values() as $index => $credential) {
-            $provider = $credential->catalogue();
+        try {
+            foreach ($credentials->values() as $index => $credential) {
+                $provider = $credential->catalogue();
+                $wanted = [];
 
-            foreach (AiTask::cases() as $task) {
-                $id = self::deploymentId($teamId, $credential->provider, $task);
-                $this->gateway->deleteDeployment($id);
+                foreach ($provider?->tasksOfAnyTier() ?? [] as $task) {
+                    $model = $credential->modelFor($task);
 
-                if ($provider === null || ! $provider->serves($task) || ($task === AiTask::Embed && ! $credential->is($embedder))) {
-                    continue;
+                    if ($model === null || ! $credential->serves($task) || ($task === AiTask::Embed && ! $credential->is($embedder))) {
+                        continue;
+                    }
+
+                    $wanted[$task->value] = [
+                        'group' => CompanyRouting::group($task, $teamId),
+                        'params' => $provider->deploymentParams($task, $credential->tier, $model, $credential->litellm_credential_name, $index + 1),
+                    ];
                 }
 
-                $this->gateway->addDeployment($id, CompanyRouting::group($task, $teamId), $provider->deploymentParams($task, $credential->litellm_credential_name, $index + 1));
+                $this->reconcileDeployments($credential, $wanted);
             }
+        } finally {
+            CompanyRouting::forget($account);
         }
-
-        CompanyRouting::forget($account);
     }
 
     /**
      * Removes everything LiteLLM holds for a company that is gone: its key,
      * deployments, credentials (its provider keys) and team.
      *
-     * @param  list<string>  $providers
+     * @param  list<string>  $credentialNames
      *
      * @throws GatewayException
      */
-    public function tearDown(string $teamId, array $providers): void
+    public function tearDown(string $teamId, array $credentialNames): void
     {
         $this->gateway->deleteKeyByAlias("socialhq-{$teamId}");
 
-        foreach ($providers as $provider) {
-            $this->removeDeployments($teamId, $provider);
-            $this->gateway->deleteCredential(self::credentialName($teamId, $provider));
+        foreach ($credentialNames as $name) {
+            // The rows are gone with the account: remove every task's deployment.
+            foreach (AiTask::cases() as $task) {
+                $this->gateway->deleteDeployment(self::deploymentId($name, $task));
+            }
+
+            $this->gateway->deleteCredential($name);
         }
 
         $this->gateway->deleteTeam($teamId);
@@ -348,21 +414,114 @@ class CompanyAiManager
         $this->gateway->updateTeam($teamId, ['blocked' => $blocked]);
     }
 
+    /**
+     * A new key's LiteLLM credential name. Keys added before a company could
+     * have several per provider are named "<team>-<provider>" (kept on
+     * their rows); new ones add a random part, so two keys never collide.
+     */
     public static function credentialName(string $teamId, string $provider): string
     {
-        return "{$teamId}-{$provider}";
+        return "{$teamId}-{$provider}-".Str::lower(Str::random(8));
     }
 
-    public static function deploymentId(string $teamId, string $provider, AiTask $task): string
+    public static function deploymentId(string $credentialName, AiTask $task): string
     {
-        return "{$teamId}-{$provider}-{$task->value}";
+        return "{$credentialName}-{$task->value}";
     }
 
-    private function removeDeployments(string $teamId, string $provider): void
+    /**
+     * Removes and adds one key's deployments so LiteLLM holds exactly the
+     * wanted ones, touching only those whose fingerprint changed. The row
+     * records what LiteLLM holds after each step; when that becomes unsure
+     * (an add failed, or the row didn't know and the run stopped half way),
+     * it records "not known", so the next run removes and adds them all.
+     *
+     * @param  array<string, array{group: string, params: array<string, mixed>}>  $wanted  per task value
+     *
+     * @throws GatewayException
+     */
+    private function reconcileDeployments(ProviderCredential $credential, array $wanted): void
     {
-        foreach (AiTask::cases() as $task) {
-            $this->gateway->deleteDeployment(self::deploymentId($teamId, $provider, $task));
+        /** @var array<string, string>|null $known */
+        $known = $credential->deployments;
+        $held = $known ?? [];
+        $tasks = $known === null ? $this->possibleTasks($credential->catalogue()) : array_keys($known);
+        $sure = $known !== null;
+
+        try {
+            foreach (self::inTaskOrder([...$tasks, ...array_keys($wanted)]) as $taskValue) {
+                $fingerprint = isset($wanted[$taskValue]) ? self::fingerprint($wanted[$taskValue]) : null;
+
+                if ($known !== null && data_get($held, $taskValue) === $fingerprint) {
+                    continue;
+                }
+
+                $id = self::deploymentId($credential->litellm_credential_name, AiTask::from($taskValue));
+
+                if ($known === null || isset($held[$taskValue])) {
+                    $this->gateway->deleteDeployment($id);
+                    unset($held[$taskValue]);
+                }
+
+                if ($fingerprint !== null) {
+                    // A failed add may still have been stored by LiteLLM.
+                    $sure = false;
+                    $this->gateway->addDeployment($id, $wanted[$taskValue]['group'], $wanted[$taskValue]['params']);
+                    $held[$taskValue] = $fingerprint;
+                    $sure = $known !== null;
+                }
+            }
+
+            $sure = true;
+        } finally {
+            ProviderCredential::withoutTimestamps(fn (): bool => $credential->forceFill(['deployments' => $sure ? $held : null])->saveQuietly());
         }
+    }
+
+    /**
+     * Removes every deployment one key may have: those its row records, or,
+     * when it doesn't know, every task its provider offers.
+     *
+     * @throws GatewayException
+     */
+    private function removeDeployments(ProviderCredential $credential): void
+    {
+        $tasks = $credential->deployments === null ? $this->possibleTasks($credential->catalogue()) : array_keys($credential->deployments);
+
+        foreach (self::inTaskOrder($tasks) as $taskValue) {
+            $this->gateway->deleteDeployment(self::deploymentId($credential->litellm_credential_name, AiTask::from($taskValue)));
+        }
+    }
+
+    /**
+     * @return list<string> the tasks a key of this provider may have deployments for
+     */
+    private function possibleTasks(?ProviderCatalogue $provider): array
+    {
+        return array_map(fn (AiTask $task): string => $task->value, $provider?->tasksOfAnyTier() ?? AiTask::cases());
+    }
+
+    /**
+     * Task values once each, in AiTask's order: MySQL reorders a JSON object's
+     * keys, so the stored order can't decide the order of calls.
+     *
+     * @param  list<string>  $taskValues
+     * @return list<string>
+     */
+    private static function inTaskOrder(array $taskValues): array
+    {
+        return array_values(array_filter(
+            array_map(fn (AiTask $task): string => $task->value, AiTask::cases()),
+            fn (string $value): bool => in_array($value, $taskValues, true),
+        ));
+    }
+
+    /**
+     * @param  array{group: string, params: array<string, mixed>}  $deployment
+     */
+    private static function fingerprint(array $deployment): string
+    {
+        return hash('sha256', (string) json_encode($deployment));
     }
 
     /**
@@ -370,9 +529,9 @@ class CompanyAiManager
      *
      * @throws ProviderKeyRefused
      */
-    private function assertKeyPasses(Account $account, User $user, ProviderCatalogue $provider, #[SensitiveParameter] string $key, array $options): void
+    private function assertKeyPasses(Account $account, User $user, ProviderCatalogue $provider, string $model, #[SensitiveParameter] string $key, array $options): void
     {
-        $result = $this->gateway->testKey($provider, $key, $options);
+        $result = $this->gateway->testKey($provider, $model, $key, $options);
 
         if (! $result->ok) {
             CompanyAiEvent::record($account, $user, CompanyAiEvent::PROVIDER_REFUSED, $provider->id, ['reason' => $result->errorKey]);
@@ -395,7 +554,28 @@ class CompanyAiManager
 
     private function catalogueOf(ProviderCredential $credential): ProviderCatalogue
     {
-        return $credential->catalogue() ?? throw new GatewayException('provider_retired', "Provider [{$credential->provider}] is no longer in the catalogue.");
+        $catalogue = $credential->catalogue();
+
+        if ($catalogue === null || ! $catalogue->offers($credential->tier)) {
+            throw new GatewayException('provider_retired', "Provider [{$credential->provider}] or its [{$credential->tier->value}] plan is no longer in the catalogue.");
+        }
+
+        return $catalogue;
+    }
+
+    private function testModelOf(ProviderCredential $credential): string
+    {
+        return $credential->testModel() ?? throw new GatewayException('provider_retired', "Provider [{$credential->provider}] has no model to test.");
+    }
+
+    /**
+     * What an event keeps about a key: never the key, only how to tell it apart.
+     *
+     * @return array<string, string|null>
+     */
+    private function details(ProviderCredential $credential): array
+    {
+        return ['label' => $credential->label, 'tier' => $credential->tier->value, 'last4' => $credential->last4];
     }
 
     private function renumber(Account $account): void

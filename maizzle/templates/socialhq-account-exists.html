@@ -1,0 +1,36 @@
+<x-main>
+  <x-message>
+    <x-heading>
+      @{{ __('mail.socialhq_account_exists.heading', ['app' => config('app.name')]) }}
+    </x-heading>
+
+    <p class="m-0 leading-6">
+      @{{ __('mail.socialhq_account_exists.greeting', ['name' => $name]) }}
+    </p>
+
+    <p class="m-0 mt-4 leading-6">
+      @{{ __('mail.socialhq_account_exists.body', ['app' => config('app.name'), 'email' => $email]) }}
+    </p>
+
+    <p class="m-0 mt-4 leading-6">
+      @{{ __('mail.socialhq_account_exists.forgot') }}
+    </p>
+
+    <x-spacer height="24px" />
+
+    <x-button href="@{{ $url }}">
+      @{{ __('mail.socialhq_account_exists.button') }}
+    </x-button>
+
+    <x-spacer height="24px" />
+
+    <p class="m-0 leading-6">
+      @{{ __('mail.socialhq_account_exists.log_in') }}
+      <a href="@{{ $loginUrl }}" class="text-primary-text font-semibold underline">@{{ __('mail.socialhq_account_exists.log_in_link') }}</a>
+    </p>
+
+    <p class="m-0 mt-4 leading-6 text-muted-foreground text-sm">
+      @{{ __('mail.socialhq_account_exists.not_you') }}
+    </p>
+  </x-message>
+</x-main>

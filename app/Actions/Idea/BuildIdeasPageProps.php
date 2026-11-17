@@ -9,6 +9,7 @@ use App\Http\Resources\App\IdeaCardResource;
 use App\Http\Resources\App\IdeaStageResource;
 use App\Models\Idea;
 use App\Models\Workspace;
+use App\SocialHq\Knowledge\IdeaGeneratorDefaults;
 use Illuminate\Database\Eloquent\Builder;
 use Inertia\Inertia;
 
@@ -43,6 +44,8 @@ class BuildIdeasPageProps
             'labels' => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
             'filters' => $filters,
             'editor' => $editor,
+            // Social HQ: "Generate ideas" starts from the brand profile (PATCHES.md).
+            'ideaGeneratorDefaults' => fn (): array => IdeaGeneratorDefaults::for($workspace),
         ];
 
         if ($isGallery) {

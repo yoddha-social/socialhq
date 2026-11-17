@@ -23,6 +23,7 @@ use App\SocialHq\Companies\CompanyRequests;
 use App\SocialHq\Companies\CompanySignup;
 use App\SocialHq\Companies\PlatformAdminCommand;
 use App\SocialHq\Companies\PlatformAdmins;
+use App\SocialHq\Errors\ErrorPages;
 use App\SocialHq\Events\ImportEventsCommand;
 use App\SocialHq\Http\Controllers\Plan\PlanGenerationController;
 use App\SocialHq\Http\Middleware\EnsureCompanyApproved;
@@ -90,7 +91,7 @@ class SocialHqServiceProvider extends ServiceProvider
             $teamId = CompanyAi::query()->where('account_id', $account->id)->value('litellm_team_id');
 
             if (filled($teamId)) {
-                TearDownCompanyAi::dispatch((string) $teamId, ProviderCredential::query()->forAccount($account)->pluck('provider')->all())->afterCommit();
+                TearDownCompanyAi::dispatch((string) $teamId, ProviderCredential::query()->forAccount($account)->pluck('litellm_credential_name')->all())->afterCommit();
             }
         });
 
@@ -120,6 +121,9 @@ class SocialHqServiceProvider extends ServiceProvider
         RateLimiter::for('socialhq-company-ai', fn (Request $request): Limit => Limit::perMinute(20)->by((string) $request->user()?->id));
 
         Route::middleware('web')->group(base_path('routes/socialhq.php'));
+
+        // 403, 404, 500 and 503 render in the app's style for the browser.
+        ErrorPages::register();
 
         // People who signed up wait on one page until an admin lets them in.
         $this->app->make(Kernel::class)->appendMiddlewareToGroup('web', RedirectWhileAwaitingAccess::class);

@@ -9,6 +9,8 @@ use App\Enums\Invite\Result;
 use App\Models\Account;
 use App\Models\Invite;
 use App\Models\User;
+use App\Models\Workspace;
+use App\SocialHq\Companies\Company;
 use Illuminate\Support\Facades\DB;
 
 class AcceptInvite
@@ -52,6 +54,13 @@ class AcceptInvite
                 return Result::AlreadyMember;
             }
 
+            // Social HQ: invites go to any address (the inviter never learns
+            // whether it has an account), so someone whose account holds
+            // anything stays there; only an empty account moves.
+            if (self::holdsOtherAccount($user, $lockedInvite)) {
+                return Result::OtherAccount;
+            }
+
             $previousAccountId = $user->account_id;
 
             $user->update(['account_id' => $lockedInvite->account_id]);
@@ -80,5 +89,23 @@ class AcceptInvite
         }
 
         return $result;
+    }
+
+    /**
+     * Social HQ: whether the user belongs to another account that holds
+     * something (a workspace, another person or a company), so accepting
+     * would take them out of it.
+     */
+    public static function holdsOtherAccount(User $user, Invite $invite): bool
+    {
+        $accountId = $user->account_id;
+
+        if ($accountId === null || $accountId === $invite->account_id) {
+            return false;
+        }
+
+        return Workspace::query()->where('account_id', $accountId)->exists()
+            || User::query()->where('account_id', $accountId)->whereKeyNot($user->id)->exists()
+            || Company::query()->where('account_id', $accountId)->exists();
     }
 }

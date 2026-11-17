@@ -537,7 +537,7 @@ test('generate ideas shows one idea, generates again and opens it unsaved in the
     $page->assertValue('@ideas-generate-audience', '')
         ->assertValue('@ideas-generate-business', '')
         ->assertMissing('@ideas-generate-result')
-        ->assertDisabled('@ideas-generate-submit')
+        ->assertEnabled('@ideas-generate-submit')
         ->assertNoJavaScriptErrors();
 })->with([
     'desktop' => [null],

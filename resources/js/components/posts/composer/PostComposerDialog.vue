@@ -868,11 +868,21 @@ watch(
     },
     { immediate: true },
 );
+/**
+ * Switches to a set date and time when the queue (or publishing now) is not
+ * possible, with the next full hour picked so the post can still be sent.
+ */
+const fallBackToCustomTime = (): void => {
+    if (!composition.scheduledAt.value) {
+        composition.scheduledAt.value = date.nextFullHour(composerTimezone.value);
+    }
+    scheduleMode.value = 'custom';
+};
 watch(
     queueBlocked,
     (blocked) => {
         if (blocked && isQueueMode.value) {
-            scheduleMode.value = 'custom';
+            fallBackToCustomTime();
         }
     },
     { immediate: true },
@@ -881,7 +891,11 @@ watch(
     [scheduleMode, queueBlocked],
     ([mode, blocked]) => {
         if (requiresApproval.value && mode === 'now') {
-            scheduleMode.value = blocked ? 'custom' : 'next';
+            if (blocked) {
+                fallBackToCustomTime();
+            } else {
+                scheduleMode.value = 'next';
+            }
         }
     },
     { immediate: true },
@@ -1503,11 +1517,15 @@ const draftActionLabel = computed((): string => {
         ? 'posts.composer.save_drafts'
         : 'posts.composer.save_draft';
 });
-const scheduleLabelKey = computed(() =>
-    scheduleMode.value === 'next' || scheduleMode.value === 'top'
-        ? `posts.composer.queue.${scheduleMode.value}`
-        : 'posts.composer.now',
-);
+const scheduleLabelKey = computed(() => {
+    if (scheduleMode.value === 'next' || scheduleMode.value === 'top') {
+        return `posts.composer.queue.${scheduleMode.value}`;
+    }
+
+    return scheduleMode.value === 'custom'
+        ? 'posts.composer.set_date_time'
+        : 'posts.composer.now';
+});
 const scheduleDateLabel = computed(() =>
     scheduleMode.value === 'custom' && composition.scheduledAt.value
         ? date.formatLocalMonthDayTime(composition.scheduledAt.value)
@@ -1518,7 +1536,7 @@ const scheduleTriggerIcon = computed(() => {
         return { name: 'pin', component: IconPin };
     }
 
-    return scheduleMode.value === 'next' || scheduleMode.value === 'top'
+    return scheduleMode.value !== 'now'
         ? { name: 'calendar-clock', component: IconCalendarClock }
         : { name: 'send', component: IconSend };
 });
@@ -1763,6 +1781,13 @@ const submit = (
         payload.scheduled_at = scheduledInstant;
         if (isInitialQueueSlot()) payload.queue_slot = scheduledInstant;
     }
+    if (
+        status === PostStatus.Draft &&
+        scheduleMode.value === 'custom' &&
+        scheduledInstant
+    ) {
+        payload.scheduled_at = scheduledInstant;
+    }
     rememberAccounts(composition.selectedAccountIds.value);
     autosave.flush();
     emit('submit', payload, createAnother.value && !props.postId, () => {
@@ -1783,7 +1808,44 @@ const saveAndLinkFacebook = useSaveAndLinkFacebook({
     submit,
 });
 
+/**
+ * Why the submit button can't send yet, when the person can fix it: shown in
+ * its tooltip and read out with it, instead of a button that silently does
+ * nothing.
+ */
+const submitBlockedKey = computed((): string | null => {
+    if (
+        props.submitting ||
+        cropUploading.value ||
+        mediaUploading.value ||
+        mediaFailed.value
+    ) {
+        return null;
+    }
+    if (selectedAccounts.value.length === 0) {
+        return 'posts.errors.choose_channel';
+    }
+
+    return scheduleMode.value === 'custom' && !composition.scheduledAt.value
+        ? 'posts.composer.set_date_time_description'
+        : null;
+});
+
+const openSchedulePicker = async (): Promise<void> => {
+    scheduleMenuOpen.value = true;
+    await nextTick();
+    schedulePanel.value = 'picker';
+};
+
 const submitSelectedSchedule = (): void => {
+    if (
+        selectedAccounts.value.length > 0 &&
+        scheduleMode.value === 'custom' &&
+        !composition.scheduledAt.value
+    ) {
+        void openSchedulePicker();
+        return;
+    }
     submit(
         scheduleMode.value === 'now'
             ? PostStatus.Publishing
@@ -3296,6 +3358,14 @@ const onDialogOpenChange = (value: boolean): void => {
                     >
                         {{ $t('posts.composer.upload_blocked') }}
                     </p>
+                    <p
+                        v-if="submitBlockedKey"
+                        id="composer-submit-blocked"
+                        class="sr-only"
+                        data-testid="composer-submit-blocked"
+                    >
+                        {{ $t(submitBlockedKey) }}
+                    </p>
                 </div>
                 <Button
                     v-if="socialAccounts.length === 0"
@@ -3358,7 +3428,12 @@ const onDialogOpenChange = (value: boolean): void => {
                             :delay-duration="150"
                             :disabled="!canHover"
                         >
-                            <Tooltip :disabled="!canHover || !blockingIssue">
+                            <Tooltip
+                                :disabled="
+                                    !canHover ||
+                                    (!blockingIssue && !submitBlockedKey)
+                                "
+                            >
                                 <TooltipTrigger as-child>
                                     <Button
                                         type="button"
@@ -3366,13 +3441,16 @@ const onDialogOpenChange = (value: boolean): void => {
                                         class="rounded-l-none rounded-r-xl max-sm:min-w-0 max-sm:flex-1 aria-disabled:cursor-not-allowed aria-disabled:bg-border-strong aria-disabled:text-subtle-foreground aria-disabled:hover:bg-border-strong aria-disabled:active:translate-y-0"
                                         data-testid="composer-submit"
                                         :data-schedule-mode="scheduleMode"
-                                        :disabled="
-                                            !canSubmit ||
-                                            (scheduleMode === 'custom' &&
-                                                !composition.scheduledAt.value)
-                                        "
+                                        :disabled="!canSubmit && !submitBlockedKey"
                                         :aria-disabled="
-                                            hasBlockingIssues ? 'true' : undefined
+                                            hasBlockingIssues || submitBlockedKey
+                                                ? 'true'
+                                                : undefined
+                                        "
+                                        :aria-describedby="
+                                            submitBlockedKey
+                                                ? 'composer-submit-blocked'
+                                                : undefined
                                         "
                                         @click="submitSelectedSchedule"
                                         ><IconLoader2
@@ -3404,7 +3482,14 @@ const onDialogOpenChange = (value: boolean): void => {
                                     >
                                 </TooltipTrigger>
                                 <TooltipContent
-                                    v-if="blockingIssue"
+                                    v-if="!blockingIssue && submitBlockedKey"
+                                    side="top"
+                                    data-testid="composer-submit-blocked-tooltip"
+                                >
+                                    {{ $t(submitBlockedKey) }}
+                                </TooltipContent>
+                                <TooltipContent
+                                    v-else-if="blockingIssue"
                                     side="top"
                                     data-testid="composer-blocked-tooltip"
                                 >

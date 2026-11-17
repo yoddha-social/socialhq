@@ -3,6 +3,7 @@ import { Link, router, useForm, useHttp } from '@inertiajs/vue3';
 import {
     IconExternalLink,
     IconLayoutKanban,
+    IconLoader2,
     IconPalette,
     IconSparkles,
 } from '@tabler/icons-vue';
@@ -234,12 +235,23 @@ const replaceWithDraft = (): void => {
                     v-if="aiAvailable && abilities.canWork"
                     variant="ghost"
                     class="min-w-44 bg-primary-subtle text-primary-text hover:bg-primary-subtle/80"
-                    :loading="aiHttp.processing"
+                    :disabled="aiHttp.processing"
+                    :aria-busy="aiHttp.processing || undefined"
                     data-testid="item-brief-ai"
                     @click="draftBrief"
                 >
-                    <IconSparkles />
-                    {{ $t('socialhq_production.brief.draft_ai') }}
+                    <!-- The label stays next to the spinner: a draft takes several seconds. -->
+                    <IconLoader2
+                        v-if="aiHttp.processing"
+                        class="animate-spin"
+                        aria-hidden="true"
+                    />
+                    <IconSparkles v-else />
+                    {{
+                        aiHttp.processing
+                            ? $t('socialhq_production.brief.drafting_ai')
+                            : $t('socialhq_production.brief.draft_ai')
+                    }}
                 </Button>
                 <Button variant="outline" as-child>
                     <Link

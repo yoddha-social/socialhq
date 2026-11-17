@@ -2,6 +2,7 @@
 import { router, useForm, useHttp, usePage } from '@inertiajs/vue3';
 import {
     IconCheck,
+    IconLoader2,
     IconLock,
     IconMessageReport,
     IconSend,
@@ -83,6 +84,19 @@ watch(
     },
 );
 
+/**
+ * Whether the editor holds copy that differs from the latest version. Only
+ * text counts, not spaces around it (the server trims them), so "Save as new
+ * version" stays off until something really changed.
+ */
+const hasChanges = computed(() => {
+    const saved = fieldsOf(props.latest);
+
+    return (Object.keys(saved) as (keyof CopyFields)[]).some(
+        (field) => form[field].trim() !== saved[field].trim(),
+    );
+});
+
 const isVideo = computed(() => props.item.creative === 'video');
 const isLocked = computed(
     () => props.item.copy_status === 'approved' && !unlocked.value,
@@ -99,7 +113,7 @@ const overBy = computed(() =>
 const canSubmit = computed(
     () =>
         props.latest !== null &&
-        !form.isDirty &&
+        !hasChanges.value &&
         (props.item.copy_status === 'draft' ||
             props.item.copy_status === 'changes_requested'),
 );
@@ -140,7 +154,9 @@ const loadVersion = (version: CopyVersion): void => {
 
 defineExpose({ loadVersion });
 
-const aiHttp = useHttp<Record<string, never>, { number: number }>({});
+const aiHttp = useHttp<{ instruction: string }, { number: number }>({
+    instruction: '',
+});
 const aiError = ref('');
 
 /** AI writes from the saved copy, so it waits for unsaved edits to be saved or discarded. */
@@ -156,8 +172,13 @@ onBeforeUnmount(() => {
 const isReadonly = computed(() => isLocked.value || aiHttp.processing);
 
 const writeCopyWithAi = async (): Promise<void> => {
-    if (aiHttp.processing || form.isDirty) {
+    if (aiHttp.processing || hasChanges.value) {
         return;
+    }
+
+    // Only a rewrite takes the team's request.
+    if (!props.latest) {
+        aiHttp.instruction = '';
     }
 
     aiError.value = '';
@@ -171,6 +192,7 @@ const writeCopyWithAi = async (): Promise<void> => {
             return;
         }
 
+        aiHttp.instruction = '';
         router.reload({ only: ['item', 'versions', 'thread'] });
         toast.success(
             trans('socialhq_production.item.copy.ai_written', {
@@ -257,38 +279,87 @@ const confirmDecision = (note: string): void => {
         :aria-labelledby="`socialhq-copy-title-${item.id}`"
         data-testid="item-copy"
     >
-        <header class="flex items-center justify-between gap-3 px-5 pt-4">
+        <header
+            class="flex flex-wrap items-center justify-between gap-3 px-5 pt-4"
+        >
             <h2
                 :id="`socialhq-copy-title-${item.id}`"
                 class="text-base font-semibold"
             >
                 {{ $t('socialhq_production.item.copy.title') }}
             </h2>
-            <Button
+            <form
                 v-if="showAi"
-                variant="ghost"
-                class="min-w-36 bg-primary-subtle text-primary-text hover:bg-primary-subtle/80"
-                :loading="aiHttp.processing"
-                :disabled="form.isDirty"
-                :title="
-                    form.isDirty
-                        ? $t('socialhq_production.item.copy.ai_save_first')
-                        : undefined
-                "
-                data-testid="item-copy-ai"
-                @click="writeCopyWithAi"
+                class="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2"
+                data-testid="item-copy-ai-form"
+                @submit.prevent="writeCopyWithAi"
             >
-                <IconSparkles />
-                {{
-                    latest
-                        ? $t('socialhq_production.item.copy.rewrite_ai')
-                        : $t('socialhq_production.item.copy.write_ai')
-                }}
-            </Button>
+                <template v-if="latest">
+                    <Label
+                        :for="`socialhq-copy-ai-instruction-${item.id}`"
+                        class="sr-only"
+                    >
+                        {{
+                            $t(
+                                'socialhq_production.item.copy.ai_instruction_label',
+                            )
+                        }}
+                    </Label>
+                    <Input
+                        :id="`socialhq-copy-ai-instruction-${item.id}`"
+                        v-model="aiHttp.instruction"
+                        class="h-8 min-w-0 flex-1 sm:max-w-72"
+                        :placeholder="
+                            $t(
+                                'socialhq_production.item.copy.ai_instruction_placeholder',
+                            )
+                        "
+                        :disabled="aiHttp.processing || hasChanges"
+                        data-testid="item-copy-ai-instruction"
+                    />
+                </template>
+                <!-- The label stays next to the spinner: a draft takes several seconds. -->
+                <Button
+                    type="submit"
+                    variant="ghost"
+                    class="min-w-36 bg-primary-subtle text-primary-text hover:bg-primary-subtle/80"
+                    :disabled="aiHttp.processing || hasChanges"
+                    :aria-busy="aiHttp.processing || undefined"
+                    :title="
+                        hasChanges
+                            ? $t('socialhq_production.item.copy.ai_save_first')
+                            : undefined
+                    "
+                    data-testid="item-copy-ai"
+                >
+                    <IconLoader2
+                        v-if="aiHttp.processing"
+                        class="animate-spin"
+                        aria-hidden="true"
+                    />
+                    <IconSparkles v-else />
+                    <template v-if="aiHttp.processing">
+                        {{
+                            latest
+                                ? $t(
+                                      'socialhq_production.item.copy.rewriting_ai',
+                                  )
+                                : $t('socialhq_production.item.copy.writing_ai')
+                        }}
+                    </template>
+                    <template v-else>
+                        {{
+                            latest
+                                ? $t('socialhq_production.item.copy.rewrite_ai')
+                                : $t('socialhq_production.item.copy.write_ai')
+                        }}
+                    </template>
+                </Button>
+            </form>
         </header>
 
         <p
-            v-if="latest === null && !form.isDirty"
+            v-if="latest === null && !hasChanges"
             class="px-5 pt-2 text-sm text-muted-foreground"
             data-testid="item-copy-empty"
         >
@@ -464,7 +535,7 @@ const confirmDecision = (note: string): void => {
                 <span v-else-if="copyError" class="text-destructive-text">
                     {{ copyError }}
                 </span>
-                <span v-else-if="form.isDirty">
+                <span v-else-if="hasChanges">
                     {{ $t('socialhq_production.item.copy.unsaved') }}
                 </span>
                 <span v-else-if="latest">
@@ -478,7 +549,7 @@ const confirmDecision = (note: string): void => {
             <div class="flex flex-wrap items-center gap-2">
                 <Button
                     v-if="
-                        form.isDirty ||
+                        hasChanges ||
                         (unlocked && item.copy_status === 'approved')
                     "
                     variant="ghost"
@@ -488,7 +559,7 @@ const confirmDecision = (note: string): void => {
                     {{ $t('socialhq_production.item.copy.discard') }}
                 </Button>
                 <template
-                    v-if="isInReview && abilities.canApprove && !form.isDirty"
+                    v-if="isInReview && abilities.canApprove && !hasChanges"
                 >
                     <Button
                         variant="outline"
@@ -521,7 +592,7 @@ const confirmDecision = (note: string): void => {
                 <Button
                     v-if="!isLocked"
                     :disabled="
-                        !form.isDirty ||
+                        !hasChanges ||
                         form.caption.trim() === '' ||
                         aiHttp.processing
                     "

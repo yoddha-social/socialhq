@@ -14,6 +14,7 @@ use App\Models\Invite;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -73,12 +74,19 @@ class WorkspaceInviteController extends Controller
             ]);
         }
 
-        // Accounts are closed: a user always belongs to exactly one account.
-        // Block invites to an email already registered, or two accounts would
-        // hold the same person. Employees use a dedicated work email instead.
-        if (User::query()->whereLike('email', addcslashes($request->email, '%_\\'))->exists()) {
+        // Social HQ: inviting yourself or a member says so. An address with an
+        // account elsewhere gets the invite like any other, so the inviter never
+        // learns which addresses use Social HQ in another company; accepting it
+        // is refused there instead (AcceptInvite, Result::OtherAccount).
+        if ($request->email === Str::lower($request->user()->email)) {
             return back()->withErrors([
-                'email' => __('settings.members.errors.email_belongs_to_account'),
+                'email' => __('settings.members.flash.already_member'),
+            ]);
+        }
+
+        if ($workspace->members()->whereLike('users.email', addcslashes($request->email, '%_\\'))->exists()) {
+            return back()->withErrors([
+                'email' => __('settings.members.errors.already_member'),
             ]);
         }
 

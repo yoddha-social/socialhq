@@ -22,6 +22,7 @@ import {
 import { useGuestLocale } from '@/composables/useGuestLocale';
 import { usePageErrors } from '@/composables/usePageErrors';
 import AuthBase from '@/layouts/AuthLayout.vue';
+import { clearFieldError } from '@/lib/formErrors';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
@@ -48,11 +49,7 @@ const pageErrors = usePageErrors();
 </script>
 
 <template>
-    <AuthBase
-        :title="$t('auth.login.title')"
-        :status="status"
-        panel
-    >
+    <AuthBase :title="$t('auth.login.title')" :status="status" panel>
         <Head :title="$t('auth.login.page_title')" />
 
         <div class="flex flex-col gap-6">
@@ -61,114 +58,126 @@ const pageErrors = usePageErrors();
             <Form
                 v-bind="store.form()"
                 :reset-on-success="['password']"
-                v-slot="{ errors, processing }"
+                v-slot="{ errors, processing, clearErrors }"
                 class="flex flex-col gap-4"
             >
-                <input type="hidden" name="locale" :value="chosen ?? ''" />
-
-                <input
-                    v-if="invite"
-                    type="hidden"
-                    name="invite"
-                    :value="invite"
-                />
-
-                <div class="grid gap-2">
-                    <Label for="email">{{ $t('auth.login.email') }}</Label>
-                    <Input
-                        id="email"
-                        type="email"
-                        name="email"
-                        data-testid="login-email"
-                        autofocus
-                        :tabindex="1"
-                        autocomplete="email"
-                        placeholder="email@example.com"
-                        :default-value="email ?? ''"
-                    />
-                    <InputError :message="errors.email || pageErrors.email" />
-                </div>
-
-                <div class="grid gap-2">
-                    <div class="flex items-center justify-between gap-2">
-                        <Label for="password">{{
-                            $t('auth.login.password')
-                        }}</Label>
-                        <TextLink
-                            :href="request()"
-                            class="text-sm"
-                            :tabindex="5"
-                        >
-                            {{ $t('auth.login.forgot_password') }}
-                        </TextLink>
-                    </div>
-                    <div class="relative">
-                        <Input
-                            id="password"
-                            :type="showPassword ? 'text' : 'password'"
-                            name="password"
-                            data-testid="login-password"
-                            :tabindex="2"
-                            autocomplete="current-password"
-                            :placeholder="$t('auth.login.password')"
-                            class="pe-8"
-                        />
-                        <div
-                            class="absolute inset-y-0 end-0 flex items-center pe-2"
-                        >
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger as-child>
-                                        <button
-                                            type="button"
-                                            :tabindex="-1"
-                                            class="cursor-pointer text-muted-foreground hover:text-foreground"
-                                            data-testid="login-password-toggle"
-                                            @click="togglePasswordVisibility"
-                                        >
-                                            <IconEyeOff
-                                                v-if="showPassword"
-                                                class="size-4"
-                                            />
-                                            <IconEye v-else class="size-4" />
-                                        </button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>
-                                            {{
-                                                showPassword
-                                                    ? $t(
-                                                          'auth.login.hide_password',
-                                                      )
-                                                    : $t(
-                                                          'auth.login.show_password',
-                                                      )
-                                            }}
-                                        </p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        </div>
-                    </div>
-                    <InputError :message="errors.password" />
-                </div>
-
-                <Label for="remember">
-                    <Checkbox id="remember" name="remember" :tabindex="3" />
-                    <span>{{ $t('auth.login.remember_me') }}</span>
-                </Label>
-
-                <Button
-                    type="submit"
-                    data-testid="login-submit"
-                    class="w-full"
-                    :tabindex="4"
-                    :disabled="processing"
-                    data-test="login-button"
+                <div
+                    class="flex flex-col gap-4"
+                    @input="clearFieldError($event, clearErrors)"
                 >
-                    <Spinner v-if="processing" />
-                    {{ $t('auth.login.submit') }}
-                </Button>
+                    <input type="hidden" name="locale" :value="chosen ?? ''" />
+
+                    <input
+                        v-if="invite"
+                        type="hidden"
+                        name="invite"
+                        :value="invite"
+                    />
+
+                    <div class="grid gap-2">
+                        <Label for="email">{{ $t('auth.login.email') }}</Label>
+                        <Input
+                            id="email"
+                            type="email"
+                            name="email"
+                            data-testid="login-email"
+                            autofocus
+                            :tabindex="1"
+                            autocomplete="email"
+                            placeholder="email@example.com"
+                            :default-value="email ?? ''"
+                        />
+                        <InputError
+                            :message="errors.email || pageErrors.email"
+                        />
+                    </div>
+
+                    <div class="grid gap-2">
+                        <div class="flex items-center justify-between gap-2">
+                            <Label for="password">{{
+                                $t('auth.login.password')
+                            }}</Label>
+                            <TextLink
+                                :href="request()"
+                                class="text-sm"
+                                :tabindex="5"
+                            >
+                                {{ $t('auth.login.forgot_password') }}
+                            </TextLink>
+                        </div>
+                        <div class="relative">
+                            <Input
+                                id="password"
+                                :type="showPassword ? 'text' : 'password'"
+                                name="password"
+                                data-testid="login-password"
+                                :tabindex="2"
+                                autocomplete="current-password"
+                                :placeholder="$t('auth.login.password')"
+                                class="pe-8"
+                            />
+                            <div
+                                class="absolute inset-y-0 end-0 flex items-center pe-2"
+                            >
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger as-child>
+                                            <button
+                                                type="button"
+                                                :tabindex="-1"
+                                                class="cursor-pointer text-muted-foreground hover:text-foreground"
+                                                data-testid="login-password-toggle"
+                                                @click="
+                                                    togglePasswordVisibility
+                                                "
+                                            >
+                                                <IconEyeOff
+                                                    v-if="showPassword"
+                                                    class="size-4"
+                                                />
+                                                <IconEye
+                                                    v-else
+                                                    class="size-4"
+                                                />
+                                            </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>
+                                                {{
+                                                    showPassword
+                                                        ? $t(
+                                                              'auth.login.hide_password',
+                                                          )
+                                                        : $t(
+                                                              'auth.login.show_password',
+                                                          )
+                                                }}
+                                            </p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </div>
+                        </div>
+                        <InputError :message="errors.password" />
+                    </div>
+
+                    <Label for="remember">
+                        <Checkbox id="remember" name="remember" :tabindex="3" />
+                        <span>{{ $t('auth.login.remember_me') }}</span>
+                    </Label>
+
+                    <Button
+                        type="submit"
+                        data-testid="login-submit"
+                        class="w-full"
+                        :tabindex="4"
+                        :disabled="processing"
+                        data-test="login-button"
+                    >
+                        <Spinner v-if="processing" />
+                        {{ $t('auth.login.submit') }}
+                    </Button>
+                </div>
             </Form>
 
             <p

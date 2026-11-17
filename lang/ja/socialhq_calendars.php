@@ -98,6 +98,7 @@ return [
     ],
     'errors' => [
         'no_file' => 'Choose a CSV or Excel (.xlsx) file to import.',
+        'empty' => 'This file is empty. Choose a calendar file that has rows in it.',
         'type' => 'This file isn\'t a CSV or Excel (.xlsx) file. In Google Sheets, use File › Download › CSV or Microsoft Excel (.xlsx).',
         'too_big' => 'This file is over :size MB. To import it, split it into smaller files, for example one per year.',
         'too_many_rows' => 'This file has more than :max rows. To import it, split it into smaller files, for example one per year.',

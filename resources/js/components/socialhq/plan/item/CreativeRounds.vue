@@ -280,9 +280,12 @@ const downloadUrl = (file: BriefFileRow): string => `${file.url}?download=1`;
             }}
         </p>
 
+        <!-- relative: the hidden file input (absolutely positioned) must belong to this panel. Without
+             a positioned ancestor it is placed against the layout's <main>, far below its bottom, and
+             focusing it scrolls <main> past the page, leaving it blank. -->
         <div
             v-if="acceptsUploads && abilities.canWork"
-            class="mx-5 mt-4 grid gap-3 rounded-lg border border-dashed p-4"
+            class="relative mx-5 mt-4 grid gap-3 rounded-lg border border-dashed p-4"
             data-testid="item-creative-upload"
         >
             <div class="grid gap-2">
@@ -314,6 +317,8 @@ const downloadUrl = (file: BriefFileRow): string => `${file.url}?download=1`;
                     ref="fileInput"
                     type="file"
                     class="sr-only"
+                    tabindex="-1"
+                    aria-hidden="true"
                     multiple
                     :accept="accept"
                     data-testid="item-creative-file"

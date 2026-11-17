@@ -16,7 +16,7 @@ use Laravel\Ai\Promptable;
 
 /**
  * Drafts a creative brief from an item's copy and format: the text on the
- * graphic or video, the art direction and ideas for references.
+ * graphic or video, the art direction and links to references.
  */
 #[MaxTokens(2000)]
 class BriefWriter implements Agent, HasProviderOptions, HasStructuredOutput
@@ -61,7 +61,7 @@ class BriefWriter implements Agent, HasProviderOptions, HasStructuredOutput
             // Every key is required (strict providers refuse a schema that leaves one out); "" means none.
             'on_screen_text' => $schema->string()->description('The words on the creative, one line each, or "".')->required(),
             'direction' => $schema->string()->required(),
-            'references' => $schema->string()->description('Reference ideas, one per line, or "".')->required(),
+            'references' => $schema->string()->description('Links from the context or the brand knowledge, one per line, or "".')->required(),
         ];
     }
 

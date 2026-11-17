@@ -73,7 +73,7 @@ return [
 
     'dialog' => [
         'add_title' => 'Add a date',
-        'add_description' => 'A date your brand plans around, like a launch or an anniversary. The AI uses it once you confirm it.',
+        'add_description' => 'A date your brand plans around, like a launch or an anniversary. It starts as confirmed, so the AI can plan around it right away.',
         'edit_title' => 'Edit date',
         'edit_description' => 'If you change the name or dates, use Confirm date again after saving.',
         'name' => 'Name',
@@ -84,7 +84,7 @@ return [
         'starts_on' => 'Starts',
         'ends_on' => 'Ends',
         'bs_date' => 'Nepali date (BS)',
-        'bs_date_placeholder' => '2083 Kartik 17',
+        'bs_date_hint' => 'Copy it from the official list, like 2083 Kartik 17.',
         'public_holiday' => 'Public holiday',
         'public_holiday_hint' => 'Offices and schools close that day.',
         'description' => 'Notes',
@@ -95,6 +95,15 @@ return [
         'brand_only_locked' => 'Only the account owner can add dates for every brand.',
         'cancel' => 'Cancel',
         'save' => 'Save date',
+    ],
+
+    'confirm_shown' => [
+        'button' => 'Confirm all shown',
+        'title' => '{1} Confirm 1 date?|[0,*] Confirm :count dates?',
+        'description' => 'These are the dates in the list that need checking. The AI plans around them once confirmed, so check them against their source first.',
+        'confirm' => 'Confirm dates',
+        'cancel' => 'Cancel',
+        'done' => '{0} There were no dates left to confirm.|{1} 1 date confirmed.|[2,*] :count dates confirmed.',
     ],
 
     'delete' => [
@@ -120,6 +129,8 @@ return [
         'ends_before_start' => 'Pick an end date on or after the start date.',
         'too_long' => 'Pick an end date within 31 days of the start date.',
         'duplicate' => 'There\'s already an event with this name on that day. Use another name or day.',
+        'source_url' => 'Enter the source link as a full web address, starting with https://.',
+        'source_url_long' => 'Use a source link of up to 500 characters.',
         'brand_kind_shared' => 'A brand date belongs to one brand. Switch on Only this brand, or pick another kind.',
         'changed' => 'This date changed after you opened the page. Reload it to check the new date, then confirm.',
         'delisted' => 'Its source no longer lists this date, so it can\'t be confirmed as it is. To keep it, edit it to make it your own date; otherwise delete it.',
@@ -143,7 +154,7 @@ return [
         'loading' => 'Loading countries…',
         'load_failed' => 'Couldn\'t load the countries from Nager.Date. Try again in a few minutes.',
         'retry' => 'Try again',
-        'no_match' => 'No country matches your search.',
+        'no_match' => 'Our holiday source has no country matching ":search". To plan around its holidays, add each one yourself with Add a date.',
         'cancel' => 'Cancel',
         'import' => 'Import holidays',
         'done' => 'Public holidays imported for :countries: :created new, :updated updated, :skipped unchanged. Check each date before planning around it.',

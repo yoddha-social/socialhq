@@ -41,10 +41,10 @@ class EventController extends Controller
     public function index(Request $request): Response
     {
         $workspace = PlanAccess::workspace($request);
-        $today = CarbonImmutable::now(Timezone::normalize($request->user()->timezone))->startOfDay();
+        $today = self::today($request);
         $upcoming = $request->query('view') === 'upcoming';
         $month = PlanMonth::tryParse($request->query('month')) ?? $today->startOfMonth();
-        [$from, $to] = $upcoming ? [$today, $today->addDays(self::UPCOMING_DAYS - 1)] : [$month, $month->endOfMonth()];
+        [$from, $to] = self::period($today, $upcoming, $month);
         $country = self::country($request->query('country'));
         $canManageShared = PlanAccess::canApprove($request->user(), $workspace) && PlanAccess::canManageSharedEvents($request->user(), $workspace);
 
@@ -89,6 +89,9 @@ class EventController extends Controller
                 'region' => $region,
                 'country_code' => $country,
                 'created_by' => $request->user()->id,
+                // Only approvers add dates, and they typed it in themselves: no second check.
+                'verified_at' => now(),
+                'verified_by' => $request->user()->id,
             ]);
         });
 
@@ -297,9 +300,27 @@ class EventController extends Controller
     }
 
     /**
+     * Today in the user's time zone, the day the page's periods start from.
+     */
+    public static function today(Request $request): CarbonImmutable
+    {
+        return CarbonImmutable::now(Timezone::normalize($request->user()->timezone))->startOfDay();
+    }
+
+    /**
+     * The days the page shows: the next 90 days, or the whole month.
+     *
+     * @return array{0: CarbonImmutable, 1: CarbonImmutable}
+     */
+    public static function period(CarbonImmutable $today, bool $upcoming, CarbonImmutable $month): array
+    {
+        return $upcoming ? [$today, $today->addDays(self::UPCOMING_DAYS - 1)] : [$month, $month->endOfMonth()];
+    }
+
+    /**
      * The country filter: an ISO 3166-1 alpha-2 code, or null for every country.
      */
-    private static function country(mixed $value): ?string
+    public static function country(mixed $value): ?string
     {
         if (! is_string($value)) {
             return null;

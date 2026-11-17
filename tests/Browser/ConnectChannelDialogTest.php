@@ -213,7 +213,7 @@ function openInstagramConnectStep(): mixed
     return $page;
 }
 
-test('the instagram step offers the instagram login and facebook cards side by side, links its help and asks before closing', function () {
+test('the instagram step offers the instagram login and facebook cards side by side, links its help and closes without asking', function () {
     $this->actingAs(connectDialogAdmin());
 
     $page = openInstagramConnectStep();
@@ -293,20 +293,7 @@ test('the instagram step offers the instagram login and facebook cards side by s
     JS);
 
     $page->click('@dialog-close');
-    waitForConnectDialogTestId($page, 'connect-channel-exit-confirm');
-
-    $page->assertSeeIn('@connect-channel-exit-confirm', trans('channels.dialog.exit_confirm.title', ['network' => 'Instagram']));
-
-    $page->click('@connect-channel-exit-continue');
-    waitForConnectDialogTestId($page, 'instagram-connect-professional');
-
-    $page->assertMissing('@connect-channel-exit-confirm')
-        ->assertVisible('@instagram-connect-professional')
-        ->assertNoJavaScriptErrors();
-
-    $page->click('@dialog-close');
-    waitForConnectDialogTestId($page, 'connect-channel-exit-leave');
-    $page->click('@connect-channel-exit-leave');
+    waitForGone($page, '@connect-channel-dialog');
 
     $page->assertMissing('@connect-channel-exit-confirm')
         ->assertMissing('@connect-channel-dialog')

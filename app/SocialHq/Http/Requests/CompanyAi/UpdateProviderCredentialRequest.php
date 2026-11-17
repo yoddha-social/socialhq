@@ -11,8 +11,8 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Replacing a provider's key with a new one (same provider). Write-only,
- * like adding one.
+ * Replacing a key with a new one (same provider, plan, tasks and models).
+ * Write-only, like adding one.
  */
 class UpdateProviderCredentialRequest extends FormRequest
 {
@@ -32,6 +32,16 @@ class UpdateProviderCredentialRequest extends FormRequest
     }
 
     /**
+     * The checkbox the key's plan asks for, ticked again with every new key.
+     */
+    public function confirmation(): ?string
+    {
+        $credential = $this->route('credential');
+
+        return $credential instanceof ProviderCredential ? $this->provider()?->confirmation($credential->tier) : null;
+    }
+
+    /**
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
@@ -41,7 +51,7 @@ class UpdateProviderCredentialRequest extends FormRequest
         return [
             'provider_key' => ['required', 'string', 'regex:'.StoreProviderCredentialRequest::KEY_PATTERN],
             'account_id' => $provider?->needsAccountId() ? ['required', 'string', 'regex:'.StoreProviderCredentialRequest::ACCOUNT_ID_PATTERN] : ['prohibited'],
-            'confirmed' => $provider?->confirmation() !== null ? ['accepted'] : ['nullable'],
+            'confirmed' => $this->confirmation() !== null ? ['accepted'] : ['nullable'],
         ];
     }
 
@@ -55,7 +65,7 @@ class UpdateProviderCredentialRequest extends FormRequest
             'provider_key.regex' => __('socialhq_ai.validation.key_format'),
             'account_id.required' => __('socialhq_ai.validation.account_id'),
             'account_id.regex' => __('socialhq_ai.validation.account_id'),
-            'confirmed.accepted' => __("socialhq_ai.validation.confirm_{$this->provider()?->confirmation()}"),
+            'confirmed.accepted' => __("socialhq_ai.validation.confirm_{$this->confirmation()}"),
         ];
     }
 

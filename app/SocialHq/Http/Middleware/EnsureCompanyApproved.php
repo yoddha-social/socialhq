@@ -75,6 +75,11 @@ class EnsureCompanyApproved
         // A message on its way (an invite declined) reaches the page.
         if ($request->hasSession()) {
             $request->session()->reflash();
+
+            // The confirmation link lands on the calendar with ?verified=1; the waiting page says it worked.
+            if ($redirect === 'socialhq.company.waiting' && $request->boolean('verified') && $user->hasVerifiedEmail()) {
+                $request->session()->flash('status', 'email-confirmed');
+            }
         }
 
         return redirect()->route($redirect);

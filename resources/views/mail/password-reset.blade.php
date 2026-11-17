@@ -81,13 +81,8 @@ $direction = Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr';
                   </a>
                 </div>
                 <div role="separator" style="line-height: 24px">&zwj;</div>
-                <p style="line-height: 24px">
-                  {{ __('mail.password_reset.expiry') }}
-                </p>
                 <p style="margin-bottom: 0; line-height: 24px">
-                  {{ __('mail.layout.signoff') }}
-                  <br>
-                  {{ __('mail.layout.team') }}
+                  {{ __('mail.password_reset.expiry') }}
                 </p>
               </td>
             </tr>

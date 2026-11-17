@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\PostPlatform\ContentType;
 use App\Models\Media;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -77,6 +78,30 @@ test('create post imports the approved round into the workspace uploads and retu
 
     expect($status['status'])->toBe(MediaImportStatus::DONE)
         ->and($status['media_id'])->toBe($media->id);
+});
+
+test('create post hands only the files the item\'s format takes and names the others', function () {
+    $this->item->update(['copy_status' => CopyStatus::Approved, 'content_type' => ContentType::FacebookPost]);
+    $brief = Brief::factory()->for($this->item, 'item')->create(['stage' => BriefStage::Approved]);
+    storedBriefFile($brief, 1, 'final.png');
+    $pdf = storedBriefFile($brief, 1, 'brochure.png');
+    $pdf->update(['original_name' => 'brochure.pdf', 'mime_type' => 'application/pdf']);
+
+    $this->actingAs($this->member)->postJson(route('socialhq.plan.items.post.store', $this->item->id))
+        ->assertOk()
+        ->assertJsonCount(1, 'media')
+        ->assertJsonPath('media.0.original_filename', 'final.png')
+        ->assertJsonPath('left_out', ['brochure.pdf']);
+
+    expect(Media::query()->pluck('original_filename')->all())->toBe(['final.png']);
+
+    // A LinkedIn post takes the PDF.
+    $this->item->update(['content_type' => ContentType::LinkedInPost]);
+
+    $this->actingAs($this->member)->postJson(route('socialhq.plan.items.post.store', $this->item->id))
+        ->assertOk()
+        ->assertJsonCount(2, 'media')
+        ->assertJsonPath('left_out', []);
 });
 
 test('a second create post reuses the upload made from the same file', function () {

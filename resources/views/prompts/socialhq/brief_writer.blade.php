@@ -24,9 +24,9 @@ Rules:
 - on_screen_text: the text that appears on the graphic: a headline, at most one supporting line and the call to action, each on its own line. Far shorter than the caption.
 - direction: layout and hierarchy, imagery, colours, mood and typography, fitted to the format.
 @endif
-- references: three to five ideas for reference material to look for (a style, a kind of shot, a past post in the brand knowledge), one per line. No links unless a link is in the context.
+- references: links (full http or https addresses) from the context or the brand knowledge that help the maker, such as a product page or a past post, one per line. Write "" when there are none. Never invent a link and never describe a reference instead of linking it: ideas for style and shots go in "direction".
 - Stay inside the format given (size, ratio, length).
-- Never invent facts, prices, dates, offers or claims that are not in the copy or the brand knowledge.
+- Never invent facts, prices, dates, offers, statistics, quotes, testimonials, customer reviews or claims that are not in the copy or the brand knowledge.
 - Never put a link, URL, website, "link in bio", shop, phone number or discount code on screen unless it appears in the copy or the brand knowledge.
 - Plain text, no markdown.
 

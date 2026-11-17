@@ -153,12 +153,33 @@ test('suggestions are accepted or dropped, dropped items restored and items dele
     $this->actingAs($this->member)->post(route('socialhq.plan.items.drop', $other->id))->assertSessionHasNoErrors();
     expect($other->fresh()->status)->toBe(ItemStatus::Dropped);
 
+    // A dropped AI suggestion comes back as an open suggestion, to accept or drop again.
     $this->actingAs($this->member)->post(route('socialhq.plan.items.restore', $other->id))->assertSessionHasNoErrors();
-    expect($other->fresh()->status)->toBe(ItemStatus::Planned);
+    expect($other->fresh()->status)->toBe(ItemStatus::Suggested);
 
     $this->actingAs($this->member)->delete(route('socialhq.plan.items.destroy', $other->id))->assertRedirect();
     expect($other->fresh())->toBeNull();
 });
+
+test('a dropped item someone wrote or started work on comes back planned', function (PlanItem $dropped) {
+    $this->actingAs($this->member)->post(route('socialhq.plan.items.restore', $dropped->id))->assertSessionHasNoErrors();
+
+    expect($dropped->fresh()->status)->toBe(ItemStatus::Planned);
+})->with([
+    'written by hand' => [fn () => ($this->planWithItem)([], ['status' => ItemStatus::Dropped, 'source' => ItemSource::Manual])],
+    'AI item with copy' => [function () {
+        $item = ($this->planWithItem)([], ['status' => ItemStatus::Dropped, 'source' => ItemSource::Ai]);
+        ItemVersion::factory()->for($item, 'item')->create();
+
+        return $item;
+    }],
+    'AI item with a brief' => [function () {
+        $item = ($this->planWithItem)([], ['status' => ItemStatus::Dropped, 'source' => ItemSource::Ai]);
+        Brief::factory()->for($item, 'item')->create();
+
+        return $item;
+    }],
+]);
 
 test('accepting every suggestion leaves planned and dropped items alone', function () {
     $planned = ($this->planWithItem)();

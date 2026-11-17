@@ -469,13 +469,16 @@ test('generate ideas shows one idea, generates again and opens it unsaved in the
     $page->click('@ideas-generate');
     waitForCreateIdeaEditorTestId($page, 'ideas-generate-dialog');
 
+    // Without a brand profile nothing is prefilled; an empty submit shows the server's field messages.
     $page->assertMissing('@ideas-generate-count')
         ->assertMissing('@ideas-generate-stage')
-        ->assertDisabled('@ideas-generate-submit')
-        ->fill('@ideas-generate-audience', 'Home decor lovers')
-        ->assertDisabled('@ideas-generate-submit')
-        ->fill('@ideas-generate-business', 'A handmade ceramics studio')
         ->assertEnabled('@ideas-generate-submit')
+        ->click('@ideas-generate-submit');
+    waitFor($page, '@ideas-generate-business-error');
+
+    $page->assertVisible('@ideas-generate-audience-error')
+        ->fill('@ideas-generate-audience', 'Home decor lovers')
+        ->fill('@ideas-generate-business', 'A handmade ceramics studio')
         ->click('@ideas-generate-submit');
     waitForCreateIdeaEditorTestId($page, 'ideas-generate-result', 'Behind the kiln');
 
@@ -534,7 +537,7 @@ test('generate ideas shows one idea, generates again and opens it unsaved in the
     $page->assertValue('@ideas-generate-audience', '')
         ->assertValue('@ideas-generate-business', '')
         ->assertMissing('@ideas-generate-result')
-        ->assertDisabled('@ideas-generate-submit')
+        ->assertEnabled('@ideas-generate-submit')
         ->assertNoJavaScriptErrors();
 })->with([
     'desktop' => [null],

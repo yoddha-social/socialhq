@@ -19,9 +19,9 @@ class TearDownCompanyAi implements ShouldQueue
     public int $tries = 5;
 
     /**
-     * @param  list<string>  $providers
+     * @param  list<string>  $credentialNames  the company's LiteLLM credentials (one per key)
      */
-    public function __construct(public string $teamId, public array $providers)
+    public function __construct(public string $teamId, public array $credentialNames)
     {
         $this->onQueue('default');
     }
@@ -36,6 +36,6 @@ class TearDownCompanyAi implements ShouldQueue
 
     public function handle(CompanyAiManager $manager): void
     {
-        $manager->tearDown($this->teamId, $this->providers);
+        $manager->tearDown($this->teamId, $this->credentialNames);
     }
 }

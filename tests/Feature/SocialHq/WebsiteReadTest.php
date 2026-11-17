@@ -178,7 +178,8 @@ test('an admin accepts, edits or skips each suggestion, once', function () {
 
     $accept('profile-about', ['value' => 'Acme Bags makes trekking bags by hand in Kathmandu.'])->assertSessionHasNoErrors();
     $accept('entry-1')->assertSessionHasNoErrors();
-    $accept('colour-1', ['name' => 'Midnight', 'hex' => '#0b1f3a'])->assertSessionHasNoErrors();
+    // An edited colour may be typed without "#".
+    $accept('colour-1', ['name' => 'Midnight', 'hex' => '0B1F3A'])->assertSessionHasNoErrors();
     $accept('font-heading_font')->assertSessionHasNoErrors();
     $this->post(route('socialhq.brand.website.skip', [$crawl->id, 'entry-2']))->assertSessionHasNoErrors();
     $accept('document')->assertSessionHasNoErrors();

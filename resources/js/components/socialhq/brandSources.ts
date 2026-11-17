@@ -4,6 +4,23 @@ export interface BrandColour {
     hex: string;
 }
 
+/**
+ * A typed colour as the server stores it ("#rrggbb", lower case): the "#"
+ * may be left out and the 3-digit form is expanded (BrandLook::normalizeHex).
+ * Null when it isn't a hex colour.
+ */
+export const normalizeHex = (value: string): string | null => {
+    const match = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value.trim());
+
+    if (match === null) {
+        return null;
+    }
+
+    const digits = match[1].toLowerCase();
+
+    return `#${digits.length === 3 ? [...digits].map((digit) => digit + digit).join('') : digits}`;
+};
+
 export interface BrandLookProp {
     logo: {
         url: string;

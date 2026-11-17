@@ -4,8 +4,8 @@ import { IconEye, IconEyeOff } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
 import LegalLinks from '@/components/auth/LegalLinks.vue';
-import PasswordRequirements from '@/components/auth/PasswordRequirements.vue';
 import type { PasswordRequirement } from '@/components/auth/PasswordRequirements.vue';
+import PasswordRequirements from '@/components/auth/PasswordRequirements.vue';
 import SocialLogin from '@/components/auth/SocialLogin.vue';
 import InputError from '@/components/InputError.vue';
 import CompanyNameField from '@/components/socialhq/CompanyNameField.vue';
@@ -23,6 +23,7 @@ import {
 import { useGuestLocale } from '@/composables/useGuestLocale';
 import AuthBase from '@/layouts/AuthLayout.vue';
 import { detectPreferences } from '@/lib/detectPreferences';
+import { clearFieldError } from '@/lib/formErrors';
 import { login } from '@/routes';
 import { store } from '@/routes/register';
 
@@ -51,10 +52,7 @@ const hasSocial = computed(
 </script>
 
 <template>
-    <AuthBase
-        :title="$t('auth.register.title')"
-        panel
-    >
+    <AuthBase :title="$t('auth.register.title')" panel>
         <Head :title="$t('auth.register.page_title')" />
 
         <div class="flex flex-col gap-6">
@@ -65,14 +63,39 @@ const hasSocial = computed(
             <Form
                 v-bind="store.form()"
                 :reset-on-success="['password']"
-                v-slot="{ errors, processing }"
+                v-slot="{ errors, processing, clearErrors }"
                 class="flex flex-col gap-6"
             >
-                <input v-if="invite" type="hidden" name="invite" :value="invite" />
-                <input type="hidden" name="locale" :value="signupLocale" data-testid="register-locale" />
-                <input type="hidden" name="timezone" :value="detected.timezone" data-testid="register-timezone" />
-                <input type="hidden" name="week_starts_on" :value="detected.week_starts_on" data-testid="register-week-start" />
-                <input type="hidden" name="time_format" :value="detected.time_format ?? ''" data-testid="register-time-format" />
+                <input
+                    v-if="invite"
+                    type="hidden"
+                    name="invite"
+                    :value="invite"
+                />
+                <input
+                    type="hidden"
+                    name="locale"
+                    :value="signupLocale"
+                    data-testid="register-locale"
+                />
+                <input
+                    type="hidden"
+                    name="timezone"
+                    :value="detected.timezone"
+                    data-testid="register-timezone"
+                />
+                <input
+                    type="hidden"
+                    name="week_starts_on"
+                    :value="detected.week_starts_on"
+                    data-testid="register-week-start"
+                />
+                <input
+                    type="hidden"
+                    name="time_format"
+                    :value="detected.time_format ?? ''"
+                    data-testid="register-time-format"
+                />
 
                 <div
                     v-if="hasSocial"
@@ -83,96 +106,129 @@ const hasSocial = computed(
                     <span class="h-px flex-1 bg-border-strong" />
                 </div>
 
-                    <div class="grid gap-4">
-                        <div class="grid gap-2">
-                            <Label for="name">{{ $t('auth.register.name') }}</Label>
-                            <Input
-                                id="name"
-                                data-testid="register-name"
-                                type="text"
-                                autofocus
-                                :tabindex="1"
-                                autocomplete="name"
-                                name="name"
-                                :placeholder="$t('auth.register.name_placeholder')"
-                            />
-                            <InputError :message="errors.name" />
-                        </div>
-
-                        <div class="grid gap-2">
-                            <Label for="email">{{ $t('auth.register.email') }}</Label>
-                            <Input
-                                id="email"
-                                data-testid="register-email"
-                                type="email"
-                                :tabindex="2"
-                                autocomplete="email"
-                                name="email"
-                                placeholder="email@example.com"
-                                :default-value="email ?? ''"
-                                :readonly="Boolean(invite)"
-                                :aria-readonly="Boolean(invite)"
-                                :class="{ 'pointer-events-none bg-muted text-muted-foreground': invite }"
-                            />
-                            <InputError :message="errors.email" />
-                        </div>
-
-                        <!-- Social HQ: asking to start a company (PATCHES.md). -->
-                        <CompanyNameField :invite="invite" :error="errors.company_name" />
-
-                        <div class="grid gap-2">
-                            <Label for="password">{{ $t('auth.register.password') }}</Label>
-                            <div class="relative">
-                                <Input
-                                    id="password"
-                                    :type="showPassword ? 'text' : 'password'"
-                                    :tabindex="3"
-                                    autocomplete="new-password"
-                                    name="password"
-                                    v-model="password"
-                                    data-testid="register-password"
-                                    :placeholder="$t('auth.register.password')"
-                                    class="pe-8"
-                                />
-                                <div class="absolute inset-y-0 end-0 flex items-center pe-2">
-                                    <TooltipProvider>
-                                        <Tooltip>
-                                            <TooltipTrigger as-child>
-                                                <button
-                                                    type="button"
-                                                    :tabindex="-1"
-                                                    class="cursor-pointer text-muted-foreground hover:text-foreground"
-                                                    @click="togglePasswordVisibility"
-                                                >
-                                                    <IconEyeOff v-if="showPassword" class="size-4" />
-                                                    <IconEye v-else class="size-4" />
-                                                </button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <p>{{ showPassword ? $t('auth.register.hide_password') : $t('auth.register.show_password') }}</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                </div>
-                            </div>
-                            <PasswordRequirements
-                                :password="password"
-                                :requirements="passwordRequirements"
-                            />
-                            <InputError :message="errors.password" />
-                        </div>
-
-                        <Button
-                            type="submit"
-                            class="w-full"
-                            :tabindex="4"
-                            :disabled="processing"
-                            data-testid="register-user-button"
-                        >
-                            <Spinner v-if="processing" />
-                            {{ $t('auth.register.submit') }}
-                        </Button>
+                <div
+                    class="grid gap-4"
+                    @input="clearFieldError($event, clearErrors)"
+                >
+                    <div class="grid gap-2">
+                        <Label for="name">{{ $t('auth.register.name') }}</Label>
+                        <Input
+                            id="name"
+                            data-testid="register-name"
+                            type="text"
+                            autofocus
+                            :tabindex="1"
+                            autocomplete="name"
+                            name="name"
+                            :placeholder="$t('auth.register.name_placeholder')"
+                        />
+                        <InputError :message="errors.name" />
                     </div>
+
+                    <div class="grid gap-2">
+                        <Label for="email">{{
+                            $t('auth.register.email')
+                        }}</Label>
+                        <Input
+                            id="email"
+                            data-testid="register-email"
+                            type="email"
+                            :tabindex="2"
+                            autocomplete="email"
+                            name="email"
+                            placeholder="email@example.com"
+                            :default-value="email ?? ''"
+                            :readonly="Boolean(invite)"
+                            :aria-readonly="Boolean(invite)"
+                            :class="{
+                                'pointer-events-none bg-muted text-muted-foreground':
+                                    invite,
+                            }"
+                        />
+                        <InputError :message="errors.email" />
+                    </div>
+
+                    <!-- Social HQ: asking to start a company (PATCHES.md). -->
+                    <CompanyNameField
+                        :invite="invite"
+                        :error="errors.company_name"
+                    />
+
+                    <div class="grid gap-2">
+                        <Label for="password">{{
+                            $t('auth.register.password')
+                        }}</Label>
+                        <div class="relative">
+                            <Input
+                                id="password"
+                                :type="showPassword ? 'text' : 'password'"
+                                :tabindex="3"
+                                autocomplete="new-password"
+                                name="password"
+                                v-model="password"
+                                data-testid="register-password"
+                                :placeholder="$t('auth.register.password')"
+                                class="pe-8"
+                            />
+                            <div
+                                class="absolute inset-y-0 end-0 flex items-center pe-2"
+                            >
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger as-child>
+                                            <button
+                                                type="button"
+                                                :tabindex="-1"
+                                                class="cursor-pointer text-muted-foreground hover:text-foreground"
+                                                @click="
+                                                    togglePasswordVisibility
+                                                "
+                                            >
+                                                <IconEyeOff
+                                                    v-if="showPassword"
+                                                    class="size-4"
+                                                />
+                                                <IconEye
+                                                    v-else
+                                                    class="size-4"
+                                                />
+                                            </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>
+                                                {{
+                                                    showPassword
+                                                        ? $t(
+                                                              'auth.register.hide_password',
+                                                          )
+                                                        : $t(
+                                                              'auth.register.show_password',
+                                                          )
+                                                }}
+                                            </p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </div>
+                        </div>
+                        <PasswordRequirements
+                            :password="password"
+                            :requirements="passwordRequirements"
+                        />
+                        <InputError :message="errors.password" />
+                    </div>
+
+                    <Button
+                        type="submit"
+                        class="w-full"
+                        :tabindex="4"
+                        :disabled="processing"
+                        data-testid="register-user-button"
+                    >
+                        <Spinner v-if="processing" />
+                        {{ $t('auth.register.submit') }}
+                    </Button>
+                </div>
             </Form>
 
             <p class="text-center text-sm text-muted-foreground">

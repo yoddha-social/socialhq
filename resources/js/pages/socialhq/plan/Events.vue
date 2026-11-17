@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
 import {
+    IconChecks,
     IconChevronLeft,
     IconChevronRight,
     IconDownload,
+    IconLoader,
     IconLock,
     IconPlus,
     IconWorld,
@@ -47,6 +49,7 @@ import {
     importMethod as importEvents,
     unverify as unverifyEvent,
     verify as verifyEvent,
+    verifyShown as verifyShownEvents,
 } from '@/routes/socialhq/plan/events';
 
 type EventsView = 'month' | 'upcoming';
@@ -284,6 +287,53 @@ const unconfirmEvent = (event: CalendarEventRow): void => {
     router.delete(unverifyEvent.url(event.id), trackBusy(event));
 };
 
+/** The shown dates that need checking and that this person may confirm. */
+const confirmableShown = computed(() =>
+    props.abilities.canApprove
+        ? props.events.filter(
+              (event) =>
+                  matches(event, filter.value) &&
+                  !event.verified &&
+                  (event.brand_only || props.abilities.canManageSharedEvents),
+          ).length
+        : 0,
+);
+
+const isConfirmShownOpen = ref(false);
+const isConfirmingShown = ref(false);
+
+const openConfirmShown = (): void => {
+    isConfirmShownOpen.value = true;
+};
+
+const closeConfirmShown = (): void => {
+    isConfirmShownOpen.value = false;
+};
+
+/** Confirms what the list shows: the server applies the same period, country and filter. */
+const confirmShown = (): void => {
+    router.post(
+        verifyShownEvents.url(),
+        {
+            view: props.view,
+            month: props.view === 'month' ? props.month : null,
+            country: props.country,
+            filter: filter.value,
+        },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onStart: () => {
+                isConfirmingShown.value = true;
+            },
+            onFinish: () => {
+                isConfirmingShown.value = false;
+            },
+            onSuccess: closeConfirmShown,
+        },
+    );
+};
+
 const isImporting = ref(false);
 
 const importOfficialDates = (): void => {
@@ -375,12 +425,17 @@ const confirmDelete = (): void => {
                     v-if="abilities.canManageSharedEvents"
                     variant="outline"
                     class="max-sm:w-8 max-sm:px-0"
-                    :loading="isImporting"
+                    :disabled="isImporting"
+                    :aria-busy="isImporting"
                     :aria-label="$t('socialhq_events.actions.import')"
                     data-testid="socialhq-events-import"
                     @click="importOfficialDates"
                 >
-                    <IconDownload class="size-4" />
+                    <IconLoader
+                        v-if="isImporting"
+                        class="size-4 animate-spin"
+                    />
+                    <IconDownload v-else class="size-4" />
                     <span class="max-sm:sr-only">{{
                         $t('socialhq_events.actions.import')
                     }}</span>
@@ -468,11 +523,16 @@ const confirmDelete = (): void => {
                                 </Button>
                                 <Button
                                     v-if="abilities.canManageSharedEvents"
-                                    :loading="isImporting"
+                                    :disabled="isImporting"
+                                    :aria-busy="isImporting"
                                     data-testid="socialhq-events-import-first"
                                     @click="importOfficialDates"
                                 >
-                                    <IconDownload class="size-4" />
+                                    <IconLoader
+                                        v-if="isImporting"
+                                        class="size-4 animate-spin"
+                                    />
+                                    <IconDownload v-else class="size-4" />
                                     {{ $t('socialhq_events.actions.import') }}
                                 </Button>
                                 <Button
@@ -626,7 +686,7 @@ const confirmDelete = (): void => {
 
                             <NativeSelect
                                 v-if="countryOptions.length > 0"
-                                class="h-8 w-auto"
+                                class="h-8 w-auto py-1"
                                 v-model="countryModel"
                                 :aria-label="
                                     $t('socialhq_events.filters.country')
@@ -648,6 +708,18 @@ const confirmDelete = (): void => {
                                     {{ option.name }}
                                 </NativeSelectOption>
                             </NativeSelect>
+
+                            <Button
+                                v-if="confirmableShown > 0"
+                                variant="outline"
+                                size="sm"
+                                class="ms-auto"
+                                data-testid="socialhq-events-confirm-shown"
+                                @click="openConfirmShown"
+                            >
+                                <IconChecks class="size-4" />
+                                {{ $t('socialhq_events.confirm_shown.button') }}
+                            </Button>
                         </div>
                         <p
                             v-if="selectedCountryName"
@@ -786,7 +858,46 @@ const confirmDelete = (): void => {
         :countries="holidayCountries"
         :years="holidayYears"
         :max="maxHolidayCountries"
+        @add-date="openAddEvent"
     />
+
+    <Dialog v-if="abilities.canApprove" v-model:open="isConfirmShownOpen">
+        <DialogContent
+            class="sm:max-w-md"
+            data-testid="socialhq-events-confirm-shown-dialog"
+        >
+            <DialogHeader>
+                <DialogTitle>
+                    {{
+                        $tChoice(
+                            'socialhq_events.confirm_shown.title',
+                            confirmableShown,
+                            { count: String(confirmableShown) },
+                        )
+                    }}
+                </DialogTitle>
+                <DialogDescription>
+                    {{ $t('socialhq_events.confirm_shown.description') }}
+                </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    @click="closeConfirmShown"
+                >
+                    {{ $t('socialhq_events.confirm_shown.cancel') }}
+                </Button>
+                <Button
+                    :loading="isConfirmingShown"
+                    data-testid="socialhq-events-confirm-shown-confirm"
+                    @click="confirmShown"
+                >
+                    {{ $t('socialhq_events.confirm_shown.confirm') }}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
 
     <Dialog v-if="abilities.canApprove" v-model:open="isDeleteOpen">
         <DialogContent

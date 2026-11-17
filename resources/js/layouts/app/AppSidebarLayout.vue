@@ -57,10 +57,27 @@ watch(isCompactViewport, (isCompact) => {
     compactSidebarOpen = null;
     sidebarOpen.value = !isCompact && readSidebarOpen();
 });
+
+const mainContent = ref<HTMLElement | null>(null);
+
+/**
+ * Social HQ: the "Skip to content" link moves focus past the sidebar without
+ * changing the URL's hash (which the router would treat as a visit).
+ */
+const skipToContent = (): void => {
+    mainContent.value?.focus();
+};
 </script>
 
 <template>
     <SidebarProvider v-model:open="sidebarOpen" class="bg-sidebar">
+        <a
+            href="#app-main"
+            class="sr-only focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus:z-[100] focus:rounded-lg focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-foreground focus:shadow-md focus:ring-2 focus:ring-ring focus:outline-none"
+            data-testid="app-skip-to-content"
+            @click.prevent="skipToContent"
+            >{{ $t('socialhq.skip_to_content') }}</a
+        >
         <slot name="sidebar">
             <AppSidebar />
         </slot>
@@ -85,7 +102,10 @@ watch(isCompactViewport, (isCompact) => {
                 </Link>
             </div>
             <div
-                class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card max-md:mx-2 max-md:rounded-t-xl max-md:border max-md:border-b-0 max-md:border-border"
+                id="app-main"
+                ref="mainContent"
+                tabindex="-1"
+                class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card outline-none max-md:mx-2 max-md:rounded-t-xl max-md:border max-md:border-b-0 max-md:border-border"
             >
                 <AppHeader v-if="$slots['header'] || $slots['header-actions']">
                     <template v-if="$slots['header']" #left>

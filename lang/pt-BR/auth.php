@@ -112,6 +112,8 @@ return [
         'confirm_password' => 'Confirmar Senha',
         'confirm_placeholder' => 'Confirmar senha',
         'submit' => 'Redefinir senha',
+        'mismatch' => 'As duas senhas não coincidem.',
+        'send_new_link' => 'Enviar um novo link',
     ],
 
     'verify_email' => [

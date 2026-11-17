@@ -122,6 +122,53 @@ const formatSize = (bytes: number): string =>
         ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
         : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 
+/** One part of a document's meta line: plain text, or a lang key resolved in the template. */
+interface MetaPart {
+    text?: string;
+    key?: string;
+    count?: number;
+    params?: Record<string, string>;
+}
+
+/** The meta line's parts, so the "·" sits only between parts that are there. */
+const metaParts = (document: KnowledgeDocumentRow): MetaPart[] => {
+    const parts: MetaPart[] = [];
+
+    if (document.source !== 'upload') {
+        parts.push({
+            key: `socialhq_knowledge.documents.sources.${document.source}`,
+        });
+    } else {
+        if (document.type) {
+            parts.push({
+                key: `socialhq_knowledge.documents.types.${document.type}`,
+            });
+        }
+
+        parts.push({ text: formatSize(document.size) });
+    }
+
+    if (document.status === 'ready' && document.pages) {
+        parts.push({
+            key:
+                document.type === 'pptx'
+                    ? 'socialhq_knowledge.documents.slides'
+                    : 'socialhq_knowledge.documents.pages',
+            count: document.pages,
+            params: { count: formatFullNumber(document.pages) },
+        });
+    }
+
+    if (document.status === 'ready') {
+        parts.push({
+            key: 'socialhq_knowledge.documents.characters',
+            params: { count: formatFullNumber(document.characters) },
+        });
+    }
+
+    return parts;
+};
+
 const isDialogOpen = ref(false);
 const editingDocument = ref<KnowledgeDocumentRow | null>(null);
 const deletingDocument = ref<KnowledgeDocumentRow | null>(null);
@@ -307,48 +354,24 @@ const confirmDelete = (): void => {
                             </Badge>
                         </template>
                     </div>
-                    <p class="truncate text-sm text-muted-foreground">
-                        <span v-if="document.source !== 'upload'">
-                            {{
-                                $t(
-                                    `socialhq_knowledge.documents.sources.${document.source}`,
-                                )
-                            }}
-                            ·
-                        </span>
-                        <span v-else-if="document.type">
-                            {{
-                                $t(
-                                    `socialhq_knowledge.documents.types.${document.type}`,
-                                )
-                            }}
-                            ·
-                        </span>
-                        <template v-if="document.source === 'upload'">
-                            {{ formatSize(document.size) }}
-                        </template>
+                    <p
+                        class="truncate text-sm text-muted-foreground"
+                        :data-testid="`socialhq-document-meta-${document.id}`"
+                    >
                         <template
-                            v-if="document.status === 'ready' && document.pages"
+                            v-for="(part, index) in metaParts(document)"
+                            :key="index"
                         >
-                            ·
+                            <span v-if="index > 0" aria-hidden="true"> · </span>
                             {{
-                                $tChoice(
-                                    document.type === 'pptx'
-                                        ? 'socialhq_knowledge.documents.slides'
-                                        : 'socialhq_knowledge.documents.pages',
-                                    document.pages,
-                                    { count: formatFullNumber(document.pages) },
-                                )
-                            }}
-                        </template>
-                        <template v-if="document.status === 'ready'">
-                            ·
-                            {{
-                                $t('socialhq_knowledge.documents.characters', {
-                                    count: formatFullNumber(
-                                        document.characters,
-                                    ),
-                                })
+                                part.text ??
+                                (part.count !== undefined
+                                    ? $tChoice(
+                                          part.key ?? '',
+                                          part.count,
+                                          part.params,
+                                      )
+                                    : $t(part.key ?? '', part.params))
                             }}
                         </template>
                     </p>

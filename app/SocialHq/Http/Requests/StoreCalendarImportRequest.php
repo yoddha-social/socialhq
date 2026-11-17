@@ -47,6 +47,12 @@ class StoreCalendarImportRequest extends FormRequest
                     return;
                 }
 
+                if ($file->getSize() === 0) {
+                    $validator->errors()->add('file', __('socialhq_calendars.errors.empty'));
+
+                    return;
+                }
+
                 if (CalendarSpreadsheet::detectType((string) $file->getRealPath(), $file->getClientOriginalExtension()) === null) {
                     $validator->errors()->add('file', __('socialhq_calendars.errors.type'));
                 }

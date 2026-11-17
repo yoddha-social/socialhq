@@ -44,6 +44,7 @@ final class PlannerContext
      * @return array{
      *     month: string,
      *     today: string,
+     *     now: string,
      *     range: array{from: string, to: string},
      *     days: list<string>,
      *     goals: string|null,
@@ -68,10 +69,12 @@ final class PlannerContext
         // Events up to EVENT_LEAD_DAYS after the range too: their posts may go out in it.
         $events = PlanOptions::events($workspace, $options->from, $options->to->addDays(GeneratePlanSuggestions::EVENT_LEAD_DAYS), $options->eventCountries($profile));
         $pillars = PlanOptions::pillars($profile);
+        $mainZone = Audience::mainZone($profile, $fallbackZone);
 
         return [
             'month' => PlanMonth::key($month),
             'today' => $today->toDateString(),
+            'now' => now($mainZone)->format('Y-m-d H:i'),
             'range' => ['from' => $options->from->toDateString(), 'to' => $options->to->toDateString()],
             'days' => collect(CarbonPeriod::create($options->from, $options->to))
                 ->map(fn ($day): string => $day->format('Y-m-d D'))
@@ -79,7 +82,7 @@ final class PlannerContext
                 ->all(),
             'goals' => filled($plan->goals) ? trim((string) $plan->goals) : null,
             'brand' => BrandKnowledge::forPrompt($workspace, self::focus($plan, $pillars, $events, $channels)),
-            'audience' => Audience::forPlanner($profile, Audience::mainZone($profile, $fallbackZone)),
+            'audience' => Audience::forPlanner($profile, $mainZone),
             'pillars' => $pillars,
             'channels' => $channels->map(fn (SocialAccount $channel): array => [
                 'key' => $channel->id,
@@ -96,8 +99,10 @@ final class PlannerContext
                 'ends_on' => $event->ends_on->toDateString(),
                 'confirmed' => $event->isVerified(),
             ])->values()->all(),
+            // Everything this draft keeps: planned items and the suggestions it won't replace.
             'already_planned' => $plan->items()
-                ->where('status', ItemStatus::Planned)
+                ->where('status', '!=', ItemStatus::Dropped)
+                ->whereKeyNot(GeneratePlanSuggestions::replaceableSuggestions($plan, $options)->pluck('id'))
                 ->orderBy('scheduled_on')
                 ->orderBy('position')
                 ->get()

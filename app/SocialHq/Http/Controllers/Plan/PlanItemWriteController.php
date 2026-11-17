@@ -122,12 +122,20 @@ class PlanItemWriteController extends Controller
         return back();
     }
 
+    /**
+     * A dropped AI suggestion nobody started work on comes back as an open
+     * suggestion, to accept or drop again; anything else comes back planned.
+     */
     public function restore(Request $request, int $item): RedirectResponse
     {
         $found = PlanAccess::item($request, $item);
         $this->ensureStatus($found, ItemStatus::Dropped);
 
-        $this->change($found, fn () => $found->update(['status' => ItemStatus::Planned]));
+        $untouchedSuggestion = $found->source === ItemSource::Ai
+            && ! $found->versions()->exists()
+            && ! $found->brief()->exists();
+
+        $this->change($found, fn () => $found->update(['status' => $untouchedSuggestion ? ItemStatus::Suggested : ItemStatus::Planned]));
 
         return back();
     }

@@ -173,6 +173,36 @@ return [
     ],
     'approvals' => [
         'members_note' => 'Needs approval. In Social HQ every member who is not an admin sends posts for approval.',
+        'reject' => [
+            'title' => 'Reject this post?',
+            'description' => 'It goes back to drafts, and the person who asked for approval gets an email.',
+            'reason_label' => 'What should change? (optional)',
+            'reason_placeholder' => 'For example: add the price and where to buy it.',
+            'reason_hint' => 'Saved as a note on the post.',
+            'cancel' => 'Cancel',
+            'confirm' => 'Reject',
+        ],
+    ],
+    'skip_to_content' => 'Skip to content',
+    'errors' => [
+        'back' => 'Back to Social HQ',
+        'code' => 'Error :status',
+        '403' => [
+            'title' => "You don't have access to this page",
+            'description' => 'If you need it, ask a workspace admin.',
+        ],
+        '404' => [
+            'title' => "We couldn't find this page",
+            'description' => 'The link may be wrong, or what it pointed to was moved or deleted.',
+        ],
+        '500' => [
+            'title' => 'Something went wrong on our side',
+            'description' => 'Try again in a moment. If it keeps happening, tell your workspace admin.',
+        ],
+        '503' => [
+            'title' => 'Social HQ is down for maintenance',
+            'description' => "We'll be back shortly. Try again in a few minutes.",
+        ],
     ],
     'signup' => [
         'not_allowed' => "This email can't sign up here. Ask a workspace admin to invite you.",

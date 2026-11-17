@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
 import { IconPlus, IconX } from '@tabler/icons-vue';
-import { computed, watch } from 'vue';
+import { computed, nextTick, watch } from 'vue';
 
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
 import { pillarColorAt } from '@/components/socialhq/plan/pillarColors';
@@ -78,10 +78,17 @@ watch(open, (isOpen) => {
     }
 });
 
-const addPillar = (): void => {
-    if (canAddPillar.value) {
-        form.pillars.push('');
+const pillarInputId = (index: number): string => `plan-pillar-input-${index}`;
+
+/** Adds an empty pillar and moves the cursor into it. */
+const addPillar = async (): Promise<void> => {
+    if (!canAddPillar.value) {
+        return;
     }
+
+    form.pillars.push('');
+    await nextTick();
+    document.getElementById(pillarInputId(form.pillars.length - 1))?.focus();
 };
 
 const removePillar = (index: number): void => {
@@ -151,6 +158,7 @@ const save = (): void => {
                                 aria-hidden="true"
                             />
                             <Input
+                                :id="pillarInputId(index)"
                                 v-model="form.pillars[index]"
                                 :aria-label="
                                     $t('socialhq_plan.brand_settings.pillar', {

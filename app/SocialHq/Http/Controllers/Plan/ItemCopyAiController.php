@@ -7,19 +7,20 @@ namespace App\SocialHq\Http\Controllers\Plan;
 use App\Http\Controllers\Controller;
 use App\SocialHq\Ai\AiResponses;
 use App\SocialHq\Ai\AiTask;
+use App\SocialHq\Http\Requests\Plan\WriteItemCopyRequest;
 use App\SocialHq\Plan\Ai\WriteItemCopy;
 use App\SocialHq\Plan\PlanAccess;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 /**
- * "Write with AI" / "Rewrite with AI": the copy comes back as a new version.
+ * "Write with AI" / "Rewrite with AI", with the team's optional request:
+ * the copy comes back as a new version.
  */
 class ItemCopyAiController extends Controller
 {
-    public function __invoke(Request $request, int $item): JsonResponse
+    public function __invoke(WriteItemCopyRequest $request, int $item): JsonResponse
     {
         $planItem = PlanAccess::item($request, $item);
 
@@ -28,7 +29,7 @@ class ItemCopyAiController extends Controller
         }
 
         try {
-            $version = WriteItemCopy::execute($planItem, $request->user());
+            $version = WriteItemCopy::execute($planItem, $request->user(), $request->validated('instruction'));
         } catch (Throwable $exception) {
             // A reply the SDK can't parse (or any other failure of the call) is a failed draft, not a 500.
             return AiResponses::failed($exception, __('socialhq_production.item.copy.ai_failed'));

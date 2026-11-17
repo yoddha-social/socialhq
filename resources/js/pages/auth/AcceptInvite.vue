@@ -8,7 +8,7 @@ import { login, register } from '@/routes';
 import { home } from '@/routes/app';
 import { accept, decline } from '@/routes/app/invites';
 import { type SharedData } from '@/types';
-import { type MemberAccess, memberAccessLabelKey } from '@/types/members';
+import { type MemberAccess } from '@/types/members';
 
 const props = defineProps<{
     expired: boolean;
@@ -21,12 +21,21 @@ const props = defineProps<{
             name: string;
         };
     } | null;
+    otherAccount?: boolean;
 }>();
 
 const page = usePage<SharedData>();
 const isLoggedIn = computed(() => Boolean(page.props.auth?.user));
-const accessKey = computed(() =>
-    props.invite ? memberAccessLabelKey(props.invite.access) : '',
+// The role is admin or member; whether a member's posts need approval is its own row.
+const roleKey = computed(() =>
+    props.invite?.access.is_admin
+        ? 'settings.members.roles.admin'
+        : 'settings.members.roles.member',
+);
+const publishingKey = computed(() =>
+    props.invite?.access.requires_approval
+        ? 'settings.members.access.needs_approval'
+        : 'settings.members.access.publishes_directly',
 );
 </script>
 
@@ -65,7 +74,18 @@ const accessKey = computed(() =>
                             {{ $t('auth.accept_invite.your_role') }}
                         </dt>
                         <dd class="min-w-0 truncate font-medium">
-                            {{ $t(accessKey) }}
+                            {{ $t(roleKey) }}
+                        </dd>
+                    </div>
+                    <div
+                        v-if="!invite.access.is_admin"
+                        class="flex justify-between gap-3"
+                    >
+                        <dt class="shrink-0 text-muted-foreground">
+                            {{ $t('settings.members.access.publishing') }}
+                        </dt>
+                        <dd class="min-w-0 truncate font-medium">
+                            {{ $t(publishingKey) }}
                         </dd>
                     </div>
                     <div class="flex justify-between gap-3">
@@ -79,16 +99,20 @@ const accessKey = computed(() =>
                 </dl>
 
                 <div v-if="isLoggedIn" class="flex flex-col gap-2">
-                    <Button as-child class="w-full">
+                    <!-- Social HQ: an account in another company can't move here (PATCHES.md). -->
+                    <p
+                        v-if="otherAccount"
+                        class="text-center text-sm text-muted-foreground"
+                        data-testid="accept-invite-other-account"
+                    >
+                        {{ $t('settings.members.flash.other_account') }}
+                    </p>
+                    <Button v-else as-child class="w-full">
                         <Link :href="accept.url(invite.id)" method="post">
                             {{ $t('auth.accept_invite.accept') }}
                         </Link>
                     </Button>
-                    <Button
-                        as-child
-                        variant="outline"
-                        class="w-full bg-card"
-                    >
+                    <Button as-child variant="outline" class="w-full bg-card">
                         <Link :href="decline.url(invite.id)" method="post">
                             {{ $t('auth.accept_invite.decline') }}
                         </Link>
@@ -113,11 +137,7 @@ const accessKey = computed(() =>
                             {{ $t('auth.accept_invite.log_in') }}
                         </Link>
                     </Button>
-                    <Button
-                        as-child
-                        variant="outline"
-                        class="w-full bg-card"
-                    >
+                    <Button as-child variant="outline" class="w-full bg-card">
                         <Link
                             :href="
                                 register({

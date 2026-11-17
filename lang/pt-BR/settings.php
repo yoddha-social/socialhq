@@ -204,7 +204,7 @@ return [
         ],
 
         'pending' => [
-            'title' => 'Convites Pendentes',
+            'title' => 'Convite ainda não aceito',
             'description' => 'Convites aguardando aceitação',
             'empty' => 'Nenhum convite pendente',
         ],
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => 'Já existe um convite para este e-mail.',
-            'email_belongs_to_account' => 'Este e-mail já pertence a outra conta Social HQ. Peça um e-mail de trabalho dedicado.',
+            'already_member' => 'Essa pessoa já é membro deste workspace.',
             'cannot_remove_self' => 'Você não pode remover a si mesmo.',
             'cannot_remove_owner' => 'Você não pode remover o dono da conta.',
             'cannot_change_own_access' => 'Você não pode alterar seu próprio acesso.',
@@ -261,6 +261,7 @@ return [
             'member_removed' => 'Membro removido com sucesso.',
             'wrong_email' => 'Este convite é para um endereço de e-mail diferente.',
             'already_member' => 'Você já é membro deste workspace.',
+            'other_account' => 'Sua conta pertence a outra empresa, então não pode entrar neste workspace. Peça a quem convidou você para convidar outro e-mail de trabalho.',
             'invite_accepted' => 'Bem-vindo! Você agora é membro do workspace.',
             'invite_workspace_gone' => 'Este convite não é mais válido porque o workspace foi excluído.',
             'invite_declined' => 'Convite recusado.',

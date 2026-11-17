@@ -7,9 +7,9 @@ namespace App\Http\Controllers\App;
 use App\Actions\Post\Approval\ApprovePost;
 use App\Actions\Post\Approval\RejectPost;
 use App\Http\Requests\App\Post\ApprovePostRequest;
+use App\Http\Requests\App\Post\RejectPostRequest;
 use App\Models\Post;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 
 class PostApprovalController extends Controller
 {
@@ -20,11 +20,9 @@ class PostApprovalController extends Controller
         return back();
     }
 
-    public function reject(Request $request, Post $post): RedirectResponse
+    public function reject(RejectPostRequest $request, Post $post): RedirectResponse
     {
-        $this->authorize('approve', $post);
-
-        RejectPost::execute($post, $request->user());
+        RejectPost::execute($post, $request->user(), $request->validated('reason'));
 
         return back();
     }

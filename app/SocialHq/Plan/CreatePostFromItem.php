@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\SocialHq\Plan;
 
 use App\Enums\Media\Type as MediaType;
+use App\Enums\PostPlatform\ContentType;
 use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
@@ -23,7 +24,8 @@ use Illuminate\Validation\ValidationException;
  * when it needs one) to TryPost's composer. The approved round's files are
  * imported into the workspace's uploads like an AI graphic is (a finished
  * media import with an upload token), so the composer attaches them; the
- * post itself then follows TryPost's approval rules.
+ * post itself then follows TryPost's approval rules. Only files the item's
+ * format can carry go (no PDF on a Facebook post); the others are named.
  */
 final class CreatePostFromItem
 {
@@ -51,7 +53,7 @@ final class CreatePostFromItem
      * composer reports nothing back, so a draft closed without saving still
      * counts.
      *
-     * @return array{content: string, media: Collection<int, Media>, import_ids: list<string>, scheduled_on: string, scheduled_at: ?string, social_account_id: ?string}
+     * @return array{content: string, media: Collection<int, Media>, import_ids: list<string>, left_out: list<string>, scheduled_on: string, scheduled_at: ?string, social_account_id: ?string}
      */
     public static function execute(PlanItem $item, User $user): array
     {
@@ -63,8 +65,9 @@ final class CreatePostFromItem
 
         $media = collect();
         $importIds = [];
+        [$files, $leftOut] = self::finalFiles($item)->partition(fn (BriefFile $file): bool => self::fits($file, $item->content_type));
 
-        foreach (self::finalFiles($item) as $file) {
+        foreach ($files as $file) {
             $imported = self::import($file, $user, $item->workspace);
 
             if ($imported !== null) {
@@ -81,6 +84,7 @@ final class CreatePostFromItem
             'content' => collect([$version->caption, $version->hashtags])->filter(fn (?string $part): bool => filled($part))->implode("\n\n"),
             'media' => $media,
             'import_ids' => $importIds,
+            'left_out' => $leftOut->pluck('original_name')->values()->all(),
             'scheduled_on' => $item->scheduled_on->toDateString(),
             'scheduled_at' => SuggestedTime::wallClockIn($item, Timezone::normalize($user->timezone)),
             'social_account_id' => $item->socialAccount?->workspace_id === $item->workspace_id ? $item->socialAccount->id : null,
@@ -88,7 +92,7 @@ final class CreatePostFromItem
     }
 
     /**
-     * The files of the approved round that a post can carry.
+     * The files of the approved round.
      *
      * @return Collection<int, BriefFile>
      */
@@ -104,9 +108,26 @@ final class CreatePostFromItem
             ->where('brief_id', $brief->id)
             ->where('round', $brief->currentRound())
             ->orderBy('id')
-            ->get()
-            ->filter(fn (BriefFile $file): bool => MediaType::fromMime($file->mime_type) !== null)
-            ->values();
+            ->get();
+    }
+
+    /**
+     * Whether a post of this format can carry the file, by the content type's
+     * own media rules (an item without a format keeps every media file).
+     */
+    public static function fits(BriefFile $file, ?ContentType $contentType): bool
+    {
+        $type = MediaType::fromMime($file->mime_type);
+
+        if ($type === null || $contentType === null) {
+            return $type !== null;
+        }
+
+        return match ($type) {
+            MediaType::Image => $contentType->supportsImage() && (! MediaType::isGif($file->mime_type) || $contentType->acceptsGif()),
+            MediaType::Video => $contentType->supportsVideo() && (! MediaType::isMov($file->mime_type, $file->original_name) || $contentType->acceptsMov()),
+            MediaType::Document => $contentType->supportsDocument(),
+        };
     }
 
     /**

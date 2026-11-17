@@ -204,7 +204,7 @@ return [
         ],
 
         'pending' => [
-            'title' => 'Oczekujące zaproszenia',
+            'title' => 'Zaproszenie jeszcze nieprzyjęte',
             'description' => 'Zaproszenia oczekujące na akceptację',
             'empty' => 'Brak oczekujących zaproszeń',
         ],
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => 'Zaproszenie dla tego adresu e-mail już istnieje.',
-            'email_belongs_to_account' => 'Ten adres e-mail należy już do innego konta Social HQ. Poproś o dedykowany służbowy adres e-mail.',
+            'already_member' => 'Ta osoba jest już członkiem tej przestrzeni roboczej.',
             'cannot_remove_self' => 'Nie możesz usunąć samego siebie.',
             'cannot_remove_owner' => 'Nie możesz usunąć właściciela konta.',
             'cannot_change_own_access' => 'Nie możesz zmienić własnego dostępu.',
@@ -261,6 +261,7 @@ return [
             'member_removed' => 'Członek został pomyślnie usunięty.',
             'wrong_email' => 'To zaproszenie dotyczy innego adresu e-mail.',
             'already_member' => 'Jesteś już członkiem tej przestrzeni roboczej.',
+            'other_account' => 'Twoje konto należy do innej firmy, więc nie może dołączyć do tej przestrzeni roboczej. Poproś osobę zapraszającą o zaproszenie innego służbowego adresu e-mail.',
             'invite_accepted' => 'Witamy! Jesteś teraz członkiem przestrzeni roboczej.',
             'invite_workspace_gone' => 'To zaproszenie jest już nieważne, ponieważ przestrzeń robocza została usunięta.',
             'invite_declined' => 'Zaproszenie odrzucone.',

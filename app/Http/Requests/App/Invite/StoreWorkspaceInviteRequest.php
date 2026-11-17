@@ -36,7 +36,8 @@ class StoreWorkspaceInviteRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'email', 'max:255'],
+            // Social HQ: `email:strict` refuses a domain without a dot (user@host), with no DNS lookup.
+            'email' => ['required', 'email:strict', 'max:255'],
             ...$this->memberAccessRules(),
         ];
     }

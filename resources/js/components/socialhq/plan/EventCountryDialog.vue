@@ -35,6 +35,28 @@ const props = defineProps<{
 
 const open = defineModel<boolean>('open', { default: false });
 
+const emit = defineEmits<{
+    /** "Add a date": a country our holiday source doesn't cover. */
+    addDate: [];
+}>();
+
+/**
+ * The list once read. The prop is optional, so any later visit of the page
+ * (a refused import comes back as one) drops it; the dialog keeps its copy.
+ */
+const loadedCountries = ref<HolidayCountry[] | null | undefined>(
+    props.countries,
+);
+
+watch(
+    () => props.countries,
+    (countries) => {
+        if (countries !== undefined) {
+            loadedCountries.value = countries;
+        }
+    },
+);
+
 const form = useForm({
     countries: [] as string[],
     years: [] as number[],
@@ -65,13 +87,13 @@ watch(open, (isOpen) => {
     form.years = [...props.years];
     search.value = '';
 
-    if (!props.countries) {
+    if (!loadedCountries.value) {
         loadCountries();
     }
 });
 
 const shown = computed<HolidayCountry[]>(() =>
-    filterBySearch(props.countries ?? [], search.value, (country) => [
+    filterBySearch(loadedCountries.value ?? [], search.value, (country) => [
         country.name,
         country.code,
     ]),
@@ -117,6 +139,11 @@ const close = (): void => {
     open.value = false;
 };
 
+const addDateInstead = (): void => {
+    close();
+    emit('addDate');
+};
+
 const submit = (): void => {
     form.post(importCountries.url(), {
         preserveScroll: true,
@@ -160,7 +187,7 @@ const submit = (): void => {
                     </div>
 
                     <p
-                        v-if="countries === null && !isLoading"
+                        v-if="loadedCountries === null && !isLoading"
                         class="flex flex-wrap items-center gap-2 text-sm text-destructive"
                         data-testid="socialhq-event-country-load-failed"
                     >
@@ -175,7 +202,7 @@ const submit = (): void => {
                         </Button>
                     </p>
                     <p
-                        v-else-if="!countries"
+                        v-else-if="!loadedCountries"
                         class="text-sm text-muted-foreground"
                         data-testid="socialhq-event-country-loading"
                     >
@@ -198,7 +225,7 @@ const submit = (): void => {
                             />
                         </div>
                         <ul
-                            class="flex max-h-60 flex-col overflow-y-auto rounded-md border border-border"
+                            class="flex h-60 flex-col overflow-y-auto rounded-md border border-border"
                             data-testid="socialhq-event-country-list"
                         >
                             <li
@@ -235,9 +262,23 @@ const submit = (): void => {
                             </li>
                             <li
                                 v-if="shown.length === 0"
-                                class="px-3 py-2 text-sm text-muted-foreground"
+                                class="flex flex-col items-start gap-2 px-3 py-2 text-sm text-muted-foreground"
+                                data-testid="socialhq-event-country-no-match"
                             >
-                                {{ $t('socialhq_events.countries.no_match') }}
+                                {{
+                                    $t('socialhq_events.countries.no_match', {
+                                        search: search.trim(),
+                                    })
+                                }}
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    data-testid="socialhq-event-country-add-date"
+                                    @click="addDateInstead"
+                                >
+                                    {{ $t('socialhq_events.actions.add') }}
+                                </Button>
                             </li>
                         </ul>
                         <p class="text-xs text-muted-foreground">
@@ -279,7 +320,9 @@ const submit = (): void => {
                     <Button
                         type="submit"
                         :loading="form.processing"
-                        :disabled="!countries"
+                        :disabled="
+                            !loadedCountries || form.countries.length === 0
+                        "
                         data-testid="socialhq-event-country-import"
                     >
                         {{ $t('socialhq_events.countries.import') }}

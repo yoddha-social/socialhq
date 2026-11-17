@@ -17,10 +17,19 @@ class PostRejected extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
+    /**
+     * The approver's reason, if any. A plain property with a default, so a
+     * payload queued before it existed still unserializes.
+     */
+    public ?string $reason = null;
+
     public function __construct(
         public string $postId,
         public User $approver,
-    ) {}
+        ?string $reason = null,
+    ) {
+        $this->reason = $reason;
+    }
 
     public function envelope(): Envelope
     {
@@ -42,6 +51,7 @@ class PostRejected extends Mailable implements ShouldQueue
                 'approverName' => $this->approver->name,
                 'workspaceName' => $workspaceName,
                 'channel' => ApprovalEmailPost::channel($post),
+                'reason' => $this->reason,
                 'url' => route('app.posts.index', ['tab' => 'drafts']),
             ],
         );

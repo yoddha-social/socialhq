@@ -104,22 +104,31 @@ return [
     | Enterprise licence). The app keeps the provider, the last four
     | characters and the test status, never a provider key.
     |
-    | providers: the catalogue. Only providers that neither train on prompts
-    | nor let people read them (owner decision 2026-11-05). `confirm` names
-    | a checkbox the owner must tick first (Mistral's training opt-out, Gemini
-    | billing: the free tier trains on prompts). `tasks` maps each AI task to
-    | the LiteLLM model it calls; a provider serves only the tasks it lists.
-    | Embeddings take only the first provider in the order that has them
-    | (vectors from two models can't be compared). OpenRouter is left out: a
-    | key there reaches providers with other data rules.
+    | A company may add several keys, several for one provider too (more free
+    | quota, or one key per team), each with its own name. LiteLLM tries them
+    | in the order on the page and moves on when one fails or is rate limited.
     |
-    | Copy (name, setup steps, data note) lives in lang/en/socialhq_ai.php.
+    | providers: the catalogue. Each provider lists the plans (`tiers`) a key
+    | may be on, and per plan the tasks it serves with the LiteLLM model of
+    | each. A free plan's deployments carry zero prices, so they never use up
+    | the company's budget. `confirm` names a checkbox the owner must tick
+    | first: training_off (Mistral's training opt-out), billing_on (Gemini's
+    | paid plan), may_train (a free plan whose provider may use prompts to
+    | train: the Gemini free tier, OpenRouter's free models; the owner's
+    | choice for their own company, never the platform's) and
+    | openrouter_privacy (OpenRouter with training providers turned off).
+    | An owner may switch a task off for a key and pick another model per
+    | task. Embeddings take only the first key in the order that has them
+    | (vectors from two models can't be compared).
+    |
+    | Copy (name, setup steps, data note, plans) lives in lang/en/socialhq_ai.php.
     |
     */
 
     'company_ai' => [
         'budget_duration' => '30d',
-        'max_providers' => 6,
+        // Keys per company, every provider together.
+        'max_keys' => 20,
         // Where LiteLLM reaches Workers AI for a company's Cloudflare account.
         'cloudflare_api_base' => env('SOCIALHQ_CLOUDFLARE_AI_API_BASE', 'https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/'),
         'providers' => [
@@ -128,13 +137,25 @@ return [
                 'litellm_provider' => 'groq',
                 'console_url' => 'https://console.groq.com/keys',
                 'steps' => 3,
-                'confirm' => null,
                 'fields' => ['provider_key'],
                 'params' => [],
-                'tasks' => [
-                    'write' => ['model' => 'groq/openai/gpt-oss-120b', 'timeout' => 20],
-                    'structured' => ['model' => 'groq/openai/gpt-oss-120b', 'timeout' => 75],
-                    'vision' => ['model' => 'groq/qwen/qwen3.8-27b', 'timeout' => 20],
+                'tiers' => [
+                    'free' => [
+                        'confirm' => null,
+                        'tasks' => [
+                            'write' => ['model' => 'groq/openai/gpt-oss-120b', 'timeout' => 20],
+                            'structured' => ['model' => 'groq/openai/gpt-oss-120b', 'timeout' => 75],
+                            'vision' => ['model' => 'groq/qwen/qwen3.8-27b', 'timeout' => 20],
+                        ],
+                    ],
+                    'paid' => [
+                        'confirm' => null,
+                        'tasks' => [
+                            'write' => ['model' => 'groq/openai/gpt-oss-120b', 'timeout' => 20],
+                            'structured' => ['model' => 'groq/openai/gpt-oss-120b', 'timeout' => 75],
+                            'vision' => ['model' => 'groq/qwen/qwen3.8-27b', 'timeout' => 20],
+                        ],
+                    ],
                 ],
             ],
             'cloudflare' => [
@@ -142,14 +163,26 @@ return [
                 'litellm_provider' => 'cloudflare',
                 'console_url' => 'https://dash.cloudflare.com/profile/api-tokens',
                 'steps' => 3,
-                'confirm' => null,
                 'fields' => ['account_id', 'provider_key'],
                 // Cloudflare's models answer 256 tokens unless asked for more.
                 'params' => ['max_tokens' => 8192],
-                'tasks' => [
-                    'write' => ['model' => 'cloudflare/@cf/openai/gpt-oss-120b', 'timeout' => 20],
-                    'structured' => ['model' => 'cloudflare/@cf/openai/gpt-oss-120b', 'timeout' => 75],
-                    'vision' => ['model' => 'cloudflare/@cf/meta/llama-4-scout-17b-16e-instruct', 'timeout' => 20],
+                'tiers' => [
+                    'free' => [
+                        'confirm' => null,
+                        'tasks' => [
+                            'write' => ['model' => 'cloudflare/@cf/openai/gpt-oss-120b', 'timeout' => 20],
+                            'structured' => ['model' => 'cloudflare/@cf/openai/gpt-oss-120b', 'timeout' => 75],
+                            'vision' => ['model' => 'cloudflare/@cf/meta/llama-4-scout-17b-16e-instruct', 'timeout' => 20],
+                        ],
+                    ],
+                    'paid' => [
+                        'confirm' => null,
+                        'tasks' => [
+                            'write' => ['model' => 'cloudflare/@cf/openai/gpt-oss-120b', 'timeout' => 20],
+                            'structured' => ['model' => 'cloudflare/@cf/openai/gpt-oss-120b', 'timeout' => 75],
+                            'vision' => ['model' => 'cloudflare/@cf/meta/llama-4-scout-17b-16e-instruct', 'timeout' => 20],
+                        ],
+                    ],
                 ],
             ],
             'mistral' => [
@@ -157,14 +190,27 @@ return [
                 'litellm_provider' => 'mistral',
                 'console_url' => 'https://console.mistral.ai/api-keys',
                 'steps' => 3,
-                'confirm' => 'training_off',
                 'fields' => ['provider_key'],
                 'params' => [],
-                'tasks' => [
-                    'write' => ['model' => 'mistral/mistral-small-latest', 'timeout' => 20],
-                    'structured' => ['model' => 'mistral/mistral-small-latest', 'timeout' => 75],
-                    'vision' => ['model' => 'mistral/mistral-small-latest', 'timeout' => 20],
-                    'embed' => ['model' => 'mistral/mistral-embed', 'timeout' => 30],
+                'tiers' => [
+                    'free' => [
+                        'confirm' => 'training_off',
+                        'tasks' => [
+                            'write' => ['model' => 'mistral/mistral-small-latest', 'timeout' => 20],
+                            'structured' => ['model' => 'mistral/mistral-small-latest', 'timeout' => 75],
+                            'vision' => ['model' => 'mistral/mistral-small-latest', 'timeout' => 20],
+                            'embed' => ['model' => 'mistral/mistral-embed', 'timeout' => 30],
+                        ],
+                    ],
+                    'paid' => [
+                        'confirm' => 'training_off',
+                        'tasks' => [
+                            'write' => ['model' => 'mistral/mistral-small-latest', 'timeout' => 20],
+                            'structured' => ['model' => 'mistral/mistral-small-latest', 'timeout' => 75],
+                            'vision' => ['model' => 'mistral/mistral-small-latest', 'timeout' => 20],
+                            'embed' => ['model' => 'mistral/mistral-embed', 'timeout' => 30],
+                        ],
+                    ],
                 ],
             ],
             'gemini' => [
@@ -172,15 +218,56 @@ return [
                 'litellm_provider' => 'gemini',
                 'console_url' => 'https://aistudio.google.com/apikey',
                 'steps' => 3,
-                'confirm' => 'billing_on',
                 'fields' => ['provider_key'],
                 'params' => [],
-                'tasks' => [
-                    'write' => ['model' => 'gemini/gemini-3.5-flash', 'timeout' => 30],
-                    'structured' => ['model' => 'gemini/gemini-3.5-flash', 'timeout' => 75],
-                    'vision' => ['model' => 'gemini/gemini-3.5-flash', 'timeout' => 30],
-                    'image' => ['model' => 'gemini/gemini-3.1-flash-image', 'timeout' => 300],
-                    'embed' => ['model' => 'gemini/gemini-embedding-001', 'timeout' => 30],
+                'tiers' => [
+                    // Google's free tier has no image quota.
+                    'free' => [
+                        'confirm' => 'may_train',
+                        'tasks' => [
+                            'write' => ['model' => 'gemini/gemini-3.5-flash', 'timeout' => 30],
+                            'structured' => ['model' => 'gemini/gemini-3.5-flash', 'timeout' => 75],
+                            'vision' => ['model' => 'gemini/gemini-3.5-flash', 'timeout' => 30],
+                            'embed' => ['model' => 'gemini/gemini-embedding-001', 'timeout' => 30],
+                        ],
+                    ],
+                    'paid' => [
+                        'confirm' => 'billing_on',
+                        'tasks' => [
+                            'write' => ['model' => 'gemini/gemini-3.5-flash', 'timeout' => 30],
+                            'structured' => ['model' => 'gemini/gemini-3.5-flash', 'timeout' => 75],
+                            'vision' => ['model' => 'gemini/gemini-3.5-flash', 'timeout' => 30],
+                            'image' => ['model' => 'gemini/gemini-3.1-flash-image', 'timeout' => 300],
+                            'embed' => ['model' => 'gemini/gemini-embedding-001', 'timeout' => 30],
+                        ],
+                    ],
+                ],
+            ],
+            'openrouter' => [
+                'logo' => 'openrouter',
+                'litellm_provider' => 'openrouter',
+                'console_url' => 'https://openrouter.ai/settings/keys',
+                'steps' => 3,
+                'fields' => ['provider_key'],
+                'params' => [],
+                'tiers' => [
+                    // OpenRouter's ":free" models change often: owners pick others per key.
+                    'free' => [
+                        'confirm' => 'may_train',
+                        'tasks' => [
+                            'write' => ['model' => 'openrouter/nvidia/nemotron-3.5-super-vl:free', 'timeout' => 45],
+                            'structured' => ['model' => 'openrouter/nvidia/nemotron-3.5-super-vl:free', 'timeout' => 90],
+                            'vision' => ['model' => 'openrouter/nvidia/nemotron-3.5-super-vl:free', 'timeout' => 45],
+                        ],
+                    ],
+                    'paid' => [
+                        'confirm' => 'openrouter_privacy',
+                        'tasks' => [
+                            'write' => ['model' => 'openrouter/openai/gpt-5-mini', 'timeout' => 30],
+                            'structured' => ['model' => 'openrouter/openai/gpt-5-mini', 'timeout' => 75],
+                            'vision' => ['model' => 'openrouter/openai/gpt-5-mini', 'timeout' => 30],
+                        ],
+                    ],
                 ],
             ],
             'openai' => [
@@ -188,15 +275,19 @@ return [
                 'litellm_provider' => 'openai',
                 'console_url' => 'https://platform.openai.com/api-keys',
                 'steps' => 3,
-                'confirm' => null,
                 'fields' => ['provider_key'],
                 'params' => [],
-                'tasks' => [
-                    'write' => ['model' => 'openai/gpt-5-mini', 'timeout' => 30],
-                    'structured' => ['model' => 'openai/gpt-5-mini', 'timeout' => 75],
-                    'vision' => ['model' => 'openai/gpt-5-mini', 'timeout' => 30],
-                    'image' => ['model' => 'openai/gpt-image-1', 'timeout' => 300],
-                    'embed' => ['model' => 'openai/text-embedding-3-small', 'timeout' => 30],
+                'tiers' => [
+                    'paid' => [
+                        'confirm' => null,
+                        'tasks' => [
+                            'write' => ['model' => 'openai/gpt-5-mini', 'timeout' => 30],
+                            'structured' => ['model' => 'openai/gpt-5-mini', 'timeout' => 75],
+                            'vision' => ['model' => 'openai/gpt-5-mini', 'timeout' => 30],
+                            'image' => ['model' => 'openai/gpt-image-1', 'timeout' => 300],
+                            'embed' => ['model' => 'openai/text-embedding-3-small', 'timeout' => 30],
+                        ],
+                    ],
                 ],
             ],
             'anthropic' => [
@@ -204,13 +295,17 @@ return [
                 'litellm_provider' => 'anthropic',
                 'console_url' => 'https://console.anthropic.com/settings/keys',
                 'steps' => 3,
-                'confirm' => null,
                 'fields' => ['provider_key'],
                 'params' => [],
-                'tasks' => [
-                    'write' => ['model' => 'anthropic/claude-haiku-4-5', 'timeout' => 30],
-                    'structured' => ['model' => 'anthropic/claude-haiku-4-5', 'timeout' => 75],
-                    'vision' => ['model' => 'anthropic/claude-haiku-4-5', 'timeout' => 30],
+                'tiers' => [
+                    'paid' => [
+                        'confirm' => null,
+                        'tasks' => [
+                            'write' => ['model' => 'anthropic/claude-haiku-4-5', 'timeout' => 30],
+                            'structured' => ['model' => 'anthropic/claude-haiku-4-5', 'timeout' => 75],
+                            'vision' => ['model' => 'anthropic/claude-haiku-4-5', 'timeout' => 30],
+                        ],
+                    ],
                 ],
             ],
         ],
@@ -252,6 +347,21 @@ return [
     'approvals' => [
         'members_always_reviewed' => (bool) env('SOCIALHQ_MEMBERS_ALWAYS_REVIEWED', true),
         'agent_posts_reviewed' => (bool) env('SOCIALHQ_AGENT_POSTS_REVIEWED', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Channels
+    |--------------------------------------------------------------------------
+    |
+    | require_credentials: offer and start a network's connect flow only when
+    | the server has its OAuth client id and secret (or the shared Telegram or
+    | Discord bot) set, besides its *_ENABLED flag. Off in upstream's tests.
+    |
+    */
+
+    'channels' => [
+        'require_credentials' => (bool) env('SOCIALHQ_CHANNELS_REQUIRE_CREDENTIALS', true),
     ],
 
     /*

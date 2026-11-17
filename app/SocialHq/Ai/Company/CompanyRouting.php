@@ -143,7 +143,7 @@ final class CompanyRouting
             }
 
             $this->keys[$account->id] = $key;
-            $tasks = $credentials->flatMap(fn (ProviderCredential $credential): array => $credential->catalogue()?->tasks() ?? [])->all();
+            $tasks = $credentials->flatMap(fn (ProviderCredential $credential): array => $credential->servedTasks())->all();
 
             return CompanyRoute::own($account, $ai, $tasks);
         }

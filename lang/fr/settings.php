@@ -204,7 +204,7 @@ return [
         ],
 
         'pending' => [
-            'title' => 'Invitations en attente',
+            'title' => 'Invitation pas encore acceptée',
             'description' => 'Invitations en attente d\'acceptation',
             'empty' => 'Aucune invitation en attente',
         ],
@@ -248,7 +248,7 @@ return [
 
         'errors' => [
             'invite_exists' => 'Une invitation existe déjà pour cet e-mail.',
-            'email_belongs_to_account' => 'Cet e-mail appartient déjà à un autre compte Social HQ. Demandez un e-mail professionnel dédié.',
+            'already_member' => 'Cette personne est déjà membre de cet espace de travail.',
             'cannot_remove_self' => 'Vous ne pouvez pas vous retirer vous-même.',
             'cannot_remove_owner' => 'Vous ne pouvez pas retirer le propriétaire du compte.',
             'cannot_change_own_access' => 'Vous ne pouvez pas modifier votre propre accès.',
@@ -261,6 +261,7 @@ return [
             'member_removed' => 'Membre retiré avec succès.',
             'wrong_email' => 'Cette invitation concerne une autre adresse e-mail.',
             'already_member' => 'Vous êtes déjà membre de cet espace de travail.',
+            'other_account' => 'Votre compte appartient à une autre entreprise et ne peut donc pas rejoindre cet espace de travail. Demandez à la personne qui vous a invité d’inviter plutôt une autre adresse e-mail professionnelle.',
             'invite_accepted' => 'Bienvenue ! Vous êtes maintenant membre de l\'espace de travail.',
             'invite_workspace_gone' => 'Cette invitation n’est plus valide car l’espace de travail a été supprimé.',
             'invite_declined' => 'Invitation refusée.',

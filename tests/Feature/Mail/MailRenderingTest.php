@@ -60,11 +60,13 @@ test('the shared email layout keeps the action and the appropriate footer', func
     'password reset' => ['password-reset', false],
 ])->with([Locale::English, Locale::PortugueseBrazil, Locale::Arabic]);
 
-test('the workspace invite renders in the requested locale and names the workspace', function () {
+test('the workspace invite renders in the requested locale and names the workspace and who invited', function () {
     $account = Account::factory()->create(['name' => 'Acme Co']);
     $workspace = Workspace::factory()->create(['account_id' => $account->id, 'name' => 'Launch Team']);
+    $inviter = User::factory()->create(['name' => 'Asha <Rai>']);
     $invite = Invite::factory()->create([
         'account_id' => $account->id,
+        'invited_by' => $inviter->id,
         'email' => 'invitee@example.com',
         'workspaces' => [$workspace->id],
         ...membershipPivot('approval'),
@@ -75,9 +77,18 @@ test('the workspace invite renders in the requested locale and names the workspa
     $mailable->assertHasSubject(__('mail.workspace_invite.subject', ['workspace' => 'Launch Team'], 'pt-BR'));
     $mailable->assertSeeInHtml(__('mail.workspace_invite.heading', [], 'pt-BR'));
     $mailable->assertSeeInHtml(__('mail.workspace_invite.expiry', [], 'pt-BR'));
-    $mailable->assertSeeInHtml(__('mail.workspace_invite.intro', ['workspace' => 'Launch Team'], 'pt-BR'), false);
+    $mailable->assertSeeInHtml(__('mail.workspace_invite.intro_from', ['inviter' => e('Asha <Rai>'), 'workspace' => 'Launch Team'], 'pt-BR'), false);
     $mailable->assertDontSeeInHtml('Acme Co');
     $mailable->assertSeeInHtml(__('mail.workspace_invite.roles.needs_approval', [], 'pt-BR'));
+});
+
+test('the workspace invite falls back to the plain intro when the inviter is gone', function () {
+    $workspace = Workspace::factory()->create(['name' => 'Launch Team']);
+    $invite = Invite::factory()->create(['account_id' => $workspace->account_id, 'workspaces' => [$workspace->id]]);
+    $invite->forceFill(['invited_by' => null])->saveQuietly();
+
+    (new WorkspaceInvite($invite->fresh()))
+        ->assertSeeInHtml(__('mail.workspace_invite.intro', ['workspace' => 'Launch Team']), false);
 });
 
 test('the workspace invite names the invited access', function (string $access, string $label) {
@@ -195,7 +206,6 @@ test('the verification email is sent in the user locale', function () {
     expect(sentNotificationHtml($user, new VerifyEmail))
         ->toContain(__('mail.email_verification.body', [], 'es'))
         ->toContain(__('mail.email_verification.button', [], 'es'))
-        ->toContain(__('mail.layout.team', [], 'es'))
         ->not->toContain(__('mail.email_verification.body', [], 'en'));
 });
 

@@ -48,7 +48,15 @@ final class SuggestedTime
             return null;
         }
 
-        return CarbonImmutable::createFromFormat('!Y-m-d H:i', "{$item->scheduled_on->toDateString()} {$time}", $item->suggested_timezone)->utc();
+        return self::at($item->scheduled_on->toDateString(), $time, $item->suggested_timezone);
+    }
+
+    /**
+     * The UTC instant of a wall clock ("HH:MM") on a day ("YYYY-MM-DD") in a zone.
+     */
+    public static function at(string $day, string $time, string $zone): CarbonImmutable
+    {
+        return CarbonImmutable::createFromFormat('!Y-m-d H:i', "{$day} {$time}", $zone)->utc();
     }
 
     /**

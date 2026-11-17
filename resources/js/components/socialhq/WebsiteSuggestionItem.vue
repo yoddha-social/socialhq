@@ -29,7 +29,12 @@ const form = useForm<{
     hex: string;
 }>({ value: '', title: '', body: '', name: '', hex: '' });
 
-const errors = computed(() => form.errors as Record<string, string>);
+/** A refused accept's messages, only while the suggestion is still open. */
+const errors = computed(() =>
+    props.suggestion.status === 'open'
+        ? (form.errors as Record<string, string>)
+        : {},
+);
 const isOpen = computed(() => props.suggestion.status === 'open');
 const canEdit = computed(() => props.suggestion.type !== 'document');
 const target = computed(() => ({
@@ -63,6 +68,7 @@ const startEdit = (): void => {
 };
 
 const cancelEdit = (): void => {
+    form.clearErrors();
     isEditing.value = false;
 };
 
@@ -89,6 +95,10 @@ const skipSuggestion = (): void => {
             },
             onFinish: () => {
                 isSkipping.value = false;
+            },
+            onSuccess: () => {
+                form.clearErrors();
+                isEditing.value = false;
             },
         },
     );

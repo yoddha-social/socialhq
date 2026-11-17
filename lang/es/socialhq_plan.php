@@ -261,6 +261,7 @@ return [
             'unknown_event' => 'Event not in your calendar or not for your audience',
             'unconfirmed_event' => 'Event date not confirmed yet',
             'duplicate_day' => 'Channel already has a post that day',
+            'over_cadence' => 'Channel already has its posts for that week',
         ],
         'errors' => [
             'ai_unavailable' => 'AI drafts need your company\'s AI. Ask your company\'s owner to set it up in Settings › AI, then try again.',

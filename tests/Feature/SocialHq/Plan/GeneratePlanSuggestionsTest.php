@@ -315,6 +315,31 @@ test('in the current month the AI is told today and days before it are refused',
     ContentPlanner::assertPrompted(fn ($prompt) => $prompt->contains("\"today\":\"{$today}\""));
 });
 
+test('a posting time already gone today is dropped, not the item, and the AI is told the time now', function () {
+    $this->travelTo(CarbonImmutable::now('UTC')->startOfMonth()->addDays(14)->setTime(12, 0));
+    $month = CarbonImmutable::now('UTC')->startOfMonth();
+    $today = CarbonImmutable::now('UTC');
+    // No audience places: the main zone is the planner's own.
+    $this->member->update(['timezone' => 'UTC']);
+    ContentPlan::factory()->create(['workspace_id' => $this->workspace->id, 'month' => $month->toDateString()]);
+    ContentPlanner::fake([['summary' => 'Now.', 'items' => [
+        ($this->suggestion)(['date' => $today->toDateString(), 'title' => 'This morning', 'suggested_time' => '09:00']),
+        ($this->suggestion)(['date' => $today->toDateString(), 'channel' => $this->linkedin->id, 'content_type' => ContentType::LinkedInPost->value, 'creative' => 'image', 'title' => 'This evening', 'suggested_time' => '18:30']),
+        ($this->suggestion)(['date' => $today->addDay()->toDateString(), 'title' => 'Tomorrow morning', 'suggested_time' => '09:00']),
+    ]]]);
+
+    $this->actingAs($this->member)->post(route('socialhq.plan.generate', $month->format('Y-m')))->assertSessionHasNoErrors();
+
+    $items = PlanItem::query()->whereRelation('plan', 'month', $month->toDateString())->get()->keyBy('title');
+
+    expect($items->keys()->sort()->values()->all())->toBe(['This evening', 'This morning', 'Tomorrow morning'])
+        ->and($items['This morning']->only('suggested_time', 'suggested_timezone'))->toBe(['suggested_time' => null, 'suggested_timezone' => null])
+        ->and($items['This evening']->only('suggested_time', 'suggested_timezone'))->toBe(['suggested_time' => '18:30', 'suggested_timezone' => 'UTC'])
+        ->and($items['Tomorrow morning']->suggested_time)->toBe('09:00');
+
+    ContentPlanner::assertPrompted(fn ($prompt) => $prompt->contains("\"now\":\"{$today->format('Y-m-d')} 12:00\""));
+});
+
 test('the job holds the AI to the cadence, the formats, the event dates and the titles already used', function () {
     BrandProfile::query()->where('workspace_id', $this->workspace->id)->update(['cadence' => [$this->instagram->id => 3, $this->linkedin->id => 0]]);
     PlanItem::factory()->for($this->plan, 'plan')->create(['social_account_id' => $this->instagram->id, 'scheduled_on' => ($this->day)(1), 'title' => 'Momo Monday']);
@@ -398,4 +423,25 @@ test('a run may plan the lead-up to an event just after its days', function () {
 
 test('a stale run outlives the job\'s timeout', function () {
     expect(ContentPlan::STALE_MINUTES * 60)->toBeGreaterThan((new GeneratePlanSuggestions(1, 'run'))->timeout);
+});
+
+test('kept suggestions count toward a channel\'s posts per week, and the AI is shown them', function () {
+    // A whole week inside the month, starting on the requester's first day of the week (Monday).
+    $monday = $this->month->addDays(7)->startOfWeek(CarbonImmutable::MONDAY);
+    $started = PlanItem::factory()->for($this->plan, 'plan')->suggested()->create(['social_account_id' => $this->instagram->id, 'scheduled_on' => $monday->toDateString(), 'title' => 'Started']);
+    ItemVersion::factory()->for($started, 'item')->create();
+    PlanItem::factory()->for($this->plan, 'plan')->create(['social_account_id' => $this->instagram->id, 'scheduled_on' => $monday->addDay()->toDateString(), 'title' => 'Planned one']);
+    PlanItem::factory()->for($this->plan, 'plan')->create(['social_account_id' => $this->instagram->id, 'scheduled_on' => $monday->addDays(2)->toDateString(), 'title' => 'Planned two']);
+
+    expect(collect(PlannerContext::build($this->plan, CarbonImmutable::today('UTC'))['already_planned'])->pluck('title')->all())->toContain('Started');
+
+    ContentPlanner::fake([['summary' => 'x', 'items' => [
+        ($this->suggestion)(['date' => $monday->addDays(3)->toDateString(), 'title' => 'A fourth that week']),
+        ($this->suggestion)(['date' => $monday->addDays(7)->toDateString(), 'title' => 'Next week']),
+    ]]]);
+
+    $this->actingAs($this->member)->post(route('socialhq.plan.generate', $this->monthKey))->assertSessionHasNoErrors();
+
+    expect($this->plan->items()->where('status', ItemStatus::Suggested)->pluck('title')->sort()->values()->all())->toBe(['Next week', 'Started'])
+        ->and(collect($this->plan->fresh()->generation_rejections)->pluck('reason', 'title')->all())->toBe(['A fourth that week' => 'over_cadence']);
 });

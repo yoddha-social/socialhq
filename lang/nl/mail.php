@@ -7,8 +7,6 @@ return [
     'layout' => [
         'tagline' => 'Verzonden door het :brand-team',
         'manage_notifications' => 'Meldingen beheren',
-        'signoff' => 'Met vriendelijke groet,',
-        'team' => 'Het Social HQ-team',
     ],
 
     'account_disconnected' => [
@@ -96,6 +94,7 @@ return [
         'heading' => 'Je bericht is niet goedgekeurd',
         'body' => ':name heeft je bericht in de workspace :workspace teruggezet naar concepten.',
         'channel' => 'Kanaal',
+        'reason' => 'Reden',
         'button' => 'Bekijken in concepten',
     ],
 
@@ -152,6 +151,7 @@ return [
         'preview' => 'Je bent uitgenodigd voor :workspace',
         'heading' => 'Je bent uitgenodigd!',
         'intro' => 'Je bent uitgenodigd om samen te werken in de werkruimte <strong>:workspace</strong>.',
+        'intro_from' => '<strong>:inviter</strong> heeft je uitgenodigd om samen te werken in de werkruimte <strong>:workspace</strong>.',
         'role' => 'Je bent uitgenodigd als <strong>:role</strong>.',
         'roles' => ['admin' => 'Beheerder', 'member' => 'Lid', 'needs_approval' => 'Lid (berichten vereisen goedkeuring)'],
         'button' => 'Uitnodiging accepteren',
@@ -205,6 +205,20 @@ return [
         'note' => 'Their note: :note',
         'button' => 'See your request',
         'ask_again' => '{1} You can ask again after an hour.|[0,*] You can ask again after :hours hours.',
+    ],
+
+    'socialhq_account_exists' => [
+        'subject' => 'You already have a :app account',
+        'title' => 'You already have an account',
+        'preview' => 'Someone tried to create a :app account with your email address.',
+        'heading' => 'You already have a :app account',
+        'greeting' => 'Hi :name,',
+        'body' => 'Someone just tried to create a :app account with this email address (:email). You already have one, so nothing new was created.',
+        'forgot' => 'If you forgot your password, set a new one with this link. It works for 60 minutes.',
+        'button' => 'Reset your password',
+        'log_in' => 'Remember your password?',
+        'log_in_link' => 'Log in',
+        'not_you' => 'If it wasn\'t you, ignore this email: your account hasn\'t changed.',
     ],
 
 ];

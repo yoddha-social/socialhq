@@ -6,8 +6,12 @@ namespace App\SocialHq\Http\Controllers\Plan;
 
 use App\Http\Controllers\Controller;
 use App\SocialHq\Events\CalendarEvent;
+use App\SocialHq\Events\EventRegion;
+use App\SocialHq\Http\Requests\Plan\ConfirmShownEventsRequest;
 use App\SocialHq\Http\Requests\Plan\VerifyCalendarEventRequest;
 use App\SocialHq\Plan\PlanAccess;
+use App\SocialHq\Plan\PlanMonth;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -48,6 +52,46 @@ class EventVerificationController extends Controller
                 self::saveQuietly($locked, ['verified_at' => now(), 'verified_by' => $request->user()->id]);
             }
         });
+
+        return back();
+    }
+
+    /**
+     * "Confirm all shown": confirms, in one query, the unconfirmed dates of
+     * the page's period, country and filter that the person may change (a
+     * brand's approver confirms that brand's own dates only). Dates marked
+     * "No longer listed" stay unconfirmed, as they do one at a time.
+     */
+    public function storeShown(ConfirmShownEventsRequest $request): RedirectResponse
+    {
+        $workspace = PlanAccess::workspace($request, approve: true);
+        $today = EventController::today($request);
+        $upcoming = $request->validated('view') === 'upcoming';
+        $month = PlanMonth::tryParse($request->validated('month')) ?? $today->startOfMonth();
+        [$from, $to] = EventController::period($today, $upcoming, $month);
+        $country = EventController::country($request->validated('country'));
+        $canManageShared = PlanAccess::canManageSharedEvents($request->user(), $workspace);
+
+        // A plain update: no model events and no updated_at, like a single confirmation.
+        $confirmed = CalendarEvent::query()
+            ->visibleTo($workspace)
+            ->forCountries($country === null ? null : [$country])
+            ->overlapping($from->toDateString(), $to->toDateString())
+            ->whereNull('verified_at')
+            // A date its source no longer lists can't be confirmed (store() says why).
+            ->whereNull('delisted_at')
+            ->when(! $canManageShared, fn (Builder $query) => $query->where('workspace_id', $workspace->id))
+            ->when($request->validated('filter'), fn (Builder $query, string $filter) => match ($filter) {
+                'nepal' => $query->where('region', EventRegion::Nepal),
+                'international' => $query->where('region', EventRegion::International),
+                'brand' => $query->whereNotNull('workspace_id'),
+                default => $query,
+            })
+            ->toBase()
+            ->update(['verified_at' => now(), 'verified_by' => $request->user()->id]);
+
+        session()->flash('flash.banner', trans_choice('socialhq_events.confirm_shown.done', $confirmed, ['count' => $confirmed]));
+        session()->flash('flash.bannerStyle', 'success');
 
         return back();
     }

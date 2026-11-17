@@ -11,6 +11,23 @@ use Illuminate\Foundation\Http\FormRequest;
 class UpdateBrandLookRequest extends FormRequest
 {
     /**
+     * "6F3B17", "#6F3B17" and "#6f3b17" are the same colour.
+     */
+    protected function prepareForValidation(): void
+    {
+        $colours = $this->input('colours');
+
+        if (is_array($colours)) {
+            $this->merge(['colours' => array_map(
+                fn (mixed $colour): mixed => is_array($colour) && array_key_exists('hex', $colour)
+                    ? [...$colour, 'hex' => BrandLook::normalizeHex($colour['hex'])]
+                    : $colour,
+                $colours,
+            )]);
+        }
+    }
+
+    /**
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array

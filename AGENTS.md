@@ -639,8 +639,8 @@ How that works in practice:
   disconnected-connections email used to do, and it meant every new sentence had
   to be threaded through PHP while the template gave no hint it was translatable.
 - **One `lang/*/mail.php` block per template**, keyed by the slug with dashes as
-  underscores (`post-published.html` => `post_published`). Shared chrome (footer
-  tagline, sign-off) lives under `layout`. Keys go in all 16 locales;
+  underscores (`post-published.html` => `post_published`). Shared chrome (the
+  footer tagline, the only sign-off) lives under `layout`. Keys go in all 16 locales;
   `LocalizationParityTest` fails on drift. Feature lang files must not carry email
   copy — `webhooks.mail.*` moved here for that reason.
 - **The recipient's locale is automatic.** `User` implements

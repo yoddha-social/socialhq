@@ -112,6 +112,8 @@ return [
         'confirm_password' => 'Bevestig wachtwoord',
         'confirm_placeholder' => 'Bevestig wachtwoord',
         'submit' => 'Wachtwoord opnieuw instellen',
+        'mismatch' => 'De twee wachtwoorden komen niet overeen.',
+        'send_new_link' => 'Nieuwe link sturen',
     ],
 
     'verify_email' => [

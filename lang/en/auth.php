@@ -112,6 +112,8 @@ return [
         'confirm_password' => 'Confirm Password',
         'confirm_placeholder' => 'Confirm password',
         'submit' => 'Reset password',
+        'mismatch' => 'The two passwords don\'t match.',
+        'send_new_link' => 'Send a new link',
     ],
 
     'verify_email' => [

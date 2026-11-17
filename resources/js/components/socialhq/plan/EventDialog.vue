@@ -264,6 +264,7 @@ const submit = (): void => {
                         <DatePicker
                             name="socialhq-event-ends-on"
                             :model-value="form.ends_on"
+                            :min="form.starts_on"
                             :show-time="false"
                             align="start"
                             data-testid="socialhq-event-ends-on"
@@ -284,11 +285,15 @@ const submit = (): void => {
                         <Input
                             id="socialhq-event-bs-date"
                             v-model="form.bs_date"
-                            :placeholder="
-                                $t('socialhq_events.dialog.bs_date_placeholder')
-                            "
+                            aria-describedby="socialhq-event-bs-date-hint"
                             data-testid="socialhq-event-bs-date"
                         />
+                        <p
+                            id="socialhq-event-bs-date-hint"
+                            class="text-xs text-muted-foreground"
+                        >
+                            {{ $t('socialhq_events.dialog.bs_date_hint') }}
+                        </p>
                         <p
                             v-if="form.errors.bs_date"
                             class="text-sm text-destructive"

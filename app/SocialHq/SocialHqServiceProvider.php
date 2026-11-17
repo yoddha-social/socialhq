@@ -11,16 +11,15 @@ use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiRoutesCommand;
 use App\SocialHq\Ai\ApprovedProvidersGuard;
 use App\SocialHq\Ai\Company\CompanyAi;
-use App\SocialHq\Ai\Company\CompanyAiAccess;
 use App\SocialHq\Ai\Company\CompanyRouting;
 use App\SocialHq\Ai\Company\Jobs\TearDownCompanyAi;
 use App\SocialHq\Ai\Company\ProviderCredential;
 use App\SocialHq\Ai\Usage\AiUsageLogging;
+use App\SocialHq\AiGraphics\AiGraphicResults;
 use App\SocialHq\AiGraphics\AiGraphics;
-use App\SocialHq\Approval\ApprovalRules;
+use App\SocialHq\AiGraphics\PruneAiGraphicResultsCommand;
 use App\SocialHq\Approval\RecordApprovalEvents;
 use App\SocialHq\Companies\CompanyRequests;
-use App\SocialHq\Companies\CompanySignup;
 use App\SocialHq\Companies\PlatformAdminCommand;
 use App\SocialHq\Companies\PlatformAdmins;
 use App\SocialHq\Errors\ErrorPages;
@@ -28,6 +27,7 @@ use App\SocialHq\Events\ImportEventsCommand;
 use App\SocialHq\Http\Controllers\Plan\PlanGenerationController;
 use App\SocialHq\Http\Middleware\EnsureCompanyApproved;
 use App\SocialHq\Http\Middleware\RedirectWhileAwaitingAccess;
+use App\SocialHq\Http\Middleware\ShareSocialHqProps;
 use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\Calendars\CalendarStorage;
 use App\SocialHq\Knowledge\Calendars\PruneCalendarUploadsCommand;
@@ -38,9 +38,9 @@ use App\SocialHq\Knowledge\Search\LexicalKnowledgeSearch;
 use App\SocialHq\Knowledge\TryPostPromptFocus;
 use App\SocialHq\Production\BriefStorage;
 use App\SocialHq\Secrets\SecretsKeyCommand;
+use App\SocialHq\Secrets\SecretsReencryptCommand;
 use App\SocialHq\Signup\AccessRequests;
 use App\SocialHq\Signup\PasswordResetProof;
-use App\SocialHq\Signup\SignupRules;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Events\Verified;
@@ -101,7 +101,7 @@ class SocialHqServiceProvider extends ServiceProvider
         AiUsageLogging::register($this->app);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiRoutesCommand::class, ImportEventsCommand::class, PruneCalendarUploadsCommand::class, PlatformAdminCommand::class, SecretsKeyCommand::class]);
+            $this->commands([AiRoutesCommand::class, ImportEventsCommand::class, PruneAiGraphicResultsCommand::class, PruneCalendarUploadsCommand::class, PlatformAdminCommand::class, SecretsKeyCommand::class, SecretsReencryptCommand::class]);
         }
 
         // Provider keys are write-only: never flashed back as old input after a
@@ -127,6 +127,9 @@ class SocialHqServiceProvider extends ServiceProvider
 
         // People who signed up wait on one page until an admin lets them in.
         $this->app->make(Kernel::class)->appendMiddlewareToGroup('web', RedirectWhileAwaitingAccess::class);
+
+        // The module's shared Inertia props, set on every request (ShareSocialHqProps says why not here).
+        $this->app->make(Kernel::class)->appendMiddlewareToGroup('web', ShareSocialHqProps::class);
 
         // Only approved companies work: owners of waiting companies wait, suspended companies pause.
         $this->app->make(Kernel::class)->appendMiddlewareToGroup('web', EnsureCompanyApproved::class);
@@ -184,6 +187,8 @@ class SocialHqServiceProvider extends ServiceProvider
 
         // Brand knowledge documents: 20 uploads an hour per person; "Check what the AI reads" 30 a minute.
         RateLimiter::for('socialhq-knowledge-uploads', fn (Request $request): Limit => Limit::perHour(20)->by((string) $request->user()?->id));
+        // Old calendars: an upload and its confirmation each count, 30 imports an hour per person.
+        RateLimiter::for('socialhq-calendar-imports', fn (Request $request): Limit => Limit::perHour(60)->by((string) $request->user()?->id));
         RateLimiter::for('socialhq-knowledge-search', fn (Request $request): Limit => Limit::perMinute(30)->by((string) $request->user()?->id));
         // "Read our website": 5 runs an hour per person (each reads up to 25 pages and makes one AI call).
         RateLimiter::for('socialhq-website-reads', fn (Request $request): Limit => Limit::perHour(5)->by((string) $request->user()?->id));
@@ -195,39 +200,7 @@ class SocialHqServiceProvider extends ServiceProvider
         // uploads never imported go after a day.
         CalendarStorage::registerCleanup();
         $this->callAfterResolving(Schedule::class, fn (Schedule $schedule) => $schedule->command(PruneCalendarUploadsCommand::class)->hourly()->withoutOverlapping());
-
-        // One share for the whole module: a second Inertia::share('socialhq') would replace this one.
-        Inertia::share('socialhq', fn (): array => [
-            'approvals' => ['membersAlwaysReviewed' => ApprovalRules::membersAlwaysReviewed()],
-            'aiGraphics' => [
-                'available' => (function (): bool {
-                    $user = auth()->user();
-
-                    return $user instanceof User && $user->currentWorkspace !== null && AiGraphics::canUse($user, $user->currentWorkspace);
-                })(),
-                'maxReferences' => (int) config('socialhq.ai_graphics.max_reference_images', 3),
-                'maxReferenceKilobytes' => (int) config('socialhq.ai_graphics.max_reference_kilobytes', 10240),
-            ],
-            'companyAi' => [
-                // Settings › AI is the account owner's, for an approved company only.
-                'canManage' => CompanyAiAccess::canManage(auth()->user() instanceof User ? auth()->user() : null),
-            ],
-            'signup' => [
-                // The login page's "Sign up": the company lists, or asking to start a company.
-                'open' => SignupRules::isOpen() || CompanyRequests::enabled(),
-                // Whether a work email joins its team's company (the company name field then says it may stay empty).
-                'joinsByEmail' => SignupRules::isOpen(),
-                // The register page's company name field (the server still decides on submit).
-                'companyRequests' => CompanySignup::showsCompanyField(),
-                // One query, 0 for anyone who can't decide (the workspace menu and the Members banner read it).
-                'pendingRequests' => auth()->user() instanceof User ? AccessRequests::pendingCountFor(auth()->user()) : 0,
-            ],
-            // The platform admin link in the user menu, with the requests waiting for a decision.
-            'platform' => (function (): array {
-                $isAdmin = PlatformAdmins::is(auth()->user());
-
-                return ['admin' => $isAdmin, 'pendingCompanies' => $isAdmin ? CompanyRequests::awaitingDecisionCount() : 0];
-            })(),
-        ]);
+        AiGraphicResults::registerCleanup();
+        $this->callAfterResolving(Schedule::class, fn (Schedule $schedule) => $schedule->command(PruneAiGraphicResultsCommand::class)->daily()->withoutOverlapping());
     }
 }

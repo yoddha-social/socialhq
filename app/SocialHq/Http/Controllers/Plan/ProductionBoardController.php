@@ -7,6 +7,7 @@ namespace App\SocialHq\Http\Controllers\Plan;
 use App\Http\Controllers\Controller;
 use App\SocialHq\Http\Requests\Plan\MoveBriefRequest;
 use App\SocialHq\Plan\PlanAccess;
+use App\SocialHq\Plan\PlanMonth;
 use App\SocialHq\Production\Brief;
 use App\SocialHq\Production\BriefKind;
 use App\SocialHq\Production\BriefStage;
@@ -28,7 +29,7 @@ class ProductionBoardController extends Controller
         $user = $request->user();
 
         $kind = BriefKind::tryFrom((string) $request->query('kind'))?->value;
-        $month = preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', (string) $request->query('month')) === 1 ? (string) $request->query('month') : null;
+        $month = PlanMonth::tryParse($request->query('month')) === null ? null : (string) $request->query('month');
         $filters = ['mine' => $request->boolean('mine'), 'kind' => $kind, 'month' => $month];
 
         return Inertia::render('socialhq/plan/Production', [
@@ -48,7 +49,15 @@ class ProductionBoardController extends Controller
         $workspace = PlanAccess::workspace($request);
         $card = Brief::query()->where('workspace_id', $workspace->id)->findOrFail($brief);
 
-        ProductionBoard::move($card, $request->user(), BriefStage::from($request->validated('stage')), array_map('intval', $request->validated('ordered_ids')));
+        $round = $request->validated('round');
+
+        ProductionBoard::move(
+            $card,
+            $request->user(),
+            BriefStage::from($request->validated('stage')),
+            array_map('intval', $request->validated('ordered_ids')),
+            $round === null ? null : (int) $round,
+        );
 
         return response()->json(['stage' => $card->fresh()->stage->value], HttpResponse::HTTP_OK);
     }

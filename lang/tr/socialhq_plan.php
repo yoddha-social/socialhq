@@ -169,6 +169,7 @@ return [
         'cancel' => 'Cancel',
         'add' => 'Add item',
         'save' => 'Save changes',
+        'item_gone' => 'This item is no longer in the plan. New AI suggestions may have replaced it, or someone deleted it.',
     ],
     'delete' => [
         'title' => 'Delete this item?',
@@ -217,6 +218,8 @@ return [
         'date_in_month' => 'Pick a day in this plan\'s month.',
         'channel' => 'Pick one of this brand\'s channels.',
         'content_type' => 'Pick a format this channel offers.',
+        'creative' => 'This format can\'t carry what you picked to make. Pick another format, or change What to make.',
+        'creative_has_brief' => 'This item already has a brief for its creative, so What to make stays the same kind. To make something else, drop this item and add a new one.',
         'pillar' => 'Pick one of the brand\'s pillars.',
         'event' => 'Pick an event in this month.',
         'owner' => 'Pick someone in this workspace.',
@@ -233,6 +236,7 @@ return [
         'open_suggestions' => 'To approve the plan, accept or drop every AI suggestion first.',
         'generating' => 'The AI is still drafting this month. To approve the plan, wait for it to finish and review its suggestions.',
         'item_changed' => 'This item changed since you opened it. Reload the page and try again.',
+        'delete_approved' => 'This item has approved work, so only a workspace admin can delete it. To take it out of the plan, drop it instead.',
         'request_failed' => 'Couldn\'t save that change. Try again.',
     ],
     'generation' => [
@@ -260,7 +264,7 @@ return [
             'over_cadence' => 'Channel already has its posts for that week',
         ],
         'errors' => [
-            'ai_unavailable' => 'AI drafts are off. Ask whoever runs Social HQ to turn them on.',
+            'ai_unavailable' => 'AI drafts need your company\'s AI. Ask your company\'s owner to set it up in Settings › AI, then try again.',
             'ai_failed' => 'The AI couldn\'t draft this month. Try again in a few minutes.',
             'invalid_output' => 'The AI\'s draft couldn\'t be used. Try again.',
             'no_access' => 'The person who started this draft can no longer work on this plan. Try again to start a new draft.',

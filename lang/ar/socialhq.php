@@ -22,6 +22,13 @@ return [
         ],
     ],
 
+    'ai' => [
+        'task_unavailable' => [
+            'owner' => 'Your company\'s AI can\'t do this yet. To use it, add an AI provider that can in Settings › AI.',
+            'member' => 'Your company\'s AI can\'t do this yet. Ask your company\'s owner to add an AI provider that can in Settings › AI.',
+        ],
+    ],
+
     'ai_graphics' => [
         'menu_item' => 'Generate with AI',
         'title' => 'Generate a graphic with AI',
@@ -58,6 +65,9 @@ return [
             'reference_type' => 'Reference images must be JPEG, PNG or WebP.',
             'reference_size' => 'Each reference image can be up to :size MB.',
             'attach_failed' => 'The graphic could not be added. Try again.',
+            'rate_limited' => 'You\'ve reached the hourly limit for AI graphics. Try again later.',
+            'not_available' => 'AI graphics aren\'t available to you in this workspace. Ask a workspace admin whether you can create posts, or the account owner to check Settings › AI.',
+            'timed_out' => 'The graphic is taking longer than expected. When it\'s ready, it shows under Your recent graphics.',
         ],
     ],
     'brand' => [

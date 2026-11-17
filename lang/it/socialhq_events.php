@@ -55,9 +55,9 @@ return [
         'confirmed_by' => 'Confirmed by :name',
         'confirmed' => 'Confirmed',
         'brand_only' => 'This brand only',
+        'delisted' => 'No longer listed',
     ],
     'until' => 'Until :date',
-    'source' => 'Source',
     'today' => 'Today',
 
     'actions' => [
@@ -132,12 +132,15 @@ return [
         'source_url' => 'Enter the source link as a full web address, starting with https://.',
         'source_url_long' => 'Use a source link of up to 500 characters.',
         'brand_kind_shared' => 'A brand date belongs to one brand. Switch on Only this brand, or pick another kind.',
+        'changed' => 'This date changed after you opened the page. Reload it to check the new date, then confirm.',
+        'delisted' => 'Its source no longer lists this date, so it can\'t be confirmed as it is. To keep it, edit it to make it your own date; otherwise delete it.',
     ],
 
     'import' => [
         'done' => 'Official dates imported: :created new, :updated updated, :skipped unchanged.',
-        'missing' => '{1} One date is no longer in the official list; it stays until you delete it.|[0,*] :count dates are no longer in the official list; they stay until you delete them.',
+        'missing' => '{1} One date is no longer in the official list. It\'s marked No longer listed, and the AI stops planning around it.|[0,*] :count dates are no longer in the official list. They\'re marked No longer listed, and the AI stops planning around them.',
         'failed' => 'Couldn\'t import the official dates. Try again; if it keeps failing, tell whoever runs Social HQ.',
+        'busy' => 'Another import of dates is still running for your company. Wait a minute, then try again.',
     ],
 
     'countries' => [
@@ -155,7 +158,7 @@ return [
         'cancel' => 'Cancel',
         'import' => 'Import holidays',
         'done' => 'Public holidays imported for :countries: :created new, :updated updated, :skipped unchanged. Check each date before planning around it.',
-        'missing' => '{1} One holiday is no longer listed by Nager.Date; it stays until you delete it.|[0,*] :count holidays are no longer listed by Nager.Date; they stay until you delete them.',
+        'missing' => '{1} One holiday is no longer listed by Nager.Date. It\'s marked No longer listed, and the AI stops planning around it.|[0,*] :count holidays are no longer listed by Nager.Date. They\'re marked No longer listed, and the AI stops planning around them.',
         'unavailable' => 'Couldn\'t reach Nager.Date for :countries, so nothing was imported. Try again in a few minutes.',
         'failed' => 'Couldn\'t import these holidays. Try again; if it keeps failing, tell whoever runs Social HQ.',
         'errors' => [
@@ -163,6 +166,7 @@ return [
             'too_many' => 'Pick up to :max countries at a time.',
             'nepal' => 'Nepal\'s dates come from the official list: use Import official dates.',
             'unknown' => 'Pick a country from the list.',
+            'not_covered' => 'Nager.Date doesn\'t list public holidays for :countries. Pick a country from the list.',
             'pick_year' => 'Pick this year, next year or both.',
         ],
     ],

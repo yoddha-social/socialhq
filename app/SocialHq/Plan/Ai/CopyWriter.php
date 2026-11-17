@@ -10,6 +10,7 @@ use App\SocialHq\Ai\UsesModelSafeTemperature;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Contracts\Agent;
+use Laravel\Ai\Contracts\HasProviderOptions;
 use Laravel\Ai\Contracts\HasStructuredOutput;
 use Laravel\Ai\Promptable;
 
@@ -18,7 +19,7 @@ use Laravel\Ai\Promptable;
  * for video, and notes for the team.
  */
 #[MaxTokens(3000)]
-class CopyWriter implements Agent, HasStructuredOutput
+class CopyWriter implements Agent, HasProviderOptions, HasStructuredOutput
 {
     use Promptable;
     use UsesAiTask;

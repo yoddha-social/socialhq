@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace App\SocialHq\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\Workspace;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiTask;
+use App\SocialHq\Http\Controllers\Concerns\WorksOnBrandKnowledge;
 use App\SocialHq\Http\Requests\AcceptWebsiteSuggestionRequest;
 use App\SocialHq\Http\Requests\StoreWebsiteCrawlRequest;
-use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\Website\CrawlStatus;
 use App\SocialHq\Knowledge\Website\ReadWebsite;
 use App\SocialHq\Knowledge\Website\WebsiteCrawl;
@@ -18,7 +17,6 @@ use App\SocialHq\Knowledge\Website\WebsiteReview;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpFoundation\Response;
 
 /**
  * "Read our website" on Brand knowledge: a workspace admin starts a run
@@ -27,6 +25,8 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class WebsiteCrawlController extends Controller
 {
+    use WorksOnBrandKnowledge;
+
     public function store(StoreWebsiteCrawlRequest $request): RedirectResponse
     {
         $workspace = $this->workspace($request);
@@ -63,16 +63,5 @@ class WebsiteCrawlController extends Controller
         WebsiteReview::skip($this->workspace($request), $crawl, $suggestion);
 
         return back();
-    }
-
-    private function workspace(Request $request): Workspace
-    {
-        $user = $request->user();
-        $workspace = $user->currentWorkspace;
-
-        abort_if($workspace === null, Response::HTTP_NOT_FOUND);
-        abort_unless(BrandKnowledge::canEdit($user, $workspace), Response::HTTP_FORBIDDEN);
-
-        return $workspace;
     }
 }

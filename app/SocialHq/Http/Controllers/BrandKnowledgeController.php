@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\SocialHq\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\Workspace;
+use App\SocialHq\Http\Controllers\Concerns\WorksOnBrandKnowledge;
 use App\SocialHq\Http\Requests\StoreKnowledgeEntryRequest;
 use App\SocialHq\Http\Requests\UpdateBrandProfileRequest;
 use App\SocialHq\Http\Requests\UpdateKnowledgeEntryRequest;
@@ -16,16 +16,17 @@ use App\SocialHq\Knowledge\Calendars\OldCalendars;
 use App\SocialHq\Knowledge\Documents\DocumentsPage;
 use App\SocialHq\Knowledge\KnowledgeEntry;
 use App\SocialHq\Knowledge\KnowledgeKind;
+use App\SocialHq\Knowledge\KnowledgePrompt;
 use App\SocialHq\Knowledge\Look\LookPage;
 use App\SocialHq\Knowledge\Website\WebsitePanel;
 use App\SocialHq\Plan\PlanOptions;
 use App\SocialHq\Plan\PlanPage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 /**
  * The current workspace's brand profile and knowledge entries. Every member
@@ -33,16 +34,32 @@ use Symfony\Component\HttpFoundation\Response as HttpResponse;
  */
 class BrandKnowledgeController extends Controller
 {
+    use WorksOnBrandKnowledge;
+
+    /**
+     * Every prop is a closure: the page's polls reload one prop (`documents`,
+     * `website`, `pastCalendars`) and skip building the others.
+     */
     public function index(Request $request): Response
     {
         $workspace = $this->workspace($request, edit: false);
-        $profile = BrandProfile::query()->where('workspace_id', $workspace->id)->first();
-        $prompt = BrandKnowledge::assemble($workspace);
-        $channels = PlanOptions::channels($workspace);
+        $user = $request->user();
+        $profile = null;
+        $prompt = null;
+        $channels = null;
+        $loadProfile = function () use ($workspace, &$profile): ?BrandProfile {
+            return $profile ??= BrandProfile::query()->where('workspace_id', $workspace->id)->first();
+        };
+        $loadPrompt = function () use ($workspace, &$prompt): KnowledgePrompt {
+            return $prompt ??= BrandKnowledge::assemble($workspace);
+        };
+        $loadChannels = function () use ($workspace, &$channels): Collection {
+            return $channels ??= PlanOptions::channels($workspace);
+        };
 
         return Inertia::render('socialhq/BrandKnowledge', [
-            'profile' => collect(BrandProfile::FIELDS)->mapWithKeys(fn (string $field): array => [$field => (string) $profile?->{$field}]),
-            'entries' => KnowledgeEntry::query()
+            'profile' => fn () => collect(BrandProfile::FIELDS)->mapWithKeys(fn (string $field): array => [$field => (string) $loadProfile()?->{$field}]),
+            'entries' => fn () => KnowledgeEntry::query()
                 ->where('workspace_id', $workspace->id)
                 ->inPromptOrder()
                 ->get()
@@ -53,26 +70,26 @@ class BrandKnowledgeController extends Controller
                     'body' => $entry->body,
                     'use_in_ai' => $entry->use_in_ai,
                     'pinned' => $entry->pinned,
-                    'fit' => $prompt->fitOf($entry)->value,
+                    'fit' => $loadPrompt()->fitOf($entry)->value,
                     'updated_at' => $entry->updated_at?->toIso8601String(),
                 ]),
-            'usage' => [
-                'used' => $prompt->used,
-                'budget' => $prompt->budget,
-                'profileTrimmed' => $prompt->profileTrimmed,
+            'usage' => fn () => [
+                'used' => $loadPrompt()->used,
+                'budget' => $loadPrompt()->budget,
+                'profileTrimmed' => $loadPrompt()->profileTrimmed,
             ],
             // The plan reads these too; they are edited here and on the plan page.
-            'pillars' => PlanOptions::pillars($profile),
-            'cadence' => PlanOptions::cadence($profile, $channels),
+            'pillars' => fn () => PlanOptions::pillars($loadProfile()),
+            'cadence' => fn () => PlanOptions::cadence($loadProfile(), $loadChannels()),
             // Not 'channels': that name is the sidebar's shared prop.
-            'planChannels' => $channels->map(PlanPage::channel(...))->values()->all(),
-            'kinds' => array_map(fn (KnowledgeKind $kind): string => $kind->value, KnowledgeKind::cases()),
-            'canEdit' => BrandKnowledge::canEdit($request->user(), $workspace),
-            'documents' => DocumentsPage::prop($workspace),
-            'pastCalendars' => OldCalendars::forPage($workspace),
-            'audience' => AudiencePage::prop($workspace, $request->user()),
-            'look' => LookPage::prop($workspace),
-            'website' => WebsitePanel::prop($workspace),
+            'planChannels' => fn () => $loadChannels()->map(PlanPage::channel(...))->values()->all(),
+            'kinds' => fn () => array_map(fn (KnowledgeKind $kind): string => $kind->value, KnowledgeKind::cases()),
+            'canEdit' => fn () => BrandKnowledge::canEdit($user, $workspace),
+            'documents' => fn () => DocumentsPage::prop($workspace),
+            'pastCalendars' => fn () => OldCalendars::forPage($workspace),
+            'audience' => fn () => AudiencePage::prop($workspace, $user),
+            'look' => fn () => LookPage::prop($workspace),
+            'website' => fn () => WebsitePanel::prop($workspace),
         ]);
     }
 
@@ -124,17 +141,6 @@ class BrandKnowledgeController extends Controller
         return $this->saved(__('socialhq.brand.flash.entry_deleted'));
     }
 
-    private function workspace(Request $request, bool $edit): Workspace
-    {
-        $user = $request->user();
-        $workspace = $user->currentWorkspace;
-
-        abort_if($workspace === null, HttpResponse::HTTP_NOT_FOUND);
-        abort_unless($edit ? BrandKnowledge::canEdit($user, $workspace) : BrandKnowledge::canView($user, $workspace), HttpResponse::HTTP_FORBIDDEN);
-
-        return $workspace;
-    }
-
     /**
      * An entry of the current workspace, which the user may change.
      */
@@ -143,13 +149,5 @@ class BrandKnowledgeController extends Controller
         $workspace = $this->workspace($request, edit: true);
 
         return KnowledgeEntry::query()->where('workspace_id', $workspace->id)->findOrFail($id);
-    }
-
-    private function saved(string $message): RedirectResponse
-    {
-        session()->flash('flash.banner', $message);
-        session()->flash('flash.bannerStyle', 'success');
-
-        return back();
     }
 }

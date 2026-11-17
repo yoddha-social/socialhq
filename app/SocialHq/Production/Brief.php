@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 /**
  * What the creative team makes for a plan item: a graphic or a video, with
@@ -65,6 +66,23 @@ class Brief extends Model
     public function files(): HasMany
     {
         return $this->hasMany(BriefFile::class)->orderBy('round')->orderBy('id');
+    }
+
+    /**
+     * Number the briefs 0, 1, 2… in the order given, in one query.
+     *
+     * @param  list<int>  $ids
+     */
+    public static function reorder(array $ids): void
+    {
+        if ($ids === []) {
+            return;
+        }
+
+        // Integers only (ids and positions), so the CASE is built inline.
+        $cases = collect(array_values($ids))->map(fn (int $id, int $position): string => 'when id = '.$id.' then '.$position)->implode(' ');
+
+        static::query()->whereKey($ids)->update(['position' => DB::raw("case {$cases} end")]);
     }
 
     public function currentRound(): int

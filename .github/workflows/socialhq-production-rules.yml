@@ -1,0 +1,102 @@
+# TryPost's own suites under Social HQ's production rules. phpunit.xml turns our
+# approval and company rules off for the whole run, because upstream's tests
+# expect TryPost's rules; this job turns them back on (real environment
+# variables win over phpunit.xml's <env>, which has no force="true") and runs
+# the suites that write posts: API, MCP, parity, posts, repurpose, approvals.
+#
+# Upstream tests that assert TryPost's rules fail here by design. They are
+# listed, with the reason, in tests/fixtures/socialhq/production-rules-exclusions.txt
+# and skipped. Anything else that fails is a regression: a write path that
+# breaks, or one our rules no longer reach.
+name: socialhq production rules
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DB_CONNECTION: pgsql
+  DB_DATABASE: trypost_test
+  DB_USERNAME: postgres
+  DB_PASSWORD: password
+  BROADCAST_CONNECTION: "null"
+  CACHE_STORE: array
+  QUEUE_CONNECTION: sync
+  SESSION_DRIVER: array
+  SOCIALHQ_MEMBERS_ALWAYS_REVIEWED: "true"
+  SOCIALHQ_AGENT_POSTS_REVIEWED: "true"
+  SOCIALHQ_COMPANY_REQUESTS: "true"
+  SOCIALHQ_COMPANIES_REQUIRED: "true"
+  # Every test account gets an approved company (database/factories/AccountFactory.php),
+  # as the backfill gave every real account.
+  SOCIALHQ_TEST_ACCOUNTS_APPROVED: "true"
+
+jobs:
+  production-rules:
+    name: Upstream suites with production rules (${{ matrix.shard }}/2)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: trypost_test
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd="pg_isready"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379/tcp
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup test environment
+        uses: ./.github/actions/setup-laravel
+        with:
+          db-port: ${{ job.services.postgres.ports['5432'] }}
+          redis-port: ${{ job.services.redis.ports['6379'] }}
+
+      - name: Run the suites with our rules on
+        env:
+          DB_PORT: ${{ job.services.postgres.ports['5432'] }}
+          REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
+        run: |
+          # Sharded, not --parallel: ParaTest drops --exclude-filter.
+          exclude=$(bin/socialhq-production-rules-filter)
+          ./vendor/bin/pest --compact --shard=${{ matrix.shard }}/2 --exclude-filter "$exclude" \
+            tests/Feature/Api tests/Feature/Mcp tests/Feature/Parity tests/Feature/Posts \
+            tests/Feature/Repurpose tests/Feature/Permissions tests/Feature/Actions/Post \
+            tests/Feature/Create tests/Feature/Channels \
+            tests/Feature/PostControllerTest.php tests/Feature/PostNoteControllerTest.php \
+            tests/Feature/UpdatePostRequestTest.php tests/Feature/WorkspaceControllerTest.php \
+            tests/Feature/WorkspaceInviteControllerTest.php tests/Feature/AcceptInviteControllerTest.php \
+            tests/Feature/ApiKeyControllerTest.php tests/Feature/McpSettingsControllerTest.php

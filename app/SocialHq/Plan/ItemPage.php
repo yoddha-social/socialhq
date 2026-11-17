@@ -8,7 +8,7 @@ use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\User;
 use App\Models\Workspace;
-use App\SocialHq\Ai\AiRouter;
+use App\SocialHq\Ai\AiResponses;
 use App\SocialHq\Ai\AiTask;
 use App\SocialHq\Production\Brief;
 use App\SocialHq\Production\BriefFile;
@@ -36,7 +36,7 @@ final class ItemPage
             'team' => BriefTeam::members($workspace)->map(fn (User $member): ?array => self::person($member))->values()->all(),
             'postReady' => CreatePostFromItem::isReady($item),
             'abilities' => PlanAccess::abilities($user, $workspace),
-            'aiAvailable' => AiRouter::isAvailable(AiTask::Write),
+            'aiAvailable' => AiResponses::isUsable(AiTask::Write, $user, $workspace),
         ];
     }
 
@@ -123,6 +123,8 @@ final class ItemPage
             'approved_at' => $brief->approved_at?->toIso8601String(),
             'current_round' => (int) $brief->files->max('round'),
             'accepts_uploads' => BriefRounds::acceptsUploads($brief),
+            'next_round' => BriefRounds::uploadRound($brief),
+            'can_submit' => BriefRounds::acceptsUploads($brief) && BriefRounds::submitBlocker($brief) === null,
             'rounds' => $brief->files
                 ->groupBy('round')
                 ->sortKeysDesc()

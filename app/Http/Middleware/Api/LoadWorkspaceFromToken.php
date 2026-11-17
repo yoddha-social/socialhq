@@ -49,9 +49,9 @@ class LoadWorkspaceFromToken
             return response()->json(['message' => 'Workspace access denied.'], Response::HTTP_FORBIDDEN);
         }
 
-        // Social HQ: a paused company's API keys and MCP grants stop working too.
-        if (CompanyAccess::isPaused($workspace)) {
-            return response()->json(['message' => __('socialhq_companies.paused.api')], Response::HTTP_FORBIDDEN);
+        // Social HQ: a paused company's API keys and MCP grants stop working too, like those of an account that isn't an approved company.
+        if (($refusal = CompanyAccess::apiRefusal($workspace)) !== null) {
+            return response()->json(['message' => __($refusal)], Response::HTTP_FORBIDDEN);
         }
 
         if ($context === 'mcp') {

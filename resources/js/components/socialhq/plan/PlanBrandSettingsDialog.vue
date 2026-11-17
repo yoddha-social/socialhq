@@ -23,7 +23,7 @@ import {
 import { update as updateBrandSettings } from '@/routes/socialhq/plan/brand-settings';
 
 const MAX_PILLARS = 8;
-const MAX_POSTS_PER_WEEK = 14;
+const MAX_POSTS_PER_WEEK = 7;
 
 const props = defineProps<{
     pillars: string[];

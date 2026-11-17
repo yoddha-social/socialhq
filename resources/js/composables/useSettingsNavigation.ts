@@ -137,11 +137,7 @@ export const useSettingsNavigation = () => {
                         canManageBilling.value && !selfHosted.value,
                     ),
                     // Social HQ: the company's own AI providers (account owner only).
-                    ...((
-                        page.props.socialhq as
-                            | { companyAi?: { canManage?: boolean } }
-                            | undefined
-                    )?.companyAi?.canManage
+                    ...(page.props.socialhq.companyAi.canManage
                         ? [
                               {
                                   name: 'socialhq_ai',

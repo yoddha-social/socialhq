@@ -13,12 +13,15 @@ use App\SocialHq\Http\Requests\Plan\StorePlanItemRequest;
 use App\SocialHq\Http\Requests\Plan\UpdatePlanItemRequest;
 use App\SocialHq\Knowledge\Audience\Audience;
 use App\SocialHq\Plan\ContentPlan;
+use App\SocialHq\Plan\CopyStatus;
+use App\SocialHq\Plan\ItemCopy;
 use App\SocialHq\Plan\ItemSource;
 use App\SocialHq\Plan\ItemStatus;
 use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Plan\PlanMonth;
 use App\SocialHq\Plan\PlanOptions;
+use App\SocialHq\Production\BriefStage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -28,8 +31,9 @@ use Illuminate\Validation\ValidationException;
 /**
  * Writes to the items of a month's plan from the month page: add, edit,
  * move, accept or drop a suggestion, restore, delete. Any change to an
- * approved plan sends it back for review. The item page (copy, review,
- * brief) has its own controller.
+ * approved plan sends it back for review; editing or moving an AI
+ * suggestion accepts it, so a new AI draft never replaces that work. The
+ * item page (copy, review, brief) has its own controller.
  */
 class PlanItemWriteController extends Controller
 {
@@ -58,26 +62,38 @@ class PlanItemWriteController extends Controller
 
     public function update(UpdatePlanItemRequest $request, int $item): RedirectResponse
     {
-        $found = $this->item($request, $item);
+        $found = PlanAccess::item($request, $item);
         $channel = SocialAccount::query()->where('workspace_id', $found->workspace_id)->findOrFail($request->validated('social_account_id'));
 
-        $this->change($found, fn () => $found->update([
-            ...self::withTimeZone($request->validated(), $found, $found->plan->workspace, $request->user()),
-            'platform' => $channel->platform->value,
-        ]));
+        $this->change($found, function () use ($found, $request, $channel): void {
+            $found->update([
+                ...self::withTimeZone($request->validated(), $found, $found->plan->workspace, $request->user()),
+                'platform' => $channel->platform->value,
+            ]);
+
+            // Copy approved (or in review) for one channel and format isn't approved for another.
+            if ($found->wasChanged(['social_account_id', 'content_type'])) {
+                ItemCopy::reopen($found, $request->user(), __('socialhq_production.review.reopened_format'));
+            }
+
+            $found->acceptForWork();
+        });
 
         return back();
     }
 
     public function move(MovePlanItemRequest $request, int $item): RedirectResponse
     {
-        $found = $this->item($request, $item);
+        $found = PlanAccess::item($request, $item);
 
         if ($found->scheduled_on->toDateString() !== $request->validated('scheduled_on')) {
-            $this->change($found, fn () => $found->update([
-                'scheduled_on' => $request->validated('scheduled_on'),
-                'position' => $this->nextPosition($found->plan, $request->validated('scheduled_on')),
-            ]));
+            $this->change($found, function () use ($found, $request): void {
+                $found->update([
+                    'scheduled_on' => $request->validated('scheduled_on'),
+                    'position' => $this->nextPosition($found->plan, $request->validated('scheduled_on')),
+                ]);
+                $found->acceptForWork();
+            });
         }
 
         return back();
@@ -88,7 +104,7 @@ class PlanItemWriteController extends Controller
      */
     public function accept(Request $request, int $item): RedirectResponse
     {
-        $found = $this->item($request, $item);
+        $found = PlanAccess::item($request, $item);
         $this->ensureStatus($found, ItemStatus::Suggested);
 
         $this->change($found, fn () => $found->update(['status' => ItemStatus::Planned]));
@@ -98,7 +114,7 @@ class PlanItemWriteController extends Controller
 
     public function drop(Request $request, int $item): RedirectResponse
     {
-        $found = $this->item($request, $item);
+        $found = PlanAccess::item($request, $item);
         $this->ensureStatus($found, ItemStatus::Suggested, ItemStatus::Planned);
 
         $this->change($found, fn () => $found->update(['status' => ItemStatus::Dropped]));
@@ -112,7 +128,7 @@ class PlanItemWriteController extends Controller
      */
     public function restore(Request $request, int $item): RedirectResponse
     {
-        $found = $this->item($request, $item);
+        $found = PlanAccess::item($request, $item);
         $this->ensureStatus($found, ItemStatus::Dropped);
 
         $untouchedSuggestion = $found->source === ItemSource::Ai
@@ -124,9 +140,22 @@ class PlanItemWriteController extends Controller
         return back();
     }
 
+    /**
+     * Approved copy, an approved creative or a created post is approved work:
+     * only approvers delete an item that has one. Others drop it instead.
+     */
     public function destroy(Request $request, int $item): RedirectResponse
     {
-        $found = $this->item($request, $item);
+        $found = PlanAccess::item($request, $item);
+        $found->loadMissing('brief');
+
+        $approvedWork = $found->copy_status === CopyStatus::Approved
+            || $found->brief?->stage === BriefStage::Approved
+            || $found->post_created_at !== null;
+
+        if ($approvedWork && ! PlanAccess::canApprove($request->user(), $found->plan->workspace)) {
+            throw ValidationException::withMessages(['item' => __('socialhq_plan.errors.delete_approved')]);
+        }
 
         $this->change($found, fn () => $found->delete());
 
@@ -152,16 +181,6 @@ class PlanItemWriteController extends Controller
         }
 
         return back();
-    }
-
-    /**
-     * An item of the current workspace the user may work on (another workspace's item is a 404).
-     */
-    private function item(Request $request, int $id): PlanItem
-    {
-        $workspace = PlanAccess::workspace($request);
-
-        return PlanItem::query()->with('plan')->where('workspace_id', $workspace->id)->findOrFail($id);
     }
 
     private function change(PlanItem $item, callable $write): void

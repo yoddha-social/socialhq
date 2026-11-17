@@ -46,7 +46,7 @@ class ExtractKnowledgeDocument implements ShouldQueue
         $disk = DocumentStorage::disk();
 
         if ($type === null || ! $disk->exists($document->path)) {
-            $this->markFailed($document, DocumentFailure::Unreadable);
+            self::markFailed($document, DocumentFailure::Unreadable);
 
             return;
         }
@@ -54,37 +54,12 @@ class ExtractKnowledgeDocument implements ShouldQueue
         try {
             $extracted = DocumentText::extract($disk->path($document->path), $type);
         } catch (DocumentUnreadable $unreadable) {
-            $this->markFailed($document, $unreadable->failure);
+            self::markFailed($document, $unreadable->failure);
 
             return;
         }
 
-        $chunks = Chunker::split($extracted->text);
-        $now = now();
-
-        DB::transaction(function () use ($document, $chunks, $extracted, $now): void {
-            KnowledgeChunk::query()->where('document_id', $document->id)->delete();
-
-            foreach (array_chunk($chunks, 100, preserve_keys: true) as $batch) {
-                KnowledgeChunk::query()->insert(array_map(fn (string $text, int $position): array => [
-                    'document_id' => $document->id,
-                    'workspace_id' => $document->workspace_id,
-                    'position' => $position,
-                    'text' => $text,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ], $batch, array_keys($batch)));
-            }
-
-            $document->forceFill([
-                'status' => DocumentStatus::Ready,
-                'failure' => null,
-                'pages' => $extracted->pages,
-                'characters' => mb_strlen($extracted->text),
-                'truncated' => $extracted->truncated,
-                'chunk_count' => count($chunks),
-            ])->save();
-        });
+        self::store($document, $extracted);
     }
 
     public function failed(?Throwable $exception): void
@@ -97,12 +72,66 @@ class ExtractKnowledgeDocument implements ShouldQueue
         $document = KnowledgeDocument::query()->find($this->documentId);
 
         if ($document !== null && $document->status === DocumentStatus::Processing) {
-            $this->markFailed($document, DocumentFailure::Unreadable);
+            self::markFailed($document, DocumentFailure::Unreadable);
         }
     }
 
-    private function markFailed(KnowledgeDocument $document, DocumentFailure $failure): void
+    /**
+     * Saves the text's excerpts and marks the document ready, with any other
+     * columns given, in one transaction. False when the document was deleted
+     * meanwhile (nothing is written).
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public static function store(KnowledgeDocument $document, ExtractedText $extracted, array $attributes = []): bool
     {
-        $document->forceFill(['status' => DocumentStatus::Failed, 'failure' => $failure, 'chunk_count' => 0, 'characters' => 0])->save();
+        $chunks = Chunker::split($extracted->text);
+        $now = now();
+
+        return DB::transaction(function () use ($document, $chunks, $extracted, $attributes, $now): bool {
+            if (! KnowledgeDocument::query()->whereKey($document->id)->lockForUpdate()->exists()) {
+                return false;
+            }
+
+            KnowledgeChunk::query()->where('document_id', $document->id)->delete();
+
+            foreach (array_chunk($chunks, 100, preserve_keys: true) as $batch) {
+                KnowledgeChunk::query()->insert(array_map(fn (string $text, int $position): array => [
+                    'document_id' => $document->id,
+                    'workspace_id' => $document->workspace_id,
+                    'position' => $position,
+                    'text' => $text,
+                    'terms' => json_encode(KnowledgeChunk::termsOf($text), JSON_THROW_ON_ERROR),
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ], $batch, array_keys($batch)));
+            }
+
+            $document->forceFill([
+                ...$attributes,
+                'status' => DocumentStatus::Ready,
+                'failure' => null,
+                'pages' => $extracted->pages,
+                'characters' => mb_strlen($extracted->text),
+                'truncated' => $extracted->truncated,
+                'chunk_count' => count($chunks),
+            ])->save();
+
+            return true;
+        });
+    }
+
+    /**
+     * The document failed: its reason is kept and any excerpts of an earlier
+     * text go, so nothing it no longer holds reaches the AI.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public static function markFailed(KnowledgeDocument $document, DocumentFailure $failure, array $attributes = []): void
+    {
+        DB::transaction(function () use ($document, $failure, $attributes): void {
+            KnowledgeChunk::query()->where('document_id', $document->id)->delete();
+            $document->forceFill([...$attributes, 'status' => DocumentStatus::Failed, 'failure' => $failure, 'chunk_count' => 0, 'characters' => 0])->save();
+        });
     }
 }

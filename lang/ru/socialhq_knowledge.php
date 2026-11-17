@@ -28,6 +28,7 @@ return [
             'ready' => 'Ready',
             'failed' => 'Couldn\'t read it',
         ],
+        'last_read_failed' => 'We couldn\'t read it again, so the AI keeps using the text read before.',
         'in_ai' => 'Used when relevant',
         'not_in_ai' => 'Not used by AI',
         'failures' => [

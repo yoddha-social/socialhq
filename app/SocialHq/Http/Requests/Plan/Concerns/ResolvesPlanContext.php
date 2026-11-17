@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\SocialHq\Http\Requests\Plan\Concerns;
 
+use App\Enums\PostPlatform\ContentType;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use App\SocialHq\Plan\CreativeKind;
+use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Plan\PlanMonth;
 use App\SocialHq\Plan\PlanOptions;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\Validator;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -36,10 +40,7 @@ trait ResolvesPlanContext
 
     protected function planItem(): PlanItem
     {
-        return $this->resolvedItem ??= PlanItem::query()
-            ->with('plan')
-            ->where('workspace_id', $this->planWorkspace()->id)
-            ->findOrFail((int) $this->route('item'));
+        return $this->resolvedItem ??= PlanAccess::findItem($this->planWorkspace(), (int) $this->route('item'));
     }
 
     /**
@@ -110,5 +111,30 @@ trait ResolvesPlanContext
         }
 
         return $pillars;
+    }
+
+    /**
+     * The format must be one the channel offers and able to carry what is
+     * made (the checks the AI planner's suggestions get). An item with a
+     * brief keeps a creative of the brief's kind: changing it would leave
+     * the brief behind, and the item ready to post without its creative.
+     */
+    protected function checkFormat(Validator $validator): void
+    {
+        $channel = $this->workspaceChannels()->firstWhere('id', $this->input('social_account_id'));
+        $type = ContentType::tryFrom((string) $this->input('content_type'));
+        $creative = CreativeKind::tryFrom((string) $this->input('creative'));
+
+        if ($channel !== null && $type !== null && ! PlanOptions::fitsChannel($type, $channel->platform)) {
+            $validator->errors()->add('content_type', __('socialhq_plan.validation.content_type'));
+        } elseif ($type !== null && $creative !== null && ! PlanOptions::creativeFits($creative, $type)) {
+            $validator->errors()->add('creative', __('socialhq_plan.validation.creative'));
+        }
+
+        $brief = $this->route('item') !== null ? $this->planItem()->brief : null;
+
+        if ($brief !== null && $creative !== null && $creative->briefKind() !== $brief->kind) {
+            $validator->errors()->add('creative', __('socialhq_plan.validation.creative_has_brief'));
+        }
     }
 }

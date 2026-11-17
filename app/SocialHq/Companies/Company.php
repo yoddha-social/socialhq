@@ -24,7 +24,14 @@ class Company extends Model
 
     protected $table = 'shq_companies';
 
-    protected $guarded = ['id'];
+    /**
+     * What the owner asks for. The status, the decision and whether the
+     * company may use the platform's AI are set explicitly (forceFill), by
+     * CompanyRequests and CompanyDecisions only.
+     *
+     * @var list<string>
+     */
+    protected $fillable = ['account_id', 'name', 'requested_by', 'requested_at', 'admins_notified_at'];
 
     protected function casts(): array
     {

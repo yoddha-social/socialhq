@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import date from '@/date';
+import { extractErrorMessage } from '@/lib/httpError';
 import { acceptAttribute } from '@/lib/mediaType';
 import {
     approve as approveCreative,
@@ -41,15 +42,9 @@ const rounds = computed(() => props.brief.rounds ?? []);
 const currentRound = computed(() => props.brief.current_round ?? 0);
 const acceptsUploads = computed(() => props.brief.accepts_uploads ?? false);
 const nextRound = computed(() =>
-    props.brief.stage === 'changes_requested'
-        ? currentRound.value + 1
-        : Math.max(1, currentRound.value),
+    Math.max(1, props.brief.next_round ?? currentRound.value),
 );
-const canSubmit = computed(
-    () =>
-        currentRound.value > 0 &&
-        (props.brief.stage === 'todo' || props.brief.stage === 'in_progress'),
-);
+const canSubmit = computed(() => props.brief.can_submit ?? false);
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const note = ref('');
@@ -65,28 +60,62 @@ const pickFiles = (): void => {
     fileInput.value?.click();
 };
 
-const uploadOne = (file: File): Promise<boolean> =>
+/**
+ * 'stop' means the server or the network refused the request itself (rate
+ * limit, file over the size limit, outage), so the next files would fail too.
+ */
+type UploadResult = 'uploaded' | 'failed' | 'stop';
+
+const uploadFailedMessage = (file: File, status?: number): string => {
+    if (status === 429) {
+        return trans('socialhq_production.creative.upload_rate_limited');
+    }
+
+    if (status === 413) {
+        return trans('socialhq_production.creative.upload_too_large', {
+            name: file.name,
+        });
+    }
+
+    return trans('socialhq_production.creative.upload_failed', {
+        name: file.name,
+    });
+};
+
+// Settles in onFinish, which runs after every outcome (success, validation
+// error, HTTP error, network error, cancel), so the upload loop never hangs.
+const uploadOne = (file: File): Promise<UploadResult> =>
     new Promise((resolve) => {
+        let result: UploadResult = 'failed';
+
         router.post(
             storeFile.url(props.itemId),
             { file, note: note.value },
             {
                 forceFormData: true,
                 preserveScroll: true,
-                onSuccess: () => resolve(true),
-                onError: (errors) => {
-                    toast.error(
-                        errors.file ??
-                            trans(
-                                'socialhq_production.creative.upload_failed',
-                                {
-                                    name: file.name,
-                                },
-                            ),
-                    );
-                    resolve(false);
+                onSuccess: () => {
+                    result = 'uploaded';
                 },
-                onCancel: () => resolve(false),
+                onError: (errors) => {
+                    toast.error(errors.file ?? uploadFailedMessage(file));
+                },
+                onHttpException: (response) => {
+                    toast.error(
+                        extractErrorMessage({ response }) ??
+                            uploadFailedMessage(file, response.status),
+                    );
+                    result = response.status === 413 ? 'failed' : 'stop';
+
+                    return false;
+                },
+                onNetworkError: () => {
+                    toast.error(uploadFailedMessage(file));
+                    result = 'stop';
+
+                    return false;
+                },
+                onFinish: () => resolve(result),
             },
         );
     });
@@ -101,8 +130,12 @@ const onFilesChosen = async (event: Event): Promise<void> => {
     for (const file of files) {
         uploadingName.value = file.name;
 
-        if (await uploadOne(file)) {
+        const result = await uploadOne(file);
+
+        if (result === 'uploaded') {
             uploaded++;
+        } else if (result === 'stop') {
+            break;
         }
     }
 
@@ -162,7 +195,7 @@ const confirmDecision = (decisionNote: string): void => {
         decision.value === 'approve'
             ? approveCreative.url(props.itemId)
             : requestCreativeChanges.url(props.itemId),
-        { note: decisionNote },
+        { note: decisionNote, round: currentRound.value },
         {
             preserveScroll: true,
             onStart: () => {

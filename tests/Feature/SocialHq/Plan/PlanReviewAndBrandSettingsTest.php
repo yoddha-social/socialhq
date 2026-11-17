@@ -94,7 +94,7 @@ test('brand settings refuse too many, long or repeated pillars, another brand\'s
     'a long pillar' => [fn () => ['pillars' => [str_repeat('a', 41)], 'cadence' => []], 'pillars.0'],
     'the same pillar twice' => [fn () => ['pillars' => ['Menu', 'menu'], 'cadence' => []], 'pillars.0'],
     'another brand\'s channel' => [fn () => ['pillars' => [], 'cadence' => [SocialAccount::factory()->create()->id => 2]], 'cadence'],
-    'fifteen posts a week' => [fn () => ['pillars' => [], 'cadence' => [SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'id' => '0199a000-0000-7000-8000-000000000001'])->id => 15]], 'cadence.0199a000-0000-7000-8000-000000000001'],
+    'eight posts a week (one a day at most)' => [fn () => ['pillars' => [], 'cadence' => [SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'id' => '0199a000-0000-7000-8000-000000000001'])->id => 8]], 'cadence.0199a000-0000-7000-8000-000000000001'],
 ]);
 
 test('only admins change brand settings', function () {

@@ -11,8 +11,10 @@ import {
     IconWorld,
 } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
+import { toast } from 'vue-sonner';
 
 import EmptyState from '@/components/EmptyState.vue';
+import { localizedDay } from '@/components/socialhq/localizedDay';
 import EventCountryDialog from '@/components/socialhq/plan/EventCountryDialog.vue';
 import EventDialog from '@/components/socialhq/plan/EventDialog.vue';
 import EventListItem from '@/components/socialhq/plan/EventListItem.vue';
@@ -85,13 +87,6 @@ const FILTERS: EventFilter[] = [
     'brand',
     'unverified',
 ];
-
-/**
- * Every date on this screen goes through here: `dayjs.locale()` is global and
- * not reactive, so the month and day names follow a language switch.
- */
-const localized = (value?: dayjs.ConfigType) =>
-    dayjs(value).locale(activeLocale.value.toLowerCase());
 
 const filter = ref<EventFilter>('all');
 
@@ -268,8 +263,24 @@ const trackBusy = (event: CalendarEventRow) => ({
     },
 });
 
+/** Confirms the date as shown: the server refuses it if it changed since. */
 const confirmEvent = (event: CalendarEventRow): void => {
-    router.post(verifyEvent.url(event.id), {}, trackBusy(event));
+    router.post(
+        verifyEvent.url(event.id),
+        {
+            name: event.name,
+            starts_on: event.starts_on,
+            ends_on: event.ends_on,
+        },
+        {
+            ...trackBusy(event),
+            onError: (errors) => {
+                if (errors.event) {
+                    toast.error(errors.event);
+                }
+            },
+        },
+    );
 };
 
 const unconfirmEvent = (event: CalendarEventRow): void => {
@@ -567,7 +578,7 @@ const confirmDelete = (): void => {
                                     data-testid="socialhq-events-period"
                                 >
                                     {{
-                                        localized(`${month}-01`).format(
+                                        localizedDay(`${month}-01`).format(
                                             'MMMM YYYY',
                                         )
                                     }}
@@ -599,8 +610,8 @@ const confirmDelete = (): void => {
                                 class="text-base font-semibold text-foreground"
                                 data-testid="socialhq-events-period"
                             >
-                                {{ localized(from).format('D MMM') }} –
-                                {{ localized(to).format('D MMM YYYY') }}
+                                {{ localizedDay(from).format('D MMM') }} –
+                                {{ localizedDay(to).format('D MMM YYYY') }}
                             </h2>
 
                             <div
@@ -769,13 +780,15 @@ const confirmDelete = (): void => {
                                         <span
                                             class="text-2xl leading-none font-semibold text-foreground tabular-nums"
                                             >{{
-                                                localized(group.key).format('D')
+                                                localizedDay(group.key).format(
+                                                    'D',
+                                                )
                                             }}</span
                                         >
                                         <span
                                             class="text-sm font-medium text-muted-foreground capitalize"
                                             >{{
-                                                localized(group.key).format(
+                                                localizedDay(group.key).format(
                                                     view === 'month'
                                                         ? 'ddd'
                                                         : 'MMM, ddd',
@@ -810,7 +823,7 @@ const confirmDelete = (): void => {
                                         :until="
                                             event.ends_on > event.starts_on
                                                 ? $t('socialhq_events.until', {
-                                                      date: localized(
+                                                      date: localizedDay(
                                                           event.ends_on,
                                                       ).format('D MMM'),
                                                   })

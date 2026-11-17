@@ -387,6 +387,20 @@ const confirmDelete = (): void => {
                         }}
                     </p>
                     <p
+                        v-if="document.status === 'ready' && document.failure"
+                        class="text-sm text-muted-foreground"
+                        :data-testid="`socialhq-document-last-read-${document.id}`"
+                    >
+                        {{
+                            $t('socialhq_knowledge.documents.last_read_failed')
+                        }}
+                        {{
+                            $t(
+                                `socialhq_knowledge.documents.failures.${document.failure}`,
+                            )
+                        }}
+                    </p>
+                    <p
                         v-if="document.source === 'website' && canEdit"
                         class="text-sm text-muted-foreground"
                     >

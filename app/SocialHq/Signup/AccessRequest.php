@@ -24,7 +24,13 @@ class AccessRequest extends Model
 
     protected $table = 'shq_access_requests';
 
-    protected $guarded = ['id'];
+    /**
+     * Who asked. The status and the decision are set explicitly
+     * (forceFill), by AccessRequests only.
+     *
+     * @var list<string>
+     */
+    protected $fillable = ['account_id', 'user_id', 'name', 'email', 'admins_notified_at'];
 
     protected function casts(): array
     {

@@ -12,6 +12,7 @@ use App\SocialHq\AiGraphics\GraphicSafetyReviewer;
 use App\Support\MediaImportStatus;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Laravel\Ai\Image;
 use Laravel\Ai\Prompts\ImagePrompt;
 
@@ -247,4 +248,63 @@ test('a graphic made before copies were kept is attached from its first upload',
     $graphic->update(['result_path' => null]);
 
     $this->postJson(route('socialhq.ai-graphics.attach', $importId))->assertCreated();
+});
+
+test('our copy of a graphic is kept under its workspace and goes with it', function () {
+    aiGraphicAllowed();
+    Image::fake([$this->png]);
+
+    $importId = $this->actingAs($this->owner)
+        ->postJson(route('socialhq.ai-graphics.store'), ['prompt' => 'A Tihar greeting', 'format' => 'square'])
+        ->json('import_id');
+    $graphic = AiGraphic::query()->where('import_id', $importId)->sole();
+
+    // A copy stored before the per-workspace layout.
+    $older = "socialhq/ai-graphics/results/{$graphic->id}-old.png";
+    Storage::disk('local')->put($older, 'old');
+    AiGraphic::query()->create([...$graphic->only(['workspace_id', 'user_id', 'prompt', 'format', 'provider', 'status']), 'import_id' => (string) Str::uuid(), 'result_path' => $older]);
+
+    expect($graphic->result_path)->toStartWith("socialhq/ai-graphics/results/{$this->workspace->id}/");
+
+    // The brand's uploads go first (deleting a workspace through the app purges them).
+    Media::query()->where('workspace_id', $this->workspace->id)->delete();
+    $this->workspace->delete();
+
+    Storage::disk('local')->assertMissing($graphic->result_path);
+    Storage::disk('local')->assertMissing($older);
+});
+
+test('copies older than the kept days are pruned, and the graphic falls back to its upload', function () {
+    config(['socialhq.ai_graphics.keep_results_days' => 30]);
+    aiGraphicAllowed();
+    Image::fake([$this->png]);
+
+    $importId = $this->actingAs($this->owner)
+        ->postJson(route('socialhq.ai-graphics.store'), ['prompt' => 'A Tihar greeting', 'format' => 'square'])
+        ->json('import_id');
+    $graphic = AiGraphic::query()->where('import_id', $importId)->sole();
+    $path = $graphic->result_path;
+
+    $this->artisan('socialhq:ai-graphics:prune')->assertSuccessful();
+    Storage::disk('local')->assertExists($path);
+
+    $this->travel(31)->days();
+    $this->artisan('socialhq:ai-graphics:prune')->assertSuccessful();
+
+    Storage::disk('local')->assertMissing($path);
+    expect($graphic->fresh()->result_path)->toBeNull();
+});
+
+test('deleting the upload a graphic was stored as only forgets it', function () {
+    aiGraphicAllowed();
+    Image::fake([$this->png]);
+
+    $importId = $this->actingAs($this->owner)
+        ->postJson(route('socialhq.ai-graphics.store'), ['prompt' => 'A Tihar greeting', 'format' => 'square'])
+        ->json('import_id');
+    $graphic = AiGraphic::query()->where('import_id', $importId)->sole();
+
+    Media::query()->whereKey($graphic->media_id)->delete();
+
+    expect($graphic->fresh()->media_id)->toBeNull();
 });

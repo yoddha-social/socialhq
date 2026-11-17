@@ -8,13 +8,11 @@ import {
 import { computed } from 'vue';
 
 import PlatformLogo from '@/components/PlatformLogo.vue';
-import type {
-    CopyStatus,
-    PlanItemDetail,
-} from '@/components/socialhq/plan/item/types';
+import { localizedDay } from '@/components/socialhq/localizedDay';
+import { reviewBadgeVariant } from '@/components/socialhq/plan/copyStatus';
+import type { PlanItemDetail } from '@/components/socialhq/plan/item/types';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import dayjs from '@/dayjs';
 import { show as planShow } from '@/routes/socialhq/plan';
 
 const props = defineProps<{
@@ -22,28 +20,11 @@ const props = defineProps<{
 }>();
 
 const monthLabel = computed(() =>
-    dayjs(`${props.item.month}-01`).format('MMMM YYYY'),
+    localizedDay(`${props.item.month}-01`).format('MMMM YYYY'),
 );
 const dayLabel = computed(() =>
-    dayjs(props.item.scheduled_on).format('dddd, LL'),
+    localizedDay(props.item.scheduled_on).format('dddd, LL'),
 );
-
-const copyVariant = (
-    status: CopyStatus,
-): 'secondary' | 'info' | 'warning' | 'success' | 'outline' => {
-    switch (status) {
-        case 'in_review':
-            return 'info';
-        case 'changes_requested':
-            return 'warning';
-        case 'approved':
-            return 'success';
-        case 'draft':
-            return 'secondary';
-        default:
-            return 'outline';
-    }
-};
 </script>
 
 <template>
@@ -125,7 +106,7 @@ const copyVariant = (
                 </template>
             </Badge>
             <Badge
-                :variant="copyVariant(item.copy_status)"
+                :variant="reviewBadgeVariant(item.copy_status)"
                 data-testid="item-copy-status"
             >
                 <IconCircleCheck v-if="item.copy_status === 'approved'" />

@@ -466,6 +466,8 @@ return [
         'max_reference_kilobytes' => 10240,
         'per_user_per_hour' => (int) env('SOCIALHQ_AI_GRAPHICS_PER_USER_PER_HOUR', 20),
         'per_workspace_per_day' => (int) env('SOCIALHQ_AI_GRAPHICS_PER_WORKSPACE_PER_DAY', 100),
+        // Days our copy of a generated graphic is kept (at least the 7 Recent AI graphics lists).
+        'keep_results_days' => (int) env('SOCIALHQ_AI_GRAPHICS_KEEP_RESULTS_DAYS', 30),
     ],
 
     /*

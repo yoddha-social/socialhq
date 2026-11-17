@@ -14,6 +14,7 @@ import {
 import { computed, ref, watch } from 'vue';
 
 import EmptyState from '@/components/EmptyState.vue';
+import { localizedDay } from '@/components/socialhq/localizedDay';
 import PlanBrandSettingsDialog from '@/components/socialhq/plan/PlanBrandSettingsDialog.vue';
 import PlanGenerateDialog from '@/components/socialhq/plan/PlanGenerateDialog.vue';
 import PlanGenerationPanel from '@/components/socialhq/plan/PlanGenerationPanel.vue';
@@ -33,7 +34,6 @@ import PlanViewToggle, {
 } from '@/components/socialhq/plan/PlanViewToggle.vue';
 import PlanWhatWorkedPanel from '@/components/socialhq/plan/PlanWhatWorkedPanel.vue';
 import type {
-    PlanAbilities,
     PlanAudience,
     PlanChannel,
     PlanData,
@@ -41,6 +41,7 @@ import type {
     PlanGenerateOptions,
     PlanItem,
     PlanLookups,
+    PlanMonthAbilities,
     PlanOwner,
     WhatWorked,
 } from '@/components/socialhq/plan/types';
@@ -52,8 +53,6 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useAtLeastBreakpoint } from '@/composables/useBreakpoint';
-import dayjs from '@/dayjs';
-import { activeLocale } from '@/language';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { channels as channelsSettings } from '@/routes/app/workspace';
 import {
@@ -79,7 +78,7 @@ const props = defineProps<{
     pillars: string[];
     cadence: Record<string, number | null>;
     creatives: string[];
-    abilities: PlanAbilities;
+    abilities: PlanMonthAbilities;
     ai: { available: boolean; hourlyLimit: number };
     audience: PlanAudience;
     generateDefaults: PlanGenerateOptions;
@@ -118,9 +117,7 @@ const pageScrolls = computed(() => view.value === 'list');
 const isDesktop = useAtLeastBreakpoint('md');
 
 const monthLabel = computed(() =>
-    dayjs(`${props.month}-01`)
-        .locale(activeLocale.value.toLowerCase())
-        .format('MMMM YYYY'),
+    localizedDay(`${props.month}-01`).format('MMMM YYYY'),
 );
 
 const lookups = computed<PlanLookups>(() => ({

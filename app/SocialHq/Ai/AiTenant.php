@@ -35,7 +35,7 @@ final class AiTenant
 
     /**
      * The workspace run() was given, alongside $stack (null when it got an
-     * account or the platform). Only the usage log reads it.
+     * account or the platform). The usage log and LiteLLM's spend logs read it.
      *
      * @var list<string|null>
      */

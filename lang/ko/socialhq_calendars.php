@@ -105,6 +105,8 @@ return [
         'too_many_imports' => 'You\'ve imported :max calendars, the most a brand can have. To import another, delete an old one first.',
         'no_rows' => 'We couldn\'t find any rows in this file. Check that it has a header row and at least one post under it.',
         'unreadable' => 'We couldn\'t read this file. Save it again as CSV or Excel (.xlsx) and upload it.',
+        'expands_too_much' => 'This file holds more than we can read. To import it, split it into smaller files, for example one per year.',
+        'same_file' => 'You\'ve already imported this file as ":name". To import it again, delete that calendar first.',
         'date_column' => 'Choose the column that holds the date.',
         'nothing_to_import' => 'None of the rows could be imported. Most were skipped because: :reason',
         'already_imported' => 'This calendar was already imported. Close this window to see it.',

@@ -4,6 +4,7 @@ import { IconSparkles } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { ref } from 'vue';
 
+import { useAiTask } from '@/components/socialhq/aiTasks';
 import { Button } from '@/components/ui/button';
 import { extractErrorMessage } from '@/lib/httpError';
 import type { MediaEdit } from '@/lib/mediaEditor';
@@ -14,6 +15,9 @@ const props = defineProps<{
 }>();
 
 const edit = defineModel<MediaEdit>('edit', { required: true });
+
+// Social HQ: alt text generation shows only while the company's AI can read images.
+const canGenerate = useAiTask('vision');
 
 const http = useHttp({ media_id: '' });
 const generating = ref(false);
@@ -61,6 +65,7 @@ const generate = async (): Promise<void> => {
             :placeholder="$t('posts.composer.media_editor.alt_placeholder')"
         />
         <Button
+            v-if="canGenerate"
             type="button"
             variant="outline"
             class="w-full"

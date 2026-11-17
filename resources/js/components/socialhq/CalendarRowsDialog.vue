@@ -49,16 +49,31 @@ const rows = ref<PastCalendarRow[]>([]);
 const total = ref(0);
 const error = ref<string | null>(null);
 
+/** Counts loads, so an answer for a calendar opened earlier is ignored. */
+let latestLoad = 0;
+
 const load = async (calendar: PastCalendar): Promise<void> => {
+    http.cancel();
+
+    const current = ++latestLoad;
+
     rows.value = [];
+    total.value = 0;
     error.value = null;
 
     try {
         const response = await http.get(rowsRoute.url(calendar.id));
+
+        if (current !== latestLoad) {
+            return;
+        }
+
         rows.value = response?.rows ?? [];
         total.value = response?.total ?? 0;
     } catch {
-        error.value = trans('socialhq_calendars.errors.rows_failed');
+        if (current === latestLoad) {
+            error.value = trans('socialhq_calendars.errors.rows_failed');
+        }
     }
 };
 

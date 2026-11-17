@@ -16,7 +16,7 @@ runs:
   using: 'composite'
   steps:
     - name: Setup PHP
-      uses: shivammathur/setup-php@v2
+      uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
       with:
         php-version: '8.5'
         extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, pdo_pgsql, pdo_mysql, bcmath, intl, gd, redis
@@ -24,13 +24,13 @@ runs:
 
     - name: Setup Node.js
       if: inputs.node == 'true'
-      uses: actions/setup-node@v6
+      uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
       with:
         node-version: '22'
         cache: 'npm'
 
     - name: Cache Composer dependencies
-      uses: actions/cache@v6
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: vendor
         key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}

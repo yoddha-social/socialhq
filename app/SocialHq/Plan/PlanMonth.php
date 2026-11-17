@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\Timezone;
 use Carbon\CarbonImmutable;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * A plan's month, as a date: the first day, at midnight UTC so its date
@@ -16,13 +17,30 @@ use Carbon\CarbonImmutable;
  */
 final class PlanMonth
 {
+    /**
+     * The month a route names; none means the user's current month, and one
+     * that isn't a month ("2026-13") is not found.
+     */
     public static function parse(?string $month, User $user): CarbonImmutable
     {
-        if (is_string($month) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month) === 1) {
-            return CarbonImmutable::createFromFormat('!Y-m-d', "{$month}-01", 'UTC');
+        if ($month === null || $month === '') {
+            return self::current($user);
         }
 
-        return self::current($user);
+        return self::tryParse($month) ?? abort(Response::HTTP_NOT_FOUND);
+    }
+
+    /**
+     * A "YYYY-MM" month from 2000 to 2100, or null for anything else (a
+     * filter that ignores what it can't read).
+     */
+    public static function tryParse(mixed $month): ?CarbonImmutable
+    {
+        if (! is_string($month) || preg_match('/^(\d{4})-(0[1-9]|1[0-2])$/', $month, $parts) !== 1 || (int) $parts[1] < 2000 || (int) $parts[1] > 2100) {
+            return null;
+        }
+
+        return CarbonImmutable::createFromFormat('!Y-m-d', "{$month}-01", 'UTC');
     }
 
     public static function current(User $user): CarbonImmutable

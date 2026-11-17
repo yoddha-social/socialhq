@@ -209,7 +209,7 @@ test('only the owner of an approved company manages its AI', function () {
 
     // A paused company's owner is sent to the paused page before anything else.
     config(['trypost.self_hosted' => true, 'socialhq.companies.required' => true]);
-    $this->company->update(['status' => 'suspended']);
+    $this->company->forceFill(['status' => 'suspended'])->save();
     $this->actingAs($this->owner)->get(route('socialhq.ai-settings.show'))->assertRedirect(route('socialhq.company.paused'));
 
     Http::assertNothingSent();

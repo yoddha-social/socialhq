@@ -22,6 +22,9 @@ final class SourceUnavailable extends RuntimeException
 
     public const UNREACHABLE = 'unreachable';
 
+    /** Compressed although we asked for no compression: never decoded, so unreadable. */
+    public const ENCODED = 'encoded';
+
     public function __construct(public readonly string $reason, public readonly ?string $location = null)
     {
         parent::__construct("Source unavailable: {$reason}");

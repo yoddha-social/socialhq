@@ -5,8 +5,6 @@ declare(strict_types=1);
 // Social HQ copy, English only: bin/socialhq-sync-lang copies it to the other locales.
 
 return [
-    'title' => 'Production',
-
     'item' => [
         'back' => 'Back to :month',
         'no_channel' => 'No channel',
@@ -84,7 +82,6 @@ return [
             'by' => ':name, :time',
             'view' => 'View',
             'compare' => 'Compare',
-            'compare_title' => 'Compare versions',
             'compare_with' => 'Compare with',
             'use' => 'Copy into editor',
             'close' => 'Close',
@@ -143,6 +140,7 @@ return [
         ],
         'errors' => [
             'not_needed' => 'This item has no creative to make, so it doesn\'t need a brief.',
+            'kind_fixed' => 'A brief\'s kind follows what its item needs made, so it can\'t change here.',
         ],
     ],
 
@@ -167,6 +165,8 @@ return [
         'download' => 'Download',
         'uploaded_by' => ':name, :time',
         'upload_failed' => 'Couldn\'t upload :name. Try again.',
+        'upload_too_large' => ':name is larger than uploads allow. Upload a smaller or compressed file.',
+        'upload_rate_limited' => 'You\'ve uploaded many files in a short time. Wait a minute, then upload the rest.',
         'errors' => [
             'type' => 'This file type isn\'t accepted. Upload an image, an MP4 or MOV video, or a PDF.',
             'not_accepting' => 'Uploads are closed while this round is in review, and once the creative is approved.',
@@ -197,7 +197,7 @@ return [
             'kind' => 'Kind',
             'all_kinds' => 'All kinds',
             'month' => 'Month',
-            'all_months' => 'All months',
+            'all_months' => 'Open work',
         ],
         'empty_title' => 'No briefs yet',
         'empty_description' => 'Briefs start in the content plan: open an item that needs a graphic or video, then click Create brief. It stays here until its creative is approved.',
@@ -213,11 +213,10 @@ return [
         'move_card' => 'Move :title',
         'moved' => 'Moved to :stage.',
         'move_failed' => 'Couldn\'t move the card. Try again.',
-        'approvers_note' => 'Only :names can move cards into or out of Approved and Changes requested.',
+        'approvers_note' => 'Only :names can take cards out of In review, or move them into or out of Approved and Changes requested.',
         'errors' => [
-            'approvers_only' => 'Only :names can move cards into or out of Approved and Changes requested.',
+            'approvers_only' => 'Only :names can take cards out of In review, or move them into or out of Approved and Changes requested.',
             'review_needs_files' => 'To send this creative for review, upload the files for a new round first.',
-            'approve_needs_files' => 'To approve this creative, its files need to be uploaded first.',
         ],
     ],
 
@@ -247,10 +246,13 @@ return [
             'reopened' => 'started a new version after approval',
             'reopened_creative' => 'reopened the approved creative',
         ],
+        'reopened_format' => 'The channel or format changed, so the copy needs review again.',
+        'reopened_brief' => 'The brief changed after approval, so the creative needs a new round.',
         'about_version' => 'Copy, version :number',
         'about_round' => 'Creative, round :round',
         'errors' => [
             'note_required' => 'Say what should change.',
+            'changed' => 'This changed after you opened it. Reload the page to see the latest, then decide again.',
         ],
     ],
 ];

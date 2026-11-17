@@ -12,6 +12,7 @@ use App\Models\Workspace;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Plan\Ai\ContentPlanner;
+use App\SocialHq\Plan\Ai\GeneratePlanSuggestions;
 use App\SocialHq\Plan\Ai\PlannerContext;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\GenerationStatus;
@@ -405,6 +406,23 @@ test('a new draft keeps a suggestion someone already started work on', function 
 
     expect(PlanItem::query()->whereKey($started->id)->exists())->toBeTrue()
         ->and(PlanItem::query()->whereKey($untouched->id)->exists())->toBeFalse();
+});
+
+test('a run may plan the lead-up to an event just after its days', function () {
+    $event = CalendarEvent::factory()->verified()->create(['account_id' => $this->workspace->account_id, 'key' => 'tihar', 'starts_on' => $this->month->addDays(12), 'ends_on' => $this->month->addDays(12)]);
+    $this->plan->update(['generation_options' => ['from' => ($this->day)(3), 'to' => ($this->day)(10), 'old_calendars' => false, 'past_posts' => false, 'audience_events' => false]]);
+
+    expect(collect(PlannerContext::build($this->plan->fresh(), CarbonImmutable::now('UTC'))['events'])->pluck('key')->all())->toBe(['tihar']);
+
+    ContentPlanner::fake([['summary' => 'Lead-up.', 'items' => [($this->suggestion)(['date' => ($this->day)(10), 'event_key' => 'tihar', 'title' => 'Tihar is coming'])]]]);
+
+    $this->actingAs($this->member)->post(route('socialhq.plan.generate', $this->monthKey), ['from' => ($this->day)(3), 'to' => ($this->day)(10)])->assertSessionHasNoErrors();
+
+    expect($this->plan->fresh()->items()->sole()->event_id)->toBe($event->id);
+});
+
+test('a stale run outlives the job\'s timeout', function () {
+    expect(ContentPlan::STALE_MINUTES * 60)->toBeGreaterThan((new GeneratePlanSuggestions(1, 'run'))->timeout);
 });
 
 test('kept suggestions count toward a channel\'s posts per week, and the AI is shown them', function () {

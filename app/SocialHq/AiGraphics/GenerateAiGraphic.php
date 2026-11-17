@@ -11,6 +11,7 @@ use App\Models\Workspace;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiTask;
 use App\SocialHq\Ai\AiTenant;
+use App\SocialHq\Ai\AiUnavailableException;
 use App\Support\MediaImportStatus;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -60,6 +61,17 @@ class GenerateAiGraphic implements ShouldQueue
 
             // The job has no signed-in user: the workspace decides whose AI it uses.
             AiTenant::run($workspace, fn () => $this->generate($graphic, $workspace));
+        } catch (AiUnavailableException $exception) {
+            // AI not set up for the company (it changed after the request) is a configuration state: say how to set it up.
+            if (! $exception->isConfigurationState()) {
+                report($exception);
+            }
+
+            if ($graphic !== null) {
+                $this->finish($graphic, AiGraphic::FAILED, $exception->isConfigurationState()
+                    ? $exception->messageFor(User::query()->find($graphic->user_id))
+                    : __('socialhq.ai_graphics.errors.generation_failed'));
+            }
         } catch (Throwable $exception) {
             report($exception);
 
@@ -134,8 +146,7 @@ class GenerateAiGraphic implements ShouldQueue
             @unlink($path);
         }
 
-        $resultPath = "socialhq/ai-graphics/results/{$graphic->id}.{$extension}";
-        Storage::disk('local')->put($resultPath, $bytes);
+        $resultPath = AiGraphicResults::store($graphic, $bytes, $extension);
 
         $graphic->update(['status' => AiGraphic::GENERATED, 'media_id' => $media->id, 'result_path' => $resultPath]);
         MediaImportStatus::complete($graphic->import_id, $media);

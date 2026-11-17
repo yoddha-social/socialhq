@@ -3,17 +3,25 @@
 declare(strict_types=1);
 
 use App\Ai\Agents\PostContentShortener;
+use App\Enums\User\Locale;
 use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiTask;
 use App\SocialHq\Ai\AiTenant;
+use App\SocialHq\Ai\AiTimeout;
 use App\SocialHq\Ai\AiUnavailableException;
 use App\SocialHq\Ai\Company\CompanyAi;
 use App\SocialHq\Ai\Company\ProviderCredential;
 use App\SocialHq\Companies\Company;
+use App\SocialHq\Knowledge\Website\WebsiteReader;
+use App\SocialHq\Plan\Ai\ContentPlanner;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Ai\AiManager;
 
 beforeEach(function () {
@@ -110,7 +118,7 @@ test('a company with neither fails closed and tells the owner where to set it up
 
 test('a suspended company has no AI, even with its own keys', function () {
     ['owner' => $owner, 'company' => $company] = routingCompany(usesPlatformAi: true, virtualKey: 'sk-company-a');
-    $company->update(['status' => 'suspended']);
+    $company->forceFill(['status' => 'suspended'])->save();
 
     $this->actingAs($owner);
 
@@ -168,4 +176,61 @@ test('direct mode ignores companies', function () {
     ]);
 
     expect(AiRouter::route(AiTask::Write))->toBe(['openai' => null]);
+});
+
+test('a company key no secrets key opens turns its AI off instead of failing every page', function (string $broken) {
+    ['owner' => $owner] = routingCompany(virtualKey: 'sk-company-a');
+    Log::spy();
+
+    config($broken === 'missing'
+        ? ['socialhq.secrets.key' => null]
+        : ['socialhq.secrets.key' => 'base64:'.base64_encode(random_bytes(32)), 'socialhq.secrets.previous_keys' => []]);
+
+    $this->actingAs($owner)->get(route('app.posts.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('aiTasks.write', false));
+
+    // Logged once for the request, not on every check.
+    Log::shouldHaveReceived('warning')->once();
+
+    expect(AiRouter::isAvailable(AiTask::Write))->toBeFalse()
+        ->and(fn () => shorten())->toThrow(AiUnavailableException::class, __('socialhq_ai.unavailable.owner'));
+
+    Http::assertNothingSent();
+})->with(['missing' => ['missing'], 'rotated without the previous key' => ['rotated']]);
+
+test('a page load decides and decrypts once', function () {
+    ['owner' => $owner] = routingCompany(virtualKey: 'sk-company-a');
+    $queries = 0;
+    DB::listen(function (QueryExecuted $query) use (&$queries): void {
+        $queries += str_contains($query->sql, 'shq_company_ai') && ! str_contains($query->sql, 'shq_company_ai_events') ? 1 : 0;
+    });
+
+    $this->actingAs($owner)->get(route('app.posts.index'))->assertOk();
+
+    expect($queries)->toBe(1);
+});
+
+test('gateway calls say which company, workspace and task they are for', function () {
+    ['owner' => $owner, 'workspace' => $workspace] = routingCompany(usesPlatformAi: true);
+    ['workspace' => $own] = routingCompany(virtualKey: 'sk-company-a');
+
+    $this->actingAs($owner);
+    shorten();
+    AiTenant::run($own, fn () => shorten());
+
+    foreach ([[(string) $owner->account_id, $workspace->id], [(string) $own->account_id, $own->id]] as [$accountId, $workspaceId]) {
+        Http::assertSent(fn (Request $request): bool => $request['user'] === $accountId
+            && $request['metadata'] === ['spend_logs_metadata' => ['account_id' => $accountId, 'workspace_id' => $workspaceId, 'task' => 'write']]);
+    }
+});
+
+test('direct providers get no attribution fields', function () {
+    expect(AiRouter::gatewayAttribution(AiTask::Write, 'anthropic'))->toBe([]);
+});
+
+test('agents wait 90 seconds on the web and 300 in queued jobs', function () {
+    expect((new PostContentShortener('X', 280))->timeout())->toBe(AiTimeout::WEB)
+        ->and((new ContentPlanner(Locale::DEFAULT))->timeout())->toBe(AiTimeout::QUEUED)
+        ->and((new WebsiteReader('English'))->timeout())->toBe(AiTimeout::QUEUED);
 });

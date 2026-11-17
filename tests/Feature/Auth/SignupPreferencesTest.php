@@ -70,7 +70,7 @@ test('email registration rejects a week start or clock outside the allowed value
 
 function signupPreferencesSocialite(string $driver, string $id, string $email): void
 {
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->id = $id;
     $socialiteUser->name = 'Social Signup';
     $socialiteUser->email = $email;

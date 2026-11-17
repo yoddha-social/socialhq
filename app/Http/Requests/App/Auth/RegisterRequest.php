@@ -82,7 +82,10 @@ class RegisterRequest extends FormRequest
 
     public function invite(): ?Invite
     {
-        return Invite::fromId($this->string('invite')->toString());
+        // Social HQ: an invite link opened before signing up (kept in the session) counts like a posted invite, so the email must match it too.
+        $posted = $this->string('invite')->toString();
+
+        return Invite::fromId($posted !== '' || ! $this->hasSession() ? $posted : (string) $this->session()->get('pending_invite_id'));
     }
 
     public function withValidator(Validator $validator): void

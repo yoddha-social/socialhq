@@ -14,6 +14,8 @@ use App\Jobs\PostHog\SyncUser;
 use App\Models\Account;
 use App\Models\User;
 use App\Services\PostHogService;
+use App\SocialHq\Companies\CompanyAccess;
+use App\SocialHq\Companies\CompanyRequests;
 use App\SocialHq\Companies\CompanySignup;
 use App\SocialHq\Signup\AccessRequests;
 use App\SocialHq\Signup\SignupRules;
@@ -23,14 +25,16 @@ use Illuminate\Support\Facades\DB;
 class CreateUser
 {
     /**
-     * @param  array{name: string, email: string, password?: string, company_name?: string, google_id?: string, github_id?: string, email_verified_at?: \DateTimeInterface|null, is_invite?: bool, registration_ip?: string|null, locale?: string|null, timezone?: string|null, week_starts_on?: string|null, time_format?: string|null}  $data
+     * @param  array{name: string, email: string, password?: string, company_name?: string, self_signup?: bool, google_id?: string, github_id?: string, email_verified_at?: \DateTimeInterface|null, is_invite?: bool, registration_ip?: string|null, locale?: string|null, timezone?: string|null, week_starts_on?: string|null, time_format?: string|null}  $data
      * @param  array<string, string>  $attributionParameters  UTM parameters and ad click IDs (gclid, fbclid, etc.) captured before signup
      */
     public static function execute(array $data, array $attributionParameters = []): User
     {
         $isInviteRegistration = (bool) data_get($data, 'is_invite', false);
+        // Social HQ: the register form, Google or GitHub with no invite (their controllers say so; commands never do).
+        $isSelfSignup = ! $isInviteRegistration && (bool) data_get($data, 'self_signup', false);
 
-        $user = DB::transaction(function () use ($data, $attributionParameters, $isInviteRegistration): User {
+        $user = DB::transaction(function () use ($data, $attributionParameters, $isInviteRegistration, $isSelfSignup): User {
             $accountAttributes = [
                 'name' => data_get($data, 'name')."'s Account",
             ];
@@ -41,7 +45,7 @@ class CreateUser
             }
 
             // Social HQ: self sign-up joins the team's account (SignupRules).
-            $joinAccount = SignupRules::accountToJoin(data_get($data, 'email'), $isInviteRegistration);
+            $joinAccount = $isSelfSignup ? SignupRules::accountToJoin(data_get($data, 'email')) : null;
             $account = $joinAccount ?? Account::query()->forceCreate($accountAttributes);
 
             $locale = Locale::tryFrom((string) data_get($data, 'locale')) ?? Locale::DEFAULT;
@@ -71,13 +75,14 @@ class CreateUser
             $account->update(['owner_id' => $user->id]);
 
             // Social HQ: anyone else asks to start a company, and gets no workspace until it is approved.
-            if (($companyName = CompanySignup::companyToRequest($data, $isInviteRegistration)) !== null) {
-                CompanySignup::open($user, $account, $companyName);
+            if ($isSelfSignup && ($companyName = CompanySignup::companyToRequest($data)) !== null) {
+                CompanyRequests::open($user, $account, $companyName);
 
                 return $user;
             }
 
-            if (! $isInviteRegistration) {
+            // Social HQ: where only approved companies work, a self sign-up that neither joins a team nor asks for a company gets no workspace.
+            if (! $isInviteRegistration && ! ($isSelfSignup && CompanyAccess::companiesRequired())) {
                 CreateWorkspace::execute($user, ['name' => data_get($data, 'name')."'s Workspace"]);
             }
 

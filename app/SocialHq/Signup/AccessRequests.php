@@ -11,6 +11,7 @@ use App\Jobs\SendNotification;
 use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Support\PerRequest;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -38,7 +39,7 @@ final class AccessRequests
 
     public static function open(User $user, Account $account): AccessRequest
     {
-        return AccessRequest::query()->create([
+        return AccessRequest::query()->forceCreate([
             'account_id' => $account->id,
             'user_id' => $user->id,
             'name' => $user->name,
@@ -98,29 +99,48 @@ final class AccessRequests
             ->get();
     }
 
+    /**
+     * The account owner, or an admin of one of the account's workspaces
+     * (one query, remembered for the request).
+     */
     public static function canDecide(User $user): bool
     {
-        return $user->isAccountOwner() || self::workspacesManagedBy($user)->isNotEmpty();
+        return $user->account_id !== null && PerRequest::remember(
+            "access-decider:{$user->id}:{$user->account_id}",
+            fn (): bool => Account::query()
+                ->whereKey($user->account_id)
+                ->where(fn (Builder $account) => $account
+                    ->where('owner_id', $user->id)
+                    ->orWhereHas('workspaces.members', fn (Builder $member) => $member
+                        ->where('users.id', $user->id)
+                        ->where('user_workspace.is_admin', true)))
+                ->exists(),
+        );
     }
 
     /**
-     * Requests waiting for this user's decision, in one query: 0 for anyone
-     * who is neither the account owner nor an admin of one of its workspaces.
+     * Declining deletes the person, so only the account owner may: an admin
+     * of one workspace must not turn away people another workspace may want.
+     */
+    public static function canDecline(User $user): bool
+    {
+        return $user->isAccountOwner();
+    }
+
+    /**
+     * Requests waiting for this user's decision: 0 for anyone who is neither
+     * the account owner nor an admin of one of its workspaces (one query),
+     * else a plain count of the account's waiting requests.
      */
     public static function pendingCountFor(User $user): int
     {
-        if ($user->account_id === null) {
+        if (! self::canDecide($user)) {
             return 0;
         }
 
         return AccessRequest::query()
             ->where('account_id', $user->account_id)
             ->awaitingDecision()
-            ->where(fn (Builder $decider) => $decider
-                ->whereHas('account', fn (Builder $account) => $account->where('owner_id', $user->id))
-                ->orWhereHas('account.workspaces.members', fn (Builder $member) => $member
-                    ->where('users.id', $user->id)
-                    ->where('user_workspace.is_admin', true)))
             ->count();
     }
 
@@ -166,11 +186,11 @@ final class AccessRequests
             }
 
             // Decided first, so the "joined a workspace" hook finds nothing left to close.
-            $locked->update([
+            $locked->forceFill([
                 'status' => AccessRequest::APPROVED,
                 'decided_by' => $approver->id,
                 'decided_at' => now(),
-            ]);
+            ])->save();
 
             foreach ($workspaces as $workspace) {
                 $user->workspaces()->syncWithoutDetaching([$workspace->id => [
@@ -207,11 +227,11 @@ final class AccessRequests
                 return null;
             }
 
-            $locked->update([
+            $locked->forceFill([
                 'status' => AccessRequest::DECLINED,
                 'decided_by' => $approver->id,
                 'decided_at' => now(),
-            ]);
+            ])->save();
 
             $user = $locked->user;
 

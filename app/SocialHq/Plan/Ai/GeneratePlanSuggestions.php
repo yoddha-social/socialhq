@@ -52,7 +52,8 @@ class GeneratePlanSuggestions implements ShouldQueue
 
     public int $tries = 1;
 
-    public int $timeout = 180;
+    /** Longer than the SDK's 300 s for a queued AI call; ContentPlan::STALE_MINUTES stays above it. */
+    public int $timeout = 360;
 
     /**
      * @param  string  $runId  the plan's generation_run_id when the run started
@@ -85,7 +86,11 @@ class GeneratePlanSuggestions implements ShouldQueue
             $response = AiTenant::run($plan->workspace, fn () => (new ContentPlanner($user->locale ?? Locale::DEFAULT))
                 ->prompt(json_encode(PlannerContext::build($plan, $today, $user->timezone), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)));
         } catch (AiUnavailableException $exception) {
-            report($exception);
+            // No AI set up for the company is a configuration state, not an error to report.
+            if (! $exception->isConfigurationState()) {
+                report($exception);
+            }
+
             $this->markFailed('ai_unavailable');
 
             return;
@@ -168,8 +173,9 @@ class GeneratePlanSuggestions implements ShouldQueue
         $channelList = PlanOptions::channels($workspace);
         $channels = $channelList->keyBy('id');
         $cadence = PlanOptions::cadence($profile, $channelList);
-        // The same events the planner was shown: the run's days, the audience's countries when asked.
-        $events = PlanOptions::events($workspace, $options->from, $options->to, $options->eventCountries($profile))->groupBy('key');
+        // The same events the planner was shown: the run's days (and the lead days after them,
+        // whose events may get posts in the range), the audience's countries when asked.
+        $events = PlanOptions::events($workspace, $options->from, $options->to->addDays(self::EVENT_LEAD_DAYS), $options->eventCountries($profile))->groupBy('key');
         $zone = Audience::mainZone($profile, $userZone);
         $replaceable = self::replaceableSuggestions($plan, $options)->pluck('id')->all();
         // Everything that survives this draft: planned items, suggestions someone started

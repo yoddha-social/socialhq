@@ -57,7 +57,7 @@ test('social registration always stores the default locale', function (string $p
         'trypost.github_auth_enabled' => true,
     ]);
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->id = "{$provider}-locale";
     $socialiteUser->name = 'Social User';
     $socialiteUser->email = "{$provider}-locale@example.com";

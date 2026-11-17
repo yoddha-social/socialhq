@@ -18,10 +18,10 @@ use App\SocialHq\Http\Requests\Plan\StoreCalendarEventRequest;
 use App\SocialHq\Http\Requests\Plan\UpdateCalendarEventRequest;
 use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Plan\PlanItem;
+use App\SocialHq\Plan\PlanMonth;
 use App\Support\Timezone;
 use Carbon\CarbonImmutable;
 use Closure;
-use DateTimeZone;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -43,7 +43,7 @@ class EventController extends Controller
         $workspace = PlanAccess::workspace($request);
         $today = self::today($request);
         $upcoming = $request->query('view') === 'upcoming';
-        $month = self::month($request->query('month'), $today->getTimezone()) ?? $today->startOfMonth();
+        $month = PlanMonth::tryParse($request->query('month')) ?? $today->startOfMonth();
         [$from, $to] = self::period($today, $upcoming, $month);
         $country = self::country($request->query('country'));
         $canManageShared = PlanAccess::canApprove($request->user(), $workspace) && PlanAccess::canManageSharedEvents($request->user(), $workspace);
@@ -116,11 +116,13 @@ class EventController extends Controller
                 PlanItem::query()->where('event_id', $found->id)->where('workspace_id', '!=', $workspace->id)->update(['event_id' => null]);
             }
 
+            // A person's edit makes a date its source dropped the team's own again.
             $found->update([
                 ...self::attributes($request->validated()),
                 'workspace_id' => $brandOnly ? $workspace->id : null,
                 'region' => $region,
                 'country_code' => $country,
+                'delisted_at' => null,
             ]);
         });
 
@@ -178,6 +180,7 @@ class EventController extends Controller
             'verified' => $event->isVerified(),
             'verified_by' => $event->verifier?->name,
             'verified_at' => $event->verified_at?->toIso8601String(),
+            'delisted' => $event->isDelisted(),
         ];
     }
 
@@ -326,14 +329,5 @@ class EventController extends Controller
         $code = strtoupper(trim($value));
 
         return preg_match('/^[A-Z]{2}$/', $code) === 1 ? $code : null;
-    }
-
-    public static function month(mixed $value, DateTimeZone $timezone): ?CarbonImmutable
-    {
-        if (! is_string($value) || preg_match('/^(\d{4})-(0[1-9]|1[0-2])$/', $value, $parts) !== 1 || (int) $parts[1] < 2000 || (int) $parts[1] > 2100) {
-            return null;
-        }
-
-        return CarbonImmutable::createFromFormat('!Y-m', $value, $timezone);
     }
 }

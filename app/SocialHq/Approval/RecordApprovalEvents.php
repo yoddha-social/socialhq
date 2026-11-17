@@ -8,7 +8,6 @@ use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
 use App\Models\User;
 use App\Support\PostApproval;
-use Laravel\Passport\AccessToken;
 
 /**
  * Writes the approval history from post saves, whichever entry point made
@@ -37,10 +36,13 @@ final class RecordApprovalEvents
             return;
         }
 
+        $caller = self::caller();
+
+        // No caller (a job or command) is the system, which never withdraws.
         $action = match (true) {
             PostApproval::isRequest($from, $to) => 'requested',
             PostApproval::isApproval($from, $to) => 'approved',
-            $from === PostStatus::PendingApproval && $to === PostStatus::Draft => self::caller()?->id === $post->getOriginal('approval_requested_by')
+            $from === PostStatus::PendingApproval && $to === PostStatus::Draft => $caller !== null && $caller->id === self::requesterBefore($post)
                 ? 'withdrawn'
                 : 'rejected',
             default => null,
@@ -62,12 +64,22 @@ final class RecordApprovalEvents
             'action' => $action,
             'via' => match (true) {
                 $caller === null => 'system',
-                $caller->token() instanceof AccessToken => 'agent',
+                ApprovalRules::usesAccessToken($caller) => 'agent',
                 default => 'app',
             },
             'from_status' => $from?->value,
             'to_status' => $to->value,
         ]);
+    }
+
+    /**
+     * Who asked for approval before this save, as Post::approvalRequester()
+     * resolves it: the recorded requester, or the author for requests stored
+     * before that was recorded. The save may have cleared the column.
+     */
+    private static function requesterBefore(Post $post): ?string
+    {
+        return $post->getOriginal('approval_requested_by') ?? $post->getOriginal('user_id');
     }
 
     private static function caller(): ?User

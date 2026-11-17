@@ -95,3 +95,23 @@ test('saves that do not touch approval leave no history', function () {
 
     expect(ApprovalEvent::query()->where('post_id', $post->id)->exists())->toBeFalse();
 });
+
+test('the author withdrawing a request stored before requesters were recorded is a withdrawal', function () {
+    $post = approvalEventsRequest($this, $this->member);
+    $post->forceFill(['approval_requested_by' => null])->saveQuietly();
+
+    $this->actingAs($this->member);
+    $post->fresh()->update(['status' => 'draft']);
+
+    expect(approvalEventsOf($post)[1])->toBe(['withdrawn', $this->member->id, 'app']);
+});
+
+test('a pending post sent back to drafts with no one signed in is the system\'s, never a withdrawal', function () {
+    $post = approvalEventsRequest($this, $this->member);
+    $post->forceFill(['approval_requested_by' => null, 'user_id' => null])->saveQuietly();
+
+    auth()->logout();
+    $post->fresh()->update(['status' => 'draft']);
+
+    expect(approvalEventsOf($post)[1])->toBe(['rejected', null, 'system']);
+});

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\SocialHq\Knowledge\Website;
 
-use DOMDocument;
+use App\SocialHq\Knowledge\SafeXml;
 
 /**
  * The page and sitemap locations in a sitemap.xml (a urlset or a sitemap
@@ -19,20 +19,10 @@ final class Sitemap
     {
         $empty = ['pages' => [], 'sitemaps' => []];
 
-        if (stripos($xml, '<!DOCTYPE') !== false || stripos($xml, '<!ENTITY') !== false) {
+        $document = SafeXml::load($xml);
+
+        if ($document === null) {
             return $empty;
-        }
-
-        $document = new DOMDocument;
-        $previous = libxml_use_internal_errors(true);
-
-        try {
-            if (! $document->loadXML($xml, LIBXML_NONET | LIBXML_COMPACT)) {
-                return $empty;
-            }
-        } finally {
-            libxml_clear_errors();
-            libxml_use_internal_errors($previous);
         }
 
         $root = strtolower((string) $document->documentElement?->localName);

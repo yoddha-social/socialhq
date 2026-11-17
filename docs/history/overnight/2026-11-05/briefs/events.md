@@ -1,6 +1,6 @@
 # Lane brief — Events
 
-Read first: `overnight/2026-11-05/LANE-RULES.md`, `overnight/2026-11-05/DESIGN.md`
+Read first: `docs/history/overnight/2026-11-05/LANE-RULES.md`, `docs/history/overnight/2026-11-05/DESIGN.md`
 (sections "Who can do what", `shq_events`, "Copy files and routes"), SOCIALHQ.md.
 Test DB: `shq_lane_events`. PATCHES rows: 60–64. Migration prefix (only if you need a
 new one): `2026_11_06_0004xx_`. Branch: `overnight/events`.

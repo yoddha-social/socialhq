@@ -6,6 +6,18 @@ use App\Models\Account;
 use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
+use Database\Factories\AccountFactory;
+
+/**
+ * Social HQ: someone invited who has only their own empty account (no
+ * workspace, no other people, no company). Under the production-rules job
+ * the account factory gives every account a company, which would make the
+ * invitee hold another account.
+ */
+function emptyAccountInvitee(): User
+{
+    return AccountFactory::withoutCompany(fn (): User => User::factory()->create(['email' => 'invitee@example.com']));
+}
 
 beforeEach(function () {
     $this->account = Account::factory()->create();
@@ -127,9 +139,7 @@ test('accept invite requires authentication', function () {
 });
 
 test('accept invite adds user to account and workspaces', function () {
-    $user = User::factory()->create([
-        'email' => 'invitee@example.com',
-    ]);
+    $user = emptyAccountInvitee();
     $personalAccountId = $user->account_id;
 
     $invite = Invite::factory()->create([
@@ -160,7 +170,7 @@ test('accept invite adds user to account and workspaces', function () {
 });
 
 test('accept invite assigns the exact access from the invite', function (string $access) {
-    $user = User::factory()->create(['email' => 'invitee@example.com']);
+    $user = emptyAccountInvitee();
     $invite = Invite::factory()->create([
         'account_id' => $this->account->id,
         'invited_by' => $this->owner->id,
@@ -377,9 +387,7 @@ test('decline invite requires authentication', function () {
 });
 
 test('decline invite deletes the invite', function () {
-    $user = User::factory()->create([
-        'email' => 'invitee@example.com',
-    ]);
+    $user = emptyAccountInvitee();
 
     $invite = Invite::factory()->create([
         'account_id' => $this->account->id,
@@ -466,7 +474,7 @@ test('a member of another company declines an invite without leaving their compa
 });
 
 test('the invite page does not flag an empty account', function () {
-    $user = User::factory()->create(['email' => 'invitee@example.com']);
+    $user = emptyAccountInvitee();
     $invite = Invite::factory()->create([
         'account_id' => $this->account->id,
         'invited_by' => $this->owner->id,

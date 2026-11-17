@@ -36,8 +36,22 @@ final class RecentAiGraphics
             ->latest('id')
             ->limit(self::LIMIT)
             ->get()
-            ->filter(fn (AiGraphic $graphic): bool => self::bytes($graphic) !== null)
+            ->filter(fn (AiGraphic $graphic): bool => self::exists($graphic))
             ->values();
+    }
+
+    /**
+     * Whether the graphic's file is still there, without reading it.
+     */
+    public static function exists(AiGraphic $graphic): bool
+    {
+        if ($graphic->result_path !== null && AiGraphicResults::disk()->exists($graphic->result_path)) {
+            return true;
+        }
+
+        $media = $graphic->media_id !== null ? Media::query()->find($graphic->media_id) : null;
+
+        return $media !== null && Storage::exists($media->path);
     }
 
     /**
@@ -45,8 +59,8 @@ final class RecentAiGraphics
      */
     public static function bytes(AiGraphic $graphic): ?string
     {
-        if ($graphic->result_path !== null && Storage::disk('local')->exists($graphic->result_path)) {
-            return Storage::disk('local')->get($graphic->result_path);
+        if ($graphic->result_path !== null && AiGraphicResults::disk()->exists($graphic->result_path)) {
+            return AiGraphicResults::disk()->get($graphic->result_path);
         }
 
         $media = $graphic->media_id !== null ? Media::query()->find($graphic->media_id) : null;

@@ -89,7 +89,7 @@ fi
 
 # 9) Passport keys. Prefer PASSPORT_PRIVATE_KEY / PASSPORT_PUBLIC_KEY from
 # the environment (required for durable / multi-node deploys — storage/oauth-*
-# is not on a persisted volume in compose.prod.yaml). Fall back to generating
+# is not on a persisted volume in production). Fall back to generating
 # files under storage/ only for local/dev when those env vars are unset.
 if [ -n "${PASSPORT_PRIVATE_KEY:-}" ] && [ -n "${PASSPORT_PUBLIC_KEY:-}" ]; then
     echo "[entrypoint] using Passport keys from environment"

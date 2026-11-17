@@ -13,7 +13,9 @@ use App\SocialHq\Knowledge\KnowledgeEntry;
  * BM25 ranking over words, done in PHP: a workspace's corpus is small (at
  * most a few hundred entries and 30 documents), and it works the same on
  * PostgreSQL and MySQL. An entry's title counts three times its body; an
- * excerpt's document title counts once, next to its text.
+ * excerpt's document title counts once, next to its text. The texts are
+ * split into words when they are saved (`terms` on entries and excerpts),
+ * so a search only adds up stored counts.
  *
  * It only finds the words of the request (after Tokens: lowercase, no
  * stopwords, plural "s" dropped), not their meaning: "cost" does not find
@@ -31,8 +33,6 @@ final class LexicalKnowledgeSearch implements KnowledgeSearch
 
     private const B = 0.75;
 
-    private const ENTRY_TITLE_WEIGHT = 3;
-
     public function search(Workspace $workspace, string $focus): array
     {
         $query = array_values(array_unique(Tokens::of($focus)));
@@ -44,30 +44,31 @@ final class LexicalKnowledgeSearch implements KnowledgeSearch
         /** @var list<array{kind: string, id: int, created: int, terms: array<string, int>, length: int}> $items */
         $items = [];
 
+        // Rows from before the counts were stored get them once.
+        KnowledgeEntry::fillMissingTerms((string) $workspace->id);
+        KnowledgeChunk::fillMissingTerms((string) $workspace->id);
+
         $entries = KnowledgeEntry::query()
             ->where('workspace_id', $workspace->id)
             ->usedInAi()
-            ->get(['id', 'title', 'body', 'created_at']);
+            ->get(['id', 'terms', 'created_at']);
 
         foreach ($entries as $entry) {
-            $items[] = self::item(KnowledgeMatch::ENTRY, $entry->id, (int) $entry->created_at?->getTimestamp(), [
-                [$entry->title, self::ENTRY_TITLE_WEIGHT],
-                [$entry->body, 1],
-            ]);
+            $items[] = self::item(KnowledgeMatch::ENTRY, $entry->id, (int) $entry->created_at?->getTimestamp(), [(array) $entry->terms], $query);
         }
 
+        $documents = KnowledgeDocument::query()->where('workspace_id', $workspace->id)->searchable()->pluck('title', 'id');
+        $titleTerms = $documents->map(fn (string $title): array => Tokens::frequencies($title));
+
         $chunks = KnowledgeChunk::query()
-            ->where('shq_knowledge_chunks.workspace_id', $workspace->id)
-            ->whereIn('document_id', KnowledgeDocument::query()->where('workspace_id', $workspace->id)->searchable()->select('id'))
-            ->join('shq_knowledge_documents', 'shq_knowledge_documents.id', '=', 'shq_knowledge_chunks.document_id')
-            ->orderBy('shq_knowledge_chunks.id')
-            ->get(['shq_knowledge_chunks.id', 'shq_knowledge_chunks.text', 'shq_knowledge_documents.title as document_title', 'shq_knowledge_chunks.created_at']);
+            ->where('workspace_id', $workspace->id)
+            ->whereIn('document_id', $documents->keys())
+            ->orderBy('id')
+            ->get(['id', 'document_id', 'terms', 'created_at']);
 
         foreach ($chunks as $chunk) {
-            $items[] = self::item(KnowledgeMatch::CHUNK, $chunk->id, (int) $chunk->created_at?->getTimestamp(), [
-                [(string) $chunk->getAttribute('document_title'), 1],
-                [$chunk->text, 1],
-            ]);
+            // An excerpt's document title counts once, next to its text.
+            $items[] = self::item(KnowledgeMatch::CHUNK, $chunk->id, (int) $chunk->created_at?->getTimestamp(), [$titleTerms->get($chunk->document_id, []), (array) $chunk->terms], $query);
         }
 
         if ($items === []) {
@@ -118,20 +119,24 @@ final class LexicalKnowledgeSearch implements KnowledgeSearch
     }
 
     /**
-     * Term frequencies of an item's weighted fields.
+     * An item for scoring: its length and the counts of the query's words only.
      *
-     * @param  list<array{0: string, 1: int}>  $fields
+     * @param  list<array<string, int>>  $fields  The stored word counts of the item's fields
+     * @param  list<string>  $query
      * @return array{kind: string, id: int, created: int, terms: array<string, int>, length: int}
      */
-    private static function item(string $kind, int $id, int $created, array $fields): array
+    private static function item(string $kind, int $id, int $created, array $fields, array $query): array
     {
         $terms = [];
         $length = 0;
 
-        foreach ($fields as [$text, $weight]) {
-            foreach (Tokens::of($text) as $token) {
-                $terms[$token] = ($terms[$token] ?? 0) + $weight;
-                $length += $weight;
+        foreach ($fields as $counts) {
+            $length += (int) array_sum($counts);
+
+            foreach ($query as $term) {
+                if (isset($counts[$term])) {
+                    $terms[$term] = ($terms[$term] ?? 0) + $counts[$term];
+                }
             }
         }
 

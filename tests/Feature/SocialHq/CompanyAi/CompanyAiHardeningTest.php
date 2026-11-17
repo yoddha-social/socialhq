@@ -74,7 +74,7 @@ test('direct mode uses the platform\'s keys only for the platform or a company a
         ->and(fn () => AiTenant::run(null, fn () => AiRouter::route(AiTask::Write)))->toThrow(AiUnavailableException::class)
         ->and(AiTenant::run(AiTenant::PLATFORM, fn () => AiRouter::route(AiTask::Write)))->toBe(['openai' => null]);
 
-    $this->company->update(['uses_platform_ai' => true]);
+    $this->company->forceFill(['uses_platform_ai' => true])->save();
 
     expect(AiTenant::run($this->company->account, fn () => AiRouter::route(AiTask::Write)))->toBe(['openai' => null]);
 });

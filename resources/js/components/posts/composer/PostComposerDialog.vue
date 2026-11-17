@@ -73,6 +73,7 @@ import ThreadRepliesField from '@/components/posts/editor/ThreadRepliesField.vue
 import PlatformPreview from '@/components/posts/previews/PlatformPreview.vue';
 import PreviewPanelTitle from '@/components/posts/previews/PreviewPanelTitle.vue';
 import PublishEmptyIllustration from '@/components/publish/PublishEmptyIllustration.vue';
+import { useAiTask } from '@/components/socialhq/aiTasks';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -329,8 +330,11 @@ const { contentFor } = useXLinkDefuser();
 const { requiresApproval, canManageAccounts } = useWorkspaceAbilities();
 const errors = usePageErrors();
 type ComposerSidePanel = 'templates' | 'assistant' | 'preview';
+// Social HQ: the writing assistant shows only while the company's AI can write.
+const canUseAssistant = useAiTask('write');
+const openAssistantFirst = props.openAssistant && canUseAssistant.value;
 const sidePanel = ref<ComposerSidePanel>(
-    props.openAssistant ? 'assistant' : 'preview',
+    openAssistantFirst ? 'assistant' : 'preview',
 );
 const expandedDialog = ref(false);
 
@@ -346,7 +350,7 @@ const [DefineScheduleMenu, ReuseScheduleMenu] = createReusableTemplate();
 type ComposerMobileView = 'edit' | 'preview';
 const mobileView = ref<ComposerMobileView>('edit');
 const mobileSheet = ref<Exclude<ComposerSidePanel, 'preview'> | null>(
-    props.openAssistant ? 'assistant' : null,
+    openAssistantFirst ? 'assistant' : null,
 );
 const activePanel = computed(() =>
     isDesktop.value ? sidePanel.value : mobileSheet.value,
@@ -2370,6 +2374,7 @@ const onDialogOpenChange = (value: boolean): void => {
                         }}</span></Button
                     >
                     <Button
+                        v-if="canUseAssistant"
                         type="button"
                         variant="ghost"
                         :aria-pressed="activePanel === 'assistant'"

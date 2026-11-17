@@ -12,12 +12,20 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import DatePicker from '@/components/DatePicker.vue';
+import { reviewBadgeVariant } from '@/components/socialhq/plan/copyStatus';
 import type {
     BriefDetail,
-    BriefStage,
     PlanAbilities,
     PlanPerson,
 } from '@/components/socialhq/plan/item/types';
+import {
+    toastFirstError,
+    toastRequestFailed,
+} from '@/components/socialhq/plan/planRequests';
+import {
+    firstErrorOf,
+    serverMessageOf,
+} from '@/components/socialhq/requestErrors';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -26,7 +34,6 @@ import {
     NativeSelectOption,
 } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
-import { extractErrorMessage } from '@/lib/httpError';
 import { production } from '@/routes/socialhq/plan';
 import {
     ai as draftWithAi,
@@ -85,23 +92,6 @@ watch(
     },
 );
 
-const stageVariant = (
-    stage: BriefStage,
-): 'secondary' | 'info' | 'warning' | 'success' | 'outline' => {
-    switch (stage) {
-        case 'in_progress':
-            return 'secondary';
-        case 'in_review':
-            return 'info';
-        case 'changes_requested':
-            return 'warning';
-        case 'approved':
-            return 'success';
-        default:
-            return 'outline';
-    }
-};
-
 const referenceLinks = computed(() =>
     form.references
         .split('\n')
@@ -123,6 +113,8 @@ const createBrief = (): void => {
             onFinish: () => {
                 creating.value = false;
             },
+            onError: toastFirstError,
+            onHttpException: toastRequestFailed,
         },
     );
 };
@@ -165,8 +157,12 @@ const draftBrief = async (): Promise<void> => {
     try {
         const draft = await aiHttp.post(draftWithAi.url(props.itemId));
 
+        // A 422 resolves with nothing and fills aiHttp.errors.
         if (!draft) {
-            aiError.value = trans('socialhq_production.brief.ai_failed');
+            aiError.value =
+                firstErrorOf(
+                    aiHttp.errors as Record<string, string | undefined>,
+                ) ?? trans('socialhq_production.brief.ai_failed');
 
             return;
         }
@@ -194,7 +190,7 @@ const draftBrief = async (): Promise<void> => {
         }
     } catch (exception) {
         aiError.value =
-            extractErrorMessage(exception) ??
+            serverMessageOf(exception) ??
             trans('socialhq_production.brief.ai_failed');
     }
 };
@@ -228,7 +224,7 @@ const replaceWithDraft = (): void => {
                 {{ $t('socialhq_production.brief.title') }}
                 <Badge
                     v-if="brief"
-                    :variant="stageVariant(brief.stage)"
+                    :variant="reviewBadgeVariant(brief.stage)"
                     data-testid="item-brief-stage"
                 >
                     {{ $t(`socialhq_production.brief.stages.${brief.stage}`) }}
@@ -338,6 +334,7 @@ const replaceWithDraft = (): void => {
                         id="socialhq-brief-kind"
                         v-model="form.kind"
                         class="w-full"
+                        disabled
                         data-testid="item-brief-kind"
                     >
                         <NativeSelectOption value="graphic">

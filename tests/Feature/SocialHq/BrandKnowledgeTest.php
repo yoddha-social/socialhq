@@ -13,6 +13,9 @@ use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Knowledge\KnowledgeEntry;
 use App\SocialHq\Knowledge\PromptFit;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Facades\DB;
+use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
     $this->owner = User::factory()->create();
@@ -280,4 +283,20 @@ test('the page shows the pillars and posts per week the plan uses', function () 
             ->where("cadence.{$channel->id}", 3)
             ->where('planChannels.0.id', $channel->id)
             ->has('planChannels.0.content_types'));
+});
+
+test('a poll that reloads one part of the page builds only that part', function () {
+    knowledgeEntry($this->workspace);
+    $queries = [];
+
+    $this->actingAs($this->owner)->get(route('socialhq.brand.index'))->assertInertia(function (AssertableInertia $page) use (&$queries) {
+        DB::listen(function (QueryExecuted $query) use (&$queries): void {
+            $queries[] = $query->sql;
+        });
+
+        $page->reloadOnly('documents', fn (AssertableInertia $reload) => $reload->has('documents.items')->missing('entries')->missing('usage'));
+    });
+
+    expect($queries)->not->toBeEmpty()
+        ->and(collect($queries)->filter(fn (string $sql): bool => str_contains($sql, 'shq_knowledge_entries') || str_contains($sql, 'shq_brand_profiles') || str_contains($sql, 'shq_website_crawls')))->toBeEmpty();
 });

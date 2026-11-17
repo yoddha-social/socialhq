@@ -1,15 +1,16 @@
+import type { CopyStatus } from '@/components/socialhq/plan/types';
+
 export interface PlanPerson {
     id: string;
     name: string;
     photo_url: string | null;
 }
 
-export type CopyStatus =
-    | 'none'
-    | 'draft'
-    | 'in_review'
-    | 'changes_requested'
-    | 'approved';
+// One definition each, in the plan's types; re-exported for the item's files.
+export type {
+    CopyStatus,
+    PlanAbilities,
+} from '@/components/socialhq/plan/types';
 
 export type CreativeKind = 'none' | 'image' | 'carousel' | 'video' | 'document';
 
@@ -108,10 +109,8 @@ export interface BriefDetail {
     rounds?: BriefRound[];
     current_round?: number;
     accepts_uploads?: boolean;
-}
-
-export interface PlanAbilities {
-    canWork: boolean;
-    canApprove: boolean;
-    canManageBrand: boolean;
+    /** The round the next upload goes into: a new one once the current round is decided. */
+    next_round?: number;
+    /** Whether the current round may be sent for review. */
+    can_submit?: boolean;
 }

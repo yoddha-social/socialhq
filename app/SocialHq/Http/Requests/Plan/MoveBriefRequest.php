@@ -11,7 +11,9 @@ use Illuminate\Validation\Rule;
 
 /**
  * A card dropped on the production board: its new column and the order of
- * the cards in that column, the moved card included.
+ * the cards in that column, the moved card included. A move into a decided
+ * column carries the round the card showed, so a newer round isn't decided
+ * unseen.
  */
 class MoveBriefRequest extends FormRequest
 {
@@ -24,6 +26,7 @@ class MoveBriefRequest extends FormRequest
             'stage' => ['required', Rule::enum(BriefStage::class)],
             'ordered_ids' => ['required', 'array', 'max:500'],
             'ordered_ids.*' => ['integer', 'distinct'],
+            'round' => ['nullable', 'integer', 'min:0'],
         ];
     }
 }

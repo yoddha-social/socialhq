@@ -47,15 +47,36 @@ final class SecretBox
     }
 
     /**
+     * Whether the current key opens the payload by itself, so it needs no
+     * re-encryption before a previous key is dropped.
+     *
+     * @throws SecretsKeyMissing
+     */
+    public static function opensWithCurrentKey(string $payload): bool
+    {
+        try {
+            (new Encrypter(self::currentKey(), self::CIPHER))->decryptString($payload);
+
+            return true;
+        } catch (DecryptException) {
+            return false;
+        }
+    }
+
+    /**
+     * @throws SecretsKeyMissing
+     */
+    private static function currentKey(): string
+    {
+        return self::key((string) config('socialhq.secrets.key')) ?? throw new SecretsKeyMissing;
+    }
+
+    /**
      * @throws SecretsKeyMissing
      */
     private static function encrypter(): Encrypter
     {
-        $key = self::key((string) config('socialhq.secrets.key'));
-
-        if ($key === null) {
-            throw new SecretsKeyMissing;
-        }
+        $key = self::currentKey();
 
         $previous = array_values(array_filter(array_map(
             fn (mixed $previousKey): ?string => self::key((string) $previousKey),

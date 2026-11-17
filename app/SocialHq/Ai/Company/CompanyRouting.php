@@ -9,6 +9,9 @@ use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiTask;
 use App\SocialHq\Ai\AiTenant;
 use App\SocialHq\Companies\Company;
+use App\SocialHq\Secrets\SecretsKeyMissing;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Support\Facades\Log;
 use Laravel\Ai\AiManager;
 
 /**
@@ -131,20 +134,66 @@ final class CompanyRouting
                 return CompanyRoute::none($account);
             }
 
+            // Read the key now, from the row already loaded: one that can't be
+            // decrypted means no route, never an error on every page.
+            $key = self::decryptedKey($ai);
+
+            if ($key === null) {
+                return CompanyRoute::none($account);
+            }
+
+            $this->keys[$account->id] = $key;
             $tasks = $credentials->flatMap(fn (ProviderCredential $credential): array => $credential->servedTasks())->all();
 
             return CompanyRoute::own($account, $ai, $tasks);
         }
 
-        return $company->uses_platform_ai && filled(config('socialhq.ai.litellm.key'))
+        return self::mayUsePlatformAi($company) && filled(config('socialhq.ai.litellm.key'))
             ? CompanyRoute::platform($account)
             : CompanyRoute::none($account);
     }
 
+    /**
+     * Whether a platform admin allowed the company the platform's own AI
+     * (LITELLM_API_KEY through the gateway, the provider keys in direct mode).
+     */
+    public static function mayUsePlatformAi(?Company $company): bool
+    {
+        return $company !== null && $company->isApproved() && $company->uses_platform_ai;
+    }
+
+    /**
+     * The company's virtual key, or null when SOCIALHQ_SECRETS_KEY is missing
+     * or no current or previous key opens it (rotated without
+     * SOCIALHQ_SECRETS_PREVIOUS_KEYS; `socialhq:secrets-reencrypt` fixes
+     * that). Logged once per request or job: the decision is kept.
+     */
+    private static function decryptedKey(CompanyAi $ai): ?string
+    {
+        try {
+            return filled($key = $ai->virtual_key) ? $key : null;
+        } catch (SecretsKeyMissing|DecryptException $exception) {
+            Log::warning('Social HQ: a company\'s AI key can\'t be decrypted, so its AI is off.', [
+                'account_id' => $ai->account_id,
+                'reason' => $exception instanceof SecretsKeyMissing ? 'SOCIALHQ_SECRETS_KEY is not set' : 'no current or previous SOCIALHQ_SECRETS_KEY opens it',
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * decide() already read it for an own route; the lookup is a fallback.
+     */
     private function keyFor(CompanyRoute $route): string
     {
         $accountId = (string) $route->account?->id;
 
-        return $this->keys[$accountId] ??= (string) CompanyAi::query()->find($route->companyAiId)?->virtual_key;
+        if (! isset($this->keys[$accountId])) {
+            $ai = CompanyAi::query()->find($route->companyAiId);
+            $this->keys[$accountId] = (string) ($ai === null ? null : self::decryptedKey($ai));
+        }
+
+        return $this->keys[$accountId];
     }
 }

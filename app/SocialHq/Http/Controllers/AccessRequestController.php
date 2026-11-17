@@ -41,6 +41,7 @@ class AccessRequestController extends Controller
             'workspaces' => AccessRequests::workspacesManagedBy($user)
                 ->map(fn (Workspace $workspace): array => ['id' => $workspace->id, 'name' => $workspace->name])
                 ->values(),
+            'canDecline' => AccessRequests::canDecline($user),
         ]);
     }
 
@@ -60,6 +61,7 @@ class AccessRequestController extends Controller
 
     public function decline(Request $request, int $accessRequest): RedirectResponse
     {
+        abort_unless(AccessRequests::canDecline($request->user()), 403);
         $found = $this->find($request, $accessRequest);
 
         if (! AccessRequests::decline($found, $request->user())) {

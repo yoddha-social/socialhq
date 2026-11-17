@@ -59,11 +59,25 @@ const page = usePage();
 /** Approved copy stays read-only until someone starts a new version. */
 const unlocked = ref(false);
 
+const sameFields = (a: CopyFields, b: CopyFields): boolean =>
+    a.caption === b.caption &&
+    a.hashtags === b.hashtags &&
+    a.script === b.script &&
+    a.notes === b.notes;
+
+/** A new latest version becomes the editor's baseline; what someone is typing stays (as BriefPanel does). */
 watch(
     () => props.latest?.id,
     () => {
         const fields = fieldsOf(props.latest);
+        const keepTyping = form.isDirty && !sameFields(form.data(), fields);
+
         form.defaults(fields);
+
+        if (keepTyping) {
+            return;
+        }
+
         form.reset();
         form.clearErrors();
         unlocked.value = false;
@@ -119,6 +133,10 @@ const discard = (): void => {
 };
 
 const save = (): void => {
+    if (aiHttp.processing) {
+        return;
+    }
+
     form.post(storeVersion.url(props.item.id), {
         preserveScroll: true,
     });
@@ -149,6 +167,9 @@ const showAi = computed(
 onBeforeUnmount(() => {
     aiHttp.cancel();
 });
+
+/** Fields are read-only while approved copy is locked, and while AI writes the next version. */
+const isReadonly = computed(() => isLocked.value || aiHttp.processing);
 
 const writeCopyWithAi = async (): Promise<void> => {
     if (aiHttp.processing || hasChanges.value) {
@@ -232,7 +253,7 @@ const confirmDecision = (note: string): void => {
 
     router.post(
         url,
-        { note },
+        { note, version_id: props.latest?.id ?? null },
         {
             preserveScroll: true,
             onStart: () => {
@@ -404,7 +425,7 @@ const confirmDecision = (note: string): void => {
                     id="socialhq-copy-caption"
                     v-model="form.caption"
                     class="min-h-48 text-[15px] leading-relaxed"
-                    :readonly="isLocked"
+                    :readonly="isReadonly"
                     :placeholder="
                         $t('socialhq_production.item.copy.caption_placeholder')
                     "
@@ -443,7 +464,7 @@ const confirmDecision = (note: string): void => {
                 <Input
                     id="socialhq-copy-hashtags"
                     v-model="form.hashtags"
-                    :readonly="isLocked"
+                    :readonly="isReadonly"
                     :placeholder="
                         $t('socialhq_production.item.copy.hashtags_placeholder')
                     "
@@ -466,7 +487,7 @@ const confirmDecision = (note: string): void => {
                     id="socialhq-copy-script"
                     v-model="form.script"
                     class="min-h-56 font-mono text-[13px] leading-relaxed"
-                    :readonly="isLocked"
+                    :readonly="isReadonly"
                     :placeholder="
                         $t('socialhq_production.item.copy.script_placeholder')
                     "
@@ -489,7 +510,7 @@ const confirmDecision = (note: string): void => {
                     id="socialhq-copy-notes"
                     v-model="form.notes"
                     class="min-h-20"
-                    :readonly="isLocked"
+                    :readonly="isReadonly"
                     :placeholder="
                         $t('socialhq_production.item.copy.notes_placeholder')
                     "
@@ -570,7 +591,11 @@ const confirmDecision = (note: string): void => {
                 </Button>
                 <Button
                     v-if="!isLocked"
-                    :disabled="!hasChanges || form.caption.trim() === ''"
+                    :disabled="
+                        !hasChanges ||
+                        form.caption.trim() === '' ||
+                        aiHttp.processing
+                    "
                     :loading="form.processing"
                     data-testid="item-copy-save"
                     @click="save"

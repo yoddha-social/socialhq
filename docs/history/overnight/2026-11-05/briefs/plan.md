@@ -1,6 +1,6 @@
 # Lane brief — Monthly content plan (with the AI planner)
 
-Read first: `overnight/2026-11-05/LANE-RULES.md`, `overnight/2026-11-05/DESIGN.md` (all of
+Read first: `docs/history/overnight/2026-11-05/LANE-RULES.md`, `docs/history/overnight/2026-11-05/DESIGN.md` (all of
 it), SOCIALHQ.md ("AI routing", "Brand knowledge"), the `ai-sdk-development` skill and
 `.ai/skills/socialhq-ai-features/SKILL.md`. Test DB: `shq_lane_plan`. PATCHES rows: 65–69.
 Migration prefix (only if needed): `2026_11_06_0005xx_`. Branch: `overnight/plan`.

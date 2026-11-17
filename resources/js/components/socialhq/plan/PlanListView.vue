@@ -13,6 +13,7 @@ import {
 import { computed, ref, watch } from 'vue';
 
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
+import { localizedDay } from '@/components/socialhq/localizedDay';
 import {
     COPY_STATUS_DOT,
     copyStatusLabelKey,
@@ -28,8 +29,6 @@ import type { PlanItem, PlanLookups } from '@/components/socialhq/plan/types';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useAtLeastBreakpoint } from '@/composables/useBreakpoint';
-import dayjs from '@/dayjs';
-import { activeLocale } from '@/language';
 import { show as showItem } from '@/routes/socialhq/plan/items';
 
 const props = defineProps<{
@@ -125,12 +124,10 @@ const visibleColumnCount = computed(
         ).length,
 );
 
-const localized = (value: string) =>
-    dayjs(value).locale(activeLocale.value.toLowerCase());
+const dayLabel = (value: string): string => localizedDay(value).format('ddd D');
 
-const dayLabel = (value: string): string => localized(value).format('ddd D');
-
-const weekLabel = (start: string): string => localized(start).format('D MMMM');
+const weekLabel = (start: string): string =>
+    localizedDay(start).format('D MMMM');
 
 const channelName = (item: PlanItem): string =>
     (item.social_account_id

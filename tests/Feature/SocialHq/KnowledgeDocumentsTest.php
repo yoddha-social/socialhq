@@ -355,6 +355,16 @@ test('deleting a document removes its file and excerpts, and deleting the worksp
         ->and(KnowledgeChunk::query()->count())->toBe(0);
 });
 
+test('an upload whose document can\'t be saved leaves no file behind', function () {
+    $this->withoutExceptionHandling();
+    KnowledgeDocument::creating(fn () => throw new RuntimeException('database down'));
+
+    expect(fn () => uploadDocument($this->owner, UploadedFile::fake()->createWithContent('notes.txt', str_repeat('Trailblazer bags for the trail. ', 5))))
+        ->toThrow(RuntimeException::class);
+
+    expect(Storage::disk(DocumentStorage::DISK)->allFiles())->toBe([]);
+});
+
 test('search ranks the matching entry and excerpt first, in English and Nepali', function () {
     $this->travel(-1)->days();
     $bags = docEntry($this->workspace, ['title' => 'Trekking bags', 'body' => 'Waterproof bags for the Annapurna trails.']);
@@ -373,6 +383,32 @@ test('search ranks the matching entry and excerpt first, in English and Nepali',
         ->and(collect($prices)->where('kind', KnowledgeMatch::CHUNK)->count())->toBe(1)
         ->and($search->search($this->workspace, 'दशैं')[0]->id)->toBe($festival->id)
         ->and($search->search($this->workspace, 'the and of'))->toBe([]);
+});
+
+test('search reads the word counts stored with entries and excerpts, and fills them for older rows', function () {
+    $entry = docEntry($this->workspace, ['title' => 'Trekking bags', 'body' => 'Waterproof bags for the Annapurna trails.']);
+    $brochure = readyDocument($this->workspace, 'Brochure', ['Our story since 2010.', 'The Trailblazer 40 bag costs Rs 7,500.']);
+    $search = new LexicalKnowledgeSearch;
+    $before = $search->search($this->workspace, 'Trailblazer bags since 2010');
+
+    expect($entry->fresh()->terms)->toEqual(['trekking' => 3, 'bag' => 4, 'waterproof' => 1, 'annapurna' => 1, 'trail' => 1])
+        ->and($brochure->chunks()->where('position', 1)->first()->terms)->toEqual(['trailblazer' => 1, '40' => 1, 'bag' => 1, 'cost' => 1, 'rs' => 1, '7' => 1, '500' => 1]);
+
+    // Rows written before the counts were stored: search fills them and ranks the same.
+    KnowledgeEntry::query()->toBase()->update(['terms' => null]);
+    KnowledgeChunk::query()->toBase()->update(['terms' => null]);
+
+    expect($search->search($this->workspace, 'Trailblazer bags since 2010'))->toEqual($before)
+        ->and(KnowledgeChunk::query()->whereNull('terms')->exists())->toBeFalse()
+        ->and(KnowledgeEntry::query()->whereNull('terms')->exists())->toBeFalse()
+        ->and($entry->fresh()->updated_at->equalTo($entry->updated_at))->toBeTrue();
+
+    // Edited text and a renamed document are found by their new words.
+    $entry->update(['title' => 'Duffel range']);
+    $brochure->update(['title' => 'Price list']);
+
+    expect(collect($search->search($this->workspace, 'duffel'))->pluck('id')->all())->toBe([$entry->id])
+        ->and(collect($search->search($this->workspace, 'price list'))->where('kind', KnowledgeMatch::CHUNK)->count())->toBe(2);
 });
 
 test('a focused prompt adds the matching excerpts after the pinned entries, within the budget', function () {

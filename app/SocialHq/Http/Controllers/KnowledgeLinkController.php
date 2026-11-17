@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\SocialHq\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\Workspace;
+use App\SocialHq\Http\Controllers\Concerns\WorksOnBrandKnowledge;
 use App\SocialHq\Http\Requests\StoreKnowledgeLinkRequest;
-use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\Documents\DocumentsPage;
 use App\SocialHq\Knowledge\Documents\DocumentStatus;
+use App\SocialHq\Knowledge\Documents\DocumentStorage;
 use App\SocialHq\Knowledge\Documents\DocumentType;
 use App\SocialHq\Knowledge\Documents\KnowledgeDocument;
 use App\SocialHq\Knowledge\Sources\ReadLinkedDocument;
@@ -27,6 +27,8 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class KnowledgeLinkController extends Controller
 {
+    use WorksOnBrandKnowledge;
+
     public function store(StoreKnowledgeLinkRequest $request): RedirectResponse
     {
         $workspace = $this->workspace($request);
@@ -48,7 +50,7 @@ class KnowledgeLinkController extends Controller
             'workspace_id' => $workspace->id,
             'title' => $title ?: $fallback,
             'auto_title' => $title === '',
-            'file_name' => ($title ?: $fallback).'.txt',
+            'file_name' => DocumentStorage::fileName($title ?: $fallback, 'txt'),
             'mime' => DocumentType::Text->mime(),
             'size' => 0,
             'path' => '',
@@ -81,24 +83,5 @@ class KnowledgeLinkController extends Controller
         }
 
         return $this->saved(__('socialhq_knowledge.links.flash.reading', ['title' => $found->title]));
-    }
-
-    private function workspace(Request $request): Workspace
-    {
-        $user = $request->user();
-        $workspace = $user->currentWorkspace;
-
-        abort_if($workspace === null, Response::HTTP_NOT_FOUND);
-        abort_unless(BrandKnowledge::canEdit($user, $workspace), Response::HTTP_FORBIDDEN);
-
-        return $workspace;
-    }
-
-    private function saved(string $message): RedirectResponse
-    {
-        session()->flash('flash.banner', $message);
-        session()->flash('flash.bannerStyle', 'success');
-
-        return back();
     }
 }

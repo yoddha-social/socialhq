@@ -21,13 +21,14 @@ adds the planning and AI layer:
 | PHP (models, actions, jobs, controllers, policies, AI) | `app/SocialHq/` (namespace `App\SocialHq`) |
 | Wiring (routes, migrations, schedule) | `app/SocialHq/SocialHqServiceProvider.php` |
 | Database migrations (tables prefixed `shq_`) | `database/migrations/socialhq/` |
-| Routes | `routes/socialhq.php` (under `/socialhq/*`) |
+| Routes | `routes/socialhq.php`, which loads `routes/socialhq/*.php` (all under `/socialhq/*`) |
 | Configuration | `config/socialhq.php` |
 | Inertia pages and components | `resources/js/pages/socialhq/`, `resources/js/components/socialhq/` |
 | Tests (Pest) | `tests/Feature/SocialHq/`, `tests/Unit/SocialHq/`, `tests/Browser/SocialHq/` |
 | Interface copy | `lang/en/socialhq.php` (see below) |
 | Image build | `.github/workflows/socialhq-image.yml` (tags `shq-v*`) |
 | Dependency audit | `.github/workflows/socialhq-audit.yml` (PRs and weekly) |
+| Upstream tests under our rules | `.github/workflows/socialhq-production-rules.yml`: TryPost's post, API, MCP, parity and repurpose suites with the approval and company rules on (`phpunit.xml` turns them off); tests that assert TryPost's rules are listed with the reason in `tests/fixtures/socialhq/production-rules-exclusions.txt` |
 | Claude Code setup | `CLAUDE.md`, `.claude/settings.json`, `.claude/hooks/`, `.claude/rules/`; skills in `.ai/skills/socialhq-*` (linked into `.claude/skills/` and `.agents/skills/`), checked by `bin/socialhq-lint-skills` |
 
 Changes to files that came with TryPost are listed in [PATCHES.md](PATCHES.md),
@@ -113,6 +114,31 @@ TryPost's four agents carry it too (PATCHES.md row 15). Code:
 - `php artisan socialhq:ai-routes` shows each task's targets and why one is
   unused; `--live` sends a small request through each (`--images` adds one
   image); `--account=<id>` routes as that company.
+- **Spend attribution in LiteLLM**: every text call through the gateway also
+  carries the account id as OpenAI's `user` field and
+  `metadata.spend_logs_metadata` (account, workspace, task), so platform-AI
+  spend, which shares `LITELLM_API_KEY`, can be told apart in LiteLLM's own
+  spend logs (`AiRouter::gatewayAttribution`). Image and embedding calls
+  can't: the SDK has no hook for them. The app's own record is the usage log
+  below.
+- **Timeouts** (`AiTimeout`, through `UsesAiTask::timeout()`): 90 s for a
+  call someone waits for (Cloudflare ends a request at about 100 s), 300 s
+  for agents that only run in queued jobs (the planner, the website reader).
+  LiteLLM's per-deployment timeouts must leave room for a fallback inside
+  90 s.
+- **Temperature through the gateway**: the model the app sees is a group
+  name, so `models_without_temperature` never matches and the temperature
+  is always sent; LiteLLM's `drop_params: true` removes it for models that
+  reject it. Keep that setting in the LiteLLM config.
+- **"AI isn't set up"** (the company has no AI, or none that serves the
+  task) is a configuration state, not an error: endpoints answer 409 with
+  copy that says how to set it up (`AiResponses`), jobs don't report it, and
+  the shared `aiTasks` prop (`write`, `structured`, `vision`) hides the
+  assistant, alt text and idea buttons. A company key that no secrets key
+  opens (missing or rotated `SOCIALHQ_SECRETS_KEY`) turns that company's AI
+  off and is logged; after a rotation run `php artisan
+  socialhq:secrets-reencrypt` (`--dry-run` first), then drop the previous
+  key.
 - **Settings › AI › Usage** (same owner; `/socialhq/settings/ai/usage`) lists
   each AI request and how it was routed; platform admins see every company's
   at `/socialhq/platform/ai-usage` (a link on the companies page, 404 for
@@ -173,10 +199,13 @@ workspace they work for and pass the text to their own prompt view.
 
 **Old calendars** (same page): admins import past content calendars as CSV
 or XLSX (up to 5 MB and 5,000 rows, 50 per brand; `knowledge.calendars` in
-`config/socialhq.php`). The upload waits on the private `local` disk while
-the admin matches columns (guessed from English and Nepali headers; only
-the date is required) and the date order; importing stores the rows in
-`shq_past_posts` and deletes the file. Rows without a readable AD date, in
+`config/socialhq.php`; an XLSX is checked by `ZipGuard` before it is read,
+and rows keep 200 columns at most). The file is read once: its sheets wait
+on the private `local` disk (JSON) while the admin matches columns (guessed
+from English and Nepali headers; only the date is required) and the date
+order; importing stores the rows in `shq_past_posts` and deletes the file.
+The same file (by hash) is imported once per brand. Uploading and
+importing share a limit of 60 an hour per person. Rows without a readable AD date, in
 the future or with a Bikram Sambat year (2070–2099) are skipped with a
 reason; dates are never converted. Uploads never imported are pruned after
 a day (`socialhq:calendars:prune`, hourly). The planner gets up to 60 rows
@@ -207,7 +236,9 @@ a 403 means the file isn't shared ("Share it as 'Anyone with the link can
 view', or upload the file"). The text is stored as a .txt document
 (`source` `google_doc` / `google_sheet` / `google_slides`) and goes through
 the same extraction, limits and count as an upload. "Read again" re-reads
-it; unchanged text (same hash) keeps its excerpts. The title follows the
+it; unchanged text (same hash) keeps its excerpts, and a read that fails
+keeps the document ready with the excerpts read before ("We couldn't read
+it again"; only a first read fails the document). The title follows the
 file's name until an admin renames it. Code: `app/SocialHq/Knowledge/Sources/`.
 
 **Brand look** (same page). The logo (PNG, JPEG, WebP or SVG, checked by
@@ -262,7 +293,9 @@ the entries and up to 6 excerpts that match (best first, under
 (`SOCIALHQ_KNOWLEDGE_PROMPT_CHARACTERS_FOCUSED`). Without one, nothing
 changes and documents stay out. Search is `KnowledgeSearch`, today BM25 over
 words in PHP (`LexicalKnowledgeSearch`, Unicode words so Nepali works, entry
-titles count triple). "Check what the AI reads" on the page shows what a topic
+titles count triple), scoring word counts stored with each entry and excerpt
+(`terms`, written with the text; older rows are filled the first time
+search reads them). "Check what the AI reads" on the page shows what a topic
 gets. Embeddings (the `embed` task, pgvector) would add meaning ("cost" finding
 "price", English finding Nepali): a vector per entry and excerpt, blended with
 the word scores, bound in place of the lexical class.
@@ -283,10 +316,14 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   international days, a source per row; `php artisan socialhq:events:import`
   does the same). Every imported date starts as "Needs check" until an approver
   confirms it ("Confirm all shown" confirms, in one query, the unconfirmed dates
-  of the list's period, country and filter that the approver may change); a
+  of the list's period, country and filter that the approver may change, except
+  dates no longer listed); a
   date added by hand (only approvers add dates) starts confirmed. Changing a
   date or name clears the confirmation. Re-importing
-  never brings back a date the team edited, moved or deleted. The AI never
+  never brings back a date the team edited, moved or deleted. A date its source
+  no longer lists (corrected or dropped) loses its confirmation, shows "No
+  longer listed" and stays out of planning until the source lists it again or
+  someone edits it. The AI never
   calculates a date and plans only around confirmed ones. The publish calendar
   shows a marker on days with events (PATCHES rows 60–63).
   Each date has a country (`country_code`, ISO 3166-1 alpha-2): `NP` for
@@ -393,9 +430,12 @@ empty sign-up stays invites only. Code: `app/SocialHq/Signup/`.
    the same list. An email that may not sign up only ever hears "can't sign
    up here", never whether it has an account. The register form allows 5
    tries a minute and 20 an hour per IP.
-2. The person joins the team's account (`SOCIALHQ_SIGNUP_ACCOUNT_OWNER`,
-   matched without regard to case, or else the oldest account that owns a
-   workspace) with no workspace and waits on one page until let in. If the
+2. The person joins the team's account (the account that
+   `SOCIALHQ_SIGNUP_ACCOUNT_OWNER` owns, matched without regard to case, or
+   else the oldest account that owns a workspace) with no workspace and
+   waits on one page until let in. While company requests are on, the
+   owner must be set (several companies may own workspaces); where
+   companies are required, only an approved company takes sign-ups. If the
    lists are set but no account is found, sign-up stays closed and the log
    says why. Only an invite that still exists counts as an invite.
 3. Once their email is confirmed, the account owner and every workspace admin
@@ -405,8 +445,10 @@ empty sign-up stays invites only. Code: `app/SocialHq/Signup/`.
    to it.
 4. An admin picks the workspaces they manage and whether the person is an
    admin; a member who is not an admin always sends posts for approval. The
-   person gets an email. Declining deletes their user (and their avatar
-   files) and keeps the request in `shq_access_requests`. When two admins
+   person gets an email. Only the account owner declines (an admin of one
+   workspace sees the list without the button): declining deletes their
+   user (and their avatar files) and keeps the request in
+   `shq_access_requests`. When two admins
    decide at once, the first wins and the second is told so.
 5. While waiting, the person can open and accept an invite: once they have a
    workspace their request closes by itself (`note` `joined_by_invite`).
@@ -444,16 +486,29 @@ first person asks for a company, is granted, and approves it.
    and for members the owner), and its API keys and MCP grants get a 403.
    Someone with no workspace who can't create one (an invited person's
    empty account) gets a page that says to ask for an invite or, if their
-   account is empty, to ask for a company. Platform admins follow their own
-   company's rules but always reach the platform pages. Scheduled posts of
-   a paused company still publish.
+   account is empty, to ask for a company. An account that owns
+   workspaces but has no company row (sign-up never makes one: the
+   register and Google/GitHub controllers tell `CreateUser` it is a self
+   sign-up, which either joins a team, asks for a company or gets no
+   workspace) is not approved: its people get the same page, its owner
+   asks for approval there, and its API keys get a 403. An invite link
+   kept in the session counts as the invite only for its own email.
+   Platform admins follow their own
+   company's rules but always reach the platform pages.
+5. A paused company publishes nothing: its due posts and limit retries wait
+   (`posts:process-scheduled`), and its repurposes neither read their
+   source nor make posts. Restoring sends its posts that came due while it
+   was paused (still scheduled, time passed) back to drafts, content and
+   channels kept and schedule cleared, so a dated post never goes out late
+   and nothing publishes at once; the flash tells the platform admin how
+   many. Posts scheduled after the restore publish as planned.
 
 Google or GitHub sign-in to an account whose email isn't confirmed yet
 (someone registered the address with a password and never confirmed it)
 takes the account over for the address's owner: the password is replaced,
 remember-me and other sessions end, and the email counts as confirmed
-(`OAuthSignIn`). An address Google says it hasn't verified signs in to
-nothing and creates nothing.
+(`OAuthSignIn`). An address Google doesn't say it verified (`email_verified`
+false or missing) signs in to nothing and creates nothing.
 
 ## Interface copy
 

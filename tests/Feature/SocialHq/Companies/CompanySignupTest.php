@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\User\CreateUser;
 use App\Jobs\SendNotification;
 use App\Models\Account;
 use App\Models\Invite;
@@ -17,6 +18,7 @@ use App\SocialHq\Signup\AccessRequest;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
@@ -44,6 +46,8 @@ beforeEach(function () {
     $this->teamWorkspace->members()->attach($this->teamOwner->id, membershipPivot('admin'));
     $this->teamOwner->update(['current_workspace_id' => $this->teamWorkspace->id]);
     Company::factory()->create(['account_id' => $this->teamAccount->id]);
+    // With company requests on, the team's account is named by its owner.
+    config(['socialhq.signup.account_owner' => $this->teamOwner->email]);
 
     $this->platformAdmin = User::factory()->create(['account_id' => $this->teamAccount->id]);
     PlatformAdmins::grant($this->platformAdmin);
@@ -247,7 +251,7 @@ test('the owner renames a waiting company, not a decided one', function () {
 
     $this->put(route('socialhq.company.update'), ['name' => ''])->assertSessionHasErrors('name');
 
-    $company->update(['status' => CompanyStatus::Approved]);
+    $company->forceFill(['status' => CompanyStatus::Approved])->save();
     $this->put(route('socialhq.company.update'), ['name' => 'Other'])->assertNotFound();
     expect($company->fresh()->name)->toBe('Himal Tea');
 });
@@ -364,4 +368,167 @@ test('the owner of an approved company creates workspaces', function () {
     $this->post(route('app.workspaces.store'), ['name' => 'Brand B'])->assertRedirect();
 
     expect(Workspace::query()->where('account_id', $this->teamAccount->id)->count())->toBe(2);
+});
+
+/**
+ * An invite of the team's for someone else, opened before signing up, so
+ * only the session carries it (invite-only sign-up).
+ */
+function openInviteLinkInSession(object $test): Invite
+{
+    config(['socialhq.companies.requests' => false, 'socialhq.signup.domains' => []]);
+
+    $invite = Invite::factory()->create([
+        'account_id' => $test->teamAccount->id,
+        'email' => 'ravi@elsewhere.test',
+        'invited_by' => $test->teamOwner->id,
+        'workspaces' => [$test->teamWorkspace->id],
+    ]);
+
+    $test->get(route('register', ['invite' => $invite->id]))->assertOk()->assertSessionHas('pending_invite_id', $invite->id);
+
+    return $invite;
+}
+
+function githubSignsUp(string $email): void
+{
+    $githubUser = (new SocialiteUser)->map(['id' => 'github-mina', 'name' => 'Mina Gurung', 'nickname' => 'mina', 'email' => $email]);
+
+    Socialite::shouldReceive('driver')->with('github')->andReturn($driver = Mockery::mock());
+    $driver->shouldReceive('user')->andReturn($githubUser);
+}
+
+test('an invite link in the session does not let another email register', function () {
+    openInviteLinkInSession($this);
+
+    registerForCompany('mallory@evil.test', null)->assertSessionHasErrors('email');
+
+    expect(User::query()->where('email', 'mallory@evil.test')->exists())->toBeFalse();
+});
+
+test('the invited email registering through the session invite joins by the invite, with no workspace of its own', function () {
+    $invite = openInviteLinkInSession($this);
+
+    registerForCompany('ravi@elsewhere.test', null)->assertRedirect(route('app.invites.show', $invite));
+
+    $user = User::query()->where('email', 'ravi@elsewhere.test')->firstOrFail();
+
+    expect(Workspace::query()->where('account_id', $user->account_id)->exists())->toBeFalse()
+        ->and(Company::query()->where('account_id', $user->account_id)->exists())->toBeFalse();
+});
+
+test('a self sign-up never gets a workspace without a company, whatever route created it', function (bool $requests) {
+    config(['socialhq.companies.requests' => $requests]);
+
+    // No route at all: the controllers' flag decides, not the route name.
+    $user = CreateUser::execute(['name' => 'Mina Gurung', 'email' => 'mina@himaltea.test', 'password' => strongPassword(), 'self_signup' => true]);
+
+    expect(Workspace::query()->where('account_id', $user->account_id)->exists())->toBeFalse()
+        ->and(Company::query()->where('account_id', $user->account_id)->value('status'))->toBe($requests ? CompanyStatus::Pending : null);
+})->with(['company requests on' => true, 'company requests off' => false]);
+
+test('a google or github sign-up with someone else\'s invite in the session still asks for a company', function (string $provider) {
+    $invite = Invite::factory()->create([
+        'account_id' => $this->teamAccount->id,
+        'email' => 'ravi@elsewhere.test',
+        'invited_by' => $this->teamOwner->id,
+        'workspaces' => [$this->teamWorkspace->id],
+    ]);
+    $provider === 'google' ? googleSignsUp('mina@himaltea.test') : githubSignsUp('mina@himaltea.test');
+
+    $this->withSession(['pending_invite_id' => $invite->id])->get(route("auth.{$provider}.callback"))->assertRedirect();
+
+    $user = User::query()->where('email', 'mina@himaltea.test')->firstOrFail();
+
+    expect(Company::query()->where('account_id', $user->account_id)->value('status'))->toBe(CompanyStatus::Pending)
+        ->and(Workspace::query()->where('account_id', $user->account_id)->exists())->toBeFalse();
+})->with(['google', 'github']);
+
+test('an account with workspaces but no company is not approved: its people are stopped and its owner asks for one', function () {
+    $account = Account::factory()->create();
+    $owner = User::factory()->create(['account_id' => $account->id]);
+    $account->update(['owner_id' => $owner->id]);
+    $workspace = Workspace::factory()->create(['account_id' => $account->id, 'user_id' => $owner->id]);
+    $workspace->members()->attach($owner->id, membershipPivot('admin'));
+    $owner->update(['current_workspace_id' => $workspace->id]);
+
+    $this->actingAs($owner)->get(route('app.calendar'))->assertRedirect(route('socialhq.company.start'));
+    $this->get(route('socialhq.company.start'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('socialhq/CompanyStart')->where('unapproved', true)->where('canAskForCompany', true));
+
+    $this->post(route('socialhq.company.store'), ['name' => 'Shadow Co'])->assertRedirect(route('socialhq.company.waiting'));
+
+    expect(Company::query()->where('account_id', $account->id)->value('status'))->toBe(CompanyStatus::Pending);
+    $this->get(route('app.calendar'))->assertRedirect(route('socialhq.company.waiting'));
+});
+
+test('the API keys of an account with workspaces but no company are refused, an approved company\'s work', function () {
+    $api = createApiTestToken();
+    $callApi = fn () => $this->withHeaders(['Authorization' => "Bearer {$api['plain_token']}"])
+        ->getJson(route('api.workspace.show'), ['HTTP_HOST' => 'api.trypost.test']);
+
+    $callApi()->assertForbidden()->assertJson(['message' => __('socialhq_companies.not_approved.api')]);
+
+    Company::factory()->create(['account_id' => $api['workspace']->account_id]);
+    $callApi()->assertOk();
+});
+
+test('with company requests on and no owner configured, a work email joins no one and asks for a company', function () {
+    config(['socialhq.signup.account_owner' => null]);
+
+    registerForCompany('asha@acme.test', null)->assertSessionHasErrors('company_name');
+    registerForCompany('asha@acme.test')->assertRedirect(route('socialhq.company.requested'));
+
+    $user = User::query()->where('email', 'asha@acme.test')->firstOrFail();
+
+    expect($user->account_id)->not->toBe($this->teamAccount->id)
+        ->and(AccessRequest::query()->where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+test('sign-ups join the account the configured owner owns, only while its company is approved', function () {
+    // The owner works in another company's workspace: their own account still takes the sign-ups.
+    $elsewhere = Company::factory()->create();
+    $this->teamOwner->update(['account_id' => $elsewhere->account_id]);
+
+    registerForCompany('asha@acme.test', null)->assertRedirect();
+    expect(User::query()->where('email', 'asha@acme.test')->value('account_id'))->toBe($this->teamAccount->id);
+
+    Company::query()->where('account_id', $this->teamAccount->id)->update(['status' => CompanyStatus::Suspended]);
+    auth()->logout();
+
+    registerForCompany('ravi@acme.test', null)->assertSessionHasErrors('company_name');
+    expect(User::query()->where('email', 'ravi@acme.test')->exists())->toBeFalse();
+});
+
+test('asking twice at once from the no-workspace page ends on the waiting page, with one company', function () {
+    $account = Account::factory()->create();
+    $user = User::factory()->create(['account_id' => $account->id]);
+    $account->update(['owner_id' => $user->id]);
+
+    // The other submit inserts its row between this one's check and its insert.
+    $raced = false;
+    Company::creating(function () use ($account, &$raced): void {
+        if (! $raced) {
+            $raced = true;
+            DB::table('shq_companies')->insert([
+                'account_id' => $account->id,
+                'name' => 'Ravi Studio',
+                'status' => CompanyStatus::Pending->value,
+                'uses_platform_ai' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    });
+
+    $this->actingAs($user)->post(route('socialhq.company.store'), ['name' => 'Ravi Studio'])
+        ->assertRedirect(route('socialhq.company.waiting'));
+
+    // The insert hit a real unique violation and rolled back to its own savepoint,
+    // so the connection is still usable. In this test the other submit's row was
+    // written inside that savepoint too, so it went with it; in production it is
+    // another request's committed row and stays.
+    expect($raced)->toBeTrue()
+        ->and(Company::query()->where('account_id', $account->id)->count())->toBe(0);
 });

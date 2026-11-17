@@ -2,8 +2,11 @@
 import { useHttp, usePage } from '@inertiajs/vue3';
 import { IconPhotoPlus, IconShieldCheck, IconX } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
+import { RadioGroupItem } from 'reka-ui';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
+import { serverMessageOf, statusOf } from '@/components/socialhq/requestErrors';
+import { useDropZone } from '@/components/socialhq/useDropZone';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -14,6 +17,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { RadioGroup } from '@/components/ui/radio-group';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,10 +36,6 @@ const MAX_POLLS = 300;
 
 type Phase = 'idle' | 'checking' | 'generating';
 
-interface AiGraphicsProps {
-    aiGraphics?: { maxReferences?: number; maxReferenceKilobytes?: number };
-}
-
 const open = defineModel<boolean>('open', { required: true });
 
 const emit = defineEmits<{
@@ -43,15 +43,9 @@ const emit = defineEmits<{
 }>();
 
 const page = usePage();
-const maxImages = computed(
-    () =>
-        (page.props.socialhq as AiGraphicsProps | undefined)?.aiGraphics
-            ?.maxReferences ?? 3,
-);
+const maxImages = computed(() => page.props.socialhq.aiGraphics.maxReferences);
 const maxKilobytes = computed(
-    () =>
-        (page.props.socialhq as AiGraphicsProps | undefined)?.aiGraphics
-            ?.maxReferenceKilobytes ?? 10240,
+    () => page.props.socialhq.aiGraphics.maxReferenceKilobytes,
 );
 
 const http = useHttp<
@@ -95,6 +89,28 @@ let cancelled = false;
 
 const busy = computed(() => phase.value !== 'idle');
 
+/**
+ * What to say when a request throws (a 422 resolves instead): a rate limit or
+ * a refusal by name, else the server's message, else the fallback.
+ */
+const failureMessage = (
+    error: unknown,
+    fallbackKey: string,
+    rateLimitedKey: string = fallbackKey,
+): string => {
+    const status = statusOf(error);
+
+    if (status === 429) {
+        return trans(rateLimitedKey);
+    }
+
+    if (status === 403) {
+        return trans('socialhq.ai_graphics.errors.not_available');
+    }
+
+    return serverMessageOf(error) ?? trans(fallbackKey);
+};
+
 const clearPreviews = (): void => {
     previews.value.forEach((url) => URL.revokeObjectURL(url));
     previews.value = [];
@@ -130,8 +146,12 @@ const loadRecent = async (): Promise<void> => {
             logo: null,
             vectorLogo: false,
         };
-    } catch {
+    } catch (error) {
         recent.value = [];
+
+        if (statusOf(error) === 403) {
+            message.value = trans('socialhq.ai_graphics.errors.not_available');
+        }
     }
 };
 
@@ -156,8 +176,11 @@ const useRecent = async (graphic: RecentGraphic): Promise<void> => {
             });
             open.value = false;
         }
-    } catch {
-        message.value = trans('socialhq.ai_graphics.errors.attach_failed');
+    } catch (error) {
+        message.value = failureMessage(
+            error,
+            'socialhq.ai_graphics.errors.attach_failed',
+        );
     } finally {
         attaching.value = null;
     }
@@ -227,28 +250,11 @@ const canAddMore = computed(
     () => !busy.value && http.references.length < maxReferences.value,
 );
 
-// Drag and drop: the counter keeps the highlight while the pointer moves
-// over the zone's children.
-const dragDepth = ref(0);
-const dragging = computed(() => dragDepth.value > 0);
-
-const onDragEnter = (): void => {
-    dragDepth.value++;
-};
-
-const onDragLeave = (): void => {
-    dragDepth.value = Math.max(0, dragDepth.value - 1);
-};
-
-const onDrop = (event: DragEvent): void => {
-    dragDepth.value = 0;
-
-    if (!canAddMore.value) {
-        return;
+const { dragging, onDragEnter, onDragLeave, onDrop } = useDropZone((files) => {
+    if (canAddMore.value) {
+        addFiles(files);
     }
-
-    addFiles(Array.from(event.dataTransfer?.files ?? []));
-};
+});
 
 const browse = (): void => {
     if (canAddMore.value) {
@@ -265,6 +271,18 @@ const onPaste = (event: ClipboardEvent): void => {
     if (images.length > 0) {
         event.preventDefault();
         addFiles(images);
+    }
+};
+
+type GraphicFormat = (typeof FORMATS)[number];
+
+const isFormat = (value: unknown): value is GraphicFormat =>
+    FORMATS.includes(value as GraphicFormat);
+
+// The radio group (arrow keys move and select) hands back any value.
+const selectFormat = (value: unknown): void => {
+    if (isFormat(value)) {
+        http.format = value;
     }
 };
 
@@ -323,7 +341,10 @@ const poll = async (importId: string): Promise<void> => {
         }
     }
 
-    phase.value = 'idle';
+    if (!cancelled) {
+        phase.value = 'idle';
+        message.value = trans('socialhq.ai_graphics.errors.timed_out');
+    }
 };
 
 const submit = async (): Promise<void> => {
@@ -340,8 +361,12 @@ const submit = async (): Promise<void> => {
         // A validation error (including a blocked request) resolves with
         // nothing and fills http.errors.
         started = await http.post(store.url());
-    } catch {
-        message.value = trans('socialhq.ai_graphics.errors.generation_failed');
+    } catch (error) {
+        message.value = failureMessage(
+            error,
+            'socialhq.ai_graphics.errors.generation_failed',
+            'socialhq.ai_graphics.errors.rate_limited',
+        );
     }
 
     if (!started) {
@@ -572,30 +597,28 @@ const submit = async (): Promise<void> => {
 
                 <div class="grid gap-2">
                     <Label>{{ $t('socialhq.ai_graphics.format_label') }}</Label>
-                    <div
-                        class="grid grid-cols-4 gap-2"
-                        role="radiogroup"
+                    <RadioGroup
+                        class="grid-cols-4 gap-2"
+                        :model-value="http.format"
+                        :disabled="busy"
                         :aria-label="$t('socialhq.ai_graphics.format_label')"
+                        @update:model-value="selectFormat"
                     >
-                        <button
+                        <RadioGroupItem
                             v-for="format in FORMATS"
                             :key="format"
-                            type="button"
-                            role="radio"
-                            :aria-checked="http.format === format"
-                            :disabled="busy"
+                            :value="format"
                             :class="[
-                                'rounded-lg border px-2 py-1.5 text-sm transition-control',
+                                'rounded-lg border px-2 py-1.5 text-sm transition-control focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60',
                                 http.format === format
                                     ? 'border-primary bg-primary-subtle text-primary-text'
                                     : 'border-border hover:bg-accent',
                             ]"
                             :data-testid="`socialhq-ai-graphic-format-${format}`"
-                            @click="http.format = format"
                         >
                             {{ $t(`socialhq.ai_graphics.formats.${format}`) }}
-                        </button>
-                    </div>
+                        </RadioGroupItem>
+                    </RadioGroup>
                 </div>
 
                 <p

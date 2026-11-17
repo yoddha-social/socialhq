@@ -163,7 +163,7 @@ test('AI copy is unavailable without a write provider, and never across workspac
     $this->actingAs($this->owner)->postJson(route('socialhq.plan.items.copy.ai', $other->id))->assertNotFound();
 
     config(['ai.providers.anthropic.key' => null]);
-    $this->actingAs($this->owner)->postJson(route('socialhq.plan.items.copy.ai', $this->item->id))->assertNotFound();
+    $this->actingAs($this->owner)->postJson(route('socialhq.plan.items.copy.ai', $this->item->id))->assertConflict();
 
     expect(ItemVersion::query()->count())->toBe(0);
 });

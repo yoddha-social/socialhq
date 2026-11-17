@@ -7,6 +7,7 @@ namespace App\SocialHq\Http\Controllers\Plan;
 use App\Http\Controllers\Controller;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiTask;
+use App\SocialHq\Ai\AiUnavailableException;
 use App\SocialHq\Http\Requests\Plan\GeneratePlanRequest;
 use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Plan\Ai\GeneratePlanSuggestions;
@@ -39,7 +40,7 @@ class PlanGenerationController extends Controller
         $user = $request->user();
 
         if (! AiRouter::isAvailable(AiTask::Structured)) {
-            throw ValidationException::withMessages(['generate' => __('socialhq_plan.generation.errors.ai_unavailable')]);
+            throw ValidationException::withMessages(['generate' => AiUnavailableException::forTask(AiTask::Structured, $user)->messageFor($user)]);
         }
 
         $gate = Gate::inspect('useAi', $workspace->account);

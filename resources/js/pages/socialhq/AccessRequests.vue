@@ -40,6 +40,7 @@ interface WorkspaceOption {
 const props = defineProps<{
     requests: AccessRequestRow[];
     workspaces: WorkspaceOption[];
+    canDecline: boolean;
 }>();
 
 const approving = ref<AccessRequestRow | null>(null);
@@ -203,6 +204,7 @@ const submitDecline = (): void => {
                 <template #actions>
                     <div class="flex shrink-0 gap-2">
                         <Button
+                            v-if="canDecline"
                             variant="ghost"
                             :aria-label="
                                 $t('socialhq.signup.requests.decline_label', {

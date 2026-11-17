@@ -13,12 +13,16 @@ use Illuminate\Support\Str;
 /**
  * Where uploaded calendars wait for their column mapping: the private
  * `local` disk, never the default disk (in production a public bucket).
- * A file lives until its import is confirmed or dropped; stored names are
- * random, with the extension of the type found in the content.
+ * What waits is the upload's sheets as read (JSON), not the spreadsheet, so
+ * a file is parsed once. It lives until its import is confirmed or dropped;
+ * stored names are random.
  */
 final class CalendarStorage
 {
     public const string DISK = 'local';
+
+    /** The extension of an upload's sheets as read (putSheets). */
+    private const string SHEETS = 'json';
 
     public static function disk(): FilesystemAdapter
     {
@@ -35,6 +39,45 @@ final class CalendarStorage
     public static function newPath(Workspace $workspace, string $type): string
     {
         return self::directory($workspace).'/'.Str::uuid7()->toString().".{$type}";
+    }
+
+    /**
+     * Keeps an upload's sheets as read, so the import step never reads the
+     * spreadsheet again. Returns the stored path.
+     *
+     * @param  list<CalendarSheet>  $sheets
+     */
+    public static function putSheets(Workspace $workspace, array $sheets): string
+    {
+        $path = self::newPath($workspace, self::SHEETS);
+        $json = json_encode(array_map(fn (CalendarSheet $sheet): array => $sheet->toArray(), $sheets), JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION | JSON_INVALID_UTF8_SUBSTITUTE);
+
+        self::disk()->put($path, $json);
+
+        return $path;
+    }
+
+    /**
+     * The sheets an upload kept, or null when the file isn't one putSheets()
+     * wrote (an upload from before the sheets were kept: read it again).
+     *
+     * @return list<CalendarSheet>|null
+     *
+     * @throws CalendarFileProblem
+     */
+    public static function sheets(string $path): ?array
+    {
+        if (! str_ends_with($path, '.'.self::SHEETS)) {
+            return null;
+        }
+
+        $stored = json_decode((string) self::disk()->get($path), true);
+
+        if (! is_array($stored)) {
+            throw new CalendarFileProblem('unreadable');
+        }
+
+        return array_map(fn (mixed $sheet): CalendarSheet => CalendarSheet::fromArray((array) $sheet), array_values($stored));
     }
 
     /**
@@ -56,6 +99,10 @@ final class CalendarStorage
     public static function registerCleanup(): void
     {
         CalendarImport::deleting(fn (CalendarImport $import) => self::forget($import->path));
-        Workspace::deleting(fn (Workspace $workspace) => DB::afterCommit(fn () => self::disk()->deleteDirectory(self::directory($workspace))));
+        // A block, not an arrow: outside a transaction afterCommit runs the callback at once and
+        // returns its result, and a deleting listener that returns a value stops the ones after it.
+        Workspace::deleting(function (Workspace $workspace): void {
+            DB::afterCommit(fn () => self::disk()->deleteDirectory(self::directory($workspace)));
+        });
     }
 }

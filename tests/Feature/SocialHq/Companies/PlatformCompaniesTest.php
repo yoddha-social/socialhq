@@ -18,6 +18,8 @@ use App\SocialHq\Companies\Mail\CompanyDeclined;
 use App\SocialHq\Companies\Mail\CompanyRequested;
 use App\SocialHq\Companies\PlatformAdmins;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 beforeEach(function () {
     config([
@@ -84,18 +86,60 @@ test('a platform admin sees requests and companies on one page', function () {
     $this->actingAs($this->admin)->get(route('socialhq.platform.companies.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('socialhq/platform/Companies')
-            ->has('requests', 2)
-            ->where('requests.0.name', 'Himal Tea')
-            ->where('requests.0.owner_email', 'mina@himaltea.test')
-            ->where('requests.0.verified', true)
-            ->where('requests.1.verified', false)
-            ->has('companies', 2)
-            ->where('companies.0.name', $approved->name)
-            ->where('companies.0.workspaces_count', 1)
-            ->where('companies.0.members_count', 2)
-            ->where('companies.0.status', 'approved')
+            ->has('requests.data', 2)
+            ->where('requestsCount', 2)
+            ->where('requests.data.0.name', 'Himal Tea')
+            ->where('requests.data.0.owner_email', 'mina@himaltea.test')
+            ->where('requests.data.0.verified', true)
+            ->where('requests.data.1.verified', false)
+            ->has('companies.data', 2)
+            ->where('companies.data.0.name', $approved->name)
+            ->where('companies.data.0.workspaces_count', 1)
+            ->where('companies.data.0.members_count', 2)
+            ->where('companies.data.0.status', 'approved')
             ->where('socialhq.platform.admin', true)
             ->where('socialhq.platform.pendingCompanies', 1));
+});
+
+test('the companies list loads a page at a time as it scrolls', function () {
+    config(['app.pagination.default' => 2]);
+    approvedCompanyWithMember();
+    Company::factory()->create(['name' => 'Annapurna Foods']);
+
+    $first = $this->actingAs($this->admin)->get(route('socialhq.platform.companies.index', ['tab' => 'companies']))->viewData('page');
+
+    expect(array_column($first['props']['companies']['data'], 'name'))->toHaveCount(2)
+        ->and($first['props']['companies']['data'][0]['name'])->toBe('Annapurna Foods')
+        ->and($first['scrollProps']['companies'])->toMatchArray(['pageName' => 'companies_page', 'currentPage' => 1, 'nextPage' => 2]);
+
+    $second = $this->get(route('socialhq.platform.companies.index', ['tab' => 'companies', 'companies_page' => 2]))->viewData('page');
+
+    expect($second['props']['companies']['data'])->toHaveCount(1)
+        ->and($second['props']['companies']['data'][0]['name'])->toBe('Zeta Platform')
+        ->and($second['scrollProps']['companies'])->toMatchArray(['currentPage' => 2, 'nextPage' => null]);
+});
+
+test('a partial reload of one shared part runs none of the other parts\' queries', function () {
+    $partial = fn (string $only) => $this->actingAs($this->admin)
+        ->withHeaders([
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => Inertia::getVersion(),
+            'X-Inertia-Partial-Component' => 'socialhq/platform/Companies',
+            'X-Inertia-Partial-Data' => $only,
+        ])
+        ->get(route('socialhq.platform.companies.index'))
+        ->assertOk();
+
+    expect(array_keys($partial('socialhq.platform')->json('props.socialhq')))->toBe(['platform'])
+        ->and($partial('socialhq.platform')->json('props.socialhq.platform'))->toBe(['admin' => true, 'pendingCompanies' => 1]);
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    $partial('tab');
+    $queries = collect(DB::getQueryLog())->pluck('query');
+    DB::disableQueryLog();
+
+    expect($queries->filter(fn (string $sql): bool => str_contains($sql, 'shq_access_requests')))->toBeEmpty();
 });
 
 test('approving lets the owner create workspaces and emails them', function () {
@@ -210,7 +254,7 @@ test('a paused company\'s API keys stop working until it is restored', function 
 test('a configured contact address is who a paused company\'s owner writes to', function () {
     config(['socialhq.companies.contact_email' => 'help@socialhq.test']);
     [$company, $owner] = approvedCompanyWithMember();
-    $company->update(['status' => CompanyStatus::Suspended, 'decided_by' => $this->admin->id]);
+    $company->forceFill(['status' => CompanyStatus::Suspended, 'decided_by' => $this->admin->id])->save();
 
     $this->actingAs($owner)->get(route('socialhq.company.paused'))
         ->assertInertia(fn ($page) => $page->where('contact', 'help@socialhq.test'));
@@ -226,7 +270,7 @@ test('restoring or pausing only applies to a company in the right state', functi
 });
 
 test('platform admins are paused with their own company but still reach the platform pages', function () {
-    $this->adminCompany->update(['status' => CompanyStatus::Suspended]);
+    $this->adminCompany->forceFill(['status' => CompanyStatus::Suspended])->save();
 
     $this->actingAs($this->admin)->get(route('app.calendar'))->assertRedirect(route('socialhq.company.paused'));
     $this->get(route('socialhq.platform.companies.index'))->assertOk();
@@ -249,7 +293,7 @@ test('a platform admin decides which companies may use the platform AI keys', fu
 });
 
 test('the company emails render', function () {
-    $this->company->update(['status' => CompanyStatus::Declined, 'decision_note' => 'Tell us about your brands.']);
+    $this->company->forceFill(['status' => CompanyStatus::Declined, 'decision_note' => 'Tell us about your brands.'])->save();
 
     expect((new CompanyRequested($this->company->id))->render())
         ->toContain('Himal Tea')
@@ -265,23 +309,40 @@ test('the company emails render', function () {
         ->toContain('You can ask again after 24 hours.');
 });
 
-test('a paused company\'s scheduled posts wait until it is restored', function () {
+test('a paused company\'s posts wait, and those that came due go back to drafts on restore', function () {
     Bus::fake([PublishPost::class]);
     [$company, $owner] = approvedCompanyWithMember();
-    $post = Post::factory()->scheduled()->create([
+    $overdue = Post::factory()->scheduled()->create([
         'workspace_id' => $owner->current_workspace_id,
         'user_id' => $owner->id,
-        'scheduled_at' => now()->subMinute(),
+        'content' => 'Happy Dashain!',
+        'scheduled_at' => now()->addMinutes(5),
+    ]);
+    $later = Post::factory()->scheduled()->create([
+        'workspace_id' => $owner->current_workspace_id,
+        'user_id' => $owner->id,
+        'scheduled_at' => now()->addDays(3),
     ]);
 
     CompanyDecisions::suspend($company, $this->admin, 'Unpaid invoice.');
+    $this->travel(10)->minutes();
     $this->artisan('posts:process-scheduled')->assertSuccessful();
 
     Bus::assertNotDispatched(PublishPost::class);
-    expect($post->fresh()->status)->toBe(PostStatus::Scheduled);
+    expect($overdue->fresh()->status)->toBe(PostStatus::Scheduled);
 
-    CompanyDecisions::restore($company->fresh(), $this->admin);
+    $this->actingAs($this->admin)
+        ->post(route('socialhq.platform.companies.restore', $company->id))
+        ->assertSessionHas('flash.banner', 'Everest Bank works again. 1 post that came due while it was paused went back to drafts.');
     $this->artisan('posts:process-scheduled')->assertSuccessful();
 
-    Bus::assertDispatched(PublishPost::class);
+    Bus::assertNotDispatched(PublishPost::class);
+    expect($overdue->fresh())
+        ->status->toBe(PostStatus::Draft)
+        ->scheduled_at->toBeNull()
+        ->content->toBe('Happy Dashain!')
+        ->social_account_id->toBe($overdue->social_account_id)
+        ->and($later->fresh())
+        ->status->toBe(PostStatus::Scheduled)
+        ->scheduled_at->not->toBeNull();
 });

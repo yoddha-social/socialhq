@@ -24,6 +24,7 @@ use App\Models\Workspace;
 use App\Services\Post\MediaAttacher;
 use App\Services\Repurpose\CaptionAdapter;
 use App\Services\Social\TokenRedactor;
+use App\SocialHq\Companies\CompanyAccess;
 use App\Support\Media\MediaCopyBatch;
 use App\Support\PostApproval;
 use Illuminate\Bus\Queueable;
@@ -75,6 +76,11 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
         $repurpose = $this->item->repurpose;
         $workspace = $repurpose->workspace;
         $user = $repurpose->user ?? $workspace->owner;
+
+        // Social HQ: a paused company's item stays pending; polling picks it up again once it is restored.
+        if (CompanyAccess::isPaused($workspace)) {
+            return;
+        }
 
         if ($user === null) {
             $this->item->update(['status' => ItemStatus::Failed, 'reason' => ItemReason::PostCreationFailed]);

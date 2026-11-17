@@ -8,6 +8,7 @@ use App\Models\Workspace;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * Where knowledge documents live: the private `local` disk under
@@ -27,6 +28,23 @@ final class DocumentStorage
     public static function directory(string $workspaceId): string
     {
         return "socialhq/knowledge/{$workspaceId}";
+    }
+
+    /**
+     * A name a download may carry: no folder separators (Symfony refuses a
+     * Content-Disposition name with / or \) and no control characters.
+     */
+    public static function downloadName(string $name): string
+    {
+        return trim((string) preg_replace('/\p{Cc}/u', '', str_replace(['/', '\\'], '-', $name))) ?: 'document';
+    }
+
+    /**
+     * The file name of a document made from a title (a Google file's name).
+     */
+    public static function fileName(string $title, string $extension): string
+    {
+        return Str::limit(self::downloadName($title), 240, '').".{$extension}";
     }
 
     /**

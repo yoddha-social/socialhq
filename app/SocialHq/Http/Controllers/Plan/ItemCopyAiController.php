@@ -5,15 +5,12 @@ declare(strict_types=1);
 namespace App\SocialHq\Http\Controllers\Plan;
 
 use App\Http\Controllers\Controller;
-use App\SocialHq\Ai\AiRouter;
+use App\SocialHq\Ai\AiResponses;
 use App\SocialHq\Ai\AiTask;
 use App\SocialHq\Http\Requests\Plan\WriteItemCopyRequest;
 use App\SocialHq\Plan\Ai\WriteItemCopy;
 use App\SocialHq\Plan\PlanAccess;
-use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
-use Laravel\Ai\Exceptions\AiException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -27,16 +24,15 @@ class ItemCopyAiController extends Controller
     {
         $planItem = PlanAccess::item($request, $item);
 
-        abort_unless(AiRouter::isAvailable(AiTask::Write), Response::HTTP_NOT_FOUND);
+        if (($refusal = AiResponses::refusal(AiTask::Write, $request->user(), $planItem->workspace)) !== null) {
+            return $refusal;
+        }
 
         try {
             $version = WriteItemCopy::execute($planItem, $request->user(), $request->validated('instruction'));
-        } catch (AiException|RequestException|ConnectionException) {
-            $version = null;
         } catch (Throwable $exception) {
             // A reply the SDK can't parse (or any other failure of the call) is a failed draft, not a 500.
-            report($exception);
-            $version = null;
+            return AiResponses::failed($exception, __('socialhq_production.item.copy.ai_failed'));
         }
 
         if ($version === null) {

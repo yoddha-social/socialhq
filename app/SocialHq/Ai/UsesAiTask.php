@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\SocialHq\Ai;
 
 use App\SocialHq\Ai\Usage\AiUsageRecorder;
+use Laravel\Ai\Enums\Lab;
 
 /**
  * For agents: the SDK calls provider() when a prompt names no provider, and
@@ -13,6 +14,14 @@ use App\SocialHq\Ai\Usage\AiUsageRecorder;
  */
 trait UsesAiTask
 {
+    /**
+     * The route provider() last returned. The SDK asks provider() before the
+     * request options, so temperature() reuses it instead of routing again.
+     *
+     * @var array<string, string|null>|null
+     */
+    private ?array $aiRoute = null;
+
     abstract public function aiTask(): AiTask;
 
     /**
@@ -21,12 +30,51 @@ trait UsesAiTask
     public function provider(): array
     {
         try {
-            return AiRouter::route($this->aiTask());
+            return $this->aiRoute = AiRouter::route($this->aiTask());
         } catch (AiUnavailableException $exception) {
             // Settings › AI › Usage lists calls refused before anything was sent.
             app(AiUsageRecorder::class)->blocked($this, $exception);
 
             throw $exception;
         }
+    }
+
+    /**
+     * The route of the prompt being built, when provider() gave one.
+     *
+     * @return array<string, string|null>|null
+     */
+    public function aiRoute(): ?array
+    {
+        return $this->aiRoute;
+    }
+
+    /**
+     * Extra request fields: on gateway calls, who the call is for
+     * (AiRouter::gatewayAttribution). The agent implements
+     * Laravel\Ai\Contracts\HasProviderOptions for the SDK to ask.
+     *
+     * @return array<string, mixed>
+     */
+    public function providerOptions(Lab|string $provider): array
+    {
+        return AiRouter::gatewayAttribution($this->aiTask(), $provider);
+    }
+
+    /**
+     * Seconds the SDK waits for the answer (AiTimeout). A timeout passed to
+     * prompt() still wins.
+     */
+    public function timeout(): int
+    {
+        return $this->runsQueued() ? AiTimeout::QUEUED : AiTimeout::WEB;
+    }
+
+    /**
+     * Whether the agent only runs in queued jobs, where no browser waits.
+     */
+    protected function runsQueued(): bool
+    {
+        return false;
     }
 }

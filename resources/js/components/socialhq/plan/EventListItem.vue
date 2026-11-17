@@ -167,6 +167,14 @@ const remove = (): void => emit('delete', props.event);
                     }}
                 </span>
                 <Badge
+                    v-else-if="event.delisted"
+                    class="px-1.5"
+                    :class="NEEDS_CHECK_CLASS"
+                    :data-testid="`socialhq-event-delisted-${event.id}`"
+                >
+                    {{ $t('socialhq_events.badges.delisted') }}
+                </Badge>
+                <Badge
                     v-else
                     class="px-1.5"
                     :class="NEEDS_CHECK_CLASS"
@@ -199,7 +207,7 @@ const remove = (): void => emit('delete', props.event);
 
         <div v-if="canApprove" class="flex shrink-0 items-center gap-1">
             <Button
-                v-if="!event.verified"
+                v-if="!event.verified && !event.delisted"
                 size="sm"
                 variant="outline"
                 :loading="busy"

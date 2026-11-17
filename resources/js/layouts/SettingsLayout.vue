@@ -7,6 +7,8 @@ import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
 type Props = {
     fullWidth?: boolean;
     centered?: boolean;
+    /** A wider column for pages with a side panel (Social HQ Brand knowledge). */
+    wide?: boolean;
     title?: string;
     description?: string;
     /** Docs page linked as "Learn more" at the end of the description. */
@@ -16,6 +18,7 @@ type Props = {
 withDefaults(defineProps<Props>(), {
     fullWidth: false,
     centered: false,
+    wide: false,
     title: undefined,
     description: undefined,
     learnMoreUrl: undefined,
@@ -30,7 +33,10 @@ withDefaults(defineProps<Props>(), {
         <template v-if="$slots['header']" #header>
             <slot name="header" />
         </template>
-        <template v-if="$slots['header'] && $slots['header-actions']" #header-actions>
+        <template
+            v-if="$slots['header'] && $slots['header-actions']"
+            #header-actions
+        >
             <slot name="header-actions" />
         </template>
 
@@ -46,7 +52,8 @@ withDefaults(defineProps<Props>(), {
 
         <div
             v-else-if="title"
-            class="mx-auto flex w-full max-w-[664px] flex-col gap-8 px-4 pt-2 pb-16 md:px-8 md:pt-10"
+            class="mx-auto flex w-full flex-col gap-8 px-4 pt-2 pb-16 md:px-8 md:pt-10"
+            :class="wide ? 'max-w-[1160px]' : 'max-w-[664px]'"
             data-testid="settings-page"
         >
             <header class="flex items-start justify-between gap-3">

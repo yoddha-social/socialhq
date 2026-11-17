@@ -77,6 +77,8 @@ class BrandKnowledgeController extends Controller
                 'used' => $loadPrompt()->used,
                 'budget' => $loadPrompt()->budget,
                 'profileTrimmed' => $loadPrompt()->profileTrimmed,
+                // How much of `used` the profile takes; the rest is knowledge.
+                'profileUsed' => $loadPrompt()->profileUsed,
             ],
             // The plan reads these too; they are edited here and on the plan page.
             'pillars' => fn () => PlanOptions::pillars($loadProfile()),

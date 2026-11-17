@@ -31,10 +31,15 @@ import {
  * overall visual style. Briefs and AI graphics follow it. Admins change
  * it; members see it.
  */
-const props = defineProps<{
-    look: BrandLookProp;
-    canEdit: boolean;
-}>();
+const props = withDefaults(
+    defineProps<{
+        look: BrandLookProp;
+        canEdit: boolean;
+        /** False when the page saves the look from its own save bar (see defineExpose). */
+        inlineSave?: boolean;
+    }>(),
+    { inlineSave: true },
+);
 
 const LOGO_ACCEPT = 'image/png,image/jpeg,image/webp,image/svg+xml,.svg';
 
@@ -102,7 +107,8 @@ const pickColour = (index: number, event: Event): void => {
     form.colours[index].hex = (event.target as HTMLInputElement).value;
 };
 
-const save = (): void => {
+/** Saves the look; `afterSave` runs once it is stored (the page's save bar chains saves). */
+const save = (afterSave?: () => void): void => {
     form.put(updateLook.url(), {
         preserveScroll: true,
         // Show what was stored (a colour typed without "#" comes back with it).
@@ -114,9 +120,21 @@ const save = (): void => {
                 style_notes: props.look.style_notes,
             });
             form.reset();
+            afterSave?.();
         },
     });
 };
+
+const submitForm = (): void => {
+    save();
+};
+
+const discard = (): void => {
+    form.reset();
+    form.clearErrors();
+};
+
+defineExpose({ form, save, discard });
 
 const chooseLogo = (): void => {
     logoInput.value?.click();
@@ -255,7 +273,7 @@ const removeLogo = (): void => {
             </p>
         </div>
 
-        <form class="flex flex-col gap-4" @submit.prevent="save">
+        <form class="flex flex-col gap-4" @submit.prevent="submitForm">
             <fieldset class="flex flex-col gap-2">
                 <legend class="text-sm font-medium text-foreground">
                     {{ $t('socialhq_knowledge.look.colours') }}
@@ -435,7 +453,7 @@ const removeLogo = (): void => {
                 </p>
             </div>
 
-            <div v-if="canEdit">
+            <div v-if="canEdit && inlineSave">
                 <Button
                     type="submit"
                     :disabled="!form.isDirty"

@@ -120,7 +120,7 @@ test('a new person who starts on the login page signs up with google or github i
     $href = $page->attribute("@social-login-{$network}", 'href');
     $page->assertNoJavaScriptErrors();
 
-    $socialiteUser = new SocialiteUser;
+    $socialiteUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
     $socialiteUser->id = "{$network}-from-login";
     $socialiteUser->name = 'New Person';
     $socialiteUser->email = "{$network}-from-login@example.com";

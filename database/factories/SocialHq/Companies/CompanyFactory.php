@@ -7,6 +7,7 @@ namespace Database\Factories\SocialHq\Companies;
 use App\Models\Account;
 use App\SocialHq\Companies\Company;
 use App\SocialHq\Companies\CompanyStatus;
+use Database\Factories\AccountFactory;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -19,7 +20,7 @@ class CompanyFactory extends Factory
     public function definition(): array
     {
         return [
-            'account_id' => Account::factory(),
+            'account_id' => fn (): string => AccountFactory::withoutCompany(fn (): Account => Account::factory()->create())->id,
             'name' => fake()->company(),
             'status' => CompanyStatus::Approved,
             'uses_platform_ai' => false,

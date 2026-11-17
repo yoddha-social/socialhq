@@ -36,6 +36,9 @@ env:
   SOCIALHQ_AGENT_POSTS_REVIEWED: "true"
   SOCIALHQ_COMPANY_REQUESTS: "true"
   SOCIALHQ_COMPANIES_REQUIRED: "true"
+  # Every test account gets an approved company (database/factories/AccountFactory.php),
+  # as the backfill gave every real account.
+  SOCIALHQ_TEST_ACCOUNTS_APPROVED: "true"
 
 jobs:
   production-rules:

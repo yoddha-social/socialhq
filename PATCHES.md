@@ -108,6 +108,8 @@ range stay unused. No row is lost.
 | 164 | `resources/js/components/settings/SettingsSidebar.vue` | Renders an item's `children` as a sub-menu (`SidebarMenuSub`; 18 lines + 3 imports), and an item with children is active on its own URL only | Settings › AI › Usage sits under AI (rows 124–163 are reserved by the audit-fix lanes) |
 | 165 | `resources/js/composables/useSettingsNavigation.ts` | The AI item (row 119) gets a "Usage" child (`socialhq.ai-usage.show`), and the item type allows `children` (14 lines + 1 import) | Settings › AI › Usage |
 | 166 | `tests/fixtures/single-line-copy.php` | Budgets for `socialhq_ai_usage.*` (menu item, status badges, periods, buttons), at their English length (13 lines) | `SingleLineCopyTest` keeps them on one line once translated |
+| 167 | `tests/BrowserTestCase.php`, `tests/Browser/SignupPreferencesTest.php` | Browser tests give the AI providers placeholder keys in `setUp()` (the agents are faked, nothing is sent); the fake Google user carries `email_verified` (12 lines) | The AI buttons show only for a task with a usable provider (row 16's `aiTasks`), and Google sign-in needs a verified email (row 132) |
+| 168 | `database/factories/AccountFactory.php` | Under `SOCIALHQ_TEST_ACCOUNTS_APPROVED` (only the production-rules CI job sets it), a new account gets an approved company; `withoutCompany()` for `CompanyFactory`, which makes its own (about 45 lines) | With companies required, an account without a company is not approved (row 130). Every real account has one from the backfill, so TryPost's suites run against what production has |
 
 Files we **added** aren't listed here; they're under the module paths in
 SOCIALHQ.md, plus `config/socialhq.php`, `routes/socialhq.php`,

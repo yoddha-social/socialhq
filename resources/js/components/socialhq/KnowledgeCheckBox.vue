@@ -12,6 +12,14 @@ import { Label } from '@/components/ui/label';
 import { formatFullNumber } from '@/lib/utils';
 import { search as searchKnowledge } from '@/routes/socialhq/brand';
 
+withDefaults(
+    defineProps<{
+        /** False inside the "Check AI context" dialog, which has its own title. */
+        showHeading?: boolean;
+    }>(),
+    { showHeading: true },
+);
+
 interface CheckPart {
     type: 'entry' | 'excerpt';
     id: number;
@@ -95,7 +103,7 @@ const check = async (): Promise<void> => {
 
 <template>
     <section class="flex flex-col gap-4" data-testid="socialhq-knowledge-check">
-        <div class="flex flex-col gap-1">
+        <div v-if="showHeading" class="flex flex-col gap-1">
             <h2 class="text-base font-semibold text-foreground">
                 {{ $t('socialhq_knowledge.check.title') }}
             </h2>

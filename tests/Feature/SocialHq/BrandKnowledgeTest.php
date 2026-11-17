@@ -180,7 +180,8 @@ test('pinned entries go first and editing an entry does not move it', function (
             ->where('entries.2.id', $older->id)
             ->where('entries.2.fit', 'no_room')
             ->where('usage.budget', 500)
-            ->where('usage.used', $prompt->used));
+            ->where('usage.used', $prompt->used)
+            ->where('usage.profileUsed', $prompt->profileUsed));
 });
 
 test('an entry longer than the room after the profile is marked too long', function () {

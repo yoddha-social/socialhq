@@ -175,7 +175,8 @@ test('the toolbar has one media button whose menu lists the upload first, then t
     waitForComposerMediaSourcesTestId($page, 'composer-base-media-source-list');
 
     expect($page->script("Array.from(document.querySelectorAll('[data-testid=\"composer-base-media-source-list\"] [data-testid^=\"media-source-\"]')).map((item) => item.dataset.testid)"))
-        ->toBe(['media-source-upload', 'media-source-canva', 'media-source-unsplash']);
+        // Social HQ: "Generate with AI" follows Upload (an image provider is set up in browser tests).
+        ->toBe(['media-source-upload', 'media-source-socialhq-ai', 'media-source-canva', 'media-source-unsplash']);
 
     expect($page->script(<<<'JS'
         (() => {

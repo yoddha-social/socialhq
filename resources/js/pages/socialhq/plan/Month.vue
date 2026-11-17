@@ -107,12 +107,6 @@ watch(view, (next) => {
     }
 });
 
-/**
- * The list grows with its items and the page scrolls (its header and week
- * rows stick to the page); the grid fills the window and scrolls inside.
- */
-const pageScrolls = computed(() => view.value === 'list');
-
 /** The grid/list switch sits in the tab bar on md+, next to the month switcher below. */
 const isDesktop = useAtLeastBreakpoint('md');
 
@@ -365,10 +359,7 @@ const openBrandSettings = (): void => {
             </div>
         </template>
 
-        <div
-            class="flex flex-col"
-            :class="pageScrolls ? 'shrink-0 grow' : 'min-h-0 flex-1'"
-        >
+        <div class="flex shrink-0 grow flex-col">
             <PlanTabs active="plan">
                 <template v-if="hasChannels && isDesktop" #filters>
                     <PlanViewToggle v-model="view" />
@@ -493,8 +484,7 @@ const openBrandSettings = (): void => {
 
             <div
                 v-else
-                class="mx-4 mb-4 flex flex-col gap-3 md:mx-8 md:mb-6"
-                :class="pageScrolls ? 'shrink-0 grow' : 'min-h-0 flex-1'"
+                class="mx-4 mb-4 flex shrink-0 grow flex-col gap-3 md:mx-8 md:mb-6"
             >
                 <PlanGenerationPanel
                     :plan="plan"
@@ -599,14 +589,14 @@ const openBrandSettings = (): void => {
 
                 <PlanWhatWorkedPanel :what-worked="whatWorked" />
 
-                <!-- overflow-clip, not hidden, in the list: hidden would make the card the sticky header's scroller. -->
+                <!--
+                    Grid and list grow with their content and the page scrolls, so the
+                    summary and "What worked" scroll away while the header rows stick.
+                    overflow-clip, not hidden: hidden would make the card the sticky
+                    headers' scroller.
+                -->
                 <div
-                    class="flex min-h-[28rem] flex-col rounded-xl border border-border-strong bg-card"
-                    :class="
-                        pageScrolls
-                            ? 'shrink-0 grow overflow-clip'
-                            : 'flex-1 overflow-hidden'
-                    "
+                    class="flex min-h-[28rem] shrink-0 grow flex-col overflow-clip rounded-xl border border-border-strong bg-card"
                     :aria-busy="isGenerating || undefined"
                 >
                     <PlanMonthGrid

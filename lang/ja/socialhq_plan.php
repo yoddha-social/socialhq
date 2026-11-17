@@ -85,6 +85,9 @@ return [
     'grid' => [
         'add_on' => 'Add an item on :day',
         'nothing_today' => 'Nothing planned today.',
+        'show_more' => '+:count more',
+        'show_more_label' => 'Show :count more items on :day',
+        'show_less' => 'Show less',
     ],
     'list' => [
         'date' => 'Day',

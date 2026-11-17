@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { IconPlus } from '@tabler/icons-vue';
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { localizedDay } from '@/components/socialhq/localizedDay';
 import PlanEventChip from '@/components/socialhq/plan/PlanEventChip.vue';
@@ -117,6 +117,40 @@ const listDays = computed(() =>
         ),
 );
 
+/** Desktop cells show this many items, then a "+N more" toggle. */
+const VISIBLE_ITEMS = 3;
+
+const expandedDays = ref<Set<string>>(new Set());
+
+watch(
+    () => props.month,
+    () => {
+        expandedDays.value = new Set();
+    },
+);
+
+const isExpanded = (day: dayjs.Dayjs): boolean =>
+    expandedDays.value.has(dayKey(day));
+
+const hiddenCount = (day: dayjs.Dayjs): number =>
+    Math.max(0, itemsOn(day).length - VISIBLE_ITEMS);
+
+const visibleItemsOn = (day: dayjs.Dayjs): PlanItem[] =>
+    isExpanded(day) ? itemsOn(day) : itemsOn(day).slice(0, VISIBLE_ITEMS);
+
+const toggleDay = (day: dayjs.Dayjs): void => {
+    const next = new Set(expandedDays.value);
+    const key = dayKey(day);
+
+    if (next.has(key)) {
+        next.delete(key);
+    } else {
+        next.add(key);
+    }
+
+    expandedDays.value = next;
+};
+
 const addOn = (day: dayjs.Dayjs): void => emit('add', dayKey(day));
 const openItem = (item: PlanItem): void => emit('open', item);
 const acceptItem = (item: PlanItem): void => emit('accept', item);
@@ -126,7 +160,7 @@ const dropItem = (item: PlanItem): void => emit('drop', item);
 <template>
     <div
         v-if="isDesktop"
-        class="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
+        class="flex flex-1 flex-col"
         data-testid="plan-month-grid"
     >
         <div
@@ -146,7 +180,7 @@ const dropItem = (item: PlanItem): void => emit('drop', item);
             <div
                 v-for="(week, weekIndex) in weeks"
                 :key="weekIndex"
-                class="grid min-h-36 flex-1 grid-cols-7 border-border-strong"
+                class="grid min-h-36 grow grid-cols-7 border-border-strong"
                 :class="{ 'border-t': weekIndex > 0 }"
             >
                 <div
@@ -195,7 +229,7 @@ const dropItem = (item: PlanItem): void => emit('drop', item);
                         :event="event"
                     />
                     <PlanItemCard
-                        v-for="item in itemsOn(day)"
+                        v-for="item in visibleItemsOn(day)"
                         :key="item.id"
                         :item="item"
                         :lookups="lookups"
@@ -205,6 +239,30 @@ const dropItem = (item: PlanItem): void => emit('drop', item);
                         @accept="acceptItem"
                         @drop="dropItem"
                     />
+                    <button
+                        v-if="hiddenCount(day) > 0"
+                        type="button"
+                        class="self-start rounded-md px-1.5 py-0.5 text-xs font-medium text-primary-text hover:bg-accent hover:underline focus-visible:underline"
+                        :aria-expanded="isExpanded(day)"
+                        :aria-label="
+                            isExpanded(day)
+                                ? $t('socialhq_plan.grid.show_less')
+                                : $t('socialhq_plan.grid.show_more_label', {
+                                      count: String(hiddenCount(day)),
+                                      day: day.format('D MMMM'),
+                                  })
+                        "
+                        :data-testid="`plan-more-${dayKey(day)}`"
+                        @click="toggleDay(day)"
+                    >
+                        {{
+                            isExpanded(day)
+                                ? $t('socialhq_plan.grid.show_less')
+                                : $t('socialhq_plan.grid.show_more', {
+                                      count: String(hiddenCount(day)),
+                                  })
+                        }}
+                    </button>
                 </div>
             </div>
         </div>
@@ -212,7 +270,7 @@ const dropItem = (item: PlanItem): void => emit('drop', item);
 
     <div
         v-else
-        class="flex min-h-0 flex-1 flex-col divide-y divide-border overflow-y-auto overscroll-contain"
+        class="flex flex-1 flex-col divide-y divide-border"
         data-testid="plan-day-list"
     >
         <section

@@ -60,6 +60,11 @@ const dayQuery = computed<UsageDayQuery>(() =>
 /** Changes whenever the filters do, so opened days load their rows again. */
 const filterKey = computed(() => JSON.stringify(dayQuery.value));
 
+/**
+ * A full visit, not `reset: ['days']`: Inertia sends a reset as a partial
+ * reload of `days` only, which would leave the totals, charts and filters
+ * stale. The day list is keyed by the filters, so its scroll state starts over.
+ */
 const reload = (filters: Partial<UsageFilters>): void => {
     const next = { ...props.filters, ...filters };
 
@@ -70,7 +75,7 @@ const reload = (filters: Partial<UsageFilters>): void => {
                 ([, value]) => value !== null && value !== '',
             ),
         ),
-        { preserveState: true, preserveScroll: true, reset: ['days'] },
+        { preserveState: true, preserveScroll: true },
     );
 };
 
@@ -517,6 +522,7 @@ const collapseAll = (): void => {
                 </div>
 
                 <InfiniteScroll
+                    :key="filterKey"
                     data="days"
                     items-element="#ai-usage-days"
                     preserve-url

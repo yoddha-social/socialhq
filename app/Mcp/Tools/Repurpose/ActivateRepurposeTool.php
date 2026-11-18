@@ -25,7 +25,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly(false)]
 #[IsDestructive(true)]
 #[IsOpenWorld(true)]
-#[Description('Activate a repurpose. Requires at least one destination and stamps the watermark, so only videos published from now on are replicated.')]
+#[Description('Activate a repurpose. From then on each new video on the source account becomes a post on every destination. With publish_mode publish, those posts are scheduled at once as the person who created the repurpose, with no approval step when that person publishes directly; with draft they wait in Social HQ. Requires at least one destination and stamps the watermark, so only videos published from now on are replicated. An API key or MCP connection whose posts need approval cannot activate one.')]
 class ActivateRepurposeTool extends Tool
 {
     use AuthorizesMcpTool, ResolvesWorkspaceRepurpose;

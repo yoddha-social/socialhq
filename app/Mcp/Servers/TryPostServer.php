@@ -89,6 +89,13 @@ use App\Mcp\Tools\Webhook\RotateWebhookSecretTool;
 use App\Mcp\Tools\Webhook\SendWebhookTestTool;
 use App\Mcp\Tools\Webhook\UpdateWebhookTool;
 use App\Mcp\Tools\Workspace\GetWorkspaceTool;
+use App\SocialHq\Mcp\HiddenTools;
+use App\SocialHq\Mcp\Tools\Plan\GetBrandKnowledgeTool;
+use App\SocialHq\Mcp\Tools\Plan\GetContentPlanTool;
+use App\SocialHq\Mcp\Tools\Plan\GetPlanItemTool;
+use App\SocialHq\Mcp\Tools\Plan\ListPlanEventsTool;
+use App\SocialHq\Mcp\Tools\Plan\SavePlanItemCopyTool;
+use App\SocialHq\Mcp\Tools\Plan\SubmitPlanItemCopyTool;
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Icon;
 use Laravel\Mcp\Server\Attributes\Instructions;
@@ -98,7 +105,7 @@ use Laravel\Mcp\Server\Attributes\Version;
 #[Name('Social HQ')]
 #[Version('1.0.0')]
 #[Icon('images/socialhq/icon.png', mimeType: 'image/png')]
-#[Instructions('Social HQ is a social media scheduling platform. Use this server to manage posts (drafts, custom times, the channel queue and its free slots, recurrence, threads on X, Bluesky and Mastodon through meta.thread_replies, previews, notes and approvals), ideas, analytics, signatures, labels, social accounts and their posting times, workspaces, outgoing webhooks, repurposes (auto-replicating videos posted outside Social HQ), and API keys. Call list-content-types-tool before choosing a content_type or attaching media: it lists the media rules, text and hashtag limits, thread support and the meta each network requires. Media is attached to a post by upload or URL; an upload is temporary, kept for 24 hours and single-use, and every post keeps its own copy of its files. Times are UTC. Members who need approval in a workspace can create and edit posts, but scheduling, queueing or publishing stores their post with status pending_approval until a member who publishes directly calls approve-post-tool or reject-post-tool; get-workspace-tool tells the caller which applies.')]
+#[Instructions('Social HQ is a social media scheduling platform. Use this server to manage posts (drafts, custom times, the channel queue and its free slots, recurrence, threads on X, Bluesky and Mastodon through meta.thread_replies, previews, notes and approvals), ideas, analytics, signatures, labels, social accounts and their posting times, workspaces, repurposes (auto-replicating videos posted outside Social HQ) and the content plan (each month\'s planned items, dated events, brand knowledge, and copy written for an item and sent for review; a person approves plans and copy in the app); outgoing webhooks and API keys are managed in the app, so their tools are only listed when the server allows agents to manage them. Call list-content-types-tool before choosing a content_type or attaching media: it lists the media rules, text and hashtag limits, thread support and the meta each network requires. Media is attached to a post by upload or URL; an upload is temporary, kept for 24 hours and single-use, and every post keeps its own copy of its files. Times are UTC. Members who need approval in a workspace can create and edit posts, but scheduling, queueing or publishing stores their post with status pending_approval until a member who publishes directly calls approve-post-tool or reject-post-tool; get-workspace-tool tells the caller which applies. A connection whose posts need approval can at most read repurposes, never create or change them, because a repurpose\'s posts publish without review.')]
 class TryPostServer extends Server
 {
     public int $defaultPaginationLength = 200;
@@ -199,6 +206,14 @@ class TryPostServer extends Server
         ListApiKeysTool::class,
         CreateApiKeyTool::class,
         DeleteApiKeyTool::class,
+
+        // Social HQ: planning (app/SocialHq/Mcp/Tools/Plan). Reading, writing copy and sending it for review; approving stays in the app.
+        GetContentPlanTool::class,
+        ListPlanEventsTool::class,
+        GetPlanItemTool::class,
+        GetBrandKnowledgeTool::class,
+        SavePlanItemCopyTool::class,
+        SubmitPlanItemCopyTool::class,
     ];
 
     protected array $resources = [];
@@ -208,5 +223,8 @@ class TryPostServer extends Server
     protected function boot(): void
     {
         $this->addMethod(Method::ToolsList->value, ListToolsWithSecuritySchemes::class);
+
+        // Social HQ: API key and webhook tools stay out unless agents may manage them.
+        $this->tools = HiddenTools::without($this->tools);
     }
 }

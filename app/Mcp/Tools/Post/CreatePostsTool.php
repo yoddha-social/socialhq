@@ -15,10 +15,12 @@ use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Mcp\Concerns\DescribesPostMedia;
 use App\Models\Post;
 use App\Models\Workspace;
+use App\SocialHq\Mcp\IdempotentPostCreation;
 use App\Support\PostPlatformMetaRules;
 use App\Support\PostStatusRules;
 use App\Support\Requests\Post\PostRequestRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\Support\Collection;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
@@ -31,7 +33,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly(false)]
 #[IsDestructive(true)]
 #[IsOpenWorld(true)]
-#[Description('Create one independent post per destination in the current workspace, as the web composer does when several channels are selected: each destination becomes its own post on its own channel, and the posts share a post_group_id. Each destination may override the shared content, media, content_type and meta. status draft keeps them editable, scheduled schedules them at scheduled_at or in each channel queue (queue: next or top), publishing publishes them now; one specific slot (queue_slot) is not taken here, use create-post-tool or move-post-to-slot-tool for that. When the acting member needs approval in this workspace, scheduled, queued and publish-now posts are stored with status pending_approval and wait for approve-post-tool. To publish a thread on X, Bluesky or Mastodon, put the follow-up posts in meta.thread_replies: up to 24 replies published under the post, each {text, media} with up to 4 media items given by url, id or upload_token, e.g. [{"text": "2/ ..."}, {"text": "3/ ...", "media": [{"url": "https://..."}]}]. Each reply must fit the text limit of the account and follows the media rules of a post on that network. Before a post can be scheduled or published it needs: TikTok meta.privacy_level (get-tiktok-creator-info-tool), Pinterest meta.board_id (list-pinterest-boards-tool), Discord meta.channel_id (list-discord-channels-tool), Google Business events and offers meta.event (title and dates), YouTube a title (meta.title, or the first line of the text); list-content-types-tool lists them per platform as required_meta. A scheduled or published post also needs text or media.')]
+#[Description('Create one independent post per destination in the current workspace, as the web composer does when several channels are selected: each destination becomes its own post on its own channel, and the posts share a post_group_id. Each destination may override the shared content, media, content_type and meta. status draft keeps them editable, scheduled schedules them at scheduled_at or in each channel queue (queue: next or top), publishing publishes them now; one specific slot (queue_slot) is not taken here, use create-post-tool or move-post-to-slot-tool for that. When the acting member needs approval in this workspace, scheduled, queued and publish-now posts are stored with status pending_approval and wait for approve-post-tool. To publish a thread on X, Bluesky or Mastodon, put the follow-up posts in meta.thread_replies: up to 24 replies published under the post, each {text, media} with up to 4 media items given by url, id or upload_token, e.g. [{"text": "2/ ..."}, {"text": "3/ ...", "media": [{"url": "https://..."}]}]. Each reply must fit the text limit of the account and follows the media rules of a post on that network. Before a post can be scheduled or published it needs: TikTok meta.privacy_level (get-tiktok-creator-info-tool), Pinterest meta.board_id (list-pinterest-boards-tool), Discord meta.channel_id (list-discord-channels-tool), Google Business events and offers meta.event (title and dates), YouTube a title (meta.title, or the first line of the text); list-content-types-tool lists them per platform as required_meta. A scheduled or published post also needs text or media. Send an idempotency_key so a retry after a timeout cannot create the posts twice.')]
 class CreatePostsTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -45,6 +47,27 @@ class CreatePostsTool extends Tool
             return $workspace;
         }
 
+        // Social HQ: a retry with the same idempotency_key gets the first call's posts.
+        return IdempotentPostCreation::run(
+            $request,
+            $workspace,
+            $this->name(),
+            fn (): Collection|Response|ResponseFactory => $this->create($request, $workspace),
+            fn (Collection $posts): Response|ResponseFactory => Response::structured([
+                'posts' => $posts->map(function (Post $post): array {
+                    $post->load(['socialAccount', 'labels']);
+
+                    return (new PostResource($post))->resolve();
+                })->all(),
+            ]),
+        );
+    }
+
+    /**
+     * @return Collection<int, Post>|Response|ResponseFactory
+     */
+    private function create(Request $request, Workspace $workspace): Collection|Response|ResponseFactory
+    {
         $validated = $request->validate(PostRequestRules::batch($workspace), PostRequestRules::messages());
 
         $validated = HostInlineMedia::forBatch($workspace, $validated);
@@ -52,18 +75,10 @@ class CreatePostsTool extends Tool
         $validated['created_via'] = CreatedVia::Mcp;
 
         try {
-            $posts = CreatePosts::execute($workspace, $request->user(), $validated);
+            return CreatePosts::execute($workspace, $request->user(), $validated);
         } catch (QueueBusyException) {
             return Response::error(__('posts.errors.queue_busy'));
         }
-
-        return Response::structured([
-            'posts' => $posts->map(function (Post $post): array {
-                $post->load(['socialAccount', 'labels']);
-
-                return (new PostResource($post))->resolve();
-            })->all(),
-        ]);
     }
 
     public function schema(JsonSchema $schema): array
@@ -84,6 +99,7 @@ class CreatePostsTool extends Tool
                     'meta' => $destination->object()->description(PostPlatformMetaRules::documentation()),
                 ]))
                 ->required(),
+            'idempotency_key' => $schema->string()->description(IdempotentPostCreation::schemaDescription()),
         ];
     }
 }

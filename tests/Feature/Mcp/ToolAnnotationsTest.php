@@ -121,6 +121,14 @@ function mcpExpectedToolAnnotations(): array
         'list-api-keys-tool' => [true, false, false],
         'create-api-key-tool' => [false, false, false],
         'delete-api-key-tool' => [false, true, false],
+
+        // Social HQ: planning
+        'get-content-plan-tool' => [true, false, false],
+        'list-plan-events-tool' => [true, false, false],
+        'get-plan-item-tool' => [true, false, false],
+        'get-brand-knowledge-tool' => [true, false, false],
+        'save-plan-item-copy-tool' => [false, true, false],
+        'submit-plan-item-copy-tool' => [false, true, false],
     ];
 }
 

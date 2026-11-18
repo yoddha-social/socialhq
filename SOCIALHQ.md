@@ -426,6 +426,30 @@ Every request, approval, rejection and withdrawal is recorded in
 `shq_approval_events` (who, when, from the app, an agent or the system).
 TryPost keeps only the latest approver and nothing about rejections.
 
+## Agents (API keys and MCP)
+
+An API key or MCP grant is an agent (`ApprovalRules::actsAsAgent`), an
+admin's too. Besides the approval rules above:
+
+- **Repurposes are read only** (`WorkspacePolicy::viewRepurposes`, PATCHES
+  rows 196–197): a repurpose's posts are made later by a queued job acting
+  as its creator, so they skip the review every agent post gets. The refusal
+  says why.
+- **API keys and webhooks are refused** (`App\SocialHq\Agents\AdminSettings`)
+  and the MCP server doesn't list those tools (`App\SocialHq\Mcp\HiddenTools`):
+  an agent reading untrusted text could be steered into minting a key or
+  sending post events to any URL. `SOCIALHQ_AGENTS_MANAGE_ADMIN_SETTINGS=true`
+  allows them again; `manageTeam` itself is unchanged.
+- **Safe retries**: `create-post-tool` and `create-posts-tool` take an
+  `idempotency_key`; the same key and arguments within 24 hours return the
+  posts already made (`App\SocialHq\Mcp\IdempotentPostCreation`, cache).
+- **Planning tools** (`app/SocialHq/Mcp/Tools/Plan/`): read a month's plan,
+  an item (copy, change requests, thread, brief), the month's events and
+  the brand knowledge AI writers get; save copy as an item's next version
+  (source `ai`; refused while the copy is in review or approved) and send it
+  for review. Approving stays in the app, and no tool calls our AI (AI is
+  web only).
+
 ## Sign-up
 
 Self-hosted TryPost only registers people with an invite. Social HQ also lets

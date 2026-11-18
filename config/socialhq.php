@@ -351,6 +351,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Agents (API keys and MCP grants)
+    |--------------------------------------------------------------------------
+    |
+    | manage_admin_settings: an agent may manage API keys and webhooks with an
+    | admin's rights. Off: an agent that reads untrusted text (a web page, a
+    | comment) could be steered into minting a key or sending every post event
+    | to an outside URL. The MCP server then hides those tools, and the REST
+    | API refuses them (App\SocialHq\Agents\AdminSettings).
+    |
+    */
+
+    'agents' => [
+        'manage_admin_settings' => (bool) env('SOCIALHQ_AGENTS_MANAGE_ADMIN_SETTINGS', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Channels
     |--------------------------------------------------------------------------
     |

@@ -6,7 +6,9 @@ namespace App\Policies;
 
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Agents\AdminSettings;
 use App\SocialHq\Companies\CompanyAccess;
+use Illuminate\Auth\Access\Response;
 
 class WorkspacePolicy
 {
@@ -56,14 +58,37 @@ class WorkspacePolicy
         return $this->isAdmin($user, $workspace);
     }
 
-    public function manageWebhooks(User $user, Workspace $workspace): bool
+    /**
+     * Social HQ: an API key or MCP grant never manages webhooks (AdminSettings).
+     */
+    public function manageWebhooks(User $user, Workspace $workspace): bool|Response
     {
-        return $this->isAdmin($user, $workspace);
+        return AdminSettings::refusalFor($user) ?? $this->isAdmin($user, $workspace);
+    }
+
+    /**
+     * Social HQ: managing API keys is manageTeam without agents (AdminSettings).
+     * manageTeam itself stays as it is: every API key request needs it
+     * (LoadWorkspaceFromToken).
+     */
+    public function manageApiKeys(User $user, Workspace $workspace): bool|Response
+    {
+        return AdminSettings::refusalFor($user) ?? $this->manageTeam($user, $workspace);
     }
 
     public function manageRepurposes(User $user, Workspace $workspace): bool
     {
         return $this->publishDirectly($user, $workspace);
+    }
+
+    /**
+     * Social HQ: an agent (API key or MCP grant) of someone who manages
+     * repurposes may read them; changing one stays with manageRepurposes,
+     * because a repurpose's posts publish without review.
+     */
+    public function viewRepurposes(User $user, Workspace $workspace): bool
+    {
+        return $this->canAccess($user, $workspace) && $user->publishesDirectlyAsPersonIn($workspace);
     }
 
     /**

@@ -5,6 +5,11 @@ export type UsageStatus =
     | 'blocked_budget'
     | 'blocked_no_route';
 
+/** The "Failed or blocked" filter: every status except answered. */
+export const PROBLEMS = 'problems';
+
+export type UsageStatusFilter = UsageStatus | typeof PROBLEMS;
+
 export type UsagePeriod = '1d' | '7d' | '30d' | '90d';
 
 export interface UsageLogRow {
@@ -40,18 +45,72 @@ export interface UsageOption<T = string> {
 
 export interface UsageFilters {
     period: UsagePeriod;
-    status: UsageStatus | null;
+    status: UsageStatusFilter | null;
     feature: string | null;
     provider: string | null;
     workspace: string | null;
     company: number | null;
+    user: string | null;
 }
+
+export interface UsageTotals {
+    calls: number;
+    answered: number;
+    free: number;
+    paid: number;
+    problems: number;
+    cost: number;
+    tokens: number;
+}
+
+/** One bar of the Requests chart: an hour (last 24 hours) or a day. */
+export interface UsageSeriesPoint {
+    key: string;
+    calls: number;
+    problems: number;
+}
+
+export interface UsageBreakdownRow {
+    value: string;
+    label: string;
+    calls: number;
+}
+
+/** One day of the log, in the viewer's time zone. */
+export interface UsageDaySummary {
+    date: string;
+    calls: number;
+    answered: number;
+    free: number;
+    paid: number;
+    problems: number;
+    tokens: number;
+    cost: number;
+    features: { label: string; calls: number }[];
+}
+
+export interface UsageDayRows {
+    rows: UsageLogRow[];
+    total: number;
+    limit: number;
+}
+
+/** Query of the day rows endpoint: the page's filters plus the day. */
+export type UsageDayQuery = Record<string, string>;
 
 export interface UsagePageProps {
     platform: boolean;
     filters: UsageFilters;
     hasData: boolean;
-    totals: { calls: number; paid: number; problems: number; cost: number };
+    today: string;
+    totals: UsageTotals;
+    inScope: number;
+    series: UsageSeriesPoint[];
+    breakdown: {
+        features: UsageBreakdownRow[];
+        providers: UsageBreakdownRow[];
+    };
+    budget: { monthlyUsd: number | null; spentLastDays: number; days: number };
     options: {
         periods: UsagePeriod[];
         statuses: UsageStatus[];
@@ -59,6 +118,7 @@ export interface UsagePageProps {
         providers: string[];
         workspaces: UsageOption[];
         companies: UsageOption<number>[];
+        people: UsageOption[];
     };
-    logs: { data: UsageLogRow[] };
+    days: { data: UsageDaySummary[] };
 }

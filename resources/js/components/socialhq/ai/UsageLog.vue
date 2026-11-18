@@ -1,21 +1,18 @@
 <script setup lang="ts">
 import { InfiniteScroll, router } from '@inertiajs/vue3';
-import {
-    IconArrowDownRight,
-    IconChevronDown,
-    IconChevronUp,
-    IconSparkles,
-} from '@tabler/icons-vue';
-import { computed, ref } from 'vue';
+import { IconSparkles } from '@tabler/icons-vue';
+import { computed, ref, watch } from 'vue';
 
 import EmptyState from '@/components/EmptyState.vue';
-import type {
-    UsageFilters,
-    UsageLogRow,
-    UsagePageProps,
-    UsageStatus,
+import UsageBreakdown from '@/components/socialhq/ai/UsageBreakdown.vue';
+import UsageDay from '@/components/socialhq/ai/UsageDay.vue';
+import UsageStats from '@/components/socialhq/ai/UsageStats.vue';
+import {
+    PROBLEMS,
+    type UsageDayQuery,
+    type UsageFilters,
+    type UsagePageProps,
 } from '@/components/socialhq/ai/usageTypes';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Select,
@@ -24,14 +21,22 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import date from '@/date';
+import { formatFullNumber } from '@/lib/utils';
 
-const props = defineProps<UsagePageProps & { url: string }>();
+/**
+ * Settings › AI › Usage and the platform admins' page: period and filters,
+ * the stat cards, requests by feature and provider, and the log as one card
+ * per day. Today and days with failed or blocked requests start open.
+ */
+const props = defineProps<
+    UsagePageProps & {
+        url: string;
+        dayUrl: (query: UsageDayQuery) => string;
+    }
+>();
 
 /** Reka's Select refuses an empty value: "all" stands for no filter. */
 const ALL = 'all';
-
-const expanded = ref<Set<number>>(new Set());
 
 const hasFilters = computed(
     () =>
@@ -39,11 +44,27 @@ const hasFilters = computed(
         props.filters.feature !== null ||
         props.filters.provider !== null ||
         props.filters.workspace !== null ||
-        props.filters.company !== null,
+        props.filters.company !== null ||
+        props.filters.user !== null,
 );
 
-const free = computed(() => props.totals.calls - props.totals.paid);
+/** The page's filters as the day endpoint's query. */
+const dayQuery = computed<UsageDayQuery>(() =>
+    Object.fromEntries(
+        Object.entries(props.filters)
+            .filter(([, value]) => value !== null && value !== '')
+            .map(([key, value]) => [key, String(value)]),
+    ),
+);
 
+/** Changes whenever the filters do, so opened days load their rows again. */
+const filterKey = computed(() => JSON.stringify(dayQuery.value));
+
+/**
+ * A full visit, not `reset: ['days']`: Inertia sends a reset as a partial
+ * reload of `days` only, which would leave the totals, charts and filters
+ * stale. The day list is keyed by the filters, so its scroll state starts over.
+ */
 const reload = (filters: Partial<UsageFilters>): void => {
     const next = { ...props.filters, ...filters };
 
@@ -54,7 +75,7 @@ const reload = (filters: Partial<UsageFilters>): void => {
                 ([, value]) => value !== null && value !== '',
             ),
         ),
-        { preserveState: true, preserveScroll: true, reset: ['logs'] },
+        { preserveState: true, preserveScroll: true },
     );
 };
 
@@ -72,6 +93,22 @@ const setFilter = (key: keyof UsageFilters, value: unknown): void => {
     });
 };
 
+const pickPeriod = (period: string): void => {
+    setFilter('period', period);
+};
+
+const pickFeature = (feature: string | null): void => {
+    setFilter('feature', feature);
+};
+
+const pickProvider = (provider: string | null): void => {
+    setFilter('provider', provider);
+};
+
+const toggleProblems = (): void => {
+    setFilter('status', props.filters.status === PROBLEMS ? null : PROBLEMS);
+};
+
 const clearFilters = (): void => {
     reload({
         status: null,
@@ -79,57 +116,60 @@ const clearFilters = (): void => {
         provider: null,
         workspace: null,
         company: null,
+        user: null,
     });
 };
 
-const toggleDetail = (id: number): void => {
-    const next = new Set(expanded.value);
+/* Which days are open. */
+const openDays = ref<Set<string>>(new Set());
+let seenDays = new Set<string>();
 
-    if (next.has(id)) {
-        next.delete(id);
+watch(filterKey, () => {
+    seenDays = new Set();
+    openDays.value = new Set();
+});
+
+/** A day seen for the first time opens when it is today or had a failed or blocked request. */
+watch(
+    () => props.days.data,
+    (days) => {
+        const next = new Set(openDays.value);
+
+        days.forEach((day) => {
+            if (seenDays.has(day.date)) {
+                return;
+            }
+
+            seenDays.add(day.date);
+
+            if (day.date === props.today || day.problems > 0) {
+                next.add(day.date);
+            }
+        });
+
+        openDays.value = next;
+    },
+    { immediate: true },
+);
+
+const setDayOpen = (date: string, open: boolean): void => {
+    const next = new Set(openDays.value);
+
+    if (open) {
+        next.add(date);
     } else {
-        next.add(id);
+        next.delete(date);
     }
 
-    expanded.value = next;
+    openDays.value = next;
 };
 
-const formatCost = (value: number): string =>
-    new Intl.NumberFormat(undefined, {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: value > 0 && value < 0.01 ? 6 : 2,
-    }).format(value);
-
-const formatDuration = (ms: number): string =>
-    ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
-
-const statusVariant = (
-    status: UsageStatus,
-): 'success' | 'destructive-subtle' | 'warning' | 'secondary' => {
-    if (status === 'ok') {
-        return 'success';
-    }
-
-    if (status === 'failed') {
-        return 'destructive-subtle';
-    }
-
-    return status === 'rate_limited' ? 'secondary' : 'warning';
+const expandAll = (): void => {
+    openDays.value = new Set(props.days.data.map((day) => day.date));
 };
 
-const answeredBy = (row: UsageLogRow): string | null =>
-    row.provider && row.model
-        ? `${row.provider} · ${row.model}`
-        : (row.model ?? row.provider);
-
-const explanation = (row: UsageLogRow): string | null => {
-    if (row.status !== 'ok') {
-        return `socialhq_ai_usage.explain.${row.status}`;
-    }
-
-    return row.fallbacks > 0 ? 'socialhq_ai_usage.explain.fell_back' : null;
+const collapseAll = (): void => {
+    openDays.value = new Set();
 };
 </script>
 
@@ -147,554 +187,361 @@ const explanation = (row: UsageLogRow): string | null => {
         </EmptyState>
 
         <template v-else>
-            <div class="flex flex-wrap items-center gap-2">
-                <Select
-                    :model-value="filters.period"
-                    @update:model-value="setFilter('period', $event)"
+            <div class="flex flex-col gap-3">
+                <div
+                    class="inline-flex self-start rounded-lg border border-border-strong bg-card p-0.5"
+                    role="group"
+                    :aria-label="$t('socialhq_ai_usage.filters.period')"
+                    data-testid="ai-usage-period"
                 >
-                    <SelectTrigger class="w-40" data-testid="ai-usage-period">
-                        <SelectValue>
-                            {{
-                                $t(
-                                    `socialhq_ai_usage.periods.${filters.period}`,
-                                )
-                            }}
-                        </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem
-                            v-for="period in options.periods"
-                            :key="period"
-                            :value="period"
-                        >
-                            {{ $t(`socialhq_ai_usage.periods.${period}`) }}
-                        </SelectItem>
-                    </SelectContent>
-                </Select>
-
-                <Select
-                    v-if="platform"
-                    :model-value="filterValue(filters.company)"
-                    @update:model-value="setFilter('company', $event)"
-                >
-                    <SelectTrigger class="w-44" data-testid="ai-usage-company">
-                        <SelectValue>
-                            {{
-                                options.companies.find(
-                                    (company) =>
-                                        company.value === filters.company,
-                                )?.label ??
-                                $t('socialhq_ai_usage.filters.all_companies')
-                            }}
-                        </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem :value="ALL">
-                            {{ $t('socialhq_ai_usage.filters.all_companies') }}
-                        </SelectItem>
-                        <SelectItem
-                            v-for="company in options.companies"
-                            :key="company.value"
-                            :value="String(company.value)"
-                        >
-                            {{ company.label }}
-                        </SelectItem>
-                    </SelectContent>
-                </Select>
-
-                <Select
-                    v-if="!platform && options.workspaces.length > 1"
-                    :model-value="filterValue(filters.workspace)"
-                    @update:model-value="setFilter('workspace', $event)"
-                >
-                    <SelectTrigger
-                        class="w-40"
-                        data-testid="ai-usage-workspace"
+                    <button
+                        v-for="period in options.periods"
+                        :key="period"
+                        type="button"
+                        class="h-7 rounded-md px-3 text-sm transition-control"
+                        :class="
+                            filters.period === period
+                                ? 'bg-primary-selected font-medium text-primary-text'
+                                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                        "
+                        :aria-pressed="filters.period === period"
+                        :data-testid="`ai-usage-period-${period}`"
+                        @click="pickPeriod(period)"
                     >
-                        <SelectValue>
-                            {{
-                                options.workspaces.find(
-                                    (workspace) =>
-                                        workspace.value === filters.workspace,
-                                )?.label ??
-                                $t('socialhq_ai_usage.filters.all_workspaces')
-                            }}
-                        </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem :value="ALL">
-                            {{ $t('socialhq_ai_usage.filters.all_workspaces') }}
-                        </SelectItem>
-                        <SelectItem
-                            v-for="workspace in options.workspaces"
-                            :key="workspace.value"
-                            :value="workspace.value"
-                        >
-                            {{ workspace.label }}
-                        </SelectItem>
-                    </SelectContent>
-                </Select>
+                        {{ $t(`socialhq_ai_usage.periods_short.${period}`) }}
+                    </button>
+                </div>
 
-                <Select
-                    :model-value="filterValue(filters.status)"
-                    @update:model-value="setFilter('status', $event)"
-                >
-                    <SelectTrigger class="w-40" data-testid="ai-usage-status">
-                        <SelectValue>
-                            {{
-                                filters.status
-                                    ? $t(
-                                          `socialhq_ai_usage.status.${filters.status}`,
-                                      )
-                                    : $t(
-                                          'socialhq_ai_usage.filters.all_statuses',
-                                      )
-                            }}
-                        </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem :value="ALL">
-                            {{ $t('socialhq_ai_usage.filters.all_statuses') }}
-                        </SelectItem>
-                        <SelectItem
-                            v-for="status in options.statuses"
-                            :key="status"
-                            :value="status"
+                <div class="flex flex-wrap items-center gap-2">
+                    <Select
+                        v-if="platform"
+                        :model-value="filterValue(filters.company)"
+                        @update:model-value="setFilter('company', $event)"
+                    >
+                        <SelectTrigger
+                            class="w-44"
+                            data-testid="ai-usage-company"
                         >
-                            {{ $t(`socialhq_ai_usage.status.${status}`) }}
-                        </SelectItem>
-                    </SelectContent>
-                </Select>
+                            <SelectValue>
+                                {{
+                                    options.companies.find(
+                                        (company) =>
+                                            company.value === filters.company,
+                                    )?.label ??
+                                    $t(
+                                        'socialhq_ai_usage.filters.all_companies',
+                                    )
+                                }}
+                            </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem :value="ALL">
+                                {{
+                                    $t(
+                                        'socialhq_ai_usage.filters.all_companies',
+                                    )
+                                }}
+                            </SelectItem>
+                            <SelectItem
+                                v-for="company in options.companies"
+                                :key="company.value"
+                                :value="String(company.value)"
+                            >
+                                {{ company.label }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
 
-                <Select
-                    :model-value="filterValue(filters.feature)"
-                    @update:model-value="setFilter('feature', $event)"
-                >
-                    <SelectTrigger class="w-44" data-testid="ai-usage-feature">
-                        <SelectValue>
-                            {{
-                                options.features.find(
-                                    (feature) =>
-                                        feature.value === filters.feature,
-                                )?.label ??
-                                $t('socialhq_ai_usage.filters.all_features')
-                            }}
-                        </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem :value="ALL">
-                            {{ $t('socialhq_ai_usage.filters.all_features') }}
-                        </SelectItem>
-                        <SelectItem
-                            v-for="feature in options.features"
-                            :key="feature.value"
-                            :value="feature.value"
+                    <Select
+                        v-if="!platform && options.workspaces.length > 1"
+                        :model-value="filterValue(filters.workspace)"
+                        @update:model-value="setFilter('workspace', $event)"
+                    >
+                        <SelectTrigger
+                            class="w-40"
+                            data-testid="ai-usage-workspace"
                         >
-                            {{ feature.label }}
-                        </SelectItem>
-                    </SelectContent>
-                </Select>
+                            <SelectValue>
+                                {{
+                                    options.workspaces.find(
+                                        (workspace) =>
+                                            workspace.value ===
+                                            filters.workspace,
+                                    )?.label ??
+                                    $t(
+                                        'socialhq_ai_usage.filters.all_workspaces',
+                                    )
+                                }}
+                            </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem :value="ALL">
+                                {{
+                                    $t(
+                                        'socialhq_ai_usage.filters.all_workspaces',
+                                    )
+                                }}
+                            </SelectItem>
+                            <SelectItem
+                                v-for="workspace in options.workspaces"
+                                :key="workspace.value"
+                                :value="workspace.value"
+                            >
+                                {{ workspace.label }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
 
-                <Select
-                    v-if="options.providers.length > 0"
-                    :model-value="filterValue(filters.provider)"
-                    @update:model-value="setFilter('provider', $event)"
-                >
-                    <SelectTrigger class="w-40" data-testid="ai-usage-provider">
-                        <SelectValue>
-                            {{
-                                filters.provider ??
-                                $t('socialhq_ai_usage.filters.all_providers')
-                            }}
-                        </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem :value="ALL">
-                            {{ $t('socialhq_ai_usage.filters.all_providers') }}
-                        </SelectItem>
-                        <SelectItem
-                            v-for="provider in options.providers"
-                            :key="provider"
-                            :value="provider"
+                    <Select
+                        :model-value="filterValue(filters.status)"
+                        @update:model-value="setFilter('status', $event)"
+                    >
+                        <SelectTrigger
+                            class="w-44"
+                            data-testid="ai-usage-status"
                         >
-                            {{ provider }}
-                        </SelectItem>
-                    </SelectContent>
-                </Select>
+                            <SelectValue>
+                                {{
+                                    filters.status === PROBLEMS
+                                        ? $t(
+                                              'socialhq_ai_usage.filters.problems',
+                                          )
+                                        : filters.status
+                                          ? $t(
+                                                `socialhq_ai_usage.status.${filters.status}`,
+                                            )
+                                          : $t(
+                                                'socialhq_ai_usage.filters.all_statuses',
+                                            )
+                                }}
+                            </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem :value="ALL">
+                                {{
+                                    $t('socialhq_ai_usage.filters.all_statuses')
+                                }}
+                            </SelectItem>
+                            <SelectItem :value="PROBLEMS">
+                                {{ $t('socialhq_ai_usage.filters.problems') }}
+                            </SelectItem>
+                            <SelectItem
+                                v-for="status in options.statuses"
+                                :key="status"
+                                :value="status"
+                            >
+                                {{ $t(`socialhq_ai_usage.status.${status}`) }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
 
-                <Button
-                    v-if="hasFilters"
-                    variant="ghost"
-                    size="sm"
-                    data-testid="ai-usage-clear"
-                    @click="clearFilters"
-                >
-                    {{ $t('socialhq_ai_usage.filters.clear') }}
-                </Button>
+                    <Select
+                        :model-value="filterValue(filters.feature)"
+                        @update:model-value="setFilter('feature', $event)"
+                    >
+                        <SelectTrigger
+                            class="w-44"
+                            data-testid="ai-usage-feature"
+                        >
+                            <SelectValue>
+                                {{
+                                    options.features.find(
+                                        (feature) =>
+                                            feature.value === filters.feature,
+                                    )?.label ??
+                                    $t('socialhq_ai_usage.filters.all_features')
+                                }}
+                            </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem :value="ALL">
+                                {{
+                                    $t('socialhq_ai_usage.filters.all_features')
+                                }}
+                            </SelectItem>
+                            <SelectItem
+                                v-for="feature in options.features"
+                                :key="feature.value"
+                                :value="feature.value"
+                            >
+                                {{ feature.label }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <Select
+                        v-if="options.providers.length > 0"
+                        :model-value="filterValue(filters.provider)"
+                        @update:model-value="setFilter('provider', $event)"
+                    >
+                        <SelectTrigger
+                            class="w-40"
+                            data-testid="ai-usage-provider"
+                        >
+                            <SelectValue>
+                                {{
+                                    filters.provider ??
+                                    $t(
+                                        'socialhq_ai_usage.filters.all_providers',
+                                    )
+                                }}
+                            </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem :value="ALL">
+                                {{
+                                    $t(
+                                        'socialhq_ai_usage.filters.all_providers',
+                                    )
+                                }}
+                            </SelectItem>
+                            <SelectItem
+                                v-for="provider in options.providers"
+                                :key="provider"
+                                :value="provider"
+                            >
+                                {{ provider }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <Select
+                        v-if="options.people.length > 0"
+                        :model-value="filterValue(filters.user)"
+                        @update:model-value="setFilter('user', $event)"
+                    >
+                        <SelectTrigger
+                            class="w-40"
+                            data-testid="ai-usage-person"
+                        >
+                            <SelectValue>
+                                {{
+                                    options.people.find(
+                                        (person) =>
+                                            person.value === filters.user,
+                                    )?.label ??
+                                    $t('socialhq_ai_usage.filters.all_people')
+                                }}
+                            </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem :value="ALL">
+                                {{ $t('socialhq_ai_usage.filters.all_people') }}
+                            </SelectItem>
+                            <SelectItem
+                                v-for="person in options.people"
+                                :key="person.value"
+                                :value="person.value"
+                            >
+                                {{ person.label }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <Button
+                        v-if="hasFilters"
+                        variant="ghost"
+                        size="sm"
+                        data-testid="ai-usage-clear"
+                        @click="clearFilters"
+                    >
+                        {{ $t('socialhq_ai_usage.filters.clear') }}
+                    </Button>
+
+                    <p
+                        v-if="hasFilters"
+                        class="text-sm text-muted-foreground"
+                        data-testid="ai-usage-count"
+                    >
+                        {{
+                            $t('socialhq_ai_usage.filters.count', {
+                                shown: formatFullNumber(totals.calls),
+                                total: formatFullNumber(inScope),
+                            })
+                        }}
+                    </p>
+                </div>
             </div>
 
-            <dl
-                class="grid grid-cols-2 gap-3 sm:grid-cols-4"
-                data-testid="ai-usage-totals"
-            >
-                <div class="rounded-xl border border-border p-4">
-                    <dt class="text-xs text-muted-foreground">
-                        {{ $t('socialhq_ai_usage.totals.calls') }}
-                    </dt>
-                    <dd
-                        class="text-xl font-semibold"
-                        data-testid="ai-usage-total-calls"
-                    >
-                        {{ totals.calls }}
-                    </dd>
-                </div>
-                <div class="rounded-xl border border-border p-4">
-                    <dt class="text-xs text-muted-foreground">
-                        {{ $t('socialhq_ai_usage.totals.cost') }}
-                    </dt>
-                    <dd
-                        class="text-xl font-semibold"
-                        data-testid="ai-usage-total-cost"
-                    >
-                        {{ formatCost(totals.cost) }}
-                    </dd>
-                </div>
-                <div class="rounded-xl border border-border p-4">
-                    <dt class="text-xs text-muted-foreground">
-                        {{ $t('socialhq_ai_usage.totals.free') }} /
-                        {{ $t('socialhq_ai_usage.totals.paid') }}
-                    </dt>
-                    <dd class="text-xl font-semibold">
-                        {{ free }} / {{ totals.paid }}
-                    </dd>
-                </div>
-                <div class="rounded-xl border border-border p-4">
-                    <dt class="text-xs text-muted-foreground">
-                        {{ $t('socialhq_ai_usage.totals.problems') }}
-                    </dt>
-                    <dd
-                        class="text-xl font-semibold"
-                        data-testid="ai-usage-total-problems"
-                    >
-                        {{ totals.problems }}
-                    </dd>
-                </div>
-            </dl>
+            <UsageStats
+                :totals="totals"
+                :series="series"
+                :budget="budget"
+                :period="filters.period"
+                :showing-problems="filters.status === PROBLEMS"
+                @toggle-problems="toggleProblems"
+            />
+
+            <div class="grid gap-3 md:grid-cols-2">
+                <UsageBreakdown
+                    :title="$t('socialhq_ai_usage.breakdown.features')"
+                    :rows="breakdown.features"
+                    :active="filters.feature"
+                    testid="ai-usage-by-feature"
+                    @pick="pickFeature"
+                />
+                <UsageBreakdown
+                    :title="$t('socialhq_ai_usage.breakdown.providers')"
+                    :rows="breakdown.providers"
+                    :active="filters.provider"
+                    testid="ai-usage-by-provider"
+                    @pick="pickProvider"
+                />
+            </div>
 
             <EmptyState
-                v-if="logs.data.length === 0"
+                v-if="days.data.length === 0"
                 :title="$t('socialhq_ai_usage.no_results.title')"
                 :description="$t('socialhq_ai_usage.no_results.description')"
                 data-testid="ai-usage-no-results"
             />
 
-            <InfiniteScroll
-                v-else
-                data="logs"
-                items-element="#ai-usage-rows"
-                preserve-url
-            >
-                <ul id="ai-usage-rows" class="flex flex-col gap-2">
-                    <li
-                        v-for="row in logs.data"
-                        :key="row.id"
-                        class="rounded-xl border border-border"
-                        :data-testid="`ai-usage-row-${row.id}`"
-                    >
-                        <button
-                            type="button"
-                            class="flex w-full flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-left"
-                            :aria-expanded="expanded.has(row.id)"
-                            :data-testid="`ai-usage-toggle-${row.id}`"
-                            @click="toggleDetail(row.id)"
+            <section v-else class="flex flex-col gap-3">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h2 class="text-base font-semibold text-foreground">
+                        {{ $t('socialhq_ai_usage.days.title') }}
+                    </h2>
+                    <div class="flex gap-1">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            data-testid="ai-usage-expand-all"
+                            @click="expandAll"
                         >
-                            <span
-                                class="w-32 shrink-0 text-xs text-muted-foreground"
-                            >
-                                {{ date.formatDateTime(row.created_at) }}
-                            </span>
-                            <span class="min-w-0 flex-1">
-                                <span
-                                    class="block truncate text-sm font-medium"
-                                >
-                                    {{ row.feature_label }}
-                                </span>
-                                <span
-                                    class="block truncate text-xs text-muted-foreground"
-                                >
-                                    <template v-if="row.company"
-                                        >{{ row.company }} ·
-                                    </template>
-                                    {{
-                                        row.workspace ??
-                                        $t('socialhq_ai_usage.row.deleted')
-                                    }}
-                                    ·
-                                    {{
-                                        row.user ??
-                                        $t('socialhq_ai_usage.row.nobody')
-                                    }}
-                                </span>
-                            </span>
-                            <span
-                                class="flex min-w-0 items-center gap-1 text-sm"
-                            >
-                                <IconArrowDownRight
-                                    v-if="row.fallbacks > 0"
-                                    class="size-4 shrink-0 text-amber-600"
-                                    :aria-label="
-                                        $t('socialhq_ai_usage.row.fallback')
-                                    "
-                                />
-                                <span class="truncate">
-                                    {{
-                                        answeredBy(row) ??
-                                        $t(
-                                            'socialhq_ai_usage.row.unknown_provider',
-                                        )
-                                    }}
-                                </span>
-                            </span>
-                            <span
-                                class="w-20 shrink-0 text-right text-sm tabular-nums"
-                            >
-                                <template v-if="row.cost === null">—</template>
-                                <template v-else-if="row.cost === 0">{{
-                                    $t('socialhq_ai_usage.row.free')
-                                }}</template>
-                                <template v-else>{{
-                                    formatCost(row.cost)
-                                }}</template>
-                            </span>
-                            <Badge
-                                :variant="statusVariant(row.status)"
-                                :data-testid="`ai-usage-status-${row.id}`"
-                            >
-                                {{
-                                    $t(`socialhq_ai_usage.status.${row.status}`)
-                                }}
-                            </Badge>
-                            <component
-                                :is="
-                                    expanded.has(row.id)
-                                        ? IconChevronUp
-                                        : IconChevronDown
-                                "
-                                class="size-4 shrink-0 text-muted-foreground"
-                            />
-                        </button>
+                            {{ $t('socialhq_ai_usage.days.expand_all') }}
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            data-testid="ai-usage-collapse-all"
+                            @click="collapseAll"
+                        >
+                            {{ $t('socialhq_ai_usage.days.collapse_all') }}
+                        </Button>
+                    </div>
+                </div>
 
-                        <div
-                            v-if="expanded.has(row.id)"
-                            class="flex flex-col gap-3 border-t border-border px-4 py-3 text-sm"
-                            :data-testid="`ai-usage-detail-${row.id}`"
-                        >
-                            <p
-                                v-if="explanation(row)"
-                                class="text-muted-foreground"
-                            >
-                                {{ $t(explanation(row) as string) }}
-                            </p>
-                            <dl
-                                class="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2"
-                            >
-                                <div
-                                    v-if="platform"
-                                    class="flex justify-between gap-4"
-                                >
-                                    <dt class="text-muted-foreground">
-                                        {{
-                                            $t(
-                                                'socialhq_ai_usage.detail.company',
-                                            )
-                                        }}
-                                    </dt>
-                                    <dd>
-                                        {{
-                                            row.company ??
-                                            $t('socialhq_ai_usage.detail.none')
-                                        }}
-                                    </dd>
-                                </div>
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-muted-foreground">
-                                        {{
-                                            $t('socialhq_ai_usage.detail.route')
-                                        }}
-                                    </dt>
-                                    <dd>
-                                        {{
-                                            row.route
-                                                ? $t(
-                                                      `socialhq_ai_usage.route.${row.route}`,
-                                                  )
-                                                : $t(
-                                                      'socialhq_ai_usage.detail.none',
-                                                  )
-                                        }}
-                                    </dd>
-                                </div>
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-muted-foreground">
-                                        {{
-                                            $t('socialhq_ai_usage.detail.task')
-                                        }}
-                                    </dt>
-                                    <dd>
-                                        {{
-                                            row.task ??
-                                            $t('socialhq_ai_usage.detail.none')
-                                        }}
-                                    </dd>
-                                </div>
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-muted-foreground">
-                                        {{
-                                            $t(
-                                                'socialhq_ai_usage.detail.requested_group',
-                                            )
-                                        }}
-                                    </dt>
-                                    <dd class="font-mono text-xs">
-                                        {{
-                                            row.model_group_requested ??
-                                            $t('socialhq_ai_usage.detail.none')
-                                        }}
-                                    </dd>
-                                </div>
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-muted-foreground">
-                                        {{
-                                            $t(
-                                                'socialhq_ai_usage.detail.answered_group',
-                                            )
-                                        }}
-                                    </dt>
-                                    <dd class="font-mono text-xs">
-                                        {{
-                                            row.model_group ??
-                                            $t('socialhq_ai_usage.detail.none')
-                                        }}
-                                    </dd>
-                                </div>
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-muted-foreground">
-                                        {{
-                                            $t('socialhq_ai_usage.detail.model')
-                                        }}
-                                    </dt>
-                                    <dd class="truncate">
-                                        {{
-                                            answeredBy(row) ??
-                                            $t('socialhq_ai_usage.detail.none')
-                                        }}
-                                    </dd>
-                                </div>
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-muted-foreground">
-                                        {{
-                                            $t(
-                                                'socialhq_ai_usage.detail.fallbacks',
-                                            )
-                                        }}
-                                    </dt>
-                                    <dd>{{ row.fallbacks }}</dd>
-                                </div>
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-muted-foreground">
-                                        {{
-                                            $t(
-                                                'socialhq_ai_usage.detail.requests',
-                                            )
-                                        }}
-                                    </dt>
-                                    <dd>{{ row.requests }}</dd>
-                                </div>
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-muted-foreground">
-                                        {{
-                                            $t(
-                                                'socialhq_ai_usage.detail.tokens',
-                                            )
-                                        }}
-                                    </dt>
-                                    <dd class="tabular-nums">
-                                        {{ row.prompt_tokens ?? '—' }} /
-                                        {{ row.completion_tokens ?? '—' }}
-                                    </dd>
-                                </div>
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-muted-foreground">
-                                        {{
-                                            $t(
-                                                'socialhq_ai_usage.detail.duration',
-                                            )
-                                        }}
-                                    </dt>
-                                    <dd class="tabular-nums">
-                                        {{
-                                            row.duration_ms === null
-                                                ? '—'
-                                                : formatDuration(
-                                                      row.duration_ms,
-                                                  )
-                                        }}
-                                    </dd>
-                                </div>
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-muted-foreground">
-                                        {{
-                                            $t('socialhq_ai_usage.detail.cost')
-                                        }}
-                                    </dt>
-                                    <dd class="tabular-nums">
-                                        {{
-                                            row.cost === null
-                                                ? '—'
-                                                : formatCost(row.cost)
-                                        }}
-                                    </dd>
-                                </div>
-                                <div
-                                    v-if="row.error_code || row.error_type"
-                                    class="flex justify-between gap-4"
-                                >
-                                    <dt class="text-muted-foreground">
-                                        {{
-                                            $t('socialhq_ai_usage.detail.error')
-                                        }}
-                                    </dt>
-                                    <dd class="font-mono text-xs">
-                                        {{
-                                            [row.error_code, row.error_type]
-                                                .filter(Boolean)
-                                                .join(' · ')
-                                        }}
-                                    </dd>
-                                </div>
-                                <div
-                                    v-if="row.call_id"
-                                    class="flex justify-between gap-4 sm:col-span-2"
-                                >
-                                    <dt class="text-muted-foreground">
-                                        {{
-                                            $t(
-                                                'socialhq_ai_usage.detail.call_id',
-                                            )
-                                        }}
-                                    </dt>
-                                    <dd
-                                        class="truncate font-mono text-xs"
-                                        :data-testid="`ai-usage-call-id-${row.id}`"
-                                    >
-                                        {{ row.call_id }}
-                                    </dd>
-                                </div>
-                            </dl>
-                        </div>
-                    </li>
-                </ul>
-            </InfiniteScroll>
+                <InfiniteScroll
+                    :key="filterKey"
+                    data="days"
+                    items-element="#ai-usage-days"
+                    preserve-url
+                >
+                    <div id="ai-usage-days" class="flex flex-col gap-3">
+                        <UsageDay
+                            v-for="day in days.data"
+                            :key="`${day.date}:${filterKey}`"
+                            :day="day"
+                            :today="today"
+                            :platform="platform"
+                            :query="dayQuery"
+                            :day-url="dayUrl"
+                            :open="openDays.has(day.date)"
+                            @update:open="setDayOpen(day.date, $event)"
+                        />
+                    </div>
+                </InfiniteScroll>
+            </section>
 
             <p class="text-xs text-muted-foreground">
                 {{ $t('socialhq_ai_usage.kept') }}

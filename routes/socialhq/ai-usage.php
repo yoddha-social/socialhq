@@ -9,6 +9,8 @@ declare(strict_types=1);
 */
 
 use App\SocialHq\Http\Controllers\CompanyAi\AiUsageController;
+use App\SocialHq\Http\Controllers\CompanyAi\AiUsageDayController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('settings/ai/usage', AiUsageController::class)->name('ai-usage.show');
+Route::get('settings/ai/usage/day', AiUsageDayController::class)->name('ai-usage.day');

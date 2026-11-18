@@ -7,7 +7,7 @@ import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
 type Props = {
     fullWidth?: boolean;
     centered?: boolean;
-    /** A wider column for pages with a side panel (Social HQ Brand knowledge). */
+    /** A wider column for Social HQ pages with a side panel or a table (Brand knowledge, AI usage). */
     wide?: boolean;
     title?: string;
     description?: string;

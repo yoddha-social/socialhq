@@ -155,7 +155,15 @@ TryPost's four agents carry it too (PATCHES.md row 15). Code:
   matched by call id; no other host gets them. **Metadata only**: never a
   prompt, an answer or a provider's error text (only LiteLLM's `error.type`).
   Logging never breaks AI (each step is `rescue()`d). Rows are kept 90 days
-  (`AiUsageLog::RETENTION_DAYS`, `model:prune` daily). Images and streamed
+  (`AiUsageLog::RETENTION_DAYS`, `model:prune` daily).
+  The page shows four stat cards (requests per hour or day, spent against
+  the company's monthly budget over the last 30 days, the share answered
+  free, failed or blocked), requests by feature and by provider, and the
+  log as one card per day in the viewer's time zone, counted in PHP
+  (`AiUsagePage`). Days page 7 at a time (`DAYS_PER_PAGE`, owner decision
+  2026-11-18, an exception to the config page size); a day's rows load when
+  it is opened (`socialhq.ai-usage.day` / `socialhq.platform.ai-usage.day`,
+  up to 500). Today and days with failed or blocked requests start open. Images and streamed
   replies get no group or fallback headers from LiteLLM; its admin UI (port
   4000) has those by call id.
 - That log is a **scoped exception** to AGENTS.md "AI usage is not recorded

@@ -45,5 +45,7 @@
         <env name="SOCIALHQ_COMPANIES_REQUIRED" value="false"/>
         <!-- Social HQ: upstream tests connect networks without every OAuth app set; ours switch this on. -->
         <env name="SOCIALHQ_CHANNELS_REQUIRE_CREDENTIALS" value="false"/>
+        <!-- Social HQ: upstream tests check TryPost's Horizon supervisors; ours fold them into three. -->
+        <env name="SOCIALHQ_HORIZON_COMPACT" value="false"/>
     </php>
 </phpunit>

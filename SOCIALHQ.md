@@ -542,6 +542,20 @@ remember-me and other sessions end, and the email counts as confirmed
 (`OAuthSignIn`). An address Google doesn't say it verified (`email_verified`
 false or missing) signs in to nothing and creates nothing.
 
+## Queue workers
+
+TryPost's seven Horizon supervisors keep a worker per queue even when idle.
+`App\SocialHq\Queue\CompactHorizon` (`SOCIALHQ_HORIZON_COMPACT`, default on,
+off in phpunit.xml) folds them into three single pools, `core`,
+`social-publishing` (name kept for `horizon:pause-supervisor`) and `media`:
+one worker each when idle, one more per waiting job up to 4, 8 and 4
+(`socialhq.horizon.max_processes`). `config/horizon.php` is untouched.
+Measured on 2026-11-18 with a burst of 81 jobs, including 35 publishes:
+idle memory went from 1,408 MB to 578 MB and peak memory from 2,227 MB to
+1,395 MB. Publishing waits and the time to clear the burst stayed the same.
+Horizon refuses `minProcesses` 0. One worker per pool also keeps moving
+delayed and retried jobs onto its queues.
+
 ## Interface copy
 
 Our screens use the `socialhq.*` keys in `lang/en/socialhq.php`, in English

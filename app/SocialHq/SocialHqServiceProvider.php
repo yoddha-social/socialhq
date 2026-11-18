@@ -37,6 +37,7 @@ use App\SocialHq\Knowledge\Search\KnowledgeSearch;
 use App\SocialHq\Knowledge\Search\LexicalKnowledgeSearch;
 use App\SocialHq\Knowledge\TryPostPromptFocus;
 use App\SocialHq\Production\BriefStorage;
+use App\SocialHq\Queue\CompactHorizon;
 use App\SocialHq\Secrets\SecretsKeyCommand;
 use App\SocialHq\Secrets\SecretsReencryptCommand;
 use App\SocialHq\Signup\AccessRequests;
@@ -71,6 +72,9 @@ class SocialHqServiceProvider extends ServiceProvider
     public function register(): void
     {
         AiRouter::registerGateway();
+
+        // Three Horizon supervisors instead of TryPost's seven (socialhq.horizon).
+        CompactHorizon::apply($this->app->make('config'));
 
         // Which company's LiteLLM key AI calls use: decided once per request or job.
         $this->app->scoped(CompanyRouting::class);

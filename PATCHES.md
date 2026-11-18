@@ -147,6 +147,7 @@ range stay unused. No row is lost.
 | 203 | `phpunit.xml` | `SOCIALHQ_AGENTS_MANAGE_ADMIN_SETTINGS=true` (1 line + comment) | Upstream's tests manage API keys and webhooks through MCP and API keys; `tests/Feature/SocialHq/McpAgentLimitsTest.php` turns it off |
 | 204 | `tests/Feature/Mcp/ToolAnnotationsTest.php` | The six planning tools in `mcpExpectedToolAnnotations()` (8 lines) | The test fails for a registered tool it doesn't list |
 | 205 | `tests/Feature/Parity/McpAuthorizationParityTest.php` | The six planning tools in `mcpAuthParityTools()` against their web routes, and a plan item with a draft version in the fixture (`mcpAuthParityPlanItem()`, about 25 lines + imports) | The test fails for a registered tool it doesn't compare |
+| 206 | `phpunit.xml` | `SOCIALHQ_HORIZON_COMPACT=false` for the test run (1 line + comment) | Upstream's tests check TryPost's seven Horizon supervisors; `App\SocialHq\Queue\CompactHorizon` folds them into three, covered by `tests/Unit/SocialHq/CompactHorizonTest.php`. `config/horizon.php` itself is untouched |
 
 Files we **added** aren't listed here; they're under the module paths in
 SOCIALHQ.md, plus `config/socialhq.php`, `routes/socialhq.php`,

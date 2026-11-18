@@ -556,4 +556,46 @@ return [
         'ask_again_after_hours' => 24,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Queue workers (Horizon)
+    |--------------------------------------------------------------------------
+    |
+    | TryPost's config/horizon.php runs seven supervisors and, with
+    | `balance: auto`, keeps a worker per queue even when idle (about 16 PHP
+    | processes, plus one per supervisor). A small team's server doesn't need
+    | that. With `compact` on (App\SocialHq\Queue\CompactHorizon), the same
+    | queues are worked by three supervisors, each one pool that keeps one
+    | worker when idle and adds workers as jobs wait (up to `max_processes`,
+    | `balance_max_shift` at a time every `balance_cooldown` seconds):
+    |
+    |   core               default, broadcasts, webhooks, analytics, rss-feeds, posthog
+    |   social-publishing  one queue per enabled network (name kept, so
+    |                      horizon:pause-supervisor still works)
+    |   media              media-imports, media-adoption
+    |
+    | Each takes the longest timeout and highest memory of what it absorbs.
+    | Horizon refuses minProcesses 0, and an idle pool also has to move
+    | delayed and retried jobs onto its queues, so one worker stays. A
+    | supervisor TryPost adds later is kept as it is. Off in phpunit.xml:
+    | upstream's tests check upstream's layout.
+    |
+    | Measured 2026-11-18 (production settings, 5 networks, a burst of 81 jobs
+    | including 35 publishes at once): idle 578 MB instead of 1,408 MB, peak
+    | 1,395 MB instead of 2,227 MB, the same publishing waits (p95 13 s) and
+    | the same time to clear the burst.
+    |
+    */
+
+    'horizon' => [
+        'compact' => (bool) env('SOCIALHQ_HORIZON_COMPACT', true),
+        'max_processes' => [
+            'core' => (int) env('SOCIALHQ_HORIZON_CORE_MAX', 4),
+            'social-publishing' => (int) env('SOCIALHQ_HORIZON_PUBLISHING_MAX', 8),
+            'media' => (int) env('SOCIALHQ_HORIZON_MEDIA_MAX', 4),
+        ],
+        'balance_max_shift' => (int) env('SOCIALHQ_HORIZON_MAX_SHIFT', 2),
+        'balance_cooldown' => (int) env('SOCIALHQ_HORIZON_COOLDOWN', 3),
+    ],
+
 ];

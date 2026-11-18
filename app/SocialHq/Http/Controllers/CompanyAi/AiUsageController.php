@@ -24,6 +24,6 @@ class AiUsageController extends Controller
 
         abort_if($account === null, HttpResponse::HTTP_FORBIDDEN);
 
-        return Inertia::render('socialhq/settings/AiUsage', AiUsagePage::props($account, $request->validated()));
+        return Inertia::render('socialhq/settings/AiUsage', AiUsagePage::props($account, $request->validated(), $request->user()));
     }
 }

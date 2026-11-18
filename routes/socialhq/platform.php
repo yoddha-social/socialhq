@@ -9,6 +9,7 @@ declare(strict_types=1);
 */
 
 use App\SocialHq\Http\Controllers\Platform\AiUsageController;
+use App\SocialHq\Http\Controllers\Platform\AiUsageDayController;
 use App\SocialHq\Http\Controllers\Platform\CompanyController;
 use Illuminate\Support\Facades\Route;
 
@@ -21,3 +22,4 @@ Route::put('companies/{company}/platform-ai', [CompanyController::class, 'platfo
 
 // Every company's AI calls (Settings › AI › Usage across companies).
 Route::get('ai-usage', AiUsageController::class)->name('ai-usage.index');
+Route::get('ai-usage/day', AiUsageDayController::class)->name('ai-usage.day');

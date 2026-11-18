@@ -125,7 +125,16 @@ trait HasWorkspace
 
     public function canPublishDirectlyIn(Workspace $workspace): bool
     {
-        return ! ApprovalRules::actsAsAgent($this) && $this->publishesDirectlyThrough($workspace, $this->workspacePivot($workspace));
+        return ! ApprovalRules::actsAsAgent($this) && $this->publishesDirectlyAsPersonIn($workspace);
+    }
+
+    /**
+     * Whether this user publishes directly when signed in to the app, setting
+     * aside the agent rule: what the person behind an API key may see.
+     */
+    public function publishesDirectlyAsPersonIn(Workspace $workspace): bool
+    {
+        return $this->publishesDirectlyThrough($workspace, $this->workspacePivot($workspace));
     }
 
     /**

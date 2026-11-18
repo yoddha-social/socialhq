@@ -301,6 +301,14 @@ return [
             'confirm' => 'Reject',
         ],
     ],
+    'agents' => [
+        'repurposes_read_only' => 'An API key or MCP connection can read repurposes but can\'t create or change them, because their posts publish without review. A person who publishes directly does this in the Social HQ app.',
+        'admin_settings' => 'An API key or MCP connection can\'t manage API keys or webhooks. A workspace admin does this in Social HQ\'s settings.',
+        'idempotency_key_reused' => 'This idempotency_key was already used for a call with different arguments, so nothing was created. Send a new key for a new post.',
+        'copy_under_review' => 'This item\'s copy is in review or approved, so a new version would undo that review. A person reopens it in the Social HQ app first.',
+        'idempotency_key_deleted' => 'The posts this idempotency_key created were deleted since, so nothing was created. Send a new key to create them again.',
+        'idempotency_key_busy' => 'A call with this idempotency_key is still running. Try again in a moment.',
+    ],
     'skip_to_content' => 'Skip to content',
     'errors' => [
         'back' => 'Back to Social HQ',

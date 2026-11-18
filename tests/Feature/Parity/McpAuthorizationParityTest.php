@@ -107,6 +107,16 @@ use App\Models\WorkspaceLabel;
 use App\Models\WorkspaceSignature;
 use App\Services\Http\SafeHttpFetcher;
 use App\Services\WebhookService;
+use App\SocialHq\Mcp\Tools\Plan\GetBrandKnowledgeTool;
+use App\SocialHq\Mcp\Tools\Plan\GetContentPlanTool;
+use App\SocialHq\Mcp\Tools\Plan\GetPlanItemTool;
+use App\SocialHq\Mcp\Tools\Plan\ListPlanEventsTool;
+use App\SocialHq\Mcp\Tools\Plan\SavePlanItemCopyTool;
+use App\SocialHq\Mcp\Tools\Plan\SubmitPlanItemCopyTool;
+use App\SocialHq\Plan\ContentPlan;
+use App\SocialHq\Plan\CopyStatus;
+use App\SocialHq\Plan\ItemVersion;
+use App\SocialHq\Plan\PlanItem;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
@@ -211,7 +221,22 @@ function mcpAuthParityFixture(Workspace $workspace, User $owner, ?User $actor = 
         'uploadToken' => $uploadToken,
         'publicationId' => (string) Str::uuid(),
         'missingId' => (string) Str::uuid(),
+        'planItem' => $planItem = mcpAuthParityPlanItem($workspace, $owner),
+        'planMonth' => $planItem->plan->month->format('Y-m'),
     ];
+}
+
+/**
+ * Social HQ: a plan item with a draft version, so its copy can be sent for review.
+ */
+function mcpAuthParityPlanItem(Workspace $workspace, User $owner): PlanItem
+{
+    // The fixture is built twice per case (web, then MCP) in one workspace, and a month has one plan.
+    $plan = ContentPlan::query()->where('workspace_id', $workspace->id)->first() ?? ContentPlan::factory()->create(['workspace_id' => $workspace->id]);
+    $item = PlanItem::factory()->create(['plan_id' => $plan->id, 'copy_status' => CopyStatus::Draft]);
+    ItemVersion::factory()->for($item, 'item')->create(['number' => 1, 'created_by' => $owner->id]);
+
+    return $item->load('plan');
 }
 
 /**
@@ -238,6 +263,13 @@ function mcpAuthParityTools(): array
     $webhook = ['endpoint' => 'https://example.com/hook', 'events' => ['post.published']];
 
     return [
+        // Social HQ: planning
+        'get-content-plan-tool' => [GetContentPlanTool::class, $everyMember, fn (TestCase $t, array $f) => $t->get(route('socialhq.plan.show', $f['planMonth'])), fn (array $f) => ['month' => $f['planMonth']]],
+        'list-plan-events-tool' => [ListPlanEventsTool::class, $everyMember, fn (TestCase $t, array $f) => $t->get(route('socialhq.plan.events.index', ['month' => $f['planMonth']])), fn (array $f) => ['month' => $f['planMonth']]],
+        'get-plan-item-tool' => [GetPlanItemTool::class, $everyMember, fn (TestCase $t, array $f) => $t->get(route('socialhq.plan.items.show', $f['planItem']->id)), fn (array $f) => ['item_id' => $f['planItem']->id]],
+        'get-brand-knowledge-tool' => [GetBrandKnowledgeTool::class, $everyMember, fn (TestCase $t, array $f) => $t->get(route('socialhq.brand.index')), fn (array $f) => []],
+        'save-plan-item-copy-tool' => [SavePlanItemCopyTool::class, $everyMember, fn (TestCase $t, array $f) => $t->post(route('socialhq.plan.items.versions.store', $f['planItem']->id), ['caption' => 'Copy']), fn (array $f) => ['item_id' => $f['planItem']->id, 'caption' => 'Copy']],
+        'submit-plan-item-copy-tool' => [SubmitPlanItemCopyTool::class, $everyMember, fn (TestCase $t, array $f) => $t->post(route('socialhq.plan.items.copy.submit', $f['planItem']->id)), fn (array $f) => ['item_id' => $f['planItem']->id]],
         'get-analytics-report-tool' => [GetAnalyticsReportTool::class, $everyMember, fn (TestCase $t, array $f) => $t->get(route('app.insights')), fn (array $f) => []],
         'get-analytics-publication-tool' => [GetAnalyticsPublicationTool::class, $everyMember, fn (TestCase $t, array $f) => $t->getJson(route('app.insights.publications.details', $f['publication'])), fn (array $f) => ['publication_id' => $f['publication']->id]],
         'create-api-key-tool' => [CreateApiKeyTool::class, $admins, fn (TestCase $t, array $f) => $t->post(route('app.api-keys.store'), ['name' => 'Integration']), fn (array $f) => ['name' => 'Integration']],

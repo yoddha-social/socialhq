@@ -29,7 +29,7 @@ class CreateApiKeyTool extends Tool
 
     public function handle(Request $request): Response|ResponseFactory
     {
-        $workspace = $this->authorizeCurrentWorkspace($request, 'manageTeam');
+        $workspace = $this->authorizeCurrentWorkspace($request, 'manageApiKeys');
 
         if (! $workspace instanceof Workspace) {
             return $workspace;

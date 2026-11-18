@@ -30,6 +30,13 @@ return [
         '90d' => 'Last 90 days',
     ],
 
+    'periods_short' => [
+        '1d' => '24 hours',
+        '7d' => '7 days',
+        '30d' => '30 days',
+        '90d' => '90 days',
+    ],
+
     'filters' => [
         'period' => 'Period',
         'status' => 'Result',
@@ -37,6 +44,10 @@ return [
         'provider' => 'Provider',
         'workspace' => 'Brand',
         'company' => 'Company',
+        'person' => 'Person',
+        'problems' => 'Failed or blocked',
+        'all_people' => 'All people',
+        'count' => ':shown of :total requests',
         'all_statuses' => 'All results',
         'all_features' => 'All features',
         'all_providers' => 'All providers',
@@ -51,6 +62,55 @@ return [
         'free' => 'Free',
         'paid' => 'Paid',
         'problems' => 'Failed or blocked',
+        'free_share' => 'Answered free',
+        'per_hour' => 'Per hour',
+        'per_day' => 'Per day',
+        'chart_label' => 'Requests over the period',
+        'budget' => ':spent of :budget in the last :days days',
+        'budget_share' => ':percent% of budget',
+        'budget_share_small' => '<1% of budget',
+        'no_budget' => ':spent in the last :days days',
+        'free_paid' => ':free free · :paid paid',
+        'nothing_answered' => 'Nothing answered yet',
+        'all_answered' => 'All answered',
+        'show_problems' => 'Show only these',
+        'showing_problems' => 'Showing only these',
+    ],
+
+    'breakdown' => [
+        'features' => 'By feature',
+        'providers' => 'By provider',
+        'filter_label' => 'Show only :name',
+        'none' => 'No requests in this period.',
+    ],
+
+    'days' => [
+        'title' => 'Requests by day',
+        'today' => 'Today',
+        'yesterday' => 'Yesterday',
+        'requests' => '{1} :count request|[0,*] :count requests',
+        'tokens' => ':count tokens',
+        'all_answered' => 'All answered',
+        'problems' => ':count failed or blocked',
+        'more_features' => '+:count more',
+        'expand_all' => 'Expand all',
+        'collapse_all' => 'Collapse all',
+        'show_all' => 'Show all :count requests',
+        'limited' => 'Showing the latest :shown of :total requests on this day.',
+        'loading' => 'Loading requests…',
+        'load_failed' => 'Couldn\'t load this day\'s requests.',
+        'retry' => 'Try again',
+    ],
+
+    'columns' => [
+        'time' => 'Time',
+        'feature' => 'Feature',
+        'person' => 'Person',
+        'model' => 'Model',
+        'tokens' => 'Tokens',
+        'duration' => 'Time taken',
+        'cost' => 'Cost',
+        'result' => 'Result',
     ],
 
     'status' => [
@@ -76,6 +136,11 @@ return [
     ],
 
     'detail' => [
+        'who' => 'Who',
+        'routing' => 'Routing',
+        'usage' => 'Usage',
+        'copy' => 'Copy',
+        'copy_label' => 'Copy the LiteLLM call id',
         'show' => 'Details',
         'hide' => 'Hide details',
         'company' => 'Company',

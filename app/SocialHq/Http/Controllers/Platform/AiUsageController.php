@@ -25,6 +25,6 @@ class AiUsageController extends Controller
             throw new NotFoundHttpException;
         }
 
-        return Inertia::render('socialhq/platform/AiUsage', AiUsagePage::props(null, $request->validated()));
+        return Inertia::render('socialhq/platform/AiUsage', AiUsagePage::props(null, $request->validated(), $request->user()));
     }
 }

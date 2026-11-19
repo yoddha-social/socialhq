@@ -9,8 +9,8 @@ export const CALENDAR_LIST_TABS: readonly CalendarListTab[] = [
     'sent',
 ];
 
-const TAB_KEY = 'socialhq:calendar:list-tab';
-const OPEN_KEY = 'socialhq:calendar:list-open';
+const TAB_KEY = 'socialhq:calendar:list-tab:v2';
+const OPEN_KEY = 'socialhq:calendar:list-open:v2';
 
 /**
  * Which tab of the calendar's post list a post belongs to. A failed post stays
@@ -40,20 +40,27 @@ const write = (key: string, value: string): void => {
     }
 };
 
-/** The tab this browser last had open; Drafts for a first visit. */
-export const rememberedListTab = (): CalendarListTab => {
+/** The tab this browser last had open, or the given one for a first visit. */
+export const rememberedListTab = (
+    fallback: CalendarListTab,
+): CalendarListTab => {
     const stored = read(TAB_KEY);
 
     return CALENDAR_LIST_TABS.includes(stored as CalendarListTab)
         ? (stored as CalendarListTab)
-        : 'drafts';
+        : fallback;
 };
 
 export const rememberListTab = (tab: CalendarListTab): void => {
     write(TAB_KEY, tab);
 };
 
-export const rememberedListOpen = (): boolean => read(OPEN_KEY) === '1';
+/** Whether this browser left the list open; null when it never chose. */
+export const rememberedListOpen = (): boolean | null => {
+    const stored = read(OPEN_KEY);
+
+    return stored === null ? null : stored === '1';
+};
 
 export const rememberListOpen = (open: boolean): void => {
     write(OPEN_KEY, open ? '1' : '0');

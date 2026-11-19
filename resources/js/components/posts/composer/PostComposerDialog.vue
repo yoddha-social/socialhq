@@ -74,6 +74,7 @@ import PlatformPreview from '@/components/posts/previews/PlatformPreview.vue';
 import PreviewPanelTitle from '@/components/posts/previews/PreviewPanelTitle.vue';
 import PublishEmptyIllustration from '@/components/publish/PublishEmptyIllustration.vue';
 import { useAiTask } from '@/components/socialhq/aiTasks';
+import SharedCounterChip from '@/components/socialhq/composer/SharedCounterChip.vue';
 import { confirmPublishNow } from '@/components/socialhq/publishNow';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -2730,30 +2731,13 @@ const onDialogOpenChange = (value: boolean): void => {
                                     @select-signature="appendSignature($event, null)"
                                     @save-signature="saveSignature"
                                 >
-                                    <CharacterCounter
+                                    <SharedCounterChip
                                         v-if="sharedCounter"
                                         data-testid="composer-base-char-count"
-                                        :exceeded="
-                                            sharedCounter.used >
-                                            sharedCounter.limit
-                                        "
-                                    >
-                                        {{
-                                            $t(
-                                                'socialhq.composer.shared_counter',
-                                                {
-                                                    used: String(
-                                                        sharedCounter.used,
-                                                    ),
-                                                    limit: String(
-                                                        sharedCounter.limit,
-                                                    ),
-                                                    platform:
-                                                        sharedCounter.platform,
-                                                },
-                                            )
-                                        }}
-                                    </CharacterCounter>
+                                        :used="sharedCounter.used"
+                                        :limit="sharedCounter.limit"
+                                        :platform="sharedCounter.platform"
+                                    />
                                 </ComposerEditorToolbar>
                             </template>
                         </ComposerNetworkCard>

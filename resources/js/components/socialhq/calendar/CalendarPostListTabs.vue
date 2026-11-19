@@ -15,7 +15,7 @@ const select = (value: CalendarListTab): void => {
 
 <template>
     <div
-        class="flex rounded-lg border border-border-strong bg-card p-[3px]"
+        class="grid grid-cols-3 rounded-lg bg-muted p-1"
         role="group"
         :aria-label="$t('socialhq.calendar.list_title')"
         data-testid="calendar-list-tabs"
@@ -25,11 +25,11 @@ const select = (value: CalendarListTab): void => {
             :key="option"
             type="button"
             :aria-pressed="tab === option"
-            class="flex h-7 min-w-0 flex-1 items-center justify-center gap-1 rounded-md px-1 text-xs font-medium transition-control focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+            class="flex min-h-8 min-w-0 flex-wrap items-center justify-center gap-x-1 rounded-md px-1 py-1 text-[12.5px] leading-4 transition-control focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
             :class="
                 tab === option
-                    ? 'bg-primary-selected text-primary-text'
-                    : 'text-foreground hover:bg-accent'
+                    ? 'bg-card font-emphasis text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
             "
             :data-testid="`calendar-list-tab-${option}`"
             @click="select(option)"
@@ -37,7 +37,7 @@ const select = (value: CalendarListTab): void => {
             <span class="truncate">{{ $t(`calendar.status.${option}`) }}</span>
             <span
                 v-if="counts[option] !== null"
-                class="tabular-nums opacity-70"
+                class="text-subtle-foreground tabular-nums"
                 :data-testid="`calendar-list-count-${option}`"
                 >{{ counts[option] }}</span
             >

@@ -38,6 +38,8 @@ class ShareSocialHqProps
             'approvals' => fn (): array => ['membersAlwaysReviewed' => ApprovalRules::membersAlwaysReviewed()],
             // Whether "Publish now" asks first (components/socialhq/publishNow.ts).
             'publishNow' => fn (): array => ['confirm' => (bool) config('socialhq.publish_now.confirm', true)],
+            // Whether the calendar's post list starts open (pages/posts/Calendar.vue).
+            'calendar' => fn (): array => ['postListOpen' => (bool) config('socialhq.calendar.post_list_open', true)],
             'aiGraphics' => fn (): array => [
                 'available' => (function (): bool {
                     $user = auth()->user();

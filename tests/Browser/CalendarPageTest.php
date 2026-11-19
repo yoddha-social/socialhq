@@ -136,6 +136,7 @@ test('the week grid draws a now line in today\'s column and scrolls to the curre
                 const expected = (now.getUTCHours() + now.getUTCMinutes() / 60) * 106;
 
                 return lines.length === 1
+                    && document.querySelector('[data-testid="calendar-now-time"]') !== null
                     && lines[0].parentElement === slot.parentElement
                     && Math.abs(parseFloat(lines[0].style.top) - expected) <= 106 / 60 * 2;
             })()
@@ -250,12 +251,12 @@ test('the no date panel slides open and closed, pushing the calendar aside gradu
         })()
     JS;
 
-    $opening = $page->script($sample(360));
-    expect(collect($opening)->contains(fn (int $width) => $width > 0 && $width < 360))->toBeTrue()
-        ->and(end($opening))->toBe(360);
+    $opening = $page->script($sample(300));
+    expect(collect($opening)->contains(fn (int $width) => $width > 0 && $width < 300))->toBeTrue()
+        ->and(end($opening))->toBe(300);
 
     $closing = $page->script($sample(0));
-    expect(collect($closing)->contains(fn (int $width) => $width > 0 && $width < 360))->toBeTrue()
+    expect(collect($closing)->contains(fn (int $width) => $width > 0 && $width < 300))->toBeTrue()
         ->and(end($closing))->toBe(0);
 
     $page->assertMissing('@calendar-undated-panel')->assertNoJavaScriptErrors();
@@ -805,14 +806,14 @@ test('on a phone the period picker opens from the bottom, switches the view in p
     $page->assertVisible('@calendar-next')->assertVisible('@calendar-view-switch');
 });
 
-test('the previous period arrow starts on the same line as the calendar', function () {
+test('the toolbar starts on the same line as the calendar', function () {
     [$user] = calendarPageSetup();
     $this->actingAs($user);
 
     $page = visit(route('app.calendar', ['view' => 'week']))->resize(1440, 900);
     waitFor($page, '@calendar-time-grid');
 
-    expect($page->script("Math.round(document.querySelector('[data-testid=\"calendar-previous\"]').getBoundingClientRect().left)"))
+    expect($page->script("Math.round(document.querySelector('[data-testid=\"calendar-no-date\"]').getBoundingClientRect().left)"))
         ->toBe($page->script("Math.round(document.querySelector('[data-testid=\"calendar-grid\"]').getBoundingClientRect().left)"));
     $page->assertNoJavaScriptErrors();
 });

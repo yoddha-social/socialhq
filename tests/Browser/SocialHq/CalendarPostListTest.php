@@ -93,12 +93,13 @@ test('a card of the post list finds its post on the calendar', function () {
     $page->assertNoJavaScriptErrors();
 });
 
-test('a week chip shows the first line of its post and spells out a post waiting for approval', function () {
+test('a week chip shows the first line of its post while its hour holds at most two, and spells out a post waiting for approval', function () {
     [$user, $linkedin, $day] = calendarPostListSetup();
     $scheduled = calendarPostListPost($linkedin, $day->setTime(9, 0), PostStatus::Scheduled, 'Launch day is here');
     $pending = calendarPostListPost($linkedin, $day->setTime(11, 0), PostStatus::PendingApproval, 'Needs a look');
     $stackedOne = calendarPostListPost($linkedin, $day->setTime(15, 0), PostStatus::Scheduled, 'Stacked one');
     $stackedTwo = calendarPostListPost($linkedin, $day->setTime(15, 30), PostStatus::Scheduled, 'Stacked two');
+    $crowded = collect([10, 20, 30])->map(fn (int $minute): Post => calendarPostListPost($linkedin, $day->setTime(18, $minute), PostStatus::Scheduled, 'Crowded'))->all();
     $this->actingAs($user);
 
     $page = visit(route('app.calendar', ['view' => 'days', 'day' => $day->format('Y-m-d')]))->resize(1440, 900);
@@ -107,7 +108,28 @@ test('a week chip shows the first line of its post and spells out a post waiting
     $page->assertSeeIn("@calendar-post-text-{$scheduled->id}", 'Launch day is here')
         ->assertSeeIn("@calendar-post-pending-{$pending->id}", __('socialhq.calendar.chip_approval'))
         ->assertSeeIn("@calendar-post-text-{$pending->id}", 'Needs a look')
-        ->assertMissing("@calendar-post-text-{$stackedOne->id}")
-        ->assertMissing("@calendar-post-text-{$stackedTwo->id}")
+        ->assertSeeIn("@calendar-post-text-{$stackedOne->id}", 'Stacked one')
+        ->assertMissing("@calendar-post-text-{$crowded[0]->id}")
         ->assertNoJavaScriptErrors();
+});
+
+test('with our setting on, the post list opens by itself on Scheduled, left of the calendar', function () {
+    config(['socialhq.calendar.post_list_open' => true]);
+    [$user, $linkedin, $day] = calendarPostListSetup();
+    $scheduled = calendarPostListPost($linkedin, $day->setTime(9, 0), PostStatus::Scheduled);
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar', ['view' => 'days', 'day' => $day->format('Y-m-d')]))->resize(1440, 900);
+    waitFor($page, "@calendar-list-post-{$scheduled->id}");
+
+    $page->assertAttribute('@calendar-list-tab-scheduled', 'aria-pressed', 'true')
+        ->assertAttribute('@calendar-no-date', 'aria-pressed', 'true')
+        ->assertScript(<<<'JS'
+            document.querySelector('[data-testid="calendar-undated-panel"]').getBoundingClientRect().right
+                <= document.querySelector('[data-testid="calendar-grid"]').getBoundingClientRect().left
+        JS, true)
+        ->click('@calendar-undated-close');
+    waitForGone($page, '@calendar-undated-panel');
+
+    $page->assertAttribute('@calendar-no-date', 'aria-pressed', 'false')->assertNoJavaScriptErrors();
 });

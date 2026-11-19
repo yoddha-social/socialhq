@@ -2,8 +2,8 @@
 import { Head, router, usePage } from '@inertiajs/vue3';
 import {
     IconCheck,
-    IconLayoutSidebarRightCollapse,
-    IconLayoutSidebarRightExpand,
+    IconLayoutSidebarLeftCollapse,
+    IconLayoutSidebarLeftExpand,
     IconPlus,
 } from '@tabler/icons-vue';
 import {
@@ -36,6 +36,7 @@ import CalendarTimeGrid from '@/components/publish/CalendarTimeGrid.vue';
 import CalendarUndatedPanel from '@/components/publish/CalendarUndatedPanel.vue';
 import PublishFilterMenu from '@/components/publish/PublishFilterMenu.vue';
 import PublishHeader from '@/components/publish/PublishHeader.vue';
+import CalendarViewSwitch from '@/components/socialhq/calendar/CalendarViewSwitch.vue';
 import {
     rememberedListOpen,
     rememberedListTab,
@@ -389,9 +390,20 @@ onMounted(() => {
         reload(['slots'], [], true);
     }
 
-    listTab.value = rememberedListTab();
+    const opensByDefault =
+        (
+            page.props.socialhq as
+                | { calendar?: { postListOpen?: boolean } }
+                | undefined
+        )?.calendar?.postListOpen ?? false;
 
-    if (isDesktop.value && !undatedOpen.value && rememberedListOpen()) {
+    listTab.value = rememberedListTab(opensByDefault ? 'scheduled' : 'drafts');
+
+    if (
+        isDesktop.value &&
+        !undatedOpen.value &&
+        (rememberedListOpen() ?? opensByDefault)
+    ) {
         toggleUndated();
     }
 });
@@ -713,6 +725,29 @@ const goToDay = (key: string): void => {
                 ref="toolbar"
                 data-testid="calendar-toolbar"
             >
+                <!-- Social HQ: the post list's button leads the toolbar (PATCHES.md row 227) -->
+                <Button
+                    variant="outline"
+                    class="shrink-0 max-md:hidden"
+                    :class="{ 'bg-accent': undatedOpen }"
+                    :aria-pressed="undatedOpen"
+                    data-testid="calendar-no-date"
+                    @click="toggleUndated"
+                >
+                    <IconLayoutSidebarLeftCollapse
+                        v-if="undatedOpen"
+                        class="size-4 text-muted-foreground"
+                        data-testid="calendar-no-date-icon-open"
+                    />
+                    <IconLayoutSidebarLeftExpand
+                        v-else
+                        class="size-4 text-muted-foreground"
+                        data-testid="calendar-no-date-icon-closed"
+                    />
+                    <span class="max-xl:sr-only">{{
+                        $t('socialhq.calendar.list_title')
+                    }}</span>
+                </Button>
                 <CalendarPeriodPicker
                     ref="periodPicker"
                     :view="view"
@@ -776,6 +811,13 @@ const goToDay = (key: string): void => {
                             </button>
                         </template>
                     </PublishFilterMenu>
+                    <CalendarViewSwitch
+                        v-if="isDesktop"
+                        class="ms-1 me-2"
+                        :view="view"
+                        :views="VIEWS"
+                        @change="switchView"
+                    />
                     <AppHeaderActions :on-phones="!channel">
                         <ScheduleViewSwitch
                             active-view="calendar"
@@ -790,32 +832,32 @@ const goToDay = (key: string): void => {
                             "
                         />
                     </AppHeaderActions>
-                    <Button
-                        variant="ghost"
-                        class="shrink-0 max-xl:size-8 max-xl:px-0 max-md:hidden"
-                        :class="{ 'bg-accent': undatedOpen }"
-                        :aria-pressed="undatedOpen"
-                        data-testid="calendar-no-date"
-                        @click="toggleUndated"
-                    >
-                        <IconLayoutSidebarRightCollapse
-                            v-if="undatedOpen"
-                            class="size-4 text-muted-foreground"
-                            data-testid="calendar-no-date-icon-open"
-                        />
-                        <IconLayoutSidebarRightExpand
-                            v-else
-                            class="size-4 text-muted-foreground"
-                            data-testid="calendar-no-date-icon-closed"
-                        />
-                        <span class="max-xl:sr-only">{{
-                            $t('socialhq.calendar.list_title')
-                        }}</span>
-                    </Button>
                 </div>
             </div>
 
             <div class="mx-4 flex min-h-0 flex-1 gap-4 md:mx-8">
+                <Transition
+                    enter-active-class="transition-[width,margin,opacity] duration-200 ease-out motion-reduce:transition-none"
+                    leave-active-class="transition-[width,margin,opacity] duration-200 ease-out motion-reduce:transition-none"
+                    enter-from-class="opacity-0 md:-me-4! md:w-0!"
+                    leave-to-class="opacity-0 md:-me-4! md:w-0!"
+                >
+                    <div
+                        v-if="undatedOpen"
+                        class="flex min-h-0 shrink-0 overflow-hidden max-md:w-full md:w-[300px]"
+                        data-testid="calendar-undated-slide"
+                    >
+                        <CalendarUndatedPanel
+                            v-model:tab="listTab"
+                            :drafts="undatedDraftList"
+                            :posts="listPosts"
+                            :undated-count="undatedDraftsCount ?? null"
+                            :timezone="timezone"
+                            @close="closeUndated"
+                            @locate="locatePost"
+                        />
+                    </div>
+                </Transition>
                 <div
                     ref="periodSwipeTarget"
                     class="mb-4 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border-strong md:mb-6"
@@ -850,29 +892,6 @@ const goToDay = (key: string): void => {
                         @compose="composeAt"
                     />
                 </div>
-
-                <Transition
-                    enter-active-class="transition-[width,margin,opacity] duration-200 ease-out motion-reduce:transition-none"
-                    leave-active-class="transition-[width,margin,opacity] duration-200 ease-out motion-reduce:transition-none"
-                    enter-from-class="opacity-0 md:-ms-4! md:w-0!"
-                    leave-to-class="opacity-0 md:-ms-4! md:w-0!"
-                >
-                    <div
-                        v-if="undatedOpen"
-                        class="flex min-h-0 shrink-0 overflow-hidden max-md:w-full md:w-[360px]"
-                        data-testid="calendar-undated-slide"
-                    >
-                        <CalendarUndatedPanel
-                            v-model:tab="listTab"
-                            :drafts="undatedDraftList"
-                            :posts="listPosts"
-                            :undated-count="undatedDraftsCount ?? null"
-                            :timezone="timezone"
-                            @close="closeUndated"
-                            @locate="locatePost"
-                        />
-                    </div>
-                </Transition>
             </div>
         </div>
     </AppLayout>

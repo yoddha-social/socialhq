@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import {
-    getPlatformLabel,
-    getPlatformLogo,
-} from '@/composables/usePlatformLogo';
+import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import date from '@/date';
 import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
@@ -21,15 +18,44 @@ const emit = defineEmits<{
     locate: [postId: string];
 }>();
 
-const STATUS_TONES: Record<string, string> = {
-    [PostStatus.Failed]: 'bg-destructive/10 text-destructive-text',
-    [PostStatus.PendingApproval]: 'bg-warning/15 text-foreground',
-    [PostStatus.Published]: 'bg-success/10 text-success',
+interface StatusTone {
+    pill: string;
+    dot: string;
+}
+
+const SCHEDULED_TONE: StatusTone = {
+    pill: 'bg-primary-selected text-primary-text',
+    dot: 'bg-primary-strong',
+};
+
+const DRAFT_TONE: StatusTone = {
+    pill: 'bg-secondary text-muted-foreground',
+    dot: 'bg-muted-foreground/50',
+};
+
+const STATUS_TONES: Record<string, StatusTone> = {
+    [PostStatus.Scheduled]: SCHEDULED_TONE,
+    [PostStatus.Publishing]: SCHEDULED_TONE,
+    [PostStatus.Failed]: {
+        pill: 'bg-destructive/10 text-destructive-text',
+        dot: 'bg-destructive',
+    },
+    [PostStatus.PendingApproval]: {
+        pill: 'bg-warning/15 text-warning',
+        dot: 'bg-warning',
+    },
+    [PostStatus.Published]: {
+        pill: 'bg-success-subtle text-success-text',
+        dot: 'bg-success',
+    },
 };
 
 const statusTone = computed(
-    () =>
-        STATUS_TONES[props.post.status] ?? 'bg-secondary text-muted-foreground',
+    () => STATUS_TONES[props.post.status] ?? DRAFT_TONE,
+);
+
+const channelName = computed(
+    () => props.post.social_account?.display_label ?? '',
 );
 
 const statusLabelKey = computed(() =>
@@ -58,30 +84,37 @@ const locate = (): void => {
 <template>
     <button
         type="button"
-        class="flex w-full flex-col gap-1.5 rounded-lg border border-border-strong bg-card px-2 py-2 text-start transition-control hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+        class="flex w-full flex-col gap-2 rounded-xl border border-border bg-card p-3 text-start transition-control hover:border-border-strong hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
         :data-testid="`calendar-list-post-${post.id}`"
         @click="locate"
     >
         <span class="flex min-w-0 items-center gap-2">
-            <img
+            <ChannelAvatar
                 v-if="post.platform"
-                :src="getPlatformLogo(post.platform)"
-                :alt="getPlatformLabel(post.platform)"
-                class="size-4 shrink-0 rounded-sm"
+                :platform="post.platform"
+                :name="channelName"
+                :src="post.social_account?.avatar_url"
+                :size="24"
             />
             <span
-                class="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground"
+                class="min-w-0 flex-1 truncate text-xs text-muted-foreground"
                 >{{ when }}</span
             >
             <span
-                class="shrink-0 rounded-full px-1.5 py-0.5 text-[11px] leading-none font-medium"
-                :class="statusTone"
+                class="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] leading-4 font-medium"
+                :class="statusTone.pill"
                 :data-testid="`calendar-list-status-${post.id}`"
-                >{{ $t(statusLabelKey) }}</span
             >
+                <span
+                    class="size-1.5 rounded-full"
+                    :class="statusTone.dot"
+                    aria-hidden="true"
+                />
+                {{ $t(statusLabelKey) }}
+            </span>
         </span>
         <span
-            class="line-clamp-2 text-sm leading-[17.5px] break-words text-foreground"
+            class="line-clamp-2 text-[13px] leading-snug break-words text-foreground"
             :class="{ 'text-muted-foreground': !text }"
             >{{ text || $t('calendar.no_content') }}</span
         >
@@ -92,7 +125,7 @@ const locate = (): void => {
             <span
                 v-for="label in post.labels.slice(0, 2)"
                 :key="label.id"
-                class="inline-flex max-w-full items-center gap-1 rounded-md border border-border px-1.5 py-0.5 text-[11px] leading-none text-muted-foreground"
+                class="inline-flex max-w-full items-center gap-1 rounded-md border border-border px-1.5 py-0.5 text-[11px] leading-4 text-foreground"
             >
                 <span
                     class="size-1.5 shrink-0 rounded-full"

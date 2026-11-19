@@ -421,6 +421,9 @@ test('a browser Back between two entries of the same page closes the modal too',
 
     $page = visit(route('app.calendar'))->navigate(route('app.calendar'))->resize(1280, 900);
     waitForChangelogTestId($page, 'sidebar-workspace-menu');
+    // Social HQ: Inertia writes the entry's state a moment after the sidebar shows. Pushed before
+    // that, the copy takes the state and Back lands on an entry Inertia ignores (PATCHES.md row 227).
+    waitForChangelogCondition($page, 'Boolean(window.history.state?.page)');
     $page->script('window.history.pushState(window.history.state, "", location.href)');
 
     openChangelogHelpMenu($page);

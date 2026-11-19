@@ -93,6 +93,28 @@ function networkCardsSavedContents(Workspace $workspace): array
         ->all();
 }
 
+test('the shared step counts the text against the selected channel with the least room', function () {
+    [$user, $workspace] = networkCardsWorkspace();
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $linkedin = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $page = openNetworkCardsComposer($this, $user);
+
+    $page->assertMissing('@composer-base-char-count')
+        ->fill('@composer-base-content', 'Hello')
+        ->click('@composer-add-account')
+        ->click("@composer-account-option-{$linkedin->id}");
+    waitForText($page, '@composer-base-char-count', "5 / {$linkedin->maxContentLength()}");
+
+    $page->click("@composer-account-option-{$x->id}");
+    waitForText($page, '@composer-base-char-count', "5 / {$x->maxContentLength()}");
+    $page->assertScript('document.querySelector(\'[data-testid="composer-base-char-count"]\').hasAttribute("data-exceeded")', false);
+
+    $page->fill('@composer-base-content', str_repeat('a', $x->maxContentLength() + 1));
+    waitForState($page, '@composer-base-char-count', 'element.hasAttribute("data-exceeded")');
+
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a second network keeps the shared step until customizing copies the text into every card', function () {
     [$user, $workspace] = networkCardsWorkspace();
     $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);

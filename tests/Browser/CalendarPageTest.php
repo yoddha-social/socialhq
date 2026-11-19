@@ -117,14 +117,29 @@ test('the week grid places posts in their hour row, stacked as compact rows when
     $page->assertNoJavaScriptErrors();
 });
 
-test('the week grid has no now line and scrolls to the current hour', function () {
+test('the week grid draws a now line in today\'s column and scrolls to the current hour', function () {
     [$user] = calendarPageSetup();
     $this->actingAs($user);
 
     $page = visit(route('app.calendar', ['view' => 'week']));
     waitFor($page, '@calendar-time-grid');
 
-    $page->assertMissing('@calendar-now-line')
+    $today = now('UTC')->format('Y-m-d');
+    waitFor($page, '@calendar-now-line');
+
+    // The line sits inside today's column, at the height of the current time (106px an hour).
+    $page->assertScript(<<<JS
+            (() => {
+                const lines = [...document.querySelectorAll('[data-testid="calendar-now-line"]')];
+                const slot = document.querySelector('[data-testid="calendar-slot-{$today}-00"]');
+                const now = new Date();
+                const expected = (now.getUTCHours() + now.getUTCMinutes() / 60) * 106;
+
+                return lines.length === 1
+                    && lines[0].parentElement === slot.parentElement
+                    && Math.abs(parseFloat(lines[0].style.top) - expected) <= 106 / 60 * 2;
+            })()
+        JS, true)
         ->assertScript(
             '(() => { const grid = document.querySelector(\'[data-testid="calendar-time-grid"]\'); return grid.scrollTop === Math.min('.(now('UTC')->hour * 106).', grid.scrollHeight - grid.clientHeight); })()',
             true,
@@ -625,7 +640,7 @@ test('on a phone the week shows its seven days in columns with their posts', fun
         ->assertNoJavaScriptErrors();
 });
 
-test('the three days view shows three columns, and only the phone picker offers it', function () {
+test('the three days view shows three columns, and the desktop switch offers it next to week and month', function () {
     [$user, $linkedin] = calendarPageSetup();
     $day = now('UTC')->addDays(10)->startOfDay();
     $post = calendarPagePost($linkedin, $day->copy()->addDay()->setTime(9, 0));
@@ -643,18 +658,32 @@ test('the three days view shows three columns, and only the phone picker offers 
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
 
     $page->resize(1280, 900);
-    waitFor($page, '@calendar-view-trigger');
-    $page->assertSeeIn('@calendar-view-trigger', __('calendar.days'))
-        ->click('@calendar-view-trigger');
-    waitFor($page, '@calendar-view-week');
-    $page->assertPresent('@calendar-view-month')
-        ->assertMissing('@calendar-view-days')
-        ->keys('@calendar-view-week', 'Escape');
-    waitForGone($page, '@calendar-view-week');
-    $page->click('@calendar-next');
+    waitFor($page, '@calendar-view-switch');
+    $page->assertAttribute('@calendar-view-days', 'aria-pressed', 'true')
+        ->assertAttribute('@calendar-view-week', 'aria-pressed', 'false')
+        ->assertAttribute('@calendar-view-month', 'aria-pressed', 'false')
+        ->click('@calendar-next');
     waitForCondition($page, "new URLSearchParams(location.search).get('day') === '{$day->copy()->addDays(3)->format('Y-m-d')}'");
 
     $page->assertMissing("@calendar-post-{$post->id}")->assertNoJavaScriptErrors();
+});
+
+test('on a desktop each calendar view is one click away', function () {
+    [$user] = calendarPageSetup();
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar', ['view' => 'week']));
+    waitFor($page, '@calendar-view-switch');
+    $page->assertAttribute('@calendar-view-week', 'aria-pressed', 'true')
+        ->click('@calendar-view-month');
+    waitForPath($page, route('app.calendar', ['view' => 'month'], false));
+    waitForState($page, '@calendar-view-month', "element.getAttribute('aria-pressed') === 'true'");
+    $page->assertMissing('@calendar-now-line')
+        ->click('@calendar-view-days');
+    waitForPath($page, route('app.calendar', ['view' => 'days'], false));
+    waitForState($page, '@calendar-view-days', "element.getAttribute('aria-pressed') === 'true'");
+
+    $page->assertNoJavaScriptErrors();
 });
 
 test('on a phone the calendar tab of the view switch keeps the three days view, on a desktop it opens the month', function () {
@@ -773,7 +802,7 @@ test('on a phone the period picker opens from the bottom, switches the view in p
 
     $page->resize(1280, 900);
     waitFor($page, '@calendar-previous');
-    $page->assertVisible('@calendar-next')->assertVisible('@calendar-view-trigger');
+    $page->assertVisible('@calendar-next')->assertVisible('@calendar-view-switch');
 });
 
 test('the previous period arrow starts on the same line as the calendar', function () {

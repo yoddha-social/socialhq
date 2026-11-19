@@ -1070,6 +1070,37 @@ const groupRemaining = (group: NetworkGroup): number | null => {
 
     return values.length ? Math.min(...values) : null;
 };
+/**
+ * Social HQ: on the shared step the text is counted against the selected
+ * channel with the least room left (PATCHES.md row 223).
+ */
+const sharedCounter = computed<{
+    used: number;
+    limit: number;
+    platform: string;
+} | null>(() => {
+    let tightest: { used: number; limit: number; platform: string } | null =
+        null;
+    let least = Infinity;
+
+    for (const account of selectedAccounts.value) {
+        const remaining = remainingCharacters(account);
+        const limit = props.platformConfigs[account.id]?.maxContentLength;
+
+        if (remaining === null || typeof limit !== 'number') continue;
+
+        if (remaining < least) {
+            least = remaining;
+            tightest = {
+                used: limit - remaining,
+                limit,
+                platform: getPlatformLabel(account.platform),
+            };
+        }
+    }
+
+    return tightest;
+});
 const threadActive = ref(-1);
 
 const deselectThread = (): void => {
@@ -2698,7 +2729,32 @@ const onDialogOpenChange = (value: boolean): void => {
                                     @select-emoji="appendEmoji($event, null)"
                                     @select-signature="appendSignature($event, null)"
                                     @save-signature="saveSignature"
-                                />
+                                >
+                                    <CharacterCounter
+                                        v-if="sharedCounter"
+                                        data-testid="composer-base-char-count"
+                                        :exceeded="
+                                            sharedCounter.used >
+                                            sharedCounter.limit
+                                        "
+                                    >
+                                        {{
+                                            $t(
+                                                'socialhq.composer.shared_counter',
+                                                {
+                                                    used: String(
+                                                        sharedCounter.used,
+                                                    ),
+                                                    limit: String(
+                                                        sharedCounter.limit,
+                                                    ),
+                                                    platform:
+                                                        sharedCounter.platform,
+                                                },
+                                            )
+                                        }}
+                                    </CharacterCounter>
+                                </ComposerEditorToolbar>
                             </template>
                         </ComposerNetworkCard>
                         <template

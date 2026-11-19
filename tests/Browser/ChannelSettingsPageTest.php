@@ -394,3 +394,18 @@ test('on a phone toggling a day, adding and removing a time persist', function (
     $page->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
         ->assertNoJavaScriptErrors();
 });
+
+test('the channel ID is shown and copies to the clipboard', function () {
+    [$user, $channel] = channelSettingsPageSetup();
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.settings', $channel));
+    waitFor($page, '@channel-id-copy');
+    $page->assertSeeIn('@channel-id-value', $channel->id);
+
+    $page->script('window.__copied = null; navigator.clipboard.writeText = async (text) => { window.__copied = text; };');
+    $page->click('@channel-id-copy');
+    waitForCondition($page, "window.__copied === '{$channel->id}'");
+
+    $page->assertScript('window.__copied', $channel->id)->assertNoJavaScriptErrors();
+});

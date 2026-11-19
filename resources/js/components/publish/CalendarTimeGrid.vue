@@ -131,6 +131,11 @@ const pastHours = computed(() =>
 const isPastSlot = (column: number, hour: number): boolean =>
     pastHours.value[column][hour];
 
+/** Social HQ: where "now" falls in today's column, in pixels from midnight (PATCHES.md row 222). */
+const nowOffset = computed(
+    () => (nowInZone.value.hour() + nowInZone.value.minute() / 60) * ROW_HEIGHT,
+);
+
 const { overTarget, draggingPostId, vCalendarTarget } =
     useCalendarDragContext();
 
@@ -212,6 +217,18 @@ watch(
                 :key="column.key"
                 class="relative"
             >
+                <div
+                    v-if="column.isToday"
+                    class="pointer-events-none absolute inset-x-0 z-10 flex h-0 items-center"
+                    :style="{ top: `${nowOffset}px` }"
+                    aria-hidden="true"
+                    data-testid="calendar-now-line"
+                >
+                    <span
+                        class="-ms-1 size-2 shrink-0 rounded-full bg-primary"
+                    />
+                    <span class="h-[2px] flex-1 bg-primary" />
+                </div>
                 <div
                     v-for="hour in HOURS"
                     :key="hour"

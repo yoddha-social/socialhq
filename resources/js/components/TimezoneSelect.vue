@@ -31,6 +31,8 @@ const props = defineProps<{
     compact?: boolean;
     variant?: 'outline' | 'ghost';
     iconOnlyOnMobile?: boolean;
+    // Social HQ: a fixed label ("Change") in place of the selected zone (PATCHES.md row 230).
+    triggerLabel?: string;
 }>();
 
 const model = defineModel<string>({ required: true });
@@ -119,11 +121,14 @@ const choose = (value: string): void => {
                     )
                 "
             >
-                <IconWorld class="size-4 shrink-0 text-muted-foreground" />
-                <span :class="cn('truncate', iconOnlyOnMobile && 'max-sm:hidden')">
-                    {{ selected ? (compact ? selected.label : `${selected.label} (${selected.offset})`) : model }}
-                </span>
-                <IconChevronDown v-if="compact" class="size-4 shrink-0 text-muted-foreground" />
+                <span v-if="triggerLabel">{{ triggerLabel }}</span>
+                <template v-else>
+                    <IconWorld class="size-4 shrink-0 text-muted-foreground" />
+                    <span :class="cn('truncate', iconOnlyOnMobile && 'max-sm:hidden')">
+                        {{ selected ? (compact ? selected.label : `${selected.label} (${selected.offset})`) : model }}
+                    </span>
+                    <IconChevronDown v-if="compact" class="size-4 shrink-0 text-muted-foreground" />
+                </template>
             </Button>
         </PopoverTrigger>
 

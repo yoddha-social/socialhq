@@ -239,7 +239,7 @@ const rows = computed(() =>
                         :account-id="channel.id"
                         :platform="channel.platform"
                         :src="channel.avatar_url"
-                        :name="channel.display_name || channel.username"
+                        :name="channel.display_label"
                         :size="64"
                         :reserve-space="false"
                     >

@@ -19,6 +19,7 @@ use App\SocialHq\Http\Controllers\AccessPendingController;
 use App\SocialHq\Http\Controllers\AccessRequestController;
 use App\SocialHq\Http\Controllers\AiGraphicController;
 use App\SocialHq\Http\Controllers\BrandKnowledgeController;
+use App\SocialHq\Http\Controllers\ChannelNameController;
 use App\SocialHq\Http\Controllers\CompanyPausedController;
 use App\SocialHq\Http\Controllers\CompanyRequestController;
 use App\SocialHq\Http\Controllers\InboxController;
@@ -70,6 +71,7 @@ Route::middleware('auth')->prefix('socialhq')->name('socialhq.')->group(function
         require __DIR__.'/socialhq/ai.php';
         require __DIR__.'/socialhq/ai-usage.php';
         require __DIR__.'/socialhq/notices.php';
+        Route::put('channels/{account}/name', [ChannelNameController::class, 'update'])->name('channels.name.update');
     });
 });
 

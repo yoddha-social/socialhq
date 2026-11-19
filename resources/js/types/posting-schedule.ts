@@ -23,6 +23,7 @@ export interface TimezoneOption {
 export interface OtherChannel {
     id: string;
     display_name: string | null;
+    display_label: string;
     username: string;
     platform: string;
     avatar_url: string | null;

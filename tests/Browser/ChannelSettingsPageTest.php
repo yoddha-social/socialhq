@@ -43,6 +43,34 @@ function channelSettingsPageSetup(?PostingSchedule $schedule = null): array
     return [$user->fresh(), $channel];
 }
 
+/**
+ * Social HQ: the weekday grid opens from the "Posting times" row, behind the simple
+ * list when every day shares the same times (PATCHES.md row 230).
+ *
+ * @param  array{0: int, 1: int}|null  $size
+ */
+function visitChannelTimesGrid(SocialAccount $channel, ?array $size = null): mixed
+{
+    $page = visit(route('app.channels.settings', $channel));
+
+    if ($size !== null) {
+        $page->resize(...$size);
+    }
+
+    waitFor($page, '@channel-times-edit');
+    $page->click('@channel-times-edit');
+    waitFor($page, '@channel-times-per-day, @channel-times-grid');
+
+    if ($page->script('document.querySelector(\'[data-testid="channel-times-per-day"]\') !== null')) {
+        $page->click('@channel-times-per-day');
+    }
+
+    waitFor($page, '@channel-times-grid');
+    waitForGone($page, '@channel-times-dialog');
+
+    return $page;
+}
+
 function pickChannelSettingsOption(mixed $page, string $select, string $value): void
 {
     $page->click("@{$select}");
@@ -74,7 +102,7 @@ test('adding a weekday time, removing one and toggling a day persist', function 
     [$user, $channel] = channelSettingsPageSetup();
     $this->actingAs($user);
 
-    $page = visit(route('app.channels.settings', $channel));
+    $page = visitChannelTimesGrid($channel);
     waitForChannelSettingsPageTestId($page, 'schedule-day-1-time-0942');
 
     pickChannelSettingsOption($page, 'schedule-add-target', 'weekdays');
@@ -108,7 +136,10 @@ test('the time zone and goal save from the page', function () {
     $page->click('@channel-timezone-confirm-submit');
     waitForChannelSaved($page, $channel, fn (SocialAccount $c): bool => $c->timezone === 'Europe/Warsaw');
 
-    $page->click('@channel-goal-increase');
+    // Social HQ: the goal is edited in a dialog opened from its row (PATCHES.md row 230).
+    $page->click('@channel-goal-edit');
+    waitFor($page, '@channel-goal-increase');
+    $page->click('@channel-goal-increase')->click('@channel-goal-save');
     waitForChannelSaved($page, $channel, fn (SocialAccount $c): bool => $c->posting_goal === 4);
 
     expect($channel->fresh()->timezone)->toBe('Europe/Warsaw')
@@ -125,7 +156,7 @@ test('clear all, generate from goal and copy from another channel', function () 
     ]);
     $this->actingAs($user);
 
-    $page = visit(route('app.channels.settings', $channel));
+    $page = visitChannelTimesGrid($channel);
     waitForChannelSettingsPageTestId($page, 'schedule-clear');
     $page->click('@schedule-clear');
     waitForChannelSettingsPageTestId($page, 'schedule-clear-confirm');
@@ -164,7 +195,7 @@ test('the copy from channel search filters the list and a pick asks to confirm',
     ]);
     $this->actingAs($user);
 
-    $page = visit(route('app.channels.settings', $channel));
+    $page = visitChannelTimesGrid($channel);
     waitForChannelSettingsPageTestId($page, 'schedule-generate');
     $page->click('@schedule-generate');
     waitForChannelSettingsPageTestId($page, 'schedule-generate-copy');
@@ -198,7 +229,7 @@ test('a fifth time on a day is blocked', function () {
     );
     $this->actingAs($user);
 
-    $page = visit(route('app.channels.settings', $channel));
+    $page = visitChannelTimesGrid($channel);
     waitForChannelSettingsPageTestId($page, 'schedule-add-target');
     pickChannelSettingsOption($page, 'schedule-add-target', '2');
     waitForChannelSettingsPageTestId($page, 'schedule-add-limit');
@@ -213,7 +244,7 @@ test('a channel without a schedule shows the empty state', function () {
     $channel->update(['posting_schedule' => null]);
     $this->actingAs($user);
 
-    $page = visit(route('app.channels.settings', $channel));
+    $page = visitChannelTimesGrid($channel);
     waitForChannelSettingsPageTestId($page, 'schedule-empty');
 
     $page->assertVisible('@schedule-empty')->assertVisible('@schedule-generate')->assertNoJavaScriptErrors();
@@ -225,7 +256,7 @@ test('two rapid removes on different days both persist', function () {
     );
     $this->actingAs($user);
 
-    $page = visit(route('app.channels.settings', $channel));
+    $page = visitChannelTimesGrid($channel);
     waitForChannelSettingsPageTestId($page, 'schedule-day-1-time-0900-remove');
     $page->click('@schedule-day-1-time-0900-remove')->click('@schedule-day-2-time-1000-remove');
     waitForChannelSaved($page, $channel, fn (SocialAccount $c): bool => $c->posting_schedule->slotCount() === 1);
@@ -243,7 +274,7 @@ test('meet my posting goal is disabled with a hint once the goal is met', functi
     );
     $this->actingAs($user);
 
-    $page = visit(route('app.channels.settings', $channel));
+    $page = visitChannelTimesGrid($channel);
     waitForChannelSettingsPageTestId($page, 'schedule-generate');
     $page->click('@schedule-generate');
     waitForChannelSettingsPageTestId($page, 'schedule-generate-goal');
@@ -269,7 +300,7 @@ test('the schedule grid follows the week start and the 12-hour clock', function 
     $user->update(['week_starts_on' => WeekStart::Sunday, 'time_format' => TimeFormat::TwelveHour]);
     $this->actingAs($user);
 
-    $page = visit(route('app.channels.settings', $channel));
+    $page = visitChannelTimesGrid($channel);
     waitForChannelSettingsPageTestId($page, 'schedule-day-0-time-1430-meridiem');
 
     $page->assertScript("document.querySelector('[data-testid^=\"schedule-day-\"]').dataset.testid", 'schedule-day-0')
@@ -304,7 +335,7 @@ test('changing the time zone asks first and cancel and escape keep the old zone'
         ->click('@channel-timezone-confirm-cancel');
     $page->script('(async () => { for (let i = 0; i < 100; i++) { if (!document.querySelector(\'[data-testid="channel-timezone-confirm-dialog"]\')) return; await new Promise((r) => setTimeout(r, 50)); } })();');
 
-    $page->assertSeeIn('@channel-timezone-trigger', 'UTC');
+    $page->assertSeeIn('@channel-row-timezone-value', 'UTC');
     expect($channel->fresh()->timezone)->toBe('UTC');
 
     chooseChannelSettingsTimezone($page, 'Warsaw', 'Europe-Warsaw');
@@ -349,7 +380,7 @@ test('on a phone the schedule stacks one day per row in week-start order without
     $user->update(['week_starts_on' => WeekStart::Sunday, 'time_format' => TimeFormat::TwelveHour]);
     $this->actingAs($user);
 
-    $page = visit(route('app.channels.settings', $channel))->resize(390, 844);
+    $page = visitChannelTimesGrid($channel, [390, 844]);
     waitForChannelSettingsPageTestId($page, 'schedule-day-1-time-0942');
 
     $page->assertScript(<<<'JS'
@@ -372,7 +403,7 @@ test('on a phone toggling a day, adding and removing a time persist', function (
     [$user, $channel] = channelSettingsPageSetup();
     $this->actingAs($user);
 
-    $page = visit(route('app.channels.settings', $channel))->resize(390, 844);
+    $page = visitChannelTimesGrid($channel, [390, 844]);
     waitForChannelSettingsPageTestId($page, 'schedule-day-1-time-0942');
 
     pickChannelSettingsOption($page, 'schedule-add-target', 'weekdays');

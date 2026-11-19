@@ -27,6 +27,7 @@ use App\Http\Resources\App\ChannelPostingScheduleResource;
 use App\Http\Resources\App\InstagramGridTileResource;
 use App\Http\Resources\App\SocialAccountResource;
 use App\Models\SocialAccount;
+use App\SocialHq\Channels\ChannelPage;
 use App\Support\Analytics\ChannelMetrics;
 use App\Support\Analytics\InsightsExportWriter;
 use App\Support\Analytics\SyncCadence;
@@ -250,7 +251,9 @@ class ChannelController extends Controller
         $workspace = $request->user()->currentWorkspace;
         $this->authorize('manageAccounts', $workspace);
 
-        return Inertia::render('channels/Settings', [
+        // Social HQ: the channel page (list, where it stands, settings, connection) replaces the settings page (PATCHES.md row 230).
+        return Inertia::render('socialhq/channels/Show', [
+            ...ChannelPage::props($request->user(), $account),
             'channel' => SocialAccountResource::make($account)->resolve(),
             'schedule' => ChannelPostingScheduleResource::make($account)->resolve(),
             'timezones' => Timezone::options(),
@@ -261,6 +264,7 @@ class ChannelController extends Controller
                 ->map(fn (SocialAccount $other): array => [
                     'id' => $other->id,
                     'display_name' => $other->display_name,
+                    'display_label' => $other->display_label,
                     'username' => $other->username,
                     'platform' => $other->platform->value,
                     'avatar_url' => $other->avatar_url,

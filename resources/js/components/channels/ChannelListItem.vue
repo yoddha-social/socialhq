@@ -62,7 +62,7 @@ const typeKey = computed(() => accountTypeKey(props.channel));
             :platform="channel.platform"
             :src="channel.avatar_url"
             :verified="channel.verified_badge"
-            :name="channel.display_name || channel.username"
+            :name="channel.display_label"
             :size="40"
             ring="card"
         />
@@ -72,7 +72,7 @@ const typeKey = computed(() => accountTypeKey(props.channel));
                 class="truncate text-sm leading-tight font-emphasis text-foreground"
                 :data-testid="`channel-name-${channel.id}`"
             >
-                {{ channel.display_name || channel.username }}
+                {{ channel.display_label }}
             </p>
             <p
                 v-if="lost"

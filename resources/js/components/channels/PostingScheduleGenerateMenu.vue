@@ -170,8 +170,7 @@ const confirmGenerate = (): void => {
                                                 :src="other.avatar_url"
                                                 :verified="other.verified_badge"
                                                 :name="
-                                                    other.display_name ||
-                                                    other.username
+                                                    other.display_label
                                                 "
                                                 :size="24"
                                                 shape="round"
@@ -180,8 +179,7 @@ const confirmGenerate = (): void => {
                                             <span class="flex min-w-0 flex-col">
                                                 <span class="truncate">
                                                     {{
-                                                        other.display_name ||
-                                                        other.username
+                                                        other.display_label
                                                     }}
                                                 </span>
                                                 <span

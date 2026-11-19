@@ -182,6 +182,8 @@ const itemClass = (
     item: CalendarItem,
 ): string[] => [
     chipClass(column, hour),
+    // Social HQ: chips sit above the now line (z-10) and under the sticky header (PATCHES.md row 227).
+    'relative z-[11]',
     isDimmed(index, hour, item) ? 'opacity-50' : '',
 ];
 

@@ -40,6 +40,8 @@
         <env name="SOCIALHQ_AGENT_POSTS_REVIEWED" value="false"/>
         <!-- Social HQ: upstream browser tests publish at once without our confirmation; ours switch it on. -->
         <env name="SOCIALHQ_PUBLISH_NOW_CONFIRM" value="false"/>
+        <!-- Social HQ: upstream browser tests expect the calendar's side panel closed and on its drafts; ours opens by itself. -->
+        <env name="SOCIALHQ_CALENDAR_POST_LIST_OPEN" value="false"/>
         <!-- Social HQ: upstream tests manage API keys and webhooks through MCP and API keys; ours switch this off. -->
         <env name="SOCIALHQ_AGENTS_MANAGE_ADMIN_SETTINGS" value="true"/>
         <!-- Social HQ: upstream tests register and create workspaces without companies; ours switch these on. -->

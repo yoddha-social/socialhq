@@ -103,10 +103,10 @@ test('the shared step counts the text against the selected channel with the leas
         ->fill('@composer-base-content', 'Hello')
         ->click('@composer-add-account')
         ->click("@composer-account-option-{$linkedin->id}");
-    waitForText($page, '@composer-base-char-count', "5 / {$linkedin->maxContentLength()}");
+    waitForText($page, '@composer-base-char-count', '5 / '.number_format($linkedin->maxContentLength()));
 
     $page->click("@composer-account-option-{$x->id}");
-    waitForText($page, '@composer-base-char-count', "5 / {$x->maxContentLength()}");
+    waitForText($page, '@composer-base-char-count', '5 / '.number_format($x->maxContentLength()));
     $page->assertScript('document.querySelector(\'[data-testid="composer-base-char-count"]\').hasAttribute("data-exceeded")', false);
 
     $page->fill('@composer-base-content', str_repeat('a', $x->maxContentLength() + 1));

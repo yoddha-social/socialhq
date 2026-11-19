@@ -291,7 +291,7 @@ return [
     ],
     'calendar' => [
         'list_title' => 'Posts',
-        'list_description' => 'Posts in the dates shown, and drafts with no date.',
+        'list_hide' => 'Hide',
         'empty_scheduled' => 'Nothing scheduled in these dates.',
         'empty_sent' => 'Nothing sent in these dates.',
         'chip_approval' => 'Approval',
@@ -299,7 +299,8 @@ return [
     ],
 
     'composer' => [
-        'shared_counter' => ':used / :limit · :platform limit',
+        'shared_counter' => ':used / :limit',
+        'shared_counter_limit' => ':platform limit',
     ],
 
     'channels' => [

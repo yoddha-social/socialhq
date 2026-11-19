@@ -53,7 +53,7 @@ test('a premium x card counts against the account limit', function () {
     waitForXLongPostTestId($page, 'composer-base-content');
     $page->fill('@composer-base-content', 'Hello');
     // Social HQ: the shared step counts against the channel with the least room, here LinkedIn (PATCHES.md row 223).
-    waitForText($page, '@composer-base-char-count', "5 / {$linkedin->maxContentLength()}");
+    waitForText($page, '@composer-base-char-count', '5 / '.number_format($linkedin->maxContentLength()));
     $page->click('@composer-next');
     waitForXLongPostTestId($page, "composer-char-count-{$x->id}");
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { InfiniteScroll, Link } from '@inertiajs/vue3';
-import { IconEdit, IconX } from '@tabler/icons-vue';
+import { IconEdit, IconLayoutSidebarLeftCollapse } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import CalendarPostListCard from '@/components/socialhq/calendar/CalendarPostListCard.vue';
@@ -106,31 +106,27 @@ const preview = (draft: UndatedDraft): DraftPreview =>
 <template>
     <aside
         v-calendar-target="UNDATED_TARGET"
-        class="flex min-h-0 w-full shrink-0 flex-col rounded-t-xl border bg-muted md:w-[360px]"
+        class="flex min-h-0 w-full shrink-0 flex-col rounded-t-xl border bg-muted/60 md:w-[300px]"
         :class="isOver ? 'border-primary' : 'border-transparent'"
         :data-drop-over="isOver || undefined"
         data-testid="calendar-undated-panel"
     >
-        <div class="flex shrink-0 items-start gap-4 px-4 pt-4 pb-3">
-            <div class="flex min-w-0 flex-1 flex-col gap-1">
-                <h2
-                    class="text-sm leading-[17.5px] font-emphasis text-foreground"
-                >
-                    {{ $t('socialhq.calendar.list_title') }}
-                </h2>
-                <p class="text-xs leading-[18px] text-muted-foreground">
-                    {{ $t('socialhq.calendar.list_description') }}
-                </p>
-            </div>
+        <div class="flex shrink-0 items-center gap-2 px-4 pt-4 pb-3">
+            <h2
+                class="min-w-0 flex-1 truncate font-heading text-base leading-5 font-medium text-foreground"
+            >
+                {{ $t('socialhq.calendar.list_title') }}
+            </h2>
             <Button
-                variant="ghost"
-                size="icon"
-                class="-me-2 -mt-2 shrink-0"
+                variant="outline"
+                size="sm"
+                class="shrink-0 bg-card"
                 :aria-label="$t('calendar.undated.close')"
                 data-testid="calendar-undated-close"
                 @click="emit('close')"
             >
-                <IconX class="size-4" />
+                <IconLayoutSidebarLeftCollapse class="size-4" />
+                {{ $t('socialhq.calendar.list_hide') }}
             </Button>
         </div>
 
@@ -209,11 +205,11 @@ const preview = (draft: UndatedDraft): DraftPreview =>
                             <Link
                                 v-calendar-post="draft"
                                 :href="editPost.url(draft.id)"
-                                class="flex flex-col gap-1 rounded-lg border px-2 py-2 text-start transition-control [&[data-calendar-draggable=true]]:cursor-grab"
+                                class="flex flex-col gap-1.5 rounded-xl border p-3 text-start transition-control [&[data-calendar-draggable=true]]:cursor-grab"
                                 :class="
                                     draggingPostId === draft.id
                                         ? 'border-transparent bg-secondary *:invisible'
-                                        : 'border-dashed border-border-strong bg-card hover:bg-secondary'
+                                        : 'border-dashed border-border-strong bg-card hover:shadow-sm'
                                 "
                                 :data-testid="`calendar-undated-${draft.id}`"
                             >

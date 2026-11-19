@@ -170,6 +170,17 @@ const loudKey = computed(() =>
     props.compact ? undefined : LOUD_STATUSES[statusKey.value],
 );
 
+const DOT_TONES: Record<StatusKey, string> = {
+    draft: 'bg-muted-foreground/50',
+    pending_approval: 'bg-warning',
+    queue: 'bg-primary-strong',
+    custom: 'bg-primary-strong',
+    recurring: 'bg-primary-strong',
+    publishing: 'bg-primary-strong',
+    published: 'bg-success',
+    failed: 'bg-destructive',
+};
+
 const firstLine = computed(
     () =>
         text.value
@@ -185,7 +196,7 @@ const firstLine = computed(
             v-calendar-post="post"
             type="button"
             v-bind="$attrs"
-            class="flex min-w-0 shrink-0 flex-col justify-center rounded-lg border border-border-strong bg-card px-1 text-start transition-control hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-[located]:ring-2 data-[located]:ring-primary [&[data-calendar-draggable=true]]:cursor-grab"
+            class="flex min-w-0 shrink-0 flex-col justify-center rounded-lg border border-border-strong bg-card px-1.5 text-start shadow-[0_1px_0_rgba(0,0,0,0.03)] transition-control hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-[located]:ring-2 data-[located]:ring-primary [&[data-calendar-draggable=true]]:cursor-grab"
             :class="chipClass"
             :style="stripe"
             :aria-label="
@@ -236,14 +247,20 @@ const firstLine = computed(
                             :class="
                                 statusKey === 'failed'
                                     ? 'bg-destructive/10 text-destructive-text'
-                                    : 'bg-warning/15 text-foreground'
+                                    : 'bg-warning/15 text-warning'
                             "
                             >{{ $t(loudKey) }}</span
                         >
                         <component
                             :is="statusMarker.icon"
+                            v-else-if="compact"
+                            class="size-3"
+                            aria-hidden="true"
+                        />
+                        <span
                             v-else
-                            :class="compact ? 'size-3' : 'size-3.5'"
+                            class="m-0.5 size-2 rounded-full"
+                            :class="DOT_TONES[statusKey]"
                             aria-hidden="true"
                         />
                     </span>

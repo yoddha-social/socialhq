@@ -366,6 +366,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Calendar
+    |--------------------------------------------------------------------------
+    |
+    | The calendar's post list opens by itself, on Scheduled, until the person
+    | hides it (their browser remembers). Off, it starts closed and opens on
+    | Drafts, as TryPost's "No Date" panel did: TryPost's browser tests expect that.
+    |
+    */
+
+    'calendar' => [
+        'post_list_open' => (bool) env('SOCIALHQ_CALENDAR_POST_LIST_OPEN', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Agents (API keys and MCP grants)
     |--------------------------------------------------------------------------
     |

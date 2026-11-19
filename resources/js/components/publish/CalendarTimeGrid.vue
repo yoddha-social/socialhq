@@ -62,6 +62,7 @@ const columns = computed(() =>
 );
 
 const MAX_CHIPS = 3;
+const RICH_CHIPS = 2;
 
 const expandedHours = ref<string[]>([]);
 
@@ -131,10 +132,38 @@ const pastHours = computed(() =>
 const isPastSlot = (column: number, hour: number): boolean =>
     pastHours.value[column][hour];
 
-/** Social HQ: where "now" falls in today's column, in pixels from midnight (PATCHES.md row 222). */
+/**
+ * Social HQ (PATCHES.md rows 222 and 227): where "now" falls, in pixels from
+ * midnight, the column it falls in, and the grid's columns. From `md` up the
+ * grid has a gutter with the hours; on a phone the hours stay inside the first
+ * column.
+ */
 const nowOffset = computed(
     () => (nowInZone.value.hour() + nowInZone.value.minute() / 60) * ROW_HEIGHT,
 );
+
+const todayIndex = computed(() =>
+    columns.value.findIndex((column) => column.isToday),
+);
+
+const nowLabel = computed(() =>
+    date.formatTimeInTimezone(props.now.utc().format(), props.timezone),
+);
+
+const GUTTER_WIDTH = 64;
+
+const gridColumns = computed(() =>
+    compact.value
+        ? `repeat(${props.days.length}, minmax(0, 1fr))`
+        : `${GUTTER_WIDTH}px repeat(${props.days.length}, minmax(0, 1fr))`,
+);
+
+/** A chip shows the post's first line while its hour holds at most two. */
+const isRich = (
+    column: { byHour: Map<number, CalendarItem[]> },
+    hour: number,
+): boolean =>
+    !iconOnly.value && (column.byHour.get(hour)?.length ?? 0) <= RICH_CHIPS;
 
 const { overTarget, draggingPostId, vCalendarTarget } =
     useCalendarDragContext();
@@ -186,14 +215,17 @@ watch(
     >
         <div
             class="sticky top-0 z-20 grid border-b border-border-strong bg-card"
-            :style="{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }"
+            :style="{ gridTemplateColumns: gridColumns }"
         >
+            <div v-if="!compact" aria-hidden="true" />
             <div
                 v-for="(column, index) in columns"
                 :key="column.key"
                 class="-mb-px flex flex-col items-center justify-center border-b p-1.5 text-sm font-medium capitalize md:flex-row md:gap-3 md:p-2.5"
                 :class="[
-                    index > 0 ? 'border-l border-l-border-strong' : '',
+                    index > 0 || !compact
+                        ? 'border-l border-l-border-strong'
+                        : '',
                     column.isToday
                         ? 'border-b-primary-text text-primary-text'
                         : 'border-b-transparent text-muted-foreground',
@@ -209,44 +241,73 @@ watch(
         </div>
 
         <div
-            class="grid"
-            :style="{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }"
+            class="relative grid"
+            :style="{ gridTemplateColumns: gridColumns }"
         >
+            <div v-if="!compact" aria-hidden="true">
+                <div
+                    v-for="hour in HOURS"
+                    :key="hour"
+                    class="relative"
+                    :style="{ height: `${ROW_HEIGHT}px` }"
+                >
+                    <span
+                        v-if="hour > 0"
+                        class="absolute end-2 top-0 -translate-y-1/2 text-[11px] leading-none whitespace-nowrap text-subtle-foreground"
+                        >{{ date.formatHourOption(hourLabel(hour)) }}</span
+                    >
+                </div>
+            </div>
             <div
                 v-for="(column, index) in columns"
                 :key="column.key"
                 class="relative"
             >
                 <div
-                    v-if="column.isToday"
+                    v-if="column.isToday && compact"
                     class="pointer-events-none absolute inset-x-0 z-10 flex h-0 items-center"
                     :style="{ top: `${nowOffset}px` }"
                     aria-hidden="true"
                     data-testid="calendar-now-line"
                 >
                     <span
-                        class="-ms-1 size-2 shrink-0 rounded-full bg-primary"
+                        class="-ms-1 size-2 shrink-0 rounded-full bg-primary-strong"
                     />
-                    <span class="h-[2px] flex-1 bg-primary" />
+                    <span class="h-[2px] flex-1 bg-primary-strong" />
+                </div>
+                <div
+                    v-if="column.isToday && !compact"
+                    class="pointer-events-none absolute inset-x-0 z-10 h-0"
+                    :style="{ top: `${nowOffset}px` }"
+                    aria-hidden="true"
+                    data-testid="calendar-now-line"
+                >
+                    <span
+                        class="absolute inset-x-0 top-0 h-[2px] -translate-y-1/2 bg-primary-strong"
+                    />
                 </div>
                 <div
                     v-for="hour in HOURS"
                     :key="hour"
                     v-calendar-target="hourSlots[index][hour].target"
-                    class="group relative flex items-start justify-between gap-1 px-1 py-2 md:px-3"
+                    class="group relative flex items-start justify-between gap-1 px-1 py-1.5 md:px-1.5"
                     :class="{
-                        'bg-accent': isPastSlot(index, hour),
+                        'shq-hatched bg-muted/40':
+                            isPastSlot(index, hour) && !isHourOver(index, hour),
                         'bg-primary/15': isHourOver(index, hour),
-                        'border-t border-border-strong':
-                            hour > 0 && (index > 0 || hour % 2 === 1),
-                        'border-l border-border-strong': index > 0,
+                        'border-t border-border':
+                            hour > 0 &&
+                            (!compact || index > 0 || hour % 2 === 1),
+                        'border-l border-border': index > 0 || !compact,
                     }"
                     :style="{ height: `${ROW_HEIGHT}px` }"
                     :data-drop-over="isHourOver(index, hour) || undefined"
                     :data-testid="`calendar-slot-${column.key}-${hourLabel(hour)}`"
                 >
                     <div
-                        v-if="index === 0 && hour > 0 && hour % 2 === 0"
+                        v-if="
+                            compact && index === 0 && hour > 0 && hour % 2 === 0
+                        "
                         class="pointer-events-none absolute inset-x-0 top-0 z-10 flex h-px items-center"
                         aria-hidden="true"
                     >
@@ -283,7 +344,7 @@ watch(
                                 :post="item.post"
                                 :timezone="timezone"
                                 :compact="iconOnly"
-                                :rich="!iconOnly && !isStacked(column, hour)"
+                                :rich="isRich(column, hour)"
                                 :class="itemClass(column, index, hour, item)"
                             />
                             <CalendarSlotChip
@@ -332,6 +393,34 @@ watch(
                     </button>
                 </div>
             </div>
+
+            <!-- Social HQ: the time now, in the gutter, and a faint line across the days (PATCHES.md row 227) -->
+            <div
+                v-if="todayIndex >= 0 && !compact"
+                class="pointer-events-none absolute inset-x-0 z-10 h-0"
+                :style="{ top: `${nowOffset}px` }"
+                aria-hidden="true"
+            >
+                <span
+                    class="absolute inset-x-0 top-0 h-px bg-primary-strong/30"
+                    :style="{ insetInlineStart: `${GUTTER_WIDTH}px` }"
+                />
+                <span
+                    class="absolute start-1 top-0 -translate-y-1/2 rounded-md bg-primary-strong px-1.5 py-0.5 text-[10.5px] leading-none font-semibold whitespace-nowrap text-primary-strong-foreground"
+                    data-testid="calendar-now-time"
+                    >{{ nowLabel }}</span
+                >
+            </div>
         </div>
     </div>
 </template>
+
+<style scoped>
+.shq-hatched {
+    background-image: repeating-linear-gradient(
+        135deg,
+        transparent 0 6px,
+        color-mix(in srgb, var(--foreground) 5%, transparent) 6px 7px
+    );
+}
+</style>

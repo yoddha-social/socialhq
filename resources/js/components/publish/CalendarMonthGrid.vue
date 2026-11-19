@@ -156,7 +156,8 @@ const visibleMonthItems = (day: dayjs.Dayjs): CalendarItem[] =>
                     class="group flex min-h-0 min-w-0 flex-col gap-1 border-border-strong p-1 md:p-2"
                     :class="{
                         'border-l': index > 0,
-                        'bg-accent': isPast(day),
+                        'shq-hatched bg-muted/40':
+                            isPast(day) && !isDayOver(day),
                         'bg-primary/15': isDayOver(day),
                     }"
                     :data-drop-over="isDayOver(day) || undefined"
@@ -167,7 +168,7 @@ const visibleMonthItems = (day: dayjs.Dayjs): CalendarItem[] =>
                         <span
                             class="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-sm font-medium"
                             :class="{
-                                'bg-primary text-primary-foreground':
+                                'bg-primary-strong text-primary-strong-foreground':
                                     isToday(day),
                                 'text-subtle-foreground':
                                     !isToday(day) &&
@@ -289,3 +290,14 @@ const visibleMonthItems = (day: dayjs.Dayjs): CalendarItem[] =>
         </div>
     </div>
 </template>
+
+<!-- Social HQ: past days are hatched (PATCHES.md row 227) -->
+<style scoped>
+.shq-hatched {
+    background-image: repeating-linear-gradient(
+        135deg,
+        transparent 0 6px,
+        color-mix(in srgb, var(--foreground) 5%, transparent) 6px 7px
+    );
+}
+</style>

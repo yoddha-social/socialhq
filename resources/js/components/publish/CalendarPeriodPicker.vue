@@ -145,35 +145,38 @@ defineExpose({ missingTitleWidth });
         </div>
     </ResponsivePopover>
 
+    <!-- Social HQ: the arrows sit around the period; the views moved to the page's toolbar (PATCHES.md rows 221 and 227) -->
     <div v-else class="flex h-12 min-w-0 items-center gap-2">
-        <div class="flex min-w-0 items-center">
+        <div
+            class="flex min-w-0 items-center rounded-lg border border-border-strong bg-card"
+        >
             <Button
                 variant="ghost"
                 size="icon"
-                class="shrink-0"
+                class="size-8 shrink-0 rounded-e-none"
                 :aria-label="$t('calendar.previous')"
                 data-testid="calendar-previous"
                 @click="emit('navigate', -1)"
             >
                 <IconChevronLeft class="size-4" />
             </Button>
+            <h2
+                ref="titleElement"
+                class="truncate px-2 text-sm leading-5 font-emphasis text-foreground capitalize"
+                data-testid="calendar-title"
+            >
+                {{ title }}
+            </h2>
             <Button
                 variant="ghost"
                 size="icon"
-                class="shrink-0"
+                class="size-8 shrink-0 rounded-s-none"
                 :aria-label="$t('calendar.next')"
                 data-testid="calendar-next"
                 @click="emit('navigate', 1)"
             >
                 <IconChevronRight class="size-4" />
             </Button>
-            <h2
-                ref="titleElement"
-                class="ms-1 truncate font-heading text-base leading-5 font-medium text-foreground capitalize"
-                data-testid="calendar-title"
-            >
-                {{ title }}
-            </h2>
         </div>
         <Button
             variant="outline"
@@ -183,29 +186,5 @@ defineExpose({ missingTitleWidth });
         >
             {{ $t('calendar.today') }}
         </Button>
-        <!-- Social HQ: the views sit side by side instead of in a menu (PATCHES.md row 221) -->
-        <div
-            class="flex shrink-0 rounded-lg border border-border-strong bg-card p-[3px]"
-            role="group"
-            :aria-label="$t('calendar.title')"
-            data-testid="calendar-view-switch"
-        >
-            <button
-                v-for="option in views"
-                :key="option"
-                type="button"
-                :aria-pressed="view === option"
-                class="h-7 rounded-md px-2.5 text-sm font-medium whitespace-nowrap transition-control focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
-                :class="
-                    view === option
-                        ? 'bg-primary-selected text-primary-text'
-                        : 'text-foreground hover:bg-accent'
-                "
-                :data-testid="`calendar-view-${option}`"
-                @click="changeView(option)"
-            >
-                {{ $t(`calendar.${option}`) }}
-            </button>
-        </div>
     </div>
 </template>

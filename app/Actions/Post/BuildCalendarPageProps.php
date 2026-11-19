@@ -126,6 +126,11 @@ class BuildCalendarPageProps
                 ->orderBy('id')
                 ->paginate((int) config('app.pagination.default'), ['*'], self::UNDATED_PAGE_NAME)
                 ->through(fn (Post $post): array => PostCardResource::make($post)->resolve()));
+            // Social HQ: the post list's Drafts tab counts them (PATCHES.md row 225).
+            $props['undatedDraftsCount'] = fn (): int => $scopedPosts()
+                ->where('status', PostStatus::Draft)
+                ->whereNull('scheduled_at')
+                ->count();
         }
 
         $slots = fn (): array => self::slots(

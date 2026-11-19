@@ -34,6 +34,8 @@ const props = defineProps<{
     post: CalendarPost;
     timezone: string;
     compact?: boolean;
+    // Social HQ: a chip alone in its hour also shows the post's first line (PATCHES.md row 226).
+    rich?: boolean;
 }>();
 
 const { draggingPostId, vCalendarPost } = useCalendarDragContext();
@@ -140,11 +142,41 @@ const statusLabelKey = computed(
 );
 
 const chipClass = computed(() => [
-    props.compact ? 'justify-center gap-0.5' : 'gap-1.5',
+    props.rich ? 'h-auto min-h-7 py-1' : 'h-7',
     isDragging.value
         ? 'border-transparent bg-muted *:invisible hover:bg-muted'
         : '',
 ]);
+
+/**
+ * Social HQ (PATCHES.md row 226): the first label's colour runs down the
+ * chip's edge, the two statuses that wait for someone are spelled out, and a
+ * chip with room shows the first line of the text.
+ */
+const stripe = computed(() => {
+    const color = props.post.labels[0]?.color;
+
+    return color && !props.compact
+        ? { borderInlineStartColor: color, borderInlineStartWidth: '3px' }
+        : undefined;
+});
+
+const LOUD_STATUSES: Partial<Record<StatusKey, string>> = {
+    pending_approval: 'socialhq.calendar.chip_approval',
+    failed: 'socialhq.calendar.chip_failed',
+};
+
+const loudKey = computed(() =>
+    props.compact ? undefined : LOUD_STATUSES[statusKey.value],
+);
+
+const firstLine = computed(
+    () =>
+        text.value
+            .split('\n')
+            .map((line) => line.trim())
+            .find((line) => line !== '') ?? '',
+);
 </script>
 
 <template>
@@ -153,8 +185,9 @@ const chipClass = computed(() => [
             v-calendar-post="post"
             type="button"
             v-bind="$attrs"
-            class="flex h-7 min-w-0 shrink-0 items-center rounded-lg border border-border-strong bg-card px-1 text-start transition-control hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring [&[data-calendar-draggable=true]]:cursor-grab"
+            class="flex min-w-0 shrink-0 flex-col justify-center rounded-lg border border-border-strong bg-card px-1 text-start transition-control hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-[located]:ring-2 data-[located]:ring-primary [&[data-calendar-draggable=true]]:cursor-grab"
             :class="chipClass"
+            :style="stripe"
             :aria-label="
                 [
                     channels,
@@ -167,6 +200,10 @@ const chipClass = computed(() => [
             :data-testid="`calendar-post-${post.id}`"
             @click="openDetails"
         >
+          <span
+            class="flex min-w-0 items-center"
+            :class="compact ? 'justify-center gap-0.5' : 'gap-1.5'"
+          >
             <span
                 class="flex min-w-0 items-center gap-1"
                 :class="{ 'flex-1': !compact }"
@@ -193,8 +230,19 @@ const chipClass = computed(() => [
                         :data-testid="`${statusMarker.testId}-${post.id}`"
                         :data-mode="statusKey"
                     >
+                        <span
+                            v-if="loudKey"
+                            class="rounded px-1 text-[10px] leading-4 font-semibold tracking-wide uppercase"
+                            :class="
+                                statusKey === 'failed'
+                                    ? 'bg-destructive/10 text-destructive-text'
+                                    : 'bg-warning/15 text-foreground'
+                            "
+                            >{{ $t(loudKey) }}</span
+                        >
                         <component
                             :is="statusMarker.icon"
+                            v-else
                             :class="compact ? 'size-3' : 'size-3.5'"
                             aria-hidden="true"
                         />
@@ -203,7 +251,7 @@ const chipClass = computed(() => [
                 <TooltipContent>{{ $t(statusLabelKey) }}</TooltipContent>
             </Tooltip>
             <span
-                v-if="!compact && thumbnail"
+                v-if="!compact && thumbnail && (rich || !loudKey)"
                 class="relative size-5 shrink-0 overflow-hidden rounded bg-secondary"
                 :data-testid="`calendar-post-thumbnail-${post.id}`"
             >
@@ -228,6 +276,13 @@ const chipClass = computed(() => [
                     />
                 </template>
             </span>
+          </span>
+          <span
+            v-if="rich && firstLine"
+            class="mt-0.5 block min-w-0 truncate text-xs leading-4 text-foreground"
+            :data-testid="`calendar-post-text-${post.id}`"
+            >{{ firstLine }}</span
+          >
         </button>
         <div v-if="cardMounted" hidden>
             <PostTimelineCard

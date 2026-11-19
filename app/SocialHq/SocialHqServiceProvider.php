@@ -36,6 +36,8 @@ use App\SocialHq\Knowledge\Look\LogoStorage;
 use App\SocialHq\Knowledge\Search\KnowledgeSearch;
 use App\SocialHq\Knowledge\Search\LexicalKnowledgeSearch;
 use App\SocialHq\Knowledge\TryPostPromptFocus;
+use App\SocialHq\Notices\Notice;
+use App\SocialHq\Notices\NoticeCreated;
 use App\SocialHq\Production\BriefStorage;
 use App\SocialHq\Queue\CompactHorizon;
 use App\SocialHq\Secrets\SecretsKeyCommand;
@@ -51,6 +53,7 @@ use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Foundation\Exceptions\Handler;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
@@ -205,6 +208,10 @@ class SocialHqServiceProvider extends ServiceProvider
         CalendarStorage::registerCleanup();
         $this->callAfterResolving(Schedule::class, fn (Schedule $schedule) => $schedule->command(PruneCalendarUploadsCommand::class)->hourly()->withoutOverlapping());
         AiGraphicResults::registerCleanup();
+
+        // The notification bell: each person hears their own notices, and old ones go after a month.
+        Broadcast::channel(NoticeCreated::channelFor('{userId}'), fn (User $user, string $userId): bool => $user->id === $userId);
+        $this->callAfterResolving(Schedule::class, fn (Schedule $schedule) => $schedule->command('model:prune', ['--model' => [Notice::class]])->daily());
         $this->callAfterResolving(Schedule::class, fn (Schedule $schedule) => $schedule->command(PruneAiGraphicResultsCommand::class)->daily()->withoutOverlapping());
     }
 }

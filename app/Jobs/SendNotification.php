@@ -11,6 +11,7 @@ use App\Mail\PostApproved;
 use App\Mail\PostRejected;
 use App\Models\Post;
 use App\Models\User;
+use App\SocialHq\Notices\Notices;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Mail\Mailable;
@@ -38,7 +39,16 @@ class SendNotification implements ShouldQueue
 
     public function handle(): void
     {
-        if (! $this->deliversEmail || ! $this->user->wantsEmailFor($this->type) || ! $this->stillAboutItsPost()) {
+        if (! $this->deliversEmail || ! $this->stillAboutItsPost()) {
+            return;
+        }
+
+        // Social HQ: the same event goes to the notification bell, emailed or not, once however often the email is retried (PATCHES.md row 228).
+        if ($this->attempts() <= 1) {
+            Notices::fromNotification($this->user, $this->type, $this->mailable);
+        }
+
+        if (! $this->user->wantsEmailFor($this->type)) {
             return;
         }
 

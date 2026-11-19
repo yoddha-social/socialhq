@@ -443,6 +443,32 @@ The vision gate, which fails closed:
 5. Every attempt is logged in `shq_ai_graphics`: who, prompt, provider,
    status (generated, blocked, failed) and reason.
 
+## Notifications (the bell)
+
+Every notification TryPost emails goes through the `SendNotification` job,
+which hands it to `App\SocialHq\Notices\Notices::fromNotification()` first
+(PATCHES.md row 228). The same event becomes a notice in the bell, emailed or
+not: published and failed posts, a channel that needs reconnecting (once a
+day per channel), posts at risk, notes, approval requests and decisions.
+Invites, access requests and company decisions stay email only. Code:
+`app/SocialHq/Notices/`, components in `resources/js/components/socialhq/notices/`.
+
+- **Storage:** `shq_notices`, one row per person and event, with the post or
+  channel it is about and the text's parts (`data`). The bell lists the last 7
+  days of the current workspace (50 at most); rows go after 30 days
+  (`model:prune`, daily). Titles and buttons are built when read
+  (`NoticePresenter`), in the reader's language; a deleted post or channel
+  simply has no button.
+- **Live:** `NoticeCreated` is broadcast on the person's private channel
+  (`shq.user.{id}`) with the notice's id only. `NoticeLive.vue`, mounted in the
+  app layout, raises the count and shows the notice in the corner of a tab the
+  person is looking at, which marks it read.
+- **Preferences** (Settings › Notifications): TryPost's `notification_preferences`
+  keeps the email switches; `shq_notice_preferences` keeps the "In the app"
+  switch of each row (only what was turned off) and the live notices switch.
+- Plan reviews (copy and creatives sent back or approved) aren't in the bell
+  yet: "Waiting for you" lists them.
+
 ## Approvals
 
 Stricter than TryPost (`app/SocialHq/Approval/ApprovalRules.php`):

@@ -12,6 +12,8 @@ use App\SocialHq\Companies\CompanyRequests;
 use App\SocialHq\Companies\CompanySignup;
 use App\SocialHq\Companies\PlatformAdmins;
 use App\SocialHq\Inbox\WaitingForYou;
+use App\SocialHq\Notices\NoticeCreated;
+use App\SocialHq\Notices\Notices;
 use App\SocialHq\Signup\AccessRequests;
 use App\SocialHq\Signup\SignupRules;
 use Closure;
@@ -40,6 +42,19 @@ class ShareSocialHqProps
             'publishNow' => fn (): array => ['confirm' => (bool) config('socialhq.publish_now.confirm', true)],
             // Whether the calendar's post list starts open (pages/posts/Calendar.vue).
             'calendar' => fn (): array => ['postListOpen' => (bool) config('socialhq.calendar.post_list_open', true)],
+            // The notification bell: how many notices are unread, and the private channel new ones arrive on.
+            'notices' => function (): ?array {
+                $user = auth()->user();
+
+                if (! $user instanceof User || $user->currentWorkspace === null) {
+                    return null;
+                }
+
+                return [
+                    'unread' => Notices::unreadCount($user, $user->currentWorkspace),
+                    'channel' => NoticeCreated::channelFor($user->id),
+                ];
+            },
             'aiGraphics' => fn (): array => [
                 'available' => (function (): bool {
                     $user = auth()->user();

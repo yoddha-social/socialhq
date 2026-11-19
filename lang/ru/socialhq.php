@@ -298,6 +298,58 @@ return [
         'chip_failed' => 'Failed',
     ],
 
+    'notices' => [
+        'title' => 'Notifications',
+        'open' => 'Notifications',
+        'unread' => ':count unread',
+        'mark_all_read' => 'Mark all read',
+        'today' => 'Today',
+        'earlier' => 'Earlier',
+        'empty_title' => 'Nothing new',
+        'empty_body' => 'Published and failed posts, approvals and notes from the last 7 days show here.',
+        'kept' => 'Notices are kept for 7 days.',
+        'settings' => 'Notification settings',
+        'load_failed' => 'Couldn’t load your notifications. Try again.',
+        'kinds' => [
+            'post_published' => ['title' => 'Post published on :channel'],
+            'post_failed' => ['title' => 'A post failed on :channel'],
+            'channel_disconnected' => [
+                'title' => ':channel needs reconnecting',
+                'body' => 'Posts due on it won’t go out until it is reconnected.',
+            ],
+            'posts_at_risk' => [
+                'title' => '{1} :count post may not go out|[0,*] :count posts may not go out',
+                'body' => 'Their channels need reconnecting.',
+            ],
+            'post_note' => ['title' => ':actor left a note on a post'],
+            'approval_requested' => ['title' => ':actor asked you to approve a post'],
+            'post_approved' => ['title' => ':actor approved your post'],
+            'post_rejected' => ['title' => ':actor sent your post back'],
+        ],
+        'actions' => [
+            'open_post' => 'Open post',
+            'view_post' => 'View post',
+            'reconnect' => 'Reconnect',
+            'review' => 'Review',
+        ],
+        'preferences' => [
+            'heading' => 'What reaches you',
+            'rows' => [
+                'post_failed' => ['title' => 'Post failed', 'description' => 'With the reason, and a button to open the post.'],
+                'collaboration' => ['title' => 'Approval requests and decisions', 'description' => 'Posts waiting for your approval, and what was decided about yours.'],
+                'account_disconnected' => ['title' => 'Channel needs reconnecting', 'description' => 'In the app, at most one reminder a day per channel.'],
+                'post_published' => ['title' => 'Post published', 'description' => 'With a link to the post on the network.'],
+                'post_note_added' => ['title' => 'New note on a post', 'description' => 'When someone leaves a note on a post you can see.'],
+            ],
+            'event' => 'Event',
+            'in_app' => 'In the app',
+            'email' => 'Email',
+            'description' => 'Choose what reaches you in the app and by email. Each switch saves on its own.',
+            'live_title' => 'Live notices while you work',
+            'live_description' => 'A small notice in the corner when something happens elsewhere, for example a teammate’s post fails. It also lands in the bell.',
+        ],
+    ],
+
     'composer' => [
         'shared_counter' => ':used / :limit',
         'shared_counter_limit' => ':platform limit',

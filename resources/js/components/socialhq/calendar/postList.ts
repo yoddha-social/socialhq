@@ -41,7 +41,9 @@ const write = (key: string, value: string): void => {
 };
 
 /** The tab this browser last had open, or the given one for a first visit. */
-export const rememberedListTab = (fallback: CalendarListTab): CalendarListTab => {
+export const rememberedListTab = (
+    fallback: CalendarListTab,
+): CalendarListTab => {
     const stored = read(TAB_KEY);
 
     return CALENDAR_LIST_TABS.includes(stored as CalendarListTab)

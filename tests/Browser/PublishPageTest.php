@@ -461,7 +461,7 @@ test('the calendar keeps its filters in one menu until the screen is wide enough
     waitForCondition($page, 'Boolean(document.querySelector(\'[data-testid="calendar-status-filter"]\'))');
 
     $order = $page->script(<<<'JS'
-        (() => ['posts-channel-filter', 'posts-label-filter', 'calendar-status-filter', 'publish-timezone-trigger', 'calendar-no-date', 'calendar-menu']
+        (() => ['calendar-no-date', 'posts-channel-filter', 'posts-label-filter', 'calendar-status-filter', 'publish-timezone-trigger', 'calendar-view-switch', 'calendar-menu']
             .map((id) => document.querySelector(`[data-testid="${id}"]`).getBoundingClientRect().left)
             .every((left, index, lefts) => index === 0 || left > lefts[index - 1]))()
     JS);

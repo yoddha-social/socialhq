@@ -157,6 +157,7 @@ range stay unused. No row is lost.
 | 216 | `tests/Browser/PublishCardActionsTest.php` | A queued card's footer is notes, edit and the menu; "Publish now" is the menu's first item, and the publish-now test opens the menu first (about 15 lines) | Row 211 |
 | 217 | `tests/fixtures/single-line-copy.php` | Budgets for the new labels (`socialhq.approvals.approve_and_*`, `socialhq.inbox.nav`, `socialhq.publish_now.confirm`, `socialhq_production.post.text_only*`) | Rows 210–213 and the item page's "Post text-only" |
 | 218 | `.env.example` | `SOCIALHQ_PUBLISH_NOW_CONFIRM` under the approvals block (4 lines) | Row 212's setting; `tests/Unit/SocialHq/EnvExampleTest.php` wants every `SOCIALHQ_*` key listed |
+| 219 | `tests/Browser/SidebarMenuTest.php` | `socialhq.inbox` in the expected main navigation, after the content plan (1 line) | Row 210's "Waiting for you" link |
 
 Files we **added** aren't listed here; they're under the module paths in
 SOCIALHQ.md, plus `config/socialhq.php`, `routes/socialhq.php`,

@@ -66,8 +66,9 @@ test('publish now from a post\'s menu asks first, and cancelling keeps it schedu
     $page->keys('@publish-now-confirm', 'Escape');
     waitForGone($page, '@publish-now-confirm');
 
-    // Neither sent a request: the browser saw no schedule call at all.
-    expect($page->script("performance.getEntriesByType('resource').filter((entry) => entry.name.includes('/schedule')).length"))->toBe(0)
+    // Neither sent a request: the browser saw no call to the post's schedule
+    // endpoint (the Queue page itself is /schedule, so match the post's URL).
+    expect($page->script("performance.getEntriesByType('resource').filter((entry) => entry.name.includes('/posts/{$post->id}/schedule')).length"))->toBe(0)
         ->and($post->fresh()->status)->toBe(PostStatus::Scheduled);
 
     openPublishNowFromMenu($page, $post);

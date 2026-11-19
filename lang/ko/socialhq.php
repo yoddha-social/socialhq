@@ -289,6 +289,17 @@ return [
             'too_many' => 'This workspace has reached its knowledge limit. Delete entries you no longer need.',
         ],
     ],
+    'composer' => [
+        'shared_counter' => ':used / :limit · :platform limit',
+    ],
+
+    'channels' => [
+        'id_title' => 'Channel ID',
+        'id_description' => 'Use this ID to post to this channel through the API or an AI assistant.',
+        'id_copy' => 'Copy ID',
+        'id_copied' => 'Channel ID copied.',
+    ],
+
     'approvals' => [
         'members_note' => 'Needs approval. In Social HQ every member who is not an admin sends posts for approval.',
         'reject' => [

@@ -2,7 +2,6 @@
 import { type DateValue, parseDate } from '@internationalized/date';
 import {
     IconCalendarEvent,
-    IconCheck,
     IconChevronDown,
     IconChevronLeft,
     IconChevronRight,
@@ -12,12 +11,6 @@ import { computed, ref, useTemplateRef } from 'vue';
 import ResponsivePopover from '@/components/ResponsivePopover.vue';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { useCalendarLocale } from '@/composables/useCalendarLocale';
 import type { CalendarView } from '@/types/publish';
@@ -39,10 +32,6 @@ const emit = defineEmits<{
 const compact = useBelowBreakpoint('md');
 const calendarLocale = useCalendarLocale();
 const open = ref(false);
-
-const desktopViews = computed(() =>
-    props.views.filter((option) => option !== 'days'),
-);
 
 const selectedDate = computed(() => parseDate(props.selectedDayKey));
 
@@ -194,31 +183,29 @@ defineExpose({ missingTitleWidth });
         >
             {{ $t('calendar.today') }}
         </Button>
-        <DropdownMenu>
-            <DropdownMenuTrigger as-child>
-                <Button
-                    variant="ghost"
-                    class="shrink-0 data-[state=open]:bg-accent"
-                    data-testid="calendar-view-trigger"
-                >
-                    {{ $t(`calendar.${view}`) }}
-                    <IconChevronDown class="size-4 text-muted-foreground" />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-                <DropdownMenuItem
-                    v-for="option in desktopViews"
-                    :key="option"
-                    :data-testid="`calendar-view-${option}`"
-                    @click="changeView(option)"
-                >
-                    <IconCheck
-                        class="size-4"
-                        :class="view === option ? '' : 'invisible'"
-                    />
-                    {{ $t(`calendar.${option}`) }}
-                </DropdownMenuItem>
-            </DropdownMenuContent>
-        </DropdownMenu>
+        <!-- Social HQ: the views sit side by side instead of in a menu (PATCHES.md row 221) -->
+        <div
+            class="flex shrink-0 rounded-lg border border-border-strong bg-card p-[3px]"
+            role="group"
+            :aria-label="$t('calendar.title')"
+            data-testid="calendar-view-switch"
+        >
+            <button
+                v-for="option in views"
+                :key="option"
+                type="button"
+                :aria-pressed="view === option"
+                class="h-7 rounded-md px-2.5 text-sm font-medium whitespace-nowrap transition-control focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                :class="
+                    view === option
+                        ? 'bg-primary-selected text-primary-text'
+                        : 'text-foreground hover:bg-accent'
+                "
+                :data-testid="`calendar-view-${option}`"
+                @click="changeView(option)"
+            >
+                {{ $t(`calendar.${option}`) }}
+            </button>
+        </div>
     </div>
 </template>

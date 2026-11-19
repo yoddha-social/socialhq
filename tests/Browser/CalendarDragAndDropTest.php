@@ -2855,7 +2855,6 @@ test('a move answered after the view changed is not announced as done without kn
     calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-12");
     waitForCondition($page, 'window.__heldRequests.length === 1');
 
-    $page->click('@calendar-view-trigger');
     waitFor($page, '@calendar-view-month');
     $page->click('@calendar-view-month');
     waitForPath($page, route('app.calendar', ['view' => 'month'], absolute: false));
@@ -2891,7 +2890,6 @@ test('a move answered after the view changed is still confirmed when the new vie
     calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-12");
     waitForCondition($page, 'window.__heldRequests.length === 1');
 
-    $page->click('@calendar-view-trigger');
     waitFor($page, '@calendar-view-month');
     $page->click('@calendar-view-month');
     waitForPath($page, route('app.calendar', ['view' => 'month'], absolute: false));
@@ -3128,7 +3126,6 @@ test('the reload that settles a move answered after a view change never brings b
     calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-12");
     waitForCondition($page, 'window.__heldRequests.length === 1');
 
-    $page->click('@calendar-view-trigger');
     waitFor($page, '@calendar-view-month');
     $page->click('@calendar-view-month');
     waitForPath($page, route('app.calendar', ['view' => 'month'], absolute: false));

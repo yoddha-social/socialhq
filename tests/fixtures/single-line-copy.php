@@ -184,6 +184,7 @@ return [
     'socialhq.approvals.approve_and_schedule' => 20,
     'socialhq.inbox.nav' => 15,
     'socialhq.publish_now.confirm' => 11,
+    'socialhq.channels.id_copy' => 7,
     'socialhq.brand.tabs.overview' => 8,
     'socialhq.brand.tabs.knowledge' => 9,
     'socialhq.brand.tabs.identity' => 14,

@@ -11,6 +11,7 @@ import ChannelTimezoneSetting from '@/components/channels/ChannelTimezoneSetting
 import PostingScheduleAddSlot from '@/components/channels/PostingScheduleAddSlot.vue';
 import PostingScheduleGenerateMenu from '@/components/channels/PostingScheduleGenerateMenu.vue';
 import PostingScheduleGrid from '@/components/channels/PostingScheduleGrid.vue';
+import ChannelIdSetting from '@/components/socialhq/channels/ChannelIdSetting.vue';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
 import {
@@ -259,6 +260,11 @@ const clearAll = (): void => {
                             @clear="clearAll"
                         />
                     </section>
+
+                    <!-- Social HQ: the channel's ID, to copy (PATCHES.md row 224) -->
+                    <hr class="border-border" />
+
+                    <ChannelIdSetting :channel-id="channel.id" />
                 </div>
             </div>
         </div>

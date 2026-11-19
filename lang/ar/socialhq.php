@@ -289,6 +289,15 @@ return [
             'too_many' => 'This workspace has reached its knowledge limit. Delete entries you no longer need.',
         ],
     ],
+    'calendar' => [
+        'list_title' => 'Posts',
+        'list_description' => 'Posts in the dates shown, and drafts with no date.',
+        'empty_scheduled' => 'Nothing scheduled in these dates.',
+        'empty_sent' => 'Nothing sent in these dates.',
+        'chip_approval' => 'Approval',
+        'chip_failed' => 'Failed',
+    ],
+
     'composer' => [
         'shared_counter' => ':used / :limit · :platform limit',
     ],

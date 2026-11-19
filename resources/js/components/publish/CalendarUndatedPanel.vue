@@ -3,6 +3,12 @@ import { InfiniteScroll, Link } from '@inertiajs/vue3';
 import { IconEdit, IconX } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
+import CalendarPostListCard from '@/components/socialhq/calendar/CalendarPostListCard.vue';
+import CalendarPostListTabs from '@/components/socialhq/calendar/CalendarPostListTabs.vue';
+import {
+    calendarListTab,
+    type CalendarListTab,
+} from '@/components/socialhq/calendar/postList';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,15 +24,49 @@ import type { CalendarDropTarget } from '@/lib/calendarDrop';
 import { isImage } from '@/lib/mediaType';
 import { htmlToPlainText } from '@/lib/utils';
 import { edit as editPost } from '@/routes/app/posts';
-import type { UndatedDraft } from '@/types/publish';
+import type { CalendarPost, UndatedDraft } from '@/types/publish';
 
 const props = defineProps<{
     drafts: UndatedDraft[] | null;
+    // Social HQ: the panel is the calendar's post list (PATCHES.md row 225).
+    posts: CalendarPost[];
+    undatedCount: number | null;
+    timezone: string;
 }>();
 
 const emit = defineEmits<{
     close: [];
+    locate: [postId: string];
 }>();
+
+const tab = defineModel<CalendarListTab>('tab', { required: true });
+
+const postsByTab = computed(() => {
+    const groups: Record<CalendarListTab, CalendarPost[]> = {
+        scheduled: [],
+        drafts: [],
+        sent: [],
+    };
+
+    for (const post of props.posts) {
+        groups[calendarListTab(post)].push(post);
+    }
+
+    return groups;
+});
+
+const counts = computed<Record<CalendarListTab, number | null>>(() => ({
+    scheduled: postsByTab.value.scheduled.length,
+    drafts:
+        props.undatedCount === null
+            ? null
+            : postsByTab.value.drafts.length + props.undatedCount,
+    sent: postsByTab.value.sent.length,
+}));
+
+const locate = (postId: string): void => {
+    emit('locate', postId);
+};
 
 const UNDATED_TARGET: CalendarDropTarget = { kind: 'undated' };
 
@@ -76,10 +116,10 @@ const preview = (draft: UndatedDraft): DraftPreview =>
                 <h2
                     class="text-sm leading-[17.5px] font-emphasis text-foreground"
                 >
-                    {{ $t('calendar.undated.title') }}
+                    {{ $t('socialhq.calendar.list_title') }}
                 </h2>
                 <p class="text-xs leading-[18px] text-muted-foreground">
-                    {{ $t('calendar.undated.description') }}
+                    {{ $t('socialhq.calendar.list_description') }}
                 </p>
             </div>
             <Button
@@ -94,108 +134,141 @@ const preview = (draft: UndatedDraft): DraftPreview =>
             </Button>
         </div>
 
+        <div class="shrink-0 px-4 pb-3">
+            <CalendarPostListTabs v-model="tab" :counts="counts" />
+        </div>
+
         <div
             class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4"
         >
             <div
-                v-if="drafts === null"
+                v-if="postsByTab[tab].length"
                 class="flex flex-col gap-2"
-                aria-hidden="true"
+                :class="{ 'mb-4': tab === 'drafts' }"
+                data-testid="calendar-list-posts"
             >
-                <div
-                    v-for="index in 3"
-                    :key="index"
-                    class="h-[59px] animate-pulse rounded-lg bg-secondary"
+                <CalendarPostListCard
+                    v-for="post in postsByTab[tab]"
+                    :key="post.id"
+                    :post="post"
+                    :timezone="timezone"
+                    @locate="locate"
                 />
             </div>
             <p
-                v-else-if="drafts.length === 0"
+                v-else-if="tab !== 'drafts'"
                 class="py-6 text-center text-sm text-muted-foreground"
-                data-testid="calendar-undated-empty"
+                data-testid="calendar-list-empty"
             >
-                {{ $t('calendar.undated.empty') }}
+                {{ $t(`socialhq.calendar.empty_${tab}`) }}
             </p>
-            <InfiniteScroll
-                v-else
-                data="undatedDrafts"
-                items-element="#calendar-undated-list"
-                preserve-url
-            >
-                <div id="calendar-undated-list" class="flex flex-col gap-2">
-                    <template v-for="draft in drafts" :key="draft.id">
-                        <span
-                            v-if="draft.social_account"
-                            :id="`${HINT_ID_PREFIX}${draft.id}`"
-                            hidden
-                            :data-testid="`calendar-drag-hint-${draft.id}`"
-                            >{{
-                                $t('calendar.reschedule.drag_hint_undated', {
-                                    channel: draft.social_account.display_label,
-                                })
-                            }}</span
-                        >
-                        <Link
-                            v-calendar-post="draft"
-                            :href="editPost.url(draft.id)"
-                            class="flex flex-col gap-1 rounded-lg border px-2 py-2 text-start transition-control [&[data-calendar-draggable=true]]:cursor-grab"
-                            :class="
-                                draggingPostId === draft.id
-                                    ? 'border-transparent bg-secondary *:invisible'
-                                    : 'border-dashed border-border-strong bg-card hover:bg-secondary'
-                            "
-                            :data-testid="`calendar-undated-${draft.id}`"
-                        >
-                            <div class="flex min-w-0 items-center gap-2">
-                                <img
-                                    v-if="draft.platform"
-                                    :src="getPlatformLogo(draft.platform)"
-                                    :alt="getPlatformLabel(draft.platform)"
-                                    class="size-4 shrink-0 rounded-sm"
-                                />
-                                <span
-                                    class="min-w-0 flex-1 truncate text-sm leading-[17.5px] font-emphasis text-foreground"
-                                >
-                                    {{
-                                        draft.social_account?.display_label ??
-                                        $t('calendar.undated.no_channel')
-                                    }}
-                                </span>
-                                <Badge variant="info" class="shrink-0">
-                                    <IconEdit />
-                                    {{ $t('calendar.undated.draft') }}
-                                </Badge>
-                            </div>
-                            <div
-                                v-if="preview(draft).text || preview(draft).thumbnail"
-                                class="flex min-w-0 items-end gap-2"
-                            >
-                                <p
-                                    class="line-clamp-2 min-w-0 flex-1 text-sm leading-[17.5px] break-words text-foreground"
-                                >
-                                    {{ preview(draft).text }}
-                                </p>
-                                <img
-                                    v-if="preview(draft).thumbnail"
-                                    :src="preview(draft).thumbnail!"
-                                    alt=""
-                                    loading="lazy"
-                                    class="size-8 shrink-0 rounded object-cover"
-                                />
-                            </div>
-                        </Link>
-                    </template>
-                </div>
 
-                <template #next="{ loading }">
-                    <p
-                        v-if="loading"
-                        class="py-3 text-center text-sm text-muted-foreground"
-                        role="status"
-                    >
-                        {{ $t('common.loading_more') }}
-                    </p>
-                </template>
-            </InfiniteScroll>
+            <template v-if="tab === 'drafts'">
+                <h3
+                    class="mb-2 text-xs leading-[18px] font-medium text-muted-foreground"
+                >
+                    {{ $t('calendar.undated.title') }}
+                </h3>
+                <div
+                    v-if="drafts === null"
+                    class="flex flex-col gap-2"
+                    aria-hidden="true"
+                >
+                    <div
+                        v-for="index in 3"
+                        :key="index"
+                        class="h-[59px] animate-pulse rounded-lg bg-secondary"
+                    />
+                </div>
+                <p
+                    v-else-if="drafts.length === 0"
+                    class="py-6 text-center text-sm text-muted-foreground"
+                    data-testid="calendar-undated-empty"
+                >
+                    {{ $t('calendar.undated.empty') }}
+                </p>
+                <InfiniteScroll
+                    v-else
+                    data="undatedDrafts"
+                    items-element="#calendar-undated-list"
+                    preserve-url
+                >
+                    <div id="calendar-undated-list" class="flex flex-col gap-2">
+                        <template v-for="draft in drafts" :key="draft.id">
+                            <span
+                                v-if="draft.social_account"
+                                :id="`${HINT_ID_PREFIX}${draft.id}`"
+                                hidden
+                                :data-testid="`calendar-drag-hint-${draft.id}`"
+                                >{{
+                                    $t('calendar.reschedule.drag_hint_undated', {
+                                        channel: draft.social_account.display_label,
+                                    })
+                                }}</span
+                            >
+                            <Link
+                                v-calendar-post="draft"
+                                :href="editPost.url(draft.id)"
+                                class="flex flex-col gap-1 rounded-lg border px-2 py-2 text-start transition-control [&[data-calendar-draggable=true]]:cursor-grab"
+                                :class="
+                                    draggingPostId === draft.id
+                                        ? 'border-transparent bg-secondary *:invisible'
+                                        : 'border-dashed border-border-strong bg-card hover:bg-secondary'
+                                "
+                                :data-testid="`calendar-undated-${draft.id}`"
+                            >
+                                <div class="flex min-w-0 items-center gap-2">
+                                    <img
+                                        v-if="draft.platform"
+                                        :src="getPlatformLogo(draft.platform)"
+                                        :alt="getPlatformLabel(draft.platform)"
+                                        class="size-4 shrink-0 rounded-sm"
+                                    />
+                                    <span
+                                        class="min-w-0 flex-1 truncate text-sm leading-[17.5px] font-emphasis text-foreground"
+                                    >
+                                        {{
+                                            draft.social_account?.display_label ??
+                                            $t('calendar.undated.no_channel')
+                                        }}
+                                    </span>
+                                    <Badge variant="info" class="shrink-0">
+                                        <IconEdit />
+                                        {{ $t('calendar.undated.draft') }}
+                                    </Badge>
+                                </div>
+                                <div
+                                    v-if="preview(draft).text || preview(draft).thumbnail"
+                                    class="flex min-w-0 items-end gap-2"
+                                >
+                                    <p
+                                        class="line-clamp-2 min-w-0 flex-1 text-sm leading-[17.5px] break-words text-foreground"
+                                    >
+                                        {{ preview(draft).text }}
+                                    </p>
+                                    <img
+                                        v-if="preview(draft).thumbnail"
+                                        :src="preview(draft).thumbnail!"
+                                        alt=""
+                                        loading="lazy"
+                                        class="size-8 shrink-0 rounded object-cover"
+                                    />
+                                </div>
+                            </Link>
+                        </template>
+                    </div>
+
+                    <template #next="{ loading }">
+                        <p
+                            v-if="loading"
+                            class="py-3 text-center text-sm text-muted-foreground"
+                            role="status"
+                        >
+                            {{ $t('common.loading_more') }}
+                        </p>
+                    </template>
+                </InfiniteScroll>
+            </template>
         </div>
     </aside>
 </template>

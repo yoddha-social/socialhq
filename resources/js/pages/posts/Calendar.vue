@@ -13,6 +13,7 @@ import {
 } from '@vueuse/core';
 import {
     computed,
+    nextTick,
     onMounted,
     onUnmounted,
     provide,
@@ -35,6 +36,13 @@ import CalendarTimeGrid from '@/components/publish/CalendarTimeGrid.vue';
 import CalendarUndatedPanel from '@/components/publish/CalendarUndatedPanel.vue';
 import PublishFilterMenu from '@/components/publish/PublishFilterMenu.vue';
 import PublishHeader from '@/components/publish/PublishHeader.vue';
+import {
+    rememberedListOpen,
+    rememberedListTab,
+    rememberListOpen,
+    rememberListTab,
+    type CalendarListTab,
+} from '@/components/socialhq/calendar/postList';
 import { Button } from '@/components/ui/button';
 import { useCalendarAnnouncer } from '@/composables/calendar/useCalendarAnnouncer';
 import {
@@ -100,6 +108,7 @@ interface Props {
     };
     filterAccounts: PublishSocialAccount[];
     undatedDrafts?: ScrollUndatedDrafts;
+    undatedDraftsCount?: number; // Social HQ: PATCHES.md row 225
     slots?: Record<string, CalendarSlot[]>;
 }
 
@@ -183,7 +192,11 @@ const calendarDrag = useCalendarDrag({
     timezone,
     canCreatePost,
     requiresApproval,
-    reloadProps: () => [...reloadProps(), 'undatedDrafts'],
+    reloadProps: () => [
+        ...reloadProps(),
+        'undatedDrafts',
+        'undatedDraftsCount',
+    ],
     isCalendarPath: (pathname) =>
         CALENDAR_VIEWS.some(
             (view) =>
@@ -280,13 +293,54 @@ const reload = (
 
 watch(
     [selectedLabelIds, selectedUntagged, selectedChannelIds, selectedStatus],
-    () => reload([...reloadProps(), 'undatedDrafts'], ['undatedDrafts']),
+    () =>
+        reload(
+            [...reloadProps(), 'undatedDrafts', 'undatedDraftsCount'],
+            ['undatedDrafts'],
+        ),
     { deep: true },
 );
 
 const toggleUndated = (): void => {
     undatedOpen.value = !undatedOpen.value;
-    reload(['undatedDrafts'], ['undatedDrafts']);
+    rememberListOpen(undatedOpen.value);
+    reload(['undatedDrafts', 'undatedDraftsCount'], ['undatedDrafts']);
+};
+
+/**
+ * Social HQ: the panel is the calendar's post list (PATCHES.md row 225). The
+ * browser remembers its tab and whether it was open.
+ */
+const listTab = ref<CalendarListTab>('drafts');
+
+watch(listTab, rememberListTab);
+
+const listPosts = computed(() =>
+    periodDayKeys.value.flatMap((key) => props.posts[key] ?? []),
+);
+
+const LOCATE_HIGHLIGHT_MS = 1600;
+
+const locatePost = async (postId: string): Promise<void> => {
+    if (!isDesktop.value) {
+        closeUndated();
+    }
+
+    await nextTick();
+
+    const chip = document.querySelector<HTMLElement>(
+        `[data-testid="calendar-post-${postId}"]`,
+    );
+
+    if (!chip) {
+        return;
+    }
+
+    chip.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    chip.dataset.located = '';
+    window.setTimeout(() => {
+        delete chip.dataset.located;
+    }, LOCATE_HIGHLIGHT_MS);
 };
 
 /** On a phone the undated drafts open from the filter menu, which closes first. */
@@ -333,6 +387,12 @@ onMounted(() => {
 
     if (showSlots.value && props.slots === undefined) {
         reload(['slots'], [], true);
+    }
+
+    listTab.value = rememberedListTab();
+
+    if (isDesktop.value && !undatedOpen.value && rememberedListOpen()) {
+        toggleUndated();
     }
 });
 
@@ -708,7 +768,7 @@ const goToDay = (key: string): void => {
                                 data-testid="calendar-no-date-menu"
                                 @click="openUndatedFromMenu(close)"
                             >
-                                {{ $t('calendar.undated.title') }}
+                                {{ $t('socialhq.calendar.list_title') }}
                                 <IconCheck
                                     v-if="undatedOpen"
                                     class="ms-auto size-4"
@@ -749,7 +809,7 @@ const goToDay = (key: string): void => {
                             data-testid="calendar-no-date-icon-closed"
                         />
                         <span class="max-xl:sr-only">{{
-                            $t('calendar.no_date')
+                            $t('socialhq.calendar.list_title')
                         }}</span>
                     </Button>
                 </div>
@@ -803,8 +863,13 @@ const goToDay = (key: string): void => {
                         data-testid="calendar-undated-slide"
                     >
                         <CalendarUndatedPanel
+                            v-model:tab="listTab"
                             :drafts="undatedDraftList"
+                            :posts="listPosts"
+                            :undated-count="undatedDraftsCount ?? null"
+                            :timezone="timezone"
                             @close="closeUndated"
+                            @locate="locatePost"
                         />
                     </div>
                 </Transition>

@@ -283,6 +283,7 @@ watch(
                                 :post="item.post"
                                 :timezone="timezone"
                                 :compact="iconOnly"
+                                :rich="!iconOnly && !isStacked(column, hour)"
                                 :class="itemClass(column, index, hour, item)"
                             />
                             <CalendarSlotChip

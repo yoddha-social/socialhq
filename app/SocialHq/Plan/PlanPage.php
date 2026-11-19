@@ -12,6 +12,7 @@ use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiTask;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Http\Controllers\Plan\PlanGenerationController;
+use App\SocialHq\Inbox\WaitingForYou;
 use App\SocialHq\Knowledge\Audience\Audience;
 use App\SocialHq\Knowledge\Audience\AudienceCountries;
 use App\Support\Timezone;
@@ -38,6 +39,9 @@ final class PlanPage
 
         return [
             'month' => PlanMonth::key($month),
+            // Months with a plan, copy or creative waiting for this person, marked in the month picker.
+            // A closure: the page's 3-second poll asks for plan and items only.
+            'waitingMonths' => fn (): array => WaitingForYou::months($user, $workspace),
             'today' => CarbonImmutable::now(Timezone::normalize($user->timezone))->toDateString(),
             'plan' => $plan === null ? null : self::plan($plan),
             'items' => $plan === null ? [] : $plan->items()
@@ -91,6 +95,7 @@ final class PlanPage
             'title' => $item->title,
             'objective' => $item->objective,
             'angle' => $item->angle,
+            'unsupported_details' => array_values((array) $item->unsupported_details),
             'event_id' => $item->event_id,
             'owner_id' => $item->owner_id,
             'suggested_time' => $item->suggested_time,

@@ -5,6 +5,7 @@ import {
     IconCalendarEvent,
     IconCalendarStats,
     IconFileText,
+    IconInbox,
     IconLayoutGrid,
     IconPlus,
     IconRepeat,
@@ -47,6 +48,7 @@ import {
     index as ideasIndex,
 } from '@/routes/app/create/ideas';
 import { index as repurposes } from '@/routes/app/repurposes';
+import { inbox } from '@/routes/socialhq';
 import { show as planShow } from '@/routes/socialhq/plan';
 import type { NavItem } from '@/types';
 import type { SidebarChannel } from '@/types/channel';
@@ -98,6 +100,14 @@ const mainNavItems = computed<NavItem[]>(() => [
                   href: planShow.url(),
                   icon: IconCalendarStats,
                   activePattern: '/socialhq/plan',
+              },
+              // Social HQ: reviews and change requests waiting for this person.
+              {
+                  title: trans('socialhq.inbox.nav'),
+                  href: inbox.url(),
+                  icon: IconInbox,
+                  count: page.props.socialhq.inbox.count || undefined,
+                  countTestId: 'sidebar-inbox-count',
               },
           ]
         : []),

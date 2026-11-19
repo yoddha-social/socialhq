@@ -42,18 +42,26 @@ final class WriteItemCopy
         $maxLength = ItemPage::maxLength($item);
         $maxHashtags = Platform::tryFrom((string) $item->platform)?->maxHashtags() ?? self::DEFAULT_MAX_HASHTAGS;
 
+        $context = self::context($item);
+        $brandKnowledge = '';
+
         // The item's workspace decides whose AI it uses, whatever workspace the user has open.
-        $response = AiTenant::run($item->workspace, fn () => (new CopyWriter(
-            language: $user->locale->promptLanguage(),
-            context: self::context($item),
-            brandKnowledge: BrandKnowledge::forPrompt($item->workspace, trim(self::focus($item)."\n{$instruction}")),
-            isVideo: $isVideo,
-            isRewrite: $latest !== null,
-            maxLength: $maxLength === null ? null : self::captionBudget($maxLength, $maxHashtags, $latest?->hashtags),
-            maxHashtags: $maxHashtags,
-            visualStyle: BrandLook::of($item->workspace)?->copyLine() ?? '',
-            instruction: $instruction,
-        ))->prompt($latest === null ? 'Write the copy for this post.' : 'Rewrite the copy for this post.'));
+        // The brand knowledge is read there too: its search may use the company's AI one day.
+        $response = AiTenant::run($item->workspace, function () use ($item, $user, $context, $instruction, $isVideo, $latest, $maxLength, $maxHashtags, &$brandKnowledge) {
+            $brandKnowledge = BrandKnowledge::forPrompt($item->workspace, trim(self::focus($item)."\n{$instruction}"));
+
+            return (new CopyWriter(
+                language: $user->locale->promptLanguage(),
+                context: $context,
+                brandKnowledge: $brandKnowledge,
+                isVideo: $isVideo,
+                isRewrite: $latest !== null,
+                maxLength: $maxLength === null ? null : self::captionBudget($maxLength, $maxHashtags, $latest?->hashtags),
+                maxHashtags: $maxHashtags,
+                visualStyle: BrandLook::of($item->workspace)?->copyLine() ?? '',
+                instruction: $instruction,
+            ))->prompt($latest === null ? 'Write the copy for this post.' : 'Rewrite the copy for this post.');
+        });
 
         $caption = trim((string) data_get($response, 'caption'));
 
@@ -73,12 +81,35 @@ final class WriteItemCopy
             $notes = trim("{$notes}\n\n".__('socialhq_production.item.copy.ai_trimmed', [], $user->locale->value));
         }
 
+        $script = $isVideo ? Str::substr(trim((string) data_get($response, 'script')), 0, 20000) : null;
+
         return ItemCopy::saveVersion($item, $user, [
             'caption' => $caption,
             'hashtags' => $hashtags,
-            'script' => $isVideo ? Str::substr(trim((string) data_get($response, 'script')), 0, 20000) : null,
+            'script' => $script,
             'notes' => Str::substr($notes, 0, 5000),
+            'unsupported_details' => UnsupportedDetails::find(
+                trim("{$caption}\n\n{$script}"),
+                self::sources($item, $context, $brandKnowledge, $instruction),
+            ) ?: null,
         ], ItemSource::Ai);
+    }
+
+    /**
+     * What the writer was given to write from, as one text: the item, its
+     * event, the open change requests, the brand knowledge and the team's
+     * request. The latest version counts only when a person wrote it: what an
+     * earlier AI version invented isn't a source.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    public static function sources(PlanItem $item, array $context, string $brandKnowledge, string $instruction): string
+    {
+        if ($item->latestVersion?->source === ItemSource::Ai) {
+            unset($context['latest_version']);
+        }
+
+        return UnsupportedDetails::sourceText($context, $brandKnowledge, $instruction);
     }
 
     /**

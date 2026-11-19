@@ -12,6 +12,7 @@ use App\SocialHq\Http\Requests\Plan\MovePlanItemRequest;
 use App\SocialHq\Http\Requests\Plan\StorePlanItemRequest;
 use App\SocialHq\Http\Requests\Plan\UpdatePlanItemRequest;
 use App\SocialHq\Knowledge\Audience\Audience;
+use App\SocialHq\Plan\Ai\UnsupportedDetails;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\CopyStatus;
 use App\SocialHq\Plan\ItemCopy;
@@ -71,9 +72,23 @@ class PlanItemWriteController extends Controller
                 'platform' => $channel->platform->value,
             ]);
 
+            $formatChanged = $found->wasChanged(['social_account_id', 'content_type']);
+            $creativeChanged = $found->wasChanged(['creative', 'social_account_id', 'content_type']);
+            $briefChanged = $found->wasChanged(['objective', 'angle']);
+
             // Copy approved (or in review) for one channel and format isn't approved for another.
-            if ($found->wasChanged(['social_account_id', 'content_type'])) {
+            if ($formatChanged) {
                 ItemCopy::reopen($found, $request->user(), __('socialhq_production.review.reopened_format'));
+            }
+
+            // A text-only post was allowed for what the item was; a new creative, channel or format waits again.
+            if ($creativeChanged && $found->creative_waived_at !== null) {
+                $found->forceFill(['creative_waived_at' => null, 'creative_waived_by' => null])->save();
+            }
+
+            // The planner's unchecked details stay flagged while the text still says them.
+            if ($briefChanged && $found->unsupported_details !== null) {
+                $found->update(['unsupported_details' => UnsupportedDetails::stillIn($found->unsupported_details, "{$found->objective}\n{$found->angle}")]);
             }
 
             $found->acceptForWork();

@@ -66,6 +66,16 @@ class ContentPlan extends Model
     }
 
     /**
+     * Who sent the plan for review.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function submitter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    /**
      * An AI draft is running and started less than STALE_MINUTES ago. An
      * older run (a worker that died) no longer blocks a new one.
      */

@@ -351,6 +351,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Publish now
+    |--------------------------------------------------------------------------
+    |
+    | Every "Publish now" (the composer, a post's menu and details, approving a
+    | post) asks first: on a real channel one misclick posted at once (QA
+    | 2026-11-18). Off only for TryPost's browser tests (phpunit.xml).
+    |
+    */
+
+    'publish_now' => [
+        'confirm' => (bool) env('SOCIALHQ_PUBLISH_NOW_CONFIRM', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Agents (API keys and MCP grants)
     |--------------------------------------------------------------------------
     |

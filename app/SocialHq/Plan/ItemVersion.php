@@ -27,6 +27,7 @@ class ItemVersion extends Model
     {
         return [
             'source' => ItemSource::class,
+            'unsupported_details' => 'array',
         ];
     }
 

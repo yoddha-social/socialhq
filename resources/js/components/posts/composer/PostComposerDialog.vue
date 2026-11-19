@@ -74,6 +74,7 @@ import PlatformPreview from '@/components/posts/previews/PlatformPreview.vue';
 import PreviewPanelTitle from '@/components/posts/previews/PreviewPanelTitle.vue';
 import PublishEmptyIllustration from '@/components/publish/PublishEmptyIllustration.vue';
 import { useAiTask } from '@/components/socialhq/aiTasks';
+import { confirmPublishNow } from '@/components/socialhq/publishNow';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -1837,13 +1838,24 @@ const openSchedulePicker = async (): Promise<void> => {
     schedulePanel.value = 'picker';
 };
 
-const submitSelectedSchedule = (): void => {
+const submitSelectedSchedule = async (): Promise<void> => {
     if (
         selectedAccounts.value.length > 0 &&
         scheduleMode.value === 'custom' &&
         !composition.scheduledAt.value
     ) {
         void openSchedulePicker();
+        return;
+    }
+    // Social HQ: publishing at once asks first (components/socialhq/publishNow.ts).
+    if (
+        scheduleMode.value === 'now' &&
+        !requiresApproval.value &&
+        canSubmit.value &&
+        !hasBlockingIssues.value &&
+        !submitBlockedKey.value &&
+        !(await confirmPublishNow(Math.max(1, selectedAccounts.value.length)))
+    ) {
         return;
     }
     submit(

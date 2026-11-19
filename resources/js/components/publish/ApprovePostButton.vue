@@ -5,6 +5,7 @@ import { computed, ref } from 'vue';
 
 import { approve } from '@/actions/App/Http/Controllers/App/PostApprovalController';
 import ComposerSchedulePicker from '@/components/posts/composer/ComposerSchedulePicker.vue';
+import { confirmPublishNow } from '@/components/socialhq/publishNow';
 import { Button } from '@/components/ui/button';
 import {
     Popover,
@@ -49,14 +50,25 @@ const labelKey = computed(() => {
         return 'posts.approvals.approve';
     }
 
+    // Social HQ: the button says it approves too (it read "Schedule").
     return isQueued.value
-        ? 'posts.publish.actions.add_to_queue'
-        : 'posts.approvals.schedule';
+        ? 'socialhq.approvals.approve_and_queue'
+        : 'socialhq.approvals.approve_and_schedule';
 });
+
+/** Social HQ: publishing at once asks first (components/socialhq/publishNow.ts). */
+const publishNow = async (): Promise<void> => {
+    pickerOpen.value = false;
+
+    if (await confirmPublishNow()) {
+        send({ publish_now: true });
+    }
+};
 
 const send = (payload: { scheduled_at?: string; publish_now?: true }): void => {
     router.put(approve.url(props.post.id), payload, {
-        only: ['posts', 'counts', 'queue', 'hasData'],
+        // Social HQ: `socialhq` carries the sidebar's "Waiting for you" count.
+        only: ['posts', 'counts', 'queue', 'hasData', 'socialhq'],
         reset: ['posts'],
         preserveScroll: true,
         onSuccess: () => {
@@ -100,7 +112,7 @@ const confirmTime = (value: string): void => {
                     variant="outline"
                     class="w-full"
                     :data-testid="`post-approve-publish-now-${testKey}`"
-                    @click="send({ publish_now: true })"
+                    @click="publishNow"
                 >
                     <IconSend class="size-4" />
                     {{ $t('posts.publish.actions.publish_now') }}

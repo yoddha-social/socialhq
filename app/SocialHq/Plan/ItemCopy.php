@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\SocialHq\Plan;
 
 use App\Models\User;
+use App\SocialHq\Plan\Ai\UnsupportedDetails;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -19,13 +20,16 @@ final class ItemCopy
      * Save the copy as the item's next version. Any new version goes back to
      * draft; a new version of approved copy is noted in the thread.
      *
-     * @param  array{caption: string, hashtags?: ?string, script?: ?string, notes?: ?string}  $copy
+     * @param  array{caption: string, hashtags?: ?string, script?: ?string, notes?: ?string, unsupported_details?: ?list<string>}  $copy
      */
     public static function saveVersion(PlanItem $item, User $user, array $copy, ItemSource $source = ItemSource::Manual): ItemVersion
     {
         return DB::transaction(function () use ($item, $user, $copy, $source): ItemVersion {
             $locked = PlanItem::query()->lockForUpdate()->findOrFail($item->id);
             $wasApproved = $locked->copy_status === CopyStatus::Approved;
+            $unsupported = array_key_exists('unsupported_details', $copy)
+                ? $copy['unsupported_details']
+                : self::carriedDetails($locked, (string) $copy['caption'], $copy['script'] ?? null);
 
             $version = ItemVersion::query()->create([
                 'item_id' => $locked->id,
@@ -34,6 +38,7 @@ final class ItemCopy
                 'hashtags' => self::blankToNull($copy['hashtags'] ?? null),
                 'script' => self::blankToNull($copy['script'] ?? null),
                 'notes' => self::blankToNull($copy['notes'] ?? null),
+                'unsupported_details' => $unsupported,
                 'source' => $source,
                 'created_by' => $user->id,
             ]);
@@ -83,6 +88,13 @@ final class ItemCopy
     public static function approve(PlanItem $item, User $user, ?string $note = null, ?int $shownVersionId = null): void
     {
         self::transition($item, [CopyStatus::InReview], CopyStatus::Approved, 'cannot_approve', $shownVersionId, function (PlanItem $locked, ItemVersion $version) use ($user, $note): void {
+            // Gaps left for someone to fill would go out with their brackets.
+            $gaps = Placeholders::inVersion($version);
+
+            if ($gaps !== []) {
+                throw ValidationException::withMessages(['copy' => __('socialhq_production.item.copy.errors.placeholders', ['gaps' => implode(', ', $gaps)])]);
+            }
+
             self::note($locked, $user, ReviewKind::Approved, $version, $note);
         });
     }
@@ -142,6 +154,26 @@ final class ItemCopy
 
             $item->setRawAttributes($locked->getAttributes(), true);
         });
+    }
+
+    /**
+     * What the latest version's check flagged and the new text still says: a
+     * person editing AI copy doesn't make its invented details true. Copy an
+     * approver approved was checked, so nothing carries over from it.
+     *
+     * @return list<string>|null
+     */
+    private static function carriedDetails(PlanItem $item, string $caption, ?string $script): ?array
+    {
+        $latest = ItemVersion::query()->where('item_id', $item->id)->orderByDesc('number')->first();
+
+        if ($latest === null || $latest->unsupported_details === null) {
+            return null;
+        }
+
+        $approved = ItemReview::query()->where('version_id', $latest->id)->where('kind', ReviewKind::Approved)->exists();
+
+        return $approved ? null : UnsupportedDetails::stillIn($latest->unsupported_details, trim("{$caption}\n\n{$script}"));
     }
 
     private static function note(PlanItem $item, User $user, ReviewKind $kind, ?ItemVersion $version, ?string $body = null): void

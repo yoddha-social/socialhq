@@ -383,7 +383,38 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   rounds, reviewed like copy, and kept on the private `local` disk, served only
   to members. "Create post" opens TryPost's composer with the approved copy,
   the final files, the date and the channel; posting follows TryPost's
-  approvals.
+  approvals. Until then the card lists everything still in the way at once
+  (`CreatePostFromItem::blockers()`: copy not approved, `[gaps]` in it, the
+  creative not approved). An approver can "Post text-only": the post stops
+  waiting for the creative (`creative_waived_at`/`_by` on the item; the brief
+  stays, and an approved creative is still added if it's ready first).
+- **Copy checks** (QA 2026-11-18). A caption or hashtags with text in
+  square brackets (`Placeholders`: "[city]", a markdown link too, since
+  networks post it as typed; not a video script's "[close-up]") can't be
+  approved (the button is disabled, the server refuses) or become a post.
+  AI copy (the writer and the MCP save tool) and AI-planned items (objective
+  and angle) carry `unsupported_details`: names, numbers and quotes their
+  sources don't contain (`Plan\Ai\UnsupportedDetails`, a word-level
+  heuristic: numbering such as "Slide 3" doesn't count, and a name starting a
+  sentence is missed), shown as "Check these". A person's edit keeps the
+  flags its text still says (`stillIn()`), on a copy version unless the
+  version before was approved, and on an item's objective and angle. A
+  rewrite counts the latest version as a source only when a person wrote it.
+- **Waiting for you** (`/socialhq/inbox`, sidebar with a count from
+  `socialhq.inbox`; `Inbox\WaitingForYou`). Approvers: monthly plans, copy and
+  creatives in review, and posts awaiting approval. Anyone working on the plan:
+  copy sent back with changes on an item they own or whose latest version they
+  wrote, and creatives sent back that are assigned to them (with nobody
+  assigned, to the item's owner). The plan's month picker marks the months
+  with any of these (`waitingMonths`, also on the year arrows). The count
+  refreshes on full visits and after approving or rejecting a post.
+- **Publish now asks first** (`components/socialhq/publishNow.ts`, the dialog
+  in the app layout, rendered only while asking so it stacks above the
+  composer; the browser's own confirm on a page without it;
+  `socialhq.publish_now.confirm`, off only in phpunit.xml). The Queue card's
+  "Publish Now" button moved into its ⋯ menu, and the approve button reads
+  "Approve and schedule". A text-only waiver ends when the item's creative,
+  channel or format changes.
 - **Production** (`/socialhq/plan/production`). Every brief by stage, with drag
   and drop or a keyboard "Move to" menu. Only approvers move a card into or out
   of Changes requested and Approved.

@@ -21,25 +21,77 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * "Create post": hands an item with approved copy (and an approved creative,
- * when it needs one) to TryPost's composer. The approved round's files are
- * imported into the workspace's uploads like an AI graphic is (a finished
- * media import with an upload token), so the composer attaches them; the
- * post itself then follows TryPost's approval rules. Only files the item's
- * format can carry go (no PDF on a Facebook post); the others are named.
+ * when it needs one and no approver let it go out text-only) to TryPost's
+ * composer. The approved round's files are imported into the workspace's
+ * uploads like an AI graphic is (a finished media import with an upload
+ * token), so the composer attaches them; the post itself then follows
+ * TryPost's approval rules. Only files the item's format can carry go (no
+ * PDF on a Facebook post); the others are named.
  */
 final class CreatePostFromItem
 {
+    public const string BLOCKED_BY_COPY = 'copy';
+
+    public const string BLOCKED_BY_PLACEHOLDERS = 'placeholders';
+
+    public const string BLOCKED_BY_CREATIVE = 'creative';
+
     public static function isReady(PlanItem $item): bool
     {
+        return self::blockers($item) === [];
+    }
+
+    /**
+     * Everything that stands between the item and its post, all at once:
+     * copy not approved, gaps ("[city]") left in the copy, a creative not
+     * approved. An approver can let the post go out text-only, and then the
+     * creative no longer counts.
+     *
+     * @return list<string>
+     */
+    public static function blockers(PlanItem $item): array
+    {
+        $blockers = [];
+
         if ($item->copy_status !== CopyStatus::Approved) {
-            return false;
+            $blockers[] = self::BLOCKED_BY_COPY;
         }
 
-        if ($item->creative->briefKind() === null) {
-            return true;
+        if (Placeholders::inVersion($item->latestVersion) !== []) {
+            $blockers[] = self::BLOCKED_BY_PLACEHOLDERS;
         }
 
-        return $item->brief?->stage === BriefStage::Approved;
+        if (self::needsCreative($item) && $item->brief?->stage !== BriefStage::Approved) {
+            $blockers[] = self::BLOCKED_BY_CREATIVE;
+        }
+
+        return $blockers;
+    }
+
+    /**
+     * Whether the post waits for a creative: the item has something to make
+     * and no approver has let it go out text-only.
+     */
+    public static function needsCreative(PlanItem $item): bool
+    {
+        return $item->creative->briefKind() !== null && $item->creative_waived_at === null;
+    }
+
+    /**
+     * An approver lets the post go out without its creative (or takes that
+     * back). The brief stays: when its creative is approved before the post
+     * is created, the post still gets the files.
+     */
+    public static function waiveCreative(PlanItem $item, User $user, bool $waive = true): void
+    {
+        if ($waive && $item->creative->briefKind() === null) {
+            throw ValidationException::withMessages(['creative' => __('socialhq_production.post.errors.nothing_to_waive')]);
+        }
+
+        $item->forceFill([
+            'creative_waived_at' => $waive ? now() : null,
+            'creative_waived_by' => $waive ? $user->id : null,
+        ])->save();
     }
 
     /**
@@ -59,8 +111,12 @@ final class CreatePostFromItem
     {
         $item->loadMissing(['brief', 'latestVersion', 'socialAccount', 'workspace']);
 
-        if (! self::isReady($item) || $item->latestVersion === null) {
-            throw ValidationException::withMessages(['post' => __('socialhq_production.post.errors.not_ready')]);
+        $blockers = self::blockers($item);
+
+        if ($blockers !== [] || $item->latestVersion === null) {
+            throw ValidationException::withMessages(['post' => in_array(self::BLOCKED_BY_PLACEHOLDERS, $blockers, true)
+                ? __('socialhq_production.post.errors.placeholders', ['gaps' => implode(', ', Placeholders::inVersion($item->latestVersion))])
+                : __('socialhq_production.post.errors.not_ready')]);
         }
 
         $media = collect();

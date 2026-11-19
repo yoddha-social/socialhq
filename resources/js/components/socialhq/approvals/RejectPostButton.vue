@@ -46,7 +46,8 @@ const reject = (): void => {
         rejectPostRoute.url(props.postId),
         { reason: reason.value },
         {
-            only: ['posts', 'counts', 'queue', 'hasData'],
+            // `socialhq` carries the sidebar's "Waiting for you" count.
+            only: ['posts', 'counts', 'queue', 'hasData', 'socialhq'],
             reset: ['posts'],
             preserveScroll: true,
             onStart: () => {

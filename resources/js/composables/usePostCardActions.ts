@@ -6,6 +6,7 @@ import { toast } from 'vue-sonner';
 import { duplicate as duplicatePost } from '@/actions/App/Http/Controllers/App/PostController';
 import { update as updatePostLabels } from '@/actions/App/Http/Controllers/App/PostLabelController';
 import { update as updatePostSchedule } from '@/actions/App/Http/Controllers/App/PostScheduleController';
+import { confirmPublishNow } from '@/components/socialhq/publishNow';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import { copyToClipboard } from '@/lib/utils';
 import type { SidebarChannel } from '@/types/channel';
@@ -56,6 +57,26 @@ export const schedulePostCard = (
 ): void => {
     const { requestsApproval = false, ...reload } = options;
 
+    // Social HQ: publishing at once asks first (components/socialhq/publishNow.ts).
+    if (action === 'publish_now') {
+        void confirmPublishNow().then((confirmed) => {
+            if (confirmed) {
+                sendSchedule(postId, action, reload, requestsApproval);
+            }
+        });
+
+        return;
+    }
+
+    sendSchedule(postId, action, reload, requestsApproval);
+};
+
+const sendSchedule = (
+    postId: string,
+    action: PostScheduleAction,
+    reload: { only?: string[]; reset?: string[] },
+    requestsApproval: boolean,
+): void => {
     router.put(
         updatePostSchedule.url(postId),
         { action },
@@ -82,7 +103,8 @@ export const duplicatePostCard = (post: PostCard): void => {
 export const sharePostCardLink = (post: PostCard): void => {
     if (!post.platform_url) return;
 
-    const channels = (usePage().props.channels as SidebarChannel[] | undefined) ?? [];
+    const channels =
+        (usePage().props.channels as SidebarChannel[] | undefined) ?? [];
 
     openPostComposer({
         socialAccountIds: channels.map((channel) => channel.id),

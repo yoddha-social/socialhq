@@ -18,6 +18,7 @@ import type {
     PlanItem,
     PlanOwner,
 } from '@/components/socialhq/plan/types';
+import UnsupportedDetailsNote from '@/components/socialhq/plan/UnsupportedDetailsNote.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -736,6 +737,15 @@ const askDelete = (): void => {
                             >
                                 {{ form.errors.angle }}
                             </p>
+                            <UnsupportedDetailsNote
+                                v-if="
+                                    item && item.unsupported_details.length > 0
+                                "
+                                :details="item.unsupported_details"
+                                :title="$t('socialhq_plan.unsupported.title')"
+                                :body="$t('socialhq_plan.unsupported.body')"
+                                data-testid="plan-item-unsupported"
+                            />
                         </div>
                     </fieldset>
                 </form>

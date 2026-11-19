@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import { router, useHttp } from '@inertiajs/vue3';
-import { IconCircleCheck, IconSend2 } from '@tabler/icons-vue';
+import {
+    IconCircleCheck,
+    IconCircleDashed,
+    IconPhotoOff,
+    IconSend2,
+} from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, onBeforeUnmount } from 'vue';
+import { onBeforeUnmount, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
 import type {
+    CreativeWaiver,
     PlanAbilities,
     PlanItemDetail,
+    PostBlocker,
 } from '@/components/socialhq/plan/item/types';
 import {
     firstErrorOf,
@@ -17,11 +24,22 @@ import { Button } from '@/components/ui/button';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import date from '@/date';
 import { store as preparePost } from '@/routes/socialhq/plan/items/post';
+import {
+    store as allowTextOnly,
+    destroy as requireCreative,
+} from '@/routes/socialhq/plan/items/post/text-only';
 import type { MediaItem } from '@/types/media';
 
 const props = defineProps<{
     item: PlanItemDetail;
     ready: boolean;
+    /** Everything still in the way, all at once. */
+    blockers: PostBlocker[];
+    waiver: CreativeWaiver | null;
+    /** Whether the item has something to make (a graphic or a video). */
+    hasCreative: boolean;
+    /** Whether that creative is approved (its files go with the post). */
+    creativeApproved: boolean;
     abilities: PlanAbilities;
 }>();
 
@@ -43,14 +61,31 @@ onBeforeUnmount(() => {
     http.cancel();
 });
 
-/** What still stands between the item and its post. */
-const waitingKey = computed(() => {
-    if (props.item.copy_status !== 'approved') {
-        return 'socialhq_production.post.waiting_copy';
-    }
+const waiving = ref(false);
 
-    return 'socialhq_production.post.waiting_creative';
-});
+/** An approver lets the post go out without its creative, or takes that back. */
+const setTextOnly = (on: boolean): void => {
+    const route = on
+        ? allowTextOnly(props.item.id)
+        : requireCreative(props.item.id);
+
+    router.visit(route.url, {
+        method: route.method,
+        only: ['postReady', 'postBlockers', 'creativeWaiver'],
+        preserveScroll: true,
+        onStart: () => (waiving.value = true),
+        onFinish: () => (waiving.value = false),
+        onError: (errors) => {
+            const message = firstErrorOf(
+                errors as Record<string, string | undefined>,
+            );
+
+            if (message) {
+                toast.error(message);
+            }
+        },
+    });
+};
 
 const createPost = async (): Promise<void> => {
     if (http.processing || !props.ready) {
@@ -107,12 +142,96 @@ const createPost = async (): Promise<void> => {
         data-testid="item-create-post"
     >
         <p
-            id="socialhq-create-post-reason"
+            v-if="ready"
             class="text-sm text-muted-foreground"
             data-testid="item-create-post-reason"
         >
-            {{ ready ? $t('socialhq_production.post.ready') : $t(waitingKey) }}
+            {{
+                $t(
+                    waiver && hasCreative && !creativeApproved
+                        ? 'socialhq_production.post.ready_text_only'
+                        : 'socialhq_production.post.ready',
+                )
+            }}
         </p>
+        <div
+            v-else
+            id="socialhq-create-post-reason"
+            class="grid gap-1.5 text-sm text-muted-foreground"
+            data-testid="item-create-post-reason"
+        >
+            <p>{{ $t('socialhq_production.post.waiting') }}</p>
+            <ul class="grid gap-1">
+                <li
+                    v-for="blocker in blockers"
+                    :key="blocker"
+                    class="flex items-start gap-1.5"
+                    :data-testid="`item-create-post-blocker-${blocker}`"
+                >
+                    <IconCircleDashed
+                        class="mt-0.5 size-4 shrink-0"
+                        aria-hidden="true"
+                    />
+                    {{ $t(`socialhq_production.post.blockers.${blocker}`) }}
+                </li>
+            </ul>
+        </div>
+        <div
+            v-if="waiver"
+            class="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"
+            data-testid="item-text-only"
+        >
+            <span class="flex items-center gap-1.5">
+                <IconPhotoOff class="size-4 shrink-0" aria-hidden="true" />
+                {{
+                    waiver.by
+                        ? $t('socialhq_production.post.text_only_on', {
+                              name: waiver.by.name,
+                              date: date.formatDate(waiver.at),
+                          })
+                        : $t('socialhq_production.post.text_only_on_unknown', {
+                              date: date.formatDate(waiver.at),
+                          })
+                }}
+            </span>
+            <Button
+                v-if="abilities.canApprove && !item.post_created_at"
+                variant="link"
+                size="sm"
+                class="h-auto p-0 text-xs"
+                :disabled="waiving"
+                data-testid="item-text-only-undo"
+                @click="setTextOnly(false)"
+            >
+                {{ $t('socialhq_production.post.text_only_undo') }}
+            </Button>
+        </div>
+        <div
+            v-else-if="
+                abilities.canApprove &&
+                hasCreative &&
+                blockers.includes('creative')
+            "
+            class="grid gap-1"
+        >
+            <Button
+                variant="outline"
+                class="w-full"
+                :loading="waiving"
+                data-testid="item-text-only-button"
+                aria-describedby="socialhq-text-only-hint"
+                @click="setTextOnly(true)"
+            >
+                <IconPhotoOff />
+                {{ $t('socialhq_production.post.text_only') }}
+            </Button>
+            <p
+                id="socialhq-text-only-hint"
+                class="text-xs text-muted-foreground"
+            >
+                {{ $t('socialhq_production.post.text_only_hint') }}
+            </p>
+        </div>
         <p
             v-if="item.post_created_at"
             class="flex items-center gap-1.5 text-xs text-success-text"

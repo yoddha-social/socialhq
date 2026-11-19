@@ -21,6 +21,7 @@ use App\SocialHq\Http\Controllers\AiGraphicController;
 use App\SocialHq\Http\Controllers\BrandKnowledgeController;
 use App\SocialHq\Http\Controllers\CompanyPausedController;
 use App\SocialHq\Http\Controllers\CompanyRequestController;
+use App\SocialHq\Http\Controllers\InboxController;
 use Illuminate\Support\Facades\Route;
 
 // After asking to start a company on the register form: nobody is logged in yet.
@@ -58,6 +59,7 @@ Route::middleware('auth')->prefix('socialhq')->name('socialhq.')->group(function
 
     // Workspace pages: the same middleware as TryPost's (routes/app.php).
     Route::middleware([EnsureAccountReady::class, EnsureHasWorkspace::class])->group(function () {
+        Route::get('inbox', InboxController::class)->name('inbox');
         Route::get('brand', [BrandKnowledgeController::class, 'index'])->name('brand.index');
         Route::put('brand/profile', [BrandKnowledgeController::class, 'updateProfile'])->name('brand.profile.update');
         Route::post('brand/entries', [BrandKnowledgeController::class, 'store'])->name('brand.entries.store');

@@ -8,6 +8,7 @@ use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\Workspace;
 use App\SocialHq\Plan\ItemReview;
 use App\SocialHq\Plan\ItemVersion;
+use App\SocialHq\Plan\Placeholders;
 use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Plan\PlanMonth;
@@ -105,6 +106,9 @@ trait WorksOnPlans
             'script' => $version->script,
             'notes' => $version->notes,
             'source' => $version->source->value,
+            // Gaps in square brackets block approval; unsupported details are for the reviewer to check.
+            'placeholders' => Placeholders::inVersion($version),
+            'unsupported_details' => array_values((array) $version->unsupported_details),
             'author' => $version->author?->name,
             'created_at' => $version->created_at?->toIso8601ZuluString(),
         ];

@@ -27,6 +27,8 @@ export interface PlanItemDetail {
     pillar: string | null;
     objective: string | null;
     angle: string | null;
+    /** Names and numbers the AI planner wrote that its sources don't contain. */
+    unsupported_details: string[];
     status: string;
     copy_status: CopyStatus;
     post_created_at: string | null;
@@ -49,8 +51,21 @@ export interface CopyVersion {
     script: string | null;
     notes: string | null;
     source: 'ai' | 'manual';
+    /** Names, numbers and quotes in AI copy that its sources don't contain. */
+    unsupported_details: string[];
+    /** Gaps in square brackets ("[city]") still to fill. */
+    placeholders: string[];
     author: PlanPerson | null;
     created_at: string | null;
+}
+
+/** What stands between the item and its post. */
+export type PostBlocker = 'copy' | 'placeholders' | 'creative';
+
+/** An approver let the post go out without its creative. */
+export interface CreativeWaiver {
+    at: string;
+    by: PlanPerson | null;
 }
 
 export type ReviewEntryKind =

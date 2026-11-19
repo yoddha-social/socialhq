@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\SocialHq\Mcp\Tools\Plan;
 
 use App\Models\Workspace;
+use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Mcp\Concerns\WorksOnPlans;
+use App\SocialHq\Plan\Ai\UnsupportedDetails;
+use App\SocialHq\Plan\Ai\WriteItemCopy;
 use App\SocialHq\Plan\CopyStatus;
 use App\SocialHq\Plan\ItemCopy;
 use App\SocialHq\Plan\ItemSource;
@@ -50,6 +53,13 @@ class SavePlanItemCopyTool extends Tool
             'script' => ['nullable', 'string', 'max:20000'],
             'notes' => ['nullable', 'string', 'max:5000'],
         ]);
+
+        // What the agent wrote that the item and the brand knowledge don't say, for the reviewer to check.
+        $item->loadMissing(['event', 'socialAccount', 'latestVersion']);
+        $copy['unsupported_details'] = UnsupportedDetails::find(
+            trim($copy['caption']."\n\n".($copy['script'] ?? '')),
+            WriteItemCopy::sources($item, WriteItemCopy::context($item), BrandKnowledge::forPrompt($workspace, WriteItemCopy::focus($item)), ''),
+        ) ?: null;
 
         // Checked under the item's lock, so a review that starts meanwhile is never undone.
         $version = DB::transaction(function () use ($item, $request, $copy): ?ItemVersion {

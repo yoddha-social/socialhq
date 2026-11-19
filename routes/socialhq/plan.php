@@ -33,6 +33,8 @@ Route::post('items/{item}/copy/approve', [ItemCopyReviewController::class, 'appr
 Route::post('items/{item}/copy/request-changes', [ItemCopyReviewController::class, 'requestChanges'])->whereNumber('item')->name('items.copy.request-changes');
 Route::post('items/{item}/comments', [ItemCommentController::class, 'store'])->whereNumber('item')->name('items.comments.store');
 Route::post('items/{item}/post', [ItemPostController::class, 'store'])->whereNumber('item')->middleware('throttle:media-imports')->name('items.post.store');
+Route::post('items/{item}/post/text-only', [ItemPostController::class, 'waiveCreative'])->whereNumber('item')->name('items.post.text-only.store');
+Route::delete('items/{item}/post/text-only', [ItemPostController::class, 'requireCreative'])->whereNumber('item')->name('items.post.text-only.destroy');
 
 Route::put('items/{item}', [PlanItemWriteController::class, 'update'])->whereNumber('item')->name('items.update');
 Route::delete('items/{item}', [PlanItemWriteController::class, 'destroy'])->whereNumber('item')->name('items.destroy');

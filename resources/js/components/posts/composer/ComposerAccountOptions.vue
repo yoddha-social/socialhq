@@ -86,11 +86,11 @@ const allSelected = (): boolean => visibleAccounts.value.every(isSelected);
                         :platform="account.platform"
                         :src="account.avatar_url"
                         :verified="account.verified_badge"
-                        :name="account.display_name || account.username"
+                        :name="account.display_label"
                         ring="popover"
                     />
                     <span class="min-w-0 flex-1 truncate">{{
-                        account.display_name || account.username
+                        account.display_label
                     }}</span>
                     <span
                         class="flex size-4 shrink-0 items-center justify-center rounded-sm border transition-control"

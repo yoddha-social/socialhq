@@ -469,6 +469,35 @@ Invites, access requests and company decisions stay email only. Code:
 - Plan reviews (copy and creatives sent back or approved) aren't in the bell
   yet: "Waiting for you" lists them.
 
+## The channel page
+
+`/channels/{account}/settings` (admins) is one page per channel, with the workspace's
+channels listed beside it (`pages/socialhq/channels/Show.vue`, components in
+`components/socialhq/channels/`). TryPost's settings page is no longer rendered
+(PATCHES.md row 230); its posting schedule endpoints and weekday grid are reused.
+
+- **Where it stands:** four tiles (Scheduled in the next 30 days, Needs approval,
+  Drafts, Published in the last 30 days), each a link to that tab of the channel's
+  publish page, and the week's goal as a bar. Counted by
+  `App\SocialHq\Channels\ChannelPage::props()`.
+- **Settings as rows, one button each:** time zone (TryPost's confirmation first),
+  posting goal, posting times, name, channel ID.
+- **Posting times:** when every active day shares the same times, "Edit" opens a
+  simple list (add a time, remove a time, up to TryPost's four a day) and saving
+  writes that list to every active day. "Different times per day" opens TryPost's
+  weekday grid on the page; a channel whose days already differ opens it directly.
+- **Name in Social HQ:** `social_accounts.shq_name` (nullable, 60 characters), set by
+  `PUT socialhq/channels/{account}/name` (admins). `SocialAccount::accountDisplayName()`
+  and so `display_label` return it first; the network's own name stays in
+  `display_name`. Print a channel's name through `display_label` (or `channelName()`
+  on the client), never `display_name || username`. A post keeps the name it had when
+  it was created (`channelSnapshot()`).
+- **Connection:** refresh, link a Facebook Page (Instagram Login accounts) and
+  disconnect through TryPost's dialog. A disconnect started here goes to the next
+  channel's page, or to Settings › Channels when none is left.
+- Not built yet: "Ask the account owner to connect" (a one-hour link), phase 4b of the
+  PostQueen plan. It needs a security review.
+
 ## Approvals
 
 Stricter than TryPost (`app/SocialHq/Approval/ApprovalRules.php`):

@@ -38,7 +38,7 @@ const processing = ref(false);
 const confirmation = ref('');
 
 const name = computed(() =>
-    channel.value ? channel.value.display_name || channel.value.username : '',
+    channel.value ? channel.value.display_label : '',
 );
 
 const typeKey = computed(() =>

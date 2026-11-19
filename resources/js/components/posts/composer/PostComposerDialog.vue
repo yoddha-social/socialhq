@@ -3252,8 +3252,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                 :anchor-id="group.anchor.id"
                                 :text="
                                     groupDestination(group).content ||
-                                    group.anchor.display_name ||
-                                    group.anchor.username
+                                    group.anchor.display_label
                                 "
                                 :issue-count="groupIssues(group).length"
                                 :issue-label="groupIssueLabel(group)"
@@ -3558,8 +3557,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                                     : blockingIssue.params,
                                             ),
                                             channel:
-                                                blockingIssue.account.display_name ||
-                                                blockingIssue.account.username,
+                                                blockingIssue.account.display_label,
                                         })
                                     }}
                                 </TooltipContent>

@@ -20,6 +20,7 @@ use App\Mail\AccountDisconnected;
 use App\Models\Scopes\SocialAccountOrderScope;
 use App\Observers\ComposerVersionObserver;
 use App\Observers\SocialAccountObserver;
+use App\SocialHq\Channels\ChannelPage;
 use App\Support\GoogleBusinessResourceName;
 use Database\Factories\SocialAccountFactory;
 use Illuminate\Contracts\Cache\LockTimeoutException;
@@ -419,7 +420,8 @@ class SocialAccount extends Model
      */
     public function accountDisplayName(): string
     {
-        return $this->display_name ?: $this->username ?: $this->platform->label();
+        // Social HQ: the name the team gave the channel wins (PATCHES.md row 230).
+        return ChannelPage::customName($this) ?: $this->display_name ?: $this->username ?: $this->platform->label();
     }
 
     /**

@@ -16,7 +16,7 @@ defineProps<{
             :key="account.id"
             :platform="account.platform"
             :src="account.avatar_url"
-            :name="account.display_name || account.username"
+            :name="account.display_label"
             :size="24"
             shape="round"
             :reserve-space="false"

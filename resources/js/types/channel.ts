@@ -58,7 +58,10 @@ export interface SidebarChannel {
     scheduled_posts_count: number;
 }
 
+// Social HQ: the name the team gave the channel wins (PATCHES.md row 230).
 export const channelName = (channel: {
+    display_label?: string | null;
     display_name: string | null;
     username: string | null;
-}): string => channel.display_name || channel.username || '';
+}): string =>
+    channel.display_label || channel.display_name || channel.username || '';

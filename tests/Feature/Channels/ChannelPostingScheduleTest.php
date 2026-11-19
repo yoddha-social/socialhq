@@ -40,7 +40,8 @@ test('the settings page renders the channel, schedule, time zones and other chan
         ->get(route('app.channels.settings', $this->channel))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('channels/Settings', false)
+            // Social HQ: the channel page replaces the settings page (PATCHES.md row 230).
+            ->component('socialhq/channels/Show', false)
             ->where('channel.id', $this->channel->id)
             ->has('schedule.timezone')
             ->has('timezones')

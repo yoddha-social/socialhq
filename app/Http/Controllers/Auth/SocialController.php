@@ -19,6 +19,7 @@ use App\Models\Repurpose;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\PostHogService;
+use App\SocialHq\Channels\ChannelPage;
 use App\Support\Social\PendingConnection;
 use Exception;
 use Illuminate\Http\RedirectResponse;
@@ -82,7 +83,8 @@ class SocialController extends Controller
 
         $this->flashAccountChange($before);
 
-        return back();
+        // Social HQ: a disconnect from the channel's own page cannot go back to it (PATCHES.md row 230).
+        return ChannelPage::afterDisconnect($request, $account) ?? back();
     }
 
     /**

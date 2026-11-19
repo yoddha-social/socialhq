@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Enums\User\TimeFormat;
 use App\Enums\User\WeekStart;
@@ -9,6 +10,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Channels\ConnectInvite;
 use App\Support\PostingSchedule;
 
 /**
@@ -194,4 +196,60 @@ test('disconnect on the channel page opens the same dialog as the channel list',
     $page->assertSeeIn('@disconnect-channel-title', 'Acme Corp')
         ->assertNoJavaScriptErrors();
     expect($channel->fresh())->not->toBeNull();
+});
+
+test('an admin copies a connect link for the account owner', function () {
+    [$user, , $channel] = channelPageSetup();
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $channel->workspace_id, 'display_name' => 'Acme on X']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.settings', $x))->resize(1440, 900);
+    waitFor($page, '@channel-invite-copy');
+    $page->script('window.__copied = null; navigator.clipboard.writeText = async (text) => { window.__copied = text; };');
+    $page->click('@channel-invite-copy');
+    waitForCondition($page, 'typeof window.__copied === "string"');
+
+    $invite = ConnectInvite::query()->sole();
+    $copied = (string) $page->script('window.__copied');
+
+    expect($invite->workspace_id)->toBe($channel->workspace_id)
+        ->and($invite->platform)->toBe(Platform::X)
+        ->and($invite->token_hash)->toBe(ConnectInvite::hash(str($copied)->afterLast('/')->value()))
+        ->and($copied)->toStartWith(route('socialhq.connect-invite.landing', ''));
+    $page->assertMissing('@channel-invite-dialog')->assertNoJavaScriptErrors();
+});
+
+test('when the browser refuses to copy, the connect link is shown instead', function () {
+    [$user, , $channel] = channelPageSetup();
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $channel->workspace_id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.settings', $x))->resize(1440, 900);
+    waitFor($page, '@channel-invite-copy');
+    $page->script('navigator.clipboard.writeText = async () => { throw new Error("denied"); };');
+    $page->click('@channel-invite-copy');
+    waitFor($page, '@channel-invite-url');
+
+    $shown = (string) $page->script('document.querySelector(\'[data-testid="channel-invite-url"]\').value');
+
+    expect(ConnectInvite::hash(str($shown)->afterLast('/')->value()))->toBe(ConnectInvite::query()->sole()->token_hash);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a connect link opens a page that says who asks, and a used or wrong link says it no longer works', function () {
+    [$user, $workspace, $channel] = channelPageSetup();
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    [, $token] = ConnectInvite::issue($workspace, Platform::X, $user);
+
+    $page = visit(route('socialhq.connect-invite.landing', $token))->resize(1280, 900);
+    waitFor($page, '@connect-invite-continue');
+
+    $page->assertSeeIn('@connect-invite-title', $workspace->name)
+        ->assertSeeIn('@connect-invite', $user->name)
+        ->assertSeeIn('@connect-invite-continue', Platform::X->label())
+        ->assertNoJavaScriptErrors();
+
+    $expired = visit(route('socialhq.connect-invite.landing', str_repeat('a', 48)))->resize(1280, 900);
+    waitFor($expired, '@connect-invite-expired');
+    $expired->assertSee(__('socialhq.connect_invite.expired.title'))->assertNoJavaScriptErrors();
 });

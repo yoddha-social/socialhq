@@ -8,6 +8,7 @@ import {
     IconCircleCheck,
     IconHourglass,
     IconMessage,
+    IconPlugConnected,
     IconPlugConnectedX,
     IconThumbUp,
 } from '@tabler/icons-vue';
@@ -38,6 +39,7 @@ const ICONS: Record<string, Component> = {
     approval_requested: IconHourglass,
     post_approved: IconThumbUp,
     post_rejected: IconArrowBackUp,
+    channel_connected: IconPlugConnected,
 };
 
 const TONES: Record<NoticeTone, string> = {

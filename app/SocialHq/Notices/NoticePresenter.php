@@ -64,7 +64,7 @@ class NoticePresenter
         return (string) match ($notice->kind) {
             NoticeKind::PostFailed, NoticeKind::PostRejected => data_get($data, 'reason') ?: data_get($data, 'excerpt', ''),
             NoticeKind::PostNote => data_get($data, 'note', ''),
-            NoticeKind::ChannelDisconnected, NoticeKind::PostsAtRisk => __("socialhq.notices.kinds.{$notice->kind->value}.body"),
+            NoticeKind::ChannelDisconnected, NoticeKind::PostsAtRisk, NoticeKind::ChannelConnected => __("socialhq.notices.kinds.{$notice->kind->value}.body"),
             default => data_get($data, 'excerpt', ''),
         };
     }
@@ -83,6 +83,7 @@ class NoticePresenter
                 : $openPost,
             NoticeKind::PostFailed => [...(data_get($notice->data, 'reconnect') ? $reconnect : []), ...$openPost],
             NoticeKind::ChannelDisconnected => $reconnect,
+            NoticeKind::ChannelConnected => $hasChannel ? [self::action('open_channel', route('app.channels.settings', $notice->social_account_id))] : [],
             NoticeKind::PostsAtRisk => [self::action('review', route('app.workspace.channels'))],
             NoticeKind::ApprovalRequested => $hasPost ? [self::action('review', route('socialhq.inbox'))] : [],
             NoticeKind::PostApproved, NoticeKind::PostRejected, NoticeKind::PostNote => $openPost,

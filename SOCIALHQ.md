@@ -495,8 +495,43 @@ channels listed beside it (`pages/socialhq/channels/Show.vue`, components in
 - **Connection:** refresh, link a Facebook Page (Instagram Login accounts) and
   disconnect through TryPost's dialog. A disconnect started here goes to the next
   channel's page, or to Settings › Channels when none is left.
-- Not built yet: "Ask the account owner to connect" (a one-hour link), phase 4b of the
-  PostQueen plan. It needs a security review.
+
+### Ask the account owner to connect
+
+For a network account whose owner has no Social HQ login. An admin presses "Copy link"
+on the channel page and sends the link; the owner opens it, signs in on the network,
+picks the account, and the channel lands in the workspace.
+
+- **The link** (`App\SocialHq\Channels\ConnectInvite`, table `shq_connect_invites`):
+  one workspace, one network, one hour, one use. The token is 48 random characters;
+  only its SHA-256 is stored, and it is returned once, when the link is made. A link
+  made for a channel that lost its connection reconnects that channel only. Networks
+  that sign in by redirect only (not Bluesky, Mastodon or Telegram, which ask for a
+  password or a bot inside the app). Rows are the record of who asked and what was
+  connected, deleted 90 days after the link stopped working.
+- **The guest's pages** (`ConnectInviteController`, `pages/socialhq/ConnectInvite.vue`):
+  the link shows who asks and for what, and starts nothing until "Continue" (a POST).
+  After the network, the guest picks accounts on our own page and ends on "Connected".
+  The page sends `Referrer-Policy: no-referrer`, since the token is in its address.
+- **How the sign-in runs** (`ActAsConnectInviter`, in the `web` group, sorted before
+  `auth`): TryPost's start route, OAuth callback and "Finish connection" need a
+  signed-in admin. For a guest whose session holds a link that still works, those
+  three requests, for the link's network only, run with the admin who sent the link
+  as the request's user. Nothing is written to the session, so the guest is never
+  signed in. TryPost checks that admin's rights on each step, so a link stops working
+  when its sender stops being an admin, and a paused company's links do too.
+- **What the guest can never get:** a page rendered for that admin. Whatever TryPost
+  answers on those three requests is replaced by a redirect to the guest's page, and
+  TryPost's confirmation page is never reached. The guest's page shows the offered
+  accounts' names and pictures, never their tokens.
+- **Someone signed in** who opens a link is told it is not for them; a flow left in
+  their session is dropped.
+- **Afterwards:** the link is marked used with the channels it connected and the
+  guest's IP, and the sender gets a "…is connected" notice in the bell.
+- Limits: 30 requests a minute per IP on the guest pages, 10 links a minute per admin.
+- Every rule above has a test in `tests/Feature/SocialHq/Channels/ConnectInviteTest.php`.
+  Changing the middleware, the routes it covers or the link's lifetime needs a
+  security review.
 
 ## Approvals
 

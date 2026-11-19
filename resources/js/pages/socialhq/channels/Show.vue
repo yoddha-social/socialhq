@@ -6,6 +6,7 @@ import {
     IconClock,
     IconForms,
     IconId,
+    IconLink,
     IconPencil,
     IconPlugConnectedX,
     IconPlugX,
@@ -23,6 +24,7 @@ import PostingScheduleAddSlot from '@/components/channels/PostingScheduleAddSlot
 import PostingScheduleGenerateMenu from '@/components/channels/PostingScheduleGenerateMenu.vue';
 import PostingScheduleGrid from '@/components/channels/PostingScheduleGrid.vue';
 import ChannelGoalDialog from '@/components/socialhq/channels/ChannelGoalDialog.vue';
+import ChannelInviteDialog from '@/components/socialhq/channels/ChannelInviteDialog.vue';
 import ChannelNameDialog from '@/components/socialhq/channels/ChannelNameDialog.vue';
 import ChannelSettingRow from '@/components/socialhq/channels/ChannelSettingRow.vue';
 import ChannelSideList from '@/components/socialhq/channels/ChannelSideList.vue';
@@ -50,6 +52,7 @@ import { orderedWeekdays } from '@/preferences';
 import { publish } from '@/routes/app/channels';
 import { copy, generate, update } from '@/routes/app/channels/posting-schedule';
 import { channels as channelsRoute } from '@/routes/app/workspace';
+import { store as storeConnectInvite } from '@/routes/socialhq/channels/connect-invites';
 import { Platform } from '@/types/platform';
 import type {
     ChannelScheduleState,
@@ -75,6 +78,7 @@ const props = defineProps<{
     stats: ChannelStats;
     week: { sent: number; goal: number | null };
     name: { custom: string | null; network: string };
+    invite: { supported: boolean; reconnecting: boolean };
 }>();
 
 const state = ref<ChannelScheduleState>({ ...props.schedule });
@@ -351,6 +355,38 @@ const disconnectDialog = ref<InstanceType<
 
 const disconnect = (): void => {
     disconnectDialog.value?.open(props.channel);
+};
+
+// "Ask the account owner to connect": a link that works once, for an hour.
+const inviteHttp = useHttp<Record<string, never>, { url: string }>({});
+const inviteUrl = ref('');
+const inviteOpen = ref(false);
+const inviteLoading = ref(false);
+
+const copyInvite = async (): Promise<void> => {
+    inviteLoading.value = true;
+
+    try {
+        const response = await inviteHttp.post(
+            storeConnectInvite.url(props.channel.id),
+        );
+
+        inviteUrl.value = response.url;
+    } catch {
+        toast.error(trans('socialhq.channels.invite.failed'));
+
+        return;
+    } finally {
+        inviteLoading.value = false;
+    }
+
+    try {
+        await navigator.clipboard.writeText(inviteUrl.value);
+        toast.success(trans('socialhq.channels.invite.copied'));
+    } catch {
+        // The browser refused to copy after the request: show the link instead.
+        inviteOpen.value = true;
+    }
 };
 
 const composeUrl = computed(() =>
@@ -695,6 +731,28 @@ const composeUrl = computed(() =>
                         </Button>
                     </ChannelSettingRow>
                     <ChannelSettingRow
+                        v-if="invite.supported"
+                        :icon="IconLink"
+                        :title="$t('socialhq.channels.invite.title')"
+                        :description="
+                            invite.reconnecting
+                                ? $t(
+                                      'socialhq.channels.invite.description_reconnect',
+                                  )
+                                : $t('socialhq.channels.invite.description')
+                        "
+                        testid="channel-row-invite"
+                    >
+                        <Button
+                            variant="outline"
+                            :loading="inviteLoading"
+                            data-testid="channel-invite-copy"
+                            @click="copyInvite"
+                        >
+                            {{ $t('socialhq.channels.invite.action') }}
+                        </Button>
+                    </ChannelSettingRow>
+                    <ChannelSettingRow
                         v-if="canLinkFacebook"
                         :icon="IconBrandFacebook"
                         :title="$t('channels.link_facebook_page')"
@@ -756,6 +814,7 @@ const composeUrl = computed(() =>
             :network-name="name.network"
             :network-label="networkLabel"
         />
+        <ChannelInviteDialog v-model:open="inviteOpen" :url="inviteUrl" />
         <DisconnectChannelDialog
             ref="disconnectDialog"
             :keyword="$t('channels.disconnect_modal.keyword')"

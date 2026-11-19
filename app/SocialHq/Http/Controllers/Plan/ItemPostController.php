@@ -10,12 +10,14 @@ use App\Models\Media;
 use App\SocialHq\Plan\CreatePostFromItem;
 use App\SocialHq\Plan\PlanAccess;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
  * "Create post": prepares the composer draft of an approved item (copy,
  * final media its format takes, date, posting time and channel, and the names
  * of the files left out). The page opens TryPost's composer with it.
+ * Approvers can let an item's post go out text-only, without its creative.
  */
 class ItemPostController extends Controller
 {
@@ -32,5 +34,19 @@ class ItemPostController extends Controller
             'scheduled_at' => $draft['scheduled_at'],
             'social_account_id' => $draft['social_account_id'],
         ]);
+    }
+
+    public function waiveCreative(Request $request, int $item): RedirectResponse
+    {
+        CreatePostFromItem::waiveCreative(PlanAccess::item($request, $item, approve: true), $request->user());
+
+        return back();
+    }
+
+    public function requireCreative(Request $request, int $item): RedirectResponse
+    {
+        CreatePostFromItem::waiveCreative(PlanAccess::item($request, $item, approve: true), $request->user(), waive: false);
+
+        return back();
     }
 }

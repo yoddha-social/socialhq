@@ -105,28 +105,27 @@ function cardActionsPost(User $user, Workspace $workspace, SocialAccount $channe
     ])->first();
 }
 
-test('a queued card shows publish now, edit and the menu in order', function () {
+// Social HQ: "Publish now" moved from the card into its menu (QA 2026-11-18 P1-3).
+test('a queued card shows edit and the menu in order, with publish now in the menu', function () {
     [$user, $workspace, $channel] = cardActionsSetup();
     $queued = cardActionsPost($user, $workspace, $channel);
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForCardActionsTestId($page, "post-publish-now-{$queued->id}");
+    waitForCardActionsTestId($page, "post-edit-{$queued->id}");
 
     $footer = $page->script(<<<JS
-        Array.from(document.querySelector('[data-testid="post-publish-now-{$queued->id}"]').parentElement.children)
+        Array.from(document.querySelector('[data-testid="post-edit-{$queued->id}"]').parentElement.children)
             .map((element) => element.dataset.testid ?? element.querySelector('[data-testid]')?.dataset.testid)
     JS);
 
     expect($footer)->toBe([
         "post-notes-trigger-{$queued->id}",
-        "post-publish-now-{$queued->id}",
         "post-edit-{$queued->id}",
         "post-card-menu-{$queued->id}",
     ])
-        ->and($page->script("!!document.querySelector('[data-testid=\"post-publish-now-{$queued->id}\"] svg')"))->toBeTrue()
         ->and($page->script(<<<JS
-            ['post-publish-now', 'post-edit', 'post-card-menu']
+            ['post-edit', 'post-card-menu']
                 .every((id) => document.querySelector(`[data-testid="\${id}-{$queued->id}"]`).classList.contains('border-border-strong'))
         JS))->toBeTrue()
         ->and($page->script(<<<JS
@@ -136,11 +135,10 @@ test('a queued card shows publish now, edit and the menu in order', function () 
             })
         JS))->toBeTrue();
 
-    $page->assertSeeIn("@post-publish-now-{$queued->id}", __('posts.publish.actions.publish_now'));
-
     openCardActionsMenu($page, $queued->id);
 
     expect(cardActionsMenuItems($page, $queued->id))->toBe([
+        'post-publish-now',
         'post-move-drafts',
         'post-duplicate',
         'post-recurrence-open',
@@ -153,7 +151,8 @@ test('a queued card shows publish now, edit and the menu in order', function () 
         'post-delete',
     ]);
 
-    $page->assertSeeIn("@post-move-drafts-{$queued->id}", __('posts.publish.actions.move_to_drafts'))
+    $page->assertSeeIn("@post-publish-now-{$queued->id}", __('posts.publish.actions.publish_now'))
+        ->assertSeeIn("@post-move-drafts-{$queued->id}", __('posts.publish.actions.move_to_drafts'))
         ->assertSeeIn("@post-duplicate-{$queued->id}", __('posts.publish.actions.duplicate'))
         ->assertSeeIn("@post-details-open-{$queued->id}", __('posts.show.title'))
         ->assertSeeIn("@post-delete-{$queued->id}", __('posts.publish.actions.delete'))
@@ -169,7 +168,7 @@ test('publish now on a queued card sends the post', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForCardActionsTestId($page, "post-publish-now-{$queued->id}");
+    openCardActionsMenu($page, $queued->id);
     $page->click("@post-publish-now-{$queued->id}");
 
     for ($attempt = 0; $attempt < 50 && $queued->refresh()->status !== PostStatus::Publishing; $attempt++) {

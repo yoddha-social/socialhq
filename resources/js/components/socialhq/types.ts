@@ -6,6 +6,7 @@ import type { CalendarEventMarker } from '@/components/socialhq/plan/eventStyles
  */
 export interface SocialHqSharedProps {
     approvals: { membersAlwaysReviewed: boolean };
+    publishNow: { confirm: boolean };
     aiGraphics: {
         available: boolean;
         maxReferences: number;
@@ -19,6 +20,8 @@ export interface SocialHqSharedProps {
         pendingRequests: number;
     };
     platform: { admin: boolean; pendingCompanies: number };
+    /** Reviews and change requests waiting for this person (the sidebar's "Waiting for you"). */
+    inbox: { count: number };
 }
 
 /** Event markers by day (`YYYY-MM-DD`), on the publish calendar page only. */

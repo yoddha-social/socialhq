@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { router, useForm, useHttp, usePage } from '@inertiajs/vue3';
 import {
+    IconAlertTriangle,
     IconCheck,
     IconLoader2,
     IconLock,
@@ -18,6 +19,7 @@ import type {
     PlanAbilities,
     PlanItemDetail,
 } from '@/components/socialhq/plan/item/types';
+import UnsupportedDetailsNote from '@/components/socialhq/plan/UnsupportedDetailsNote.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -102,6 +104,11 @@ const isLocked = computed(
     () => props.item.copy_status === 'approved' && !unlocked.value,
 );
 const isInReview = computed(() => props.item.copy_status === 'in_review');
+
+/** Copy with gaps in square brackets can't be approved (the server refuses it too). */
+const latestHasGaps = computed(
+    () => (props.latest?.placeholders.length ?? 0) > 0,
+);
 
 const captionLength = computed(() => characterCount(form.caption));
 const overBy = computed(() =>
@@ -193,7 +200,9 @@ const writeCopyWithAi = async (): Promise<void> => {
         }
 
         aiHttp.instruction = '';
-        router.reload({ only: ['item', 'versions', 'thread'] });
+        router.reload({
+            only: ['item', 'versions', 'thread', 'postReady', 'postBlockers'],
+        });
         toast.success(
             trans('socialhq_production.item.copy.ai_written', {
                 number: String(result.number),
@@ -520,6 +529,39 @@ const confirmDecision = (note: string): void => {
         </form>
 
         <div
+            v-if="latest && !hasChanges && latest.placeholders.length > 0"
+            id="socialhq-copy-placeholders"
+            class="mx-5 mb-4 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-foreground"
+            role="status"
+            data-testid="item-copy-placeholders"
+        >
+            <IconAlertTriangle
+                class="mt-0.5 size-4 shrink-0 text-warning"
+                aria-hidden="true"
+            />
+            <span>
+                {{
+                    $t('socialhq_production.item.copy.placeholders', {
+                        gaps: latest.placeholders.join(', '),
+                    })
+                }}
+            </span>
+        </div>
+        <UnsupportedDetailsNote
+            v-if="
+                latest &&
+                !hasChanges &&
+                latest.unsupported_details.length > 0 &&
+                item.copy_status !== 'approved'
+            "
+            class="mx-5 mb-4"
+            :details="latest.unsupported_details"
+            :title="$t('socialhq_production.item.copy.unsupported_title')"
+            :body="$t('socialhq_production.item.copy.unsupported_body')"
+            data-testid="item-copy-unsupported"
+        />
+
+        <div
             class="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-2 rounded-b-xl border-t bg-card/95 px-5 py-3 backdrop-blur"
             data-testid="item-copy-actions"
         >
@@ -572,6 +614,12 @@ const confirmDecision = (note: string): void => {
                         }}
                     </Button>
                     <Button
+                        :disabled="latestHasGaps"
+                        :aria-describedby="
+                            latestHasGaps
+                                ? 'socialhq-copy-placeholders'
+                                : undefined
+                        "
                         data-testid="item-copy-approve"
                         @click="openApprove"
                     >

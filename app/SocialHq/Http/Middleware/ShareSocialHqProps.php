@@ -11,6 +11,7 @@ use App\SocialHq\Approval\ApprovalRules;
 use App\SocialHq\Companies\CompanyRequests;
 use App\SocialHq\Companies\CompanySignup;
 use App\SocialHq\Companies\PlatformAdmins;
+use App\SocialHq\Inbox\WaitingForYou;
 use App\SocialHq\Signup\AccessRequests;
 use App\SocialHq\Signup\SignupRules;
 use Closure;
@@ -35,6 +36,8 @@ class ShareSocialHqProps
     {
         Inertia::share('socialhq', [
             'approvals' => fn (): array => ['membersAlwaysReviewed' => ApprovalRules::membersAlwaysReviewed()],
+            // Whether "Publish now" asks first (components/socialhq/publishNow.ts).
+            'publishNow' => fn (): array => ['confirm' => (bool) config('socialhq.publish_now.confirm', true)],
             'aiGraphics' => fn (): array => [
                 'available' => (function (): bool {
                     $user = auth()->user();
@@ -61,6 +64,13 @@ class ShareSocialHqProps
                     // 0 for anyone who can't decide (the workspace menu and the Members banner read it).
                     'pendingRequests' => auth()->user() instanceof User ? AccessRequests::pendingCountFor(auth()->user()) : 0,
                 ];
+            },
+            // The sidebar's "Waiting for you" count: reviews and change requests for this person.
+            'inbox' => function (): array {
+                $user = auth()->user();
+                $workspace = $user instanceof User ? $user->currentWorkspace : null;
+
+                return ['count' => $workspace === null ? 0 : WaitingForYou::count($user, $workspace)];
             },
             // The platform admin link in the user menu, with the requests waiting for a decision.
             'platform' => function (): array {

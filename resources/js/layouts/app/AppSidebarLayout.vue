@@ -14,6 +14,7 @@ import ConnectChannelDialog from '@/components/channels/ConnectChannelDialog.vue
 import CommandPalette from '@/components/command-palette/CommandPalette.vue';
 import GlobalPostComposer from '@/components/posts/composer/GlobalPostComposer.vue';
 import ReferralSourceSurvey from '@/components/ReferralSourceSurvey.vue';
+import PublishNowConfirmDialog from '@/components/socialhq/PublishNowConfirmDialog.vue';
 import Toast from '@/components/Toast.vue';
 import {
     SidebarInset,
@@ -138,6 +139,7 @@ const skipToContent = (): void => {
         </SidebarInset>
     </SidebarProvider>
     <GlobalPostComposer />
+    <PublishNowConfirmDialog />
     <ConnectChannelDialog />
     <ChangelogDialog />
     <CommandPalette />

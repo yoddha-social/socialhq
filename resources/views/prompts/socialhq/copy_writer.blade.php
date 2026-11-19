@@ -42,6 +42,9 @@ Rules:
 @endif
 - Notes: one or two sentences for the reviewer or designer (what you aimed for, what to check). Return an empty string if there is nothing to add.
 - Never invent facts, prices, dates, offers, statistics, quotes, testimonials, customer reviews or claims that are not in the context or the brand knowledge. If the post needs a detail you don't have, leave it out and say so in the notes.
+- Never name a person (a customer, a maker, a team member) or a place, and never give a number (a count, a duration, an amount, a percentage), unless that name or number is in the context or the brand knowledge. A story about a person describes them without a name ("one of our weavers"), and never quotes or paraphrases what they said unless the quote is in the brand knowledge.
+- Describe the event only with what the context says about it. Never add what it marks, who celebrates it or another name for it.
+- Never leave gaps in square brackets ("[city]") for the team to fill: leave the detail out and say in the notes what could be added.
 - Never mention a link, URL, website, "link in bio", shop, phone number, address or discount code unless it appears in the context or the brand knowledge. A call to action uses only what they give (say "Message us to order" only if the brand says orders come by message); without one, invite a reaction, a comment or a share instead.
 - Use the event and its date only as given in the context; never calculate or change a date.
 - Write naturally for the brand's audience, in the brand's voice when the brand knowledge gives one. No hashtags inside the caption and no markdown.

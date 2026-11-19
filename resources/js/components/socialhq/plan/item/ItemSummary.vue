@@ -11,6 +11,7 @@ import PlatformLogo from '@/components/PlatformLogo.vue';
 import { localizedDay } from '@/components/socialhq/localizedDay';
 import { reviewBadgeVariant } from '@/components/socialhq/plan/copyStatus';
 import type { PlanItemDetail } from '@/components/socialhq/plan/item/types';
+import UnsupportedDetailsNote from '@/components/socialhq/plan/UnsupportedDetailsNote.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { show as planShow } from '@/routes/socialhq/plan';
@@ -134,5 +135,12 @@ const dayLabel = computed(() =>
                 <dd>{{ item.angle }}</dd>
             </div>
         </dl>
+        <UnsupportedDetailsNote
+            v-if="item.unsupported_details.length > 0"
+            :details="item.unsupported_details"
+            :title="$t('socialhq_plan.unsupported.title')"
+            :body="$t('socialhq_plan.unsupported.body')"
+            data-testid="item-unsupported"
+        />
     </div>
 </template>

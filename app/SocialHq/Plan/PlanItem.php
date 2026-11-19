@@ -38,6 +38,8 @@ class PlanItem extends Model
             'source' => ItemSource::class,
             'copy_status' => CopyStatus::class,
             'post_created_at' => 'immutable_datetime',
+            'creative_waived_at' => 'immutable_datetime',
+            'unsupported_details' => 'array',
         ];
     }
 
@@ -93,6 +95,16 @@ class PlanItem extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    /**
+     * The approver who let the post go out text-only.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function creativeWaivedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'creative_waived_by');
     }
 
     /**

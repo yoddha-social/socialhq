@@ -14,10 +14,28 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 
-const props = defineProps<{
-    month: string;
-    today: string;
-}>();
+const props = withDefaults(
+    defineProps<{
+        month: string;
+        today: string;
+        /** Months ("YYYY-MM") with a review or change request waiting for the viewer. */
+        waiting?: string[];
+    }>(),
+    { waiting: () => [] },
+);
+
+/** Something waits in a year before or after the one the picker shows. */
+const waitingBefore = computed(() =>
+    props.waiting.some((key) => Number(key.slice(0, 4)) < pickerYear.value),
+);
+const waitingAfter = computed(() =>
+    props.waiting.some((key) => Number(key.slice(0, 4)) > pickerYear.value),
+);
+
+/** Something waits in a month other than the one shown. */
+const waitingElsewhere = computed(() =>
+    props.waiting.some((key) => key !== props.month),
+);
 
 const emit = defineEmits<{
     go: [month: string];
@@ -107,6 +125,15 @@ const nextYear = (): void => {
                     data-testid="plan-month-title"
                 >
                     <span class="truncate">{{ title }}</span>
+                    <span
+                        v-if="waitingElsewhere"
+                        class="size-2 shrink-0 rounded-full bg-primary"
+                        data-testid="plan-month-waiting-elsewhere"
+                    >
+                        <span class="sr-only">{{
+                            $t('socialhq.inbox.month_waiting')
+                        }}</span>
+                    </span>
                     <IconChevronDown
                         class="size-4 shrink-0 text-muted-foreground"
                         aria-hidden="true"
@@ -118,10 +145,20 @@ const nextYear = (): void => {
                     <Button
                         variant="ghost"
                         size="icon"
+                        class="relative"
                         :aria-label="$t('socialhq_plan.month.previous_year')"
                         @click="previousYear"
                     >
                         <IconChevronLeft class="size-4" />
+                        <span
+                            v-if="waitingBefore"
+                            class="absolute end-1 top-1 size-1.5 rounded-full bg-primary"
+                            data-testid="plan-month-waiting-earlier"
+                        >
+                            <span class="sr-only">{{
+                                $t('socialhq.inbox.month_waiting')
+                            }}</span>
+                        </span>
                     </Button>
                     <span class="text-sm font-medium tabular-nums">{{
                         pickerYear
@@ -129,10 +166,20 @@ const nextYear = (): void => {
                     <Button
                         variant="ghost"
                         size="icon"
+                        class="relative"
                         :aria-label="$t('socialhq_plan.month.next_year')"
                         @click="nextYear"
                     >
                         <IconChevronRight class="size-4" />
+                        <span
+                            v-if="waitingAfter"
+                            class="absolute end-1 top-1 size-1.5 rounded-full bg-primary"
+                            data-testid="plan-month-waiting-later"
+                        >
+                            <span class="sr-only">{{
+                                $t('socialhq.inbox.month_waiting')
+                            }}</span>
+                        </span>
                     </Button>
                 </div>
                 <div class="grid grid-cols-3 gap-1">
@@ -154,7 +201,18 @@ const nextYear = (): void => {
                         :data-testid="`plan-month-option-${option.key}`"
                         @click="go(option.key)"
                     >
-                        {{ option.label }}
+                        <span class="relative inline-flex items-center">
+                            {{ option.label }}
+                            <span
+                                v-if="waiting.includes(option.key)"
+                                class="absolute -end-2.5 -top-0.5 size-1.5 rounded-full bg-primary"
+                                :data-testid="`plan-month-waiting-${option.key}`"
+                            >
+                                <span class="sr-only">{{
+                                    $t('socialhq.inbox.month_waiting')
+                                }}</span>
+                            </span>
+                        </span>
                     </button>
                 </div>
             </PopoverContent>

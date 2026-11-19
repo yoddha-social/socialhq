@@ -82,7 +82,7 @@ const isQueued = computed(
                     :data-testid="`post-card-menu-content-${testKey}`"
                 >
                     <DropdownMenuItem
-                        v-if="isDraft && canPublishDirectly"
+                        v-if="(isDraft || (isScheduled && details)) && canPublishDirectly"
                         :data-testid="`post-publish-now-${testKey}`"
                         @click="emit('select', 'publish_now')"
                     >

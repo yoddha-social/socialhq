@@ -81,10 +81,16 @@ class GeneratePlanSuggestions implements ShouldQueue
 
         $today = CarbonImmutable::createFromFormat('!Y-m-d', CarbonImmutable::now(Timezone::normalize($user->timezone))->toDateString(), 'UTC');
 
+        $context = [];
+
         try {
             // The job has no signed-in user: the plan's workspace decides whose AI it uses.
-            $response = AiTenant::run($plan->workspace, fn () => (new ContentPlanner($user->locale ?? Locale::DEFAULT))
-                ->prompt(json_encode(PlannerContext::build($plan, $today, $user->timezone), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)));
+            $response = AiTenant::run($plan->workspace, function () use ($plan, $today, $user, &$context) {
+                $context = PlannerContext::build($plan, $today, $user->timezone);
+
+                return (new ContentPlanner($user->locale ?? Locale::DEFAULT))
+                    ->prompt(json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+            });
         } catch (AiUnavailableException $exception) {
             // No AI set up for the company is a configuration state, not an error to report.
             if (! $exception->isConfigurationState()) {
@@ -110,7 +116,7 @@ class GeneratePlanSuggestions implements ShouldQueue
             return;
         }
 
-        DB::transaction(function () use ($items, $response, $today, $user): void {
+        DB::transaction(function () use ($items, $response, $today, $user, $context): void {
             // Read again under a lock: an approval, an item change or a newer run may have come while the AI worked.
             $plan = ContentPlan::query()->with('workspace')->lockForUpdate()->find($this->planId);
 
@@ -126,13 +132,19 @@ class GeneratePlanSuggestions implements ShouldQueue
             self::replaceableSuggestions($plan, $options)->delete();
 
             $positions = [];
+            // Names and numbers the planner wrote that its sources don't have, for the team to check.
+            $sources = UnsupportedDetails::against(UnsupportedDetails::sourceText($context));
 
             foreach ($accepted as $attributes) {
                 $day = $attributes['scheduled_on'];
                 $positions[$day] ??= (int) $plan->items()->whereDate('scheduled_on', $day)->max('position');
                 $positions[$day]++;
 
-                $plan->items()->create([...$attributes, 'position' => $positions[$day]]);
+                $plan->items()->create([
+                    ...$attributes,
+                    'position' => $positions[$day],
+                    'unsupported_details' => $sources->in(trim("{$attributes['objective']}\n{$attributes['angle']}")) ?: null,
+                ]);
             }
 
             $plan->forceFill([

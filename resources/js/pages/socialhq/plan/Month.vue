@@ -69,6 +69,8 @@ import { accept as acceptSuggestions } from '@/routes/socialhq/plan/suggestions'
 
 const props = defineProps<{
     month: string;
+    /** Months with a review or change request waiting for the viewer. */
+    waitingMonths: string[];
     today: string;
     plan: PlanData | null;
     items: PlanItem[];
@@ -373,6 +375,7 @@ const openBrandSettings = (): void => {
                 <PlanMonthSwitcher
                     :month="month"
                     :today="today"
+                    :waiting="waitingMonths"
                     @go="goToMonth"
                 />
                 <PlanViewToggle

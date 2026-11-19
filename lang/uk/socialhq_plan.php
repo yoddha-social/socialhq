@@ -142,6 +142,11 @@ return [
     'event' => [
         'needs_check' => 'Needs check',
     ],
+    'unsupported' => [
+        'title' => 'Check these before writing',
+        'body' => 'The AI planner wrote these names, numbers or quotes, but they aren\'t in your brand knowledge, events or past posts. Change the angle if they aren\'t true.',
+    ],
+
     'sheet' => [
         'add_title' => 'New item',
         'edit_title' => 'Edit item',

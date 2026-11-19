@@ -98,6 +98,17 @@ test('save-plan-item-copy-tool adds an AI version in draft and accepts the sugge
         ->and($item->latestVersion->created_by)->toBe($this->owner->id);
 });
 
+test('save-plan-item-copy-tool flags what the item and brand knowledge don\'t say, and reports gaps', function () {
+    TryPostServer::actingAs($this->owner)->tool(SavePlanItemCopyTool::class, ['item_id' => $this->item->id, 'caption' => 'Momos from our chef Ramesh, made in [city].'])
+        ->assertHasNoErrors()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json
+            ->where('latest_copy.placeholders', ['[city]'])
+            ->where('latest_copy.unsupported_details', ['Ramesh'])
+            ->etc());
+
+    expect($this->item->fresh()->latestVersion->unsupported_details)->toBe(['Ramesh']);
+});
+
 test('save-plan-item-copy-tool never replaces copy that is in review or approved', function (CopyStatus $status) {
     ItemVersion::factory()->for($this->item, 'item')->create(['number' => 1, 'caption' => 'Reviewed', 'created_by' => $this->owner->id]);
     $this->item->update(['copy_status' => $status]);

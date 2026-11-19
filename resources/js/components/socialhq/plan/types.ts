@@ -43,6 +43,8 @@ export interface PlanItem {
     title: string;
     objective: string | null;
     angle: string | null;
+    /** Names and numbers the AI planner wrote that its sources don't contain. */
+    unsupported_details: string[];
     event_id: number | null;
     owner_id: string | null;
     /** "HH:MM" on the item's day in suggested_timezone, or null. */

@@ -15,7 +15,6 @@ import {
     IconPencil,
     IconPlayerPlayFilled,
     IconRepeat,
-    IconSend,
     IconX,
 } from '@tabler/icons-vue';
 import { type Component, computed, inject, ref, watch } from 'vue';
@@ -112,7 +111,7 @@ const emit = defineEmits<{
 const MAX_THUMBNAILS = 4;
 
 const page = usePage();
-const { canApprove, canCreatePost, canPublishDirectly } =
+const { canApprove, canCreatePost } =
     useWorkspaceAbilities();
 const deletePost = inject(deletePostCardKey, () => {});
 const editUrl = inject(editPostCardUrlKey, (post: PostCard) =>
@@ -816,15 +815,6 @@ defineExpose({ openDetails });
                                 }}
                             </TooltipContent>
                         </Tooltip>
-                        <Button
-                            v-if="canPublishDirectly && post.status === PostStatus.Scheduled"
-                            variant="outline"
-                            :data-testid="`post-publish-now-${post.id}`"
-                            @click="schedulePostCard(post.id, 'publish_now')"
-                        >
-                            <IconSend class="size-4" />
-                            {{ $t('posts.publish.actions.publish_now') }}
-                        </Button>
                         <Tooltip v-if="canCreatePost && isEditable">
                             <TooltipTrigger as-child>
                                 <Button

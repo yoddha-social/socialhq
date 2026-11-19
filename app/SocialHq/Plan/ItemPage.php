@@ -25,7 +25,7 @@ final class ItemPage
      */
     public static function props(PlanItem $item, User $user, Workspace $workspace): array
     {
-        $item->load(['plan', 'owner.avatarMedia', 'event', 'socialAccount', 'versions.author.avatarMedia', 'reviews.user.avatarMedia', 'reviews.version', 'brief.assignee.avatarMedia', 'brief.files.uploader.avatarMedia']);
+        $item->load(['plan', 'owner.avatarMedia', 'event', 'socialAccount', 'versions.author.avatarMedia', 'reviews.user.avatarMedia', 'reviews.version', 'brief.assignee.avatarMedia', 'brief.files.uploader.avatarMedia', 'creativeWaivedBy.avatarMedia']);
 
         return [
             'item' => self::item($item),
@@ -35,6 +35,11 @@ final class ItemPage
             'briefKind' => $item->creative->briefKind()?->value,
             'team' => BriefTeam::members($workspace)->map(fn (User $member): ?array => self::person($member))->values()->all(),
             'postReady' => CreatePostFromItem::isReady($item),
+            'postBlockers' => CreatePostFromItem::blockers($item),
+            'creativeWaiver' => $item->creative_waived_at === null ? null : [
+                'at' => $item->creative_waived_at->toIso8601String(),
+                'by' => self::person($item->creativeWaivedBy),
+            ],
             'abilities' => PlanAccess::abilities($user, $workspace),
             'aiAvailable' => AiResponses::isUsable(AiTask::Write, $user, $workspace),
         ];
@@ -86,6 +91,7 @@ final class ItemPage
             'pillar' => $item->pillar,
             'objective' => $item->objective,
             'angle' => $item->angle,
+            'unsupported_details' => array_values((array) $item->unsupported_details),
             'status' => $item->status->value,
             'copy_status' => $item->copy_status->value,
             'post_created_at' => $item->post_created_at?->toIso8601String(),
@@ -168,6 +174,8 @@ final class ItemPage
             'script' => $version->script,
             'notes' => $version->notes,
             'source' => $version->source->value,
+            'unsupported_details' => array_values((array) $version->unsupported_details),
+            'placeholders' => Placeholders::inVersion($version),
             'author' => self::person($version->author),
             'created_at' => $version->created_at?->toIso8601String(),
         ];

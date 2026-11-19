@@ -11,9 +11,11 @@ import ReviewThread from '@/components/socialhq/plan/item/ReviewThread.vue';
 import type {
     BriefDetail,
     CopyVersion,
+    CreativeWaiver,
     PlanAbilities,
     PlanItemDetail,
     PlanPerson,
+    PostBlocker,
     ReviewEntry,
 } from '@/components/socialhq/plan/item/types';
 import VersionHistory from '@/components/socialhq/plan/item/VersionHistory.vue';
@@ -29,6 +31,8 @@ const props = defineProps<{
     briefKind: 'graphic' | 'video' | null;
     team: PlanPerson[];
     postReady: boolean;
+    postBlockers: PostBlocker[];
+    creativeWaiver: CreativeWaiver | null;
     abilities: PlanAbilities;
     aiAvailable: boolean;
 }>();
@@ -95,6 +99,10 @@ const useVersion = (version: CopyVersion): void => {
                     <CreatePostCard
                         :item="item"
                         :ready="postReady"
+                        :blockers="postBlockers"
+                        :waiver="creativeWaiver"
+                        :has-creative="briefKind !== null"
+                        :creative-approved="brief?.stage === 'approved'"
                         :abilities="abilities"
                     />
                     <ReviewThread

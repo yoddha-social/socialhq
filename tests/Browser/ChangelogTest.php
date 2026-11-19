@@ -418,12 +418,17 @@ test('a browser Back between two entries of the same page closes the modal too',
     ChangelogEntry::factory()->create(['slug' => '2026-10-13-same', 'published_on' => today()->subYear()]);
 
     $this->actingAs($user->fresh());
+    $insightsPath = route('app.insights', absolute: false);
 
-    $page = visit(route('app.calendar'))->navigate(route('app.calendar'))->resize(1280, 900);
+    // Social HQ: the two entries are made on a page reached by a click in the app. Inertia writes
+    // that entry's state before it shows the page; on a page loaded by its address the state can
+    // still be missing seconds later on CI, and Back onto such an entry closes nothing
+    // (PATCHES.md row 227).
+    $page = visit(route('app.calendar'))->resize(1280, 900);
     waitForChangelogTestId($page, 'sidebar-workspace-menu');
-    // Social HQ: Inertia writes the entry's state a moment after the sidebar shows. Pushed before
-    // that, the copy takes the state and Back lands on an entry Inertia ignores (PATCHES.md row 227).
-    waitForChangelogCondition($page, 'Boolean(window.history.state?.page)');
+    $page->script("document.querySelector('[data-testid=\"nav-{$insightsPath}\"]').click()");
+    waitForChangelogCondition($page, "location.pathname === '{$insightsPath}' && Boolean(window.history.state?.page)");
+    $page->assertScript('Boolean(window.history.state?.page)', true);
     $page->script('window.history.pushState(window.history.state, "", location.href)');
 
     openChangelogHelpMenu($page);
@@ -433,7 +438,7 @@ test('a browser Back between two entries of the same page closes the modal too',
     $page->back();
     waitForChangelogTestIdGone($page, 'changelog-dialog');
 
-    $page->assertPathIs(route('app.calendar', absolute: false))
+    $page->assertPathIs($insightsPath)
         ->assertMissing('@changelog-dialog')
         ->assertNoJavaScriptErrors();
 });

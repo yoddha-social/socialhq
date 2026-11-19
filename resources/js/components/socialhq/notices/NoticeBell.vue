@@ -1,17 +1,15 @@
 <script setup lang="ts">
-import { Link, router, useHttp, usePage } from '@inertiajs/vue3';
-import { useEcho } from '@laravel/echo-vue';
+import { Link } from '@inertiajs/vue3';
 import { IconBell } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, ref, watch } from 'vue';
-import { toast } from 'vue-sonner';
+import { computed, watch } from 'vue';
 
 import NoticeRow from '@/components/socialhq/notices/NoticeRow.vue';
-import type {
-    NoticeItem,
-    NoticeList,
-    NoticeShare,
-} from '@/components/socialhq/notices/notices';
+import type { NoticeItem } from '@/components/socialhq/notices/notices';
+import {
+    noticeState,
+    useNotices,
+} from '@/components/socialhq/notices/useNotices';
 import {
     Popover,
     PopoverContent,
@@ -19,69 +17,20 @@ import {
 } from '@/components/ui/popover';
 import dayjs from '@/dayjs';
 import { preferences } from '@/routes/app/notifications';
-import { index, read } from '@/routes/socialhq/notices';
 
-const props = defineProps<{
-    share: NoticeShare;
-}>();
+const { load, markRead } = useNotices();
 
-const page = usePage();
-
-const open = ref(false);
-const loading = ref(false);
-const failed = ref(false);
-const notices = ref<NoticeItem[] | null>(null);
-const unread = ref(props.share.unread);
-
-watch(
-    () => props.share.unread,
-    (value) => {
-        unread.value = value;
+const open = computed({
+    get: () => noticeState.panelOpen,
+    set: (value: boolean) => {
+        noticeState.panelOpen = value;
     },
-);
+});
 
-const listHttp = useHttp<Record<string, never>, NoticeList>({});
-const readHttp = useHttp<{ ids?: number[] }, { unread: number }>({});
-
-const load = async (): Promise<NoticeList | null> => {
-    loading.value = true;
-    failed.value = false;
-
-    try {
-        const list = await listHttp.get(index.url());
-
-        notices.value = list.notices;
-        unread.value = list.unread;
-
-        return list;
-    } catch {
-        failed.value = true;
-
-        return null;
-    } finally {
-        loading.value = false;
-    }
-};
-
-const markRead = async (ids?: number[]): Promise<void> => {
-    const wanted = (notice: NoticeItem): boolean =>
-        ids === undefined || ids.includes(notice.id);
-
-    notices.value =
-        notices.value?.map((notice) =>
-            wanted(notice) ? { ...notice, read: true } : notice,
-        ) ?? null;
-
-    try {
-        const answer = await readHttp
-            .transform(() => (ids === undefined ? {} : { ids }))
-            .post(read.url());
-
-        unread.value = answer.unread;
-    } catch {
-        // The count is right again on the next page or the next time the bell opens.
-    }
-};
+const unread = computed(() => noticeState.unread);
+const notices = computed(() => noticeState.notices);
+const loading = computed(() => noticeState.loading);
+const failed = computed(() => noticeState.failed);
 
 const markAllRead = (): void => {
     void markRead();
@@ -119,63 +68,6 @@ const groups = computed(() =>
 
 const badge = computed(() => (unread.value > 99 ? '99+' : unread.value));
 
-/**
- * A notice written while the app is open: the count goes up, and a tab the
- * person is looking at shows it in the corner, which counts as seen.
- */
-const currentWorkspaceId = computed(
-    () =>
-        (page.props.auth as { user?: { current_workspace_id?: string } })?.user
-            ?.current_workspace_id ?? null,
-);
-
-const showLive = async (id: number): Promise<void> => {
-    const list = await load();
-    const notice = list?.notices.find((item) => item.id === id);
-
-    if (!notice || document.visibilityState !== 'visible' || open.value) {
-        return;
-    }
-
-    const action = notice.actions[0];
-
-    toast(notice.title, {
-        description: notice.body || undefined,
-        position: 'bottom-right',
-        duration: 8000,
-        action: action
-            ? {
-                  label: action.label,
-                  onClick: () => {
-                      if (action.external) {
-                          window.open(action.href, '_blank', 'noopener');
-                      } else {
-                          router.visit(action.href);
-                      }
-                  },
-              }
-            : undefined,
-    });
-
-    void markRead([notice.id]);
-};
-
-useEcho<{ id: number; workspace_id: string }>(
-    props.share.channel,
-    '.notice.created',
-    (payload) => {
-        if (
-            currentWorkspaceId.value !== null &&
-            payload.workspace_id !== currentWorkspaceId.value
-        ) {
-            return;
-        }
-
-        unread.value += 1;
-        void showLive(payload.id);
-    },
-);
-
 const label = computed(() =>
     unread.value > 0
         ? `${trans('socialhq.notices.open')} (${trans('socialhq.notices.unread', { count: String(unread.value) })})`
@@ -206,6 +98,7 @@ const label = computed(() =>
             :side-offset="8"
             class="w-[400px] max-w-[calc(100vw-1rem)] rounded-xl p-0 shadow-xl"
             data-testid="notice-panel"
+            @open-auto-focus.prevent
         >
             <div
                 class="flex items-center justify-between gap-2 border-b border-border px-4 py-3"

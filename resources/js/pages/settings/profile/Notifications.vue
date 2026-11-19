@@ -28,11 +28,11 @@ const props = defineProps<{
 }>();
 
 const fields: PreferenceField[] = [
-    'post_published',
     'post_failed',
-    'account_disconnected',
-    'post_note_added',
     'collaboration',
+    'account_disconnected',
+    'post_published',
+    'post_note_added',
 ];
 
 const values = ref<Preferences>(
@@ -139,7 +139,7 @@ const toggleLive = (value: boolean): void => {
 
     <SettingsLayout :title="$t('settings.notifications.title')">
         <SettingsSection
-            :title="$t('settings.notifications.heading')"
+            :title="$t('socialhq.notices.preferences.heading')"
             :description="$t('socialhq.notices.preferences.description')"
         >
             <div
@@ -167,17 +167,19 @@ const toggleLive = (value: boolean): void => {
                             :for="field"
                             class="text-sm leading-tight font-emphasis"
                         >
-                            {{ $t(`settings.notifications.${field}`) }}
+                            {{ $t(`socialhq.notices.preferences.rows.${field}.title`) }}
                         </Label>
                         <p class="text-[13px] text-muted-foreground">
-                            {{ $t(`settings.notifications.${field}_description`) }}
+                            {{ $t(
+                                    `socialhq.notices.preferences.rows.${field}.description`,
+                                ) }}
                         </p>
                     </div>
                     <span class="flex justify-center">
                         <Switch
                             :model-value="inApp?.[field] ?? true"
                             :disabled="inApp === null"
-                            :aria-label="`${$t(`settings.notifications.${field}`)}: ${$t('socialhq.notices.preferences.in_app')}`"
+                            :aria-label="`${$t(`socialhq.notices.preferences.rows.${field}.title`)}: ${$t('socialhq.notices.preferences.in_app')}`"
                             :data-testid="`notifications-app-${field}`"
                             @update:model-value="
                                 toggleInApp(field, Boolean($event))

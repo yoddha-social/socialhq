@@ -333,6 +333,14 @@ return [
             'review' => 'Review',
         ],
         'preferences' => [
+            'heading' => 'What reaches you',
+            'rows' => [
+                'post_failed' => ['title' => 'Post failed', 'description' => 'With the reason, and a button to open the post.'],
+                'collaboration' => ['title' => 'Approval requests and decisions', 'description' => 'Posts waiting for your approval, and what was decided about yours.'],
+                'account_disconnected' => ['title' => 'Channel needs reconnecting', 'description' => 'In the app, at most one reminder a day per channel.'],
+                'post_published' => ['title' => 'Post published', 'description' => 'With a link to the post on the network.'],
+                'post_note_added' => ['title' => 'New note on a post', 'description' => 'When someone leaves a note on a post you can see.'],
+            ],
             'event' => 'Event',
             'in_app' => 'In the app',
             'email' => 'Email',

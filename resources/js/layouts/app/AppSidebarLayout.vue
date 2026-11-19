@@ -3,8 +3,8 @@ let compactSidebarOpen: boolean | null = null;
 </script>
 
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
-import { ref, watch } from 'vue';
+import { Link, usePage } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
 
 import AppHeader from '@/components/AppHeader.vue';
 import AppLogo from '@/components/AppLogo.vue';
@@ -14,6 +14,8 @@ import ConnectChannelDialog from '@/components/channels/ConnectChannelDialog.vue
 import CommandPalette from '@/components/command-palette/CommandPalette.vue';
 import GlobalPostComposer from '@/components/posts/composer/GlobalPostComposer.vue';
 import ReferralSourceSurvey from '@/components/ReferralSourceSurvey.vue';
+import NoticeLive from '@/components/socialhq/notices/NoticeLive.vue';
+import type { NoticeShare } from '@/components/socialhq/notices/notices';
 import PublishNowConfirmDialog from '@/components/socialhq/PublishNowConfirmDialog.vue';
 import Toast from '@/components/Toast.vue';
 import {
@@ -32,6 +34,14 @@ type Props = {
 withDefaults(defineProps<Props>(), {
     fullWidth: false,
 });
+
+// Social HQ: what the notification bell shares (PATCHES.md row 229).
+const noticeShare = computed(
+    () =>
+        (usePage().props.socialhq as { notices?: NoticeShare | null } | undefined)
+            ?.notices ?? null,
+);
+
 
 const readSidebarOpen = (): boolean => {
     if (typeof document === 'undefined') {
@@ -140,6 +150,8 @@ const skipToContent = (): void => {
     </SidebarProvider>
     <GlobalPostComposer />
     <PublishNowConfirmDialog />
+    <!-- Social HQ: new notices arrive on every page, with or without a header (PATCHES.md row 229) -->
+    <NoticeLive v-if="noticeShare" :share="noticeShare" />
     <ConnectChannelDialog />
     <ChangelogDialog />
     <CommandPalette />

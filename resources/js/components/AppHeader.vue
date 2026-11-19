@@ -26,7 +26,7 @@ const notices = computed(
         <div class="flex shrink-0 items-center gap-2">
             <div id="app-header-actions" class="contents" />
             <slot name="right" />
-            <NoticeBell v-if="notices" :share="notices" />
+            <NoticeBell v-if="notices" />
         </div>
     </header>
 </template>

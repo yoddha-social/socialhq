@@ -204,6 +204,18 @@ class Notices
     }
 
     /**
+     * The owner of a network account connected it through a link this admin
+     * sent. Always shown: the admin asked for it, so no switch turns it off.
+     */
+    public static function channelConnected(User $inviter, SocialAccount $account): void
+    {
+        self::record($inviter, NoticeKind::ChannelConnected, $account->workspace_id, [
+            'channel' => $account->display_label,
+            'platform' => $account->platform->value,
+        ], null, $account->id);
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
     private static function record(User $user, NoticeKind $kind, string $workspaceId, array $data, ?string $postId = null, ?string $accountId = null): void

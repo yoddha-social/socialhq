@@ -19,12 +19,14 @@ use App\SocialHq\AiGraphics\AiGraphicResults;
 use App\SocialHq\AiGraphics\AiGraphics;
 use App\SocialHq\AiGraphics\PruneAiGraphicResultsCommand;
 use App\SocialHq\Approval\RecordApprovalEvents;
+use App\SocialHq\Channels\ConnectInvite;
 use App\SocialHq\Companies\CompanyRequests;
 use App\SocialHq\Companies\PlatformAdminCommand;
 use App\SocialHq\Companies\PlatformAdmins;
 use App\SocialHq\Errors\ErrorPages;
 use App\SocialHq\Events\ImportEventsCommand;
 use App\SocialHq\Http\Controllers\Plan\PlanGenerationController;
+use App\SocialHq\Http\Middleware\ActAsConnectInviter;
 use App\SocialHq\Http\Middleware\EnsureCompanyApproved;
 use App\SocialHq\Http\Middleware\RedirectWhileAwaitingAccess;
 use App\SocialHq\Http\Middleware\ShareSocialHqProps;
@@ -49,6 +51,7 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Foundation\Exceptions\Handler;
@@ -78,6 +81,10 @@ class SocialHqServiceProvider extends ServiceProvider
 
         // Three Horizon supervisors instead of TryPost's seven (socialhq.horizon).
         CompactHorizon::apply($this->app->make('config'));
+
+        // A connect link's token is in its address: Telescope, when on, keeps no record of it.
+        $config = $this->app->make('config');
+        $config->set('telescope.ignore_paths', [...(array) $config->get('telescope.ignore_paths', []), 'socialhq/connect-invite*']);
 
         // Which company's LiteLLM key AI calls use: decided once per request or job.
         $this->app->scoped(CompanyRouting::class);
@@ -131,6 +138,14 @@ class SocialHqServiceProvider extends ServiceProvider
 
         // 403, 404, 500 and 503 render in the app's style for the browser.
         ErrorPages::register();
+
+        // A guest holding a connect link walks TryPost's connect flow as the admin who sent it,
+        // for that request only. It runs before `auth` (Laravel sorts `auth` ahead of anything
+        // without a priority), and before the checks below, so they judge that admin.
+        $this->app->make(Kernel::class)->appendMiddlewareToGroup('web', ActAsConnectInviter::class);
+        $this->app->make(Kernel::class)->addToMiddlewarePriorityBefore(AuthenticatesRequests::class, ActAsConnectInviter::class);
+        RateLimiter::for('socialhq-connect-invite', fn (Request $request): Limit => Limit::perMinute(30)->by((string) $request->ip()));
+        RateLimiter::for('socialhq-connect-invite-links', fn (Request $request): Limit => Limit::perMinute(10)->by((string) $request->user()?->id));
 
         // People who signed up wait on one page until an admin lets them in.
         $this->app->make(Kernel::class)->appendMiddlewareToGroup('web', RedirectWhileAwaitingAccess::class);
@@ -211,7 +226,7 @@ class SocialHqServiceProvider extends ServiceProvider
 
         // The notification bell: each person hears their own notices, and old ones go after a month.
         Broadcast::channel(NoticeCreated::channelFor('{userId}'), fn (User $user, string $userId): bool => $user->id === $userId);
-        $this->callAfterResolving(Schedule::class, fn (Schedule $schedule) => $schedule->command('model:prune', ['--model' => [Notice::class]])->daily());
+        $this->callAfterResolving(Schedule::class, fn (Schedule $schedule) => $schedule->command('model:prune', ['--model' => [Notice::class, ConnectInvite::class]])->daily());
         $this->callAfterResolving(Schedule::class, fn (Schedule $schedule) => $schedule->command(PruneAiGraphicResultsCommand::class)->daily()->withoutOverlapping());
     }
 }

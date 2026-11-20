@@ -18,12 +18,13 @@ enum NoticeKind: string
     case ApprovalRequested = 'approval_requested';
     case PostApproved = 'post_approved';
     case PostRejected = 'post_rejected';
+    case ChannelConnected = 'channel_connected';
 
     /** The colour family of the notice's icon. */
     public function tone(): string
     {
         return match ($this) {
-            self::PostPublished, self::PostApproved => 'success',
+            self::PostPublished, self::PostApproved, self::ChannelConnected => 'success',
             self::PostFailed, self::ChannelDisconnected => 'danger',
             self::PostsAtRisk, self::ApprovalRequested, self::PostRejected => 'warning',
             self::PostNote => 'info',

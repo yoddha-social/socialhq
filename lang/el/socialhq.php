@@ -325,8 +325,13 @@ return [
             'approval_requested' => ['title' => ':actor asked you to approve a post'],
             'post_approved' => ['title' => ':actor approved your post'],
             'post_rejected' => ['title' => ':actor sent your post back'],
+            'channel_connected' => [
+                'title' => ':channel is connected',
+                'body' => 'Its owner connected it through the link you sent.',
+            ],
         ],
         'actions' => [
+            'open_channel' => 'Open channel',
             'open_post' => 'Open post',
             'view_post' => 'View post',
             'reconnect' => 'Reconnect',
@@ -441,10 +446,66 @@ return [
             'description' => 'Connect this Instagram account through its Facebook Page.',
             'action' => 'Link',
         ],
+        'invite' => [
+            'title' => 'Ask the account owner to connect',
+            'description' => 'A link that works once, for one hour. The account owner signs in, and the channel lands here.',
+            'description_reconnect' => 'A link that works once, for one hour. The account owner signs in, and this channel is reconnected.',
+            'action' => 'Copy link',
+            'copied' => 'Link copied. It works once, for one hour.',
+            'failed' => 'Couldn’t make the link. Try again.',
+            'dialog_title' => 'Send this link to the account owner',
+            'dialog_description' => 'It works once, for one hour. Whoever opens it can connect an account to this workspace, so send it only to the owner.',
+            'copy' => 'Copy',
+            'done' => 'Done',
+        ],
         'disconnect' => [
             'title' => 'Disconnect',
             'description' => 'Deletes this channel’s posts and its queue.',
             'action' => 'Disconnect',
+        ],
+    ],
+
+    // The page a connect link opens, for someone who has no Social HQ login.
+    'connect_invite' => [
+        'page_title' => 'Connect a channel',
+        'intro' => [
+            'title' => 'Connect :channel to :workspace',
+            'title_reconnect' => 'Reconnect :channel for :workspace',
+            'description' => ':inviter asks you to connect :channel to :workspace on Social HQ.',
+            'description_no_inviter' => 'You were asked to connect :channel to :workspace on Social HQ.',
+            'steps' => [
+                'sign_in' => 'You sign in on :network. Social HQ never sees your password.',
+                'pick' => 'You choose which account to connect.',
+                'publish' => 'The :workspace team can then publish to it from Social HQ. You can remove this access on :network at any time.',
+            ],
+            'no_account' => 'You don’t need a Social HQ account.',
+            'continue' => 'Continue to :network',
+        ],
+        'select' => [
+            'title' => 'Choose what to connect',
+            'description' => 'These are the accounts your sign-in to :network offered. :workspace will be able to publish to the ones you pick.',
+            'connected' => 'Connected',
+            'finish' => 'Connect',
+            'pick_one' => 'Pick at least one account.',
+        ],
+        'done' => [
+            'title' => 'Connected',
+            'description' => ':channels is now connected to :workspace. You can close this page.|:channels are now connected to :workspace. You can close this page.',
+            'description_plain' => 'The channel is now connected to :workspace. You can close this page.',
+        ],
+        'expired' => [
+            'title' => 'This link no longer works',
+            'description' => 'A connect link works once, for one hour. Ask the person who sent it for a new one.',
+        ],
+        'signed_in' => [
+            'title' => 'You’re signed in to Social HQ',
+            'description' => 'This link is for someone without a Social HQ account. Connect the channel yourself from Channels, or open the link in a private window.',
+        ],
+        'error' => [
+            'title' => 'The channel wasn’t connected',
+            'cancelled' => 'You left :network before allowing access. Nothing was connected.',
+            'generic' => ':network didn’t connect. Nothing was changed.',
+            'retry' => 'Try again',
         ],
     ],
 

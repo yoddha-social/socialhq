@@ -22,11 +22,22 @@ use App\SocialHq\Http\Controllers\BrandKnowledgeController;
 use App\SocialHq\Http\Controllers\ChannelNameController;
 use App\SocialHq\Http\Controllers\CompanyPausedController;
 use App\SocialHq\Http\Controllers\CompanyRequestController;
+use App\SocialHq\Http\Controllers\ConnectInviteController;
+use App\SocialHq\Http\Controllers\ConnectInviteLinkController;
 use App\SocialHq\Http\Controllers\InboxController;
 use Illuminate\Support\Facades\Route;
 
 // After asking to start a company on the register form: nobody is logged in yet.
 Route::get('socialhq/company/requested', [CompanyRequestController::class, 'requested'])->name('socialhq.company.requested');
+
+// A connect link, opened by the owner of a network account who has no login here.
+// TryPost's own connect flow does the sign-in, walked through ActAsConnectInviter.
+Route::prefix('socialhq/connect-invite')->name('socialhq.connect-invite.')->middleware('throttle:socialhq-connect-invite')->group(function () {
+    Route::get('/', [ConnectInviteController::class, 'show'])->name('show');
+    Route::post('retry', [ConnectInviteController::class, 'retry'])->name('retry');
+    Route::get('{token}', [ConnectInviteController::class, 'landing'])->where('token', '[A-Za-z0-9]{48}')->name('landing');
+    Route::post('{token}/start', [ConnectInviteController::class, 'start'])->where('token', '[A-Za-z0-9]{48}')->name('start');
+});
 
 Route::middleware('auth')->prefix('socialhq')->name('socialhq.')->group(function () {
     Route::get('access', AccessPendingController::class)->name('access.pending');
@@ -72,6 +83,9 @@ Route::middleware('auth')->prefix('socialhq')->name('socialhq.')->group(function
         require __DIR__.'/socialhq/ai-usage.php';
         require __DIR__.'/socialhq/notices.php';
         Route::put('channels/{account}/name', [ChannelNameController::class, 'update'])->name('channels.name.update');
+        Route::post('channels/{account}/connect-invites', [ConnectInviteLinkController::class, 'store'])
+            ->middleware('throttle:socialhq-connect-invite-links')
+            ->name('channels.connect-invites.store');
     });
 });
 

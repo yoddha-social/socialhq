@@ -200,13 +200,15 @@ const toggle = (): void => {
                     <span class="min-w-0 text-[13px]">
                         <span
                             class="font-emphasis text-foreground tabular-nums"
+                            :data-testid="`disconnect-impact-${status.key}-count`"
                             >{{
                                 impact.posts[status.key].toLocaleString()
                             }}</span
                         >
                         {{
-                            $t(
+                            $tChoice(
                                 `socialhq.channels.impact.statuses.${status.key}`,
+                                impact.posts[status.key],
                             )
                         }}
                         <span

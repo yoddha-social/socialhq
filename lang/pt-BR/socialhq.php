@@ -500,7 +500,7 @@ return [
             'statuses' => [
                 'scheduled' => 'Scheduled',
                 'pending_approval' => 'Needs approval',
-                'drafts' => 'Drafts',
+                'drafts' => '{1} Draft|[0,*] Drafts',
                 'failed' => 'Failed',
                 'sent' => 'Sent',
             ],

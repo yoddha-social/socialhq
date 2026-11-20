@@ -34,8 +34,8 @@ function whenBarWorkspace(string $access = 'owner'): array
 }
 
 /**
- * Opens a new post on both channels with a caption. Without posting times the
- * composer starts on a set time, the next full hour.
+ * Opens a new post on both channels with a caption and picks "Set date and
+ * time", keeping the time the picker offers (the next full hour).
  *
  * @param  Collection<int, SocialAccount>  $channels
  */
@@ -53,9 +53,26 @@ function whenBarNewPost(Collection $channels): mixed
     waitFor($page, '[data-testid^="composer-caption-"]');
     $caption = (string) $page->script('document.querySelector(\'[data-testid^="composer-caption-"]\').dataset.testid');
     $page->fill("@{$caption}", 'Winter menu is here');
-    waitForState($page, '@composer-submit', "element.dataset.scheduleMode === 'custom'");
+    whenBarSetTime($page);
 
     return $page;
+}
+
+/**
+ * Picks "Set date and time" in the "when" menu and confirms the time the
+ * picker offers.
+ */
+function whenBarSetTime(mixed $page): void
+{
+    $page->click('@composer-schedule-trigger');
+    waitFor($page, '@composer-schedule-custom');
+    $page->click('@composer-schedule-custom');
+    waitFor($page, '@composer-schedule-done');
+    $page->click('@composer-schedule-done');
+    waitForGone($page, '@composer-schedule-picker');
+    waitForState($page, '@composer-submit', "element.dataset.scheduleMode === 'custom'");
+
+    expect($page->script('document.querySelector(\'[data-testid="composer-submit"]\').dataset.scheduleMode'))->toBe('custom');
 }
 
 function whenBarRepeat(mixed $page, int $interval, string $frequency, int $times): void
@@ -157,12 +174,7 @@ test('the repeat waits for a set time and says why', function () {
         ->and(trim((string) $page->script('document.getElementById("composer-repeat-needs-time").textContent')))->toBe(__('socialhq.composer.repeat.needs_time'))
         ->and(trim((string) $page->script('document.querySelector(\'[data-testid="composer-submit"]\').textContent')))->toBe('Publish 2 posts');
 
-    $page->click('@composer-schedule-trigger');
-    waitFor($page, '@composer-schedule-custom');
-    $page->click('@composer-schedule-custom');
-    waitFor($page, '@composer-schedule-done');
-    $page->click('@composer-schedule-done');
-    waitForState($page, '@composer-repeat-trigger', '!element.disabled');
+    whenBarSetTime($page);
 
     expect(trim((string) $page->script('document.querySelector(\'[data-testid="composer-repeat-label"]\').textContent')))->toBe('Every month, 2 times');
     $page->assertNoJavaScriptErrors();

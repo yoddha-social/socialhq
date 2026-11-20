@@ -495,6 +495,15 @@ channels listed beside it (`pages/socialhq/channels/Show.vue`, components in
 - **Connection:** refresh, link a Facebook Page (Instagram Login accounts) and
   disconnect through TryPost's dialog. A disconnect started here goes to the next
   channel's page, or to Settings › Channels when none is left.
+- **What a disconnect deletes** (PATCHES.md row 231, on the channel list too): when
+  the dialog opens it reads `socialhq.channels.disconnect-impact.show`
+  (`App\SocialHq\Channels\DisconnectImpact`, admins only) and says what goes from
+  Social HQ: posts not sent yet and the record of sent ones (imported too), media
+  files, and that nothing is deleted on the network. "See what you'll lose" adds the
+  counts by status, the next 3 scheduled posts, what else stops (the queue, the goal,
+  planned items that lose their channel, repurposes that read from it), what stays
+  and a link to the channel's posts. If the counts can't be read, the dialog is as
+  before.
 
 ### Ask the account owner to connect
 

@@ -198,6 +198,37 @@ test('disconnect on the channel page opens the same dialog as the channel list',
     expect($channel->fresh())->not->toBeNull();
 });
 
+test('the disconnect dialog shows what it deletes from Social HQ and that the network keeps its posts', function () {
+    [$user, , $channel] = channelPageSetup();
+    $posts = fn () => Post::factory()->forAccount($channel)->state(['user_id' => $user->id]);
+    $posts()->scheduled()->create(['scheduled_at' => now()->addDays(2), 'content' => '<p>Winter menu is here</p>']);
+    $posts()->draft()->create();
+    $posts()->published()->count(3)->create();
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.settings', $channel))->resize(1440, 900);
+    waitFor($page, '@channel-disconnect');
+    $page->click('@channel-disconnect');
+    waitFor($page, '@disconnect-impact');
+
+    $page->assertSeeIn('@disconnect-impact-summary', '2 posts')
+        ->assertSeeIn('@disconnect-impact-summary', '3 sent posts')
+        ->assertSeeIn('@disconnect-impact-network', __('socialhq.channels.impact.network_stays', ['network' => 'LinkedIn']))
+        ->assertMissing('@disconnect-impact-details');
+
+    $page->click('@disconnect-impact-toggle');
+    waitFor($page, '@disconnect-impact-details');
+
+    $page->assertSeeIn('@disconnect-impact-scheduled', '1')
+        ->assertSeeIn('@disconnect-impact-drafts', '1')
+        ->assertSeeIn('@disconnect-impact-sent', '3')
+        ->assertMissing('@disconnect-impact-failed')
+        ->assertSeeIn('@disconnect-impact-upcoming', 'Winter menu is here')
+        ->assertVisible('@confirm-delete-input')
+        ->assertNoJavaScriptErrors();
+    expect($channel->fresh())->not->toBeNull();
+});
+
 test('an admin copies a connect link for the account owner', function () {
     [$user, , $channel] = channelPageSetup();
     $x = SocialAccount::factory()->x()->create(['workspace_id' => $channel->workspace_id, 'display_name' => 'Acme on X']);

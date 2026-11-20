@@ -4,6 +4,7 @@ import { IconCheck, IconCopy } from '@tabler/icons-vue';
 import { computed, onBeforeUnmount, ref } from 'vue';
 
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
+import ChannelDisconnectImpact from '@/components/socialhq/channels/ChannelDisconnectImpact.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -37,9 +38,7 @@ const isOpen = ref(false);
 const processing = ref(false);
 const confirmation = ref('');
 
-const name = computed(() =>
-    channel.value ? channel.value.display_label : '',
-);
+const name = computed(() => (channel.value ? channel.value.display_label : ''));
 
 const typeKey = computed(() =>
     channel.value ? accountTypeKey(channel.value) : null,
@@ -123,7 +122,7 @@ defineExpose({ open, close });
         <DialogContent
             v-if="channel"
             :show-close-button="false"
-            class="gap-0 p-0 sm:max-w-[495px]"
+            class="max-h-[92vh] gap-0 overflow-y-auto p-0 sm:max-w-[560px]"
             data-testid="confirm-delete-modal"
         >
             <form @submit.prevent="submit">
@@ -179,6 +178,9 @@ defineExpose({ open, close });
                         }}</strong>
                     </DialogDescription>
 
+                    <!-- Social HQ: what the disconnect deletes, counted when the dialog opens (PATCHES.md row 231). -->
+                    <ChannelDisconnectImpact :channel-id="channel.id" />
+
                     <p class="text-sm leading-relaxed text-foreground">
                         {{ $t('channels.disconnect_modal.refresh_before') }}
                         <Button
@@ -218,7 +220,10 @@ defineExpose({ open, close });
                                                     class="size-3 text-success-text"
                                                     data-testid="confirm-delete-keyword-copied"
                                                 />
-                                                <IconCopy v-else class="size-3" />
+                                                <IconCopy
+                                                    v-else
+                                                    class="size-3"
+                                                />
                                             </button>
                                         </TooltipTrigger>
                                         <TooltipContent>
@@ -233,7 +238,9 @@ defineExpose({ open, close });
                                     </Tooltip>
                                 </TooltipProvider>
                             </code>
-                            <span>{{ $t('common.confirm_modal.to_confirm') }}</span>
+                            <span>{{
+                                $t('common.confirm_modal.to_confirm')
+                            }}</span>
                         </p>
                         <Input
                             v-model="confirmation"

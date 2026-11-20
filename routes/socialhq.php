@@ -24,6 +24,7 @@ use App\SocialHq\Http\Controllers\CompanyPausedController;
 use App\SocialHq\Http\Controllers\CompanyRequestController;
 use App\SocialHq\Http\Controllers\ConnectInviteController;
 use App\SocialHq\Http\Controllers\ConnectInviteLinkController;
+use App\SocialHq\Http\Controllers\DisconnectImpactController;
 use App\SocialHq\Http\Controllers\InboxController;
 use Illuminate\Support\Facades\Route;
 
@@ -83,6 +84,7 @@ Route::middleware('auth')->prefix('socialhq')->name('socialhq.')->group(function
         require __DIR__.'/socialhq/ai-usage.php';
         require __DIR__.'/socialhq/notices.php';
         Route::put('channels/{account}/name', [ChannelNameController::class, 'update'])->name('channels.name.update');
+        Route::get('channels/{account}/disconnect-impact', [DisconnectImpactController::class, 'show'])->name('channels.disconnect-impact.show');
         Route::post('channels/{account}/connect-invites', [ConnectInviteLinkController::class, 'store'])
             ->middleware('throttle:socialhq-connect-invite-links')
             ->name('channels.connect-invites.store');

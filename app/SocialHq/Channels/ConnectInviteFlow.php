@@ -73,8 +73,9 @@ final class ConnectInviteFlow
     }
 
     /**
-     * The link did its job: it stops working, records what it connected and
-     * tells the admin who sent it.
+     * The link did its job: it stops working and records what it connected.
+     * Channels are named as the network names them: the guest just signed in
+     * there, and the team's own name for a channel is not theirs to see.
      *
      * @param  Collection<int, SocialAccount>  $accounts
      */
@@ -82,7 +83,7 @@ final class ConnectInviteFlow
     {
         $connected = $accounts->map(fn (SocialAccount $account): array => [
             'id' => $account->id,
-            'name' => $account->display_label,
+            'name' => $account->display_name ?: $account->username ?: $account->platform->label(),
         ])->values()->all();
 
         $invite->update([

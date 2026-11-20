@@ -82,6 +82,10 @@ class SocialHqServiceProvider extends ServiceProvider
         // Three Horizon supervisors instead of TryPost's seven (socialhq.horizon).
         CompactHorizon::apply($this->app->make('config'));
 
+        // A connect link's token is in its address: Telescope, when on, keeps no record of it.
+        $config = $this->app->make('config');
+        $config->set('telescope.ignore_paths', [...(array) $config->get('telescope.ignore_paths', []), 'socialhq/connect-invite*']);
+
         // Which company's LiteLLM key AI calls use: decided once per request or job.
         $this->app->scoped(CompanyRouting::class);
 

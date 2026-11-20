@@ -4,18 +4,23 @@ declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
+use App\Http\Middleware\App\CaptureOffer;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Channels\ConnectInvite;
 use App\SocialHq\Channels\ConnectInviteFlow;
+use App\SocialHq\Http\Middleware\ActAsConnectInviter;
 use App\SocialHq\Notices\Notice;
 use App\SocialHq\Notices\NoticeCreated;
 use App\SocialHq\Notices\NoticeKind;
 use App\Support\Social\PendingConnection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
+use Inertia\Support\SessionKey;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
@@ -179,7 +184,8 @@ test('the owner connects their account without a Social HQ login, and the link s
         ->and($invite->used_at)->not->toBeNull()
         ->and(data_get($invite->connected, '0.id'))->toBe($connected->id)
         ->and(ConnectInviteFlow::isActive())->toBeFalse()
-        ->and(PendingConnection::current())->toBeNull();
+        ->and(PendingConnection::current())->toBeNull()
+        ->and(session()->has(SessionKey::FLASH_DATA))->toBeFalse();
     $this->assertGuest();
 
     $notice = Notice::query()->where('user_id', $this->admin->id)->sole();
@@ -190,7 +196,7 @@ test('the owner connects their account without a Social HQ login, and the link s
         ->assertInertia(fn ($page) => $page
             ->where('state', 'done')
             ->where('done.workspace', 'Brew Co')
-            ->where('done.channels.0', $connected->display_label));
+            ->where('done.channels.0', 'Owner Account'));
 
     // Used once: the link, and the guest's session, open nothing more.
     $this->get(route('socialhq.connect-invite.landing', $token))->assertInertia(fn ($page) => $page->where('state', 'expired'));
@@ -218,7 +224,7 @@ test('the channel lands in the link workspace, whatever workspace the admin is i
 
 test('a reconnect link refreshes the lost channel and offers nothing else', function () {
     connectInviteFakeX('existing-1');
-    $this->channel->update(['status' => Status::Disconnected]);
+    $this->channel->forceFill(['status' => Status::Disconnected, 'shq_name' => 'Team name for X'])->save();
     [$invite, $token] = ConnectInvite::issue($this->workspace, Platform::X, $this->admin, $this->channel);
 
     $this->post(route('socialhq.connect-invite.start', $token))
@@ -231,7 +237,96 @@ test('a reconnect link refreshes the lost channel and offers nothing else', func
     expect($this->workspace->socialAccounts()->count())->toBe(1)
         ->and($this->channel->fresh()->status)->toBe(Status::Connected)
         ->and($this->channel->fresh()->access_token)->toBe(CONNECT_INVITE_TOKEN)
-        ->and(data_get($invite->fresh()->connected, '0.id'))->toBe($this->channel->id);
+        ->and(data_get($invite->fresh()->connected, '0.id'))->toBe($this->channel->id)
+        ->and(data_get($invite->fresh()->connected, '0.name'))->toBe('Owner Account');
+
+    // The guest sees the network's name for the channel, never the team's own.
+    $this->get(route('socialhq.connect-invite.show'))
+        ->assertInertia(fn ($page) => $page->where('state', 'done')->where('done.channels', ['Owner Account']));
+});
+
+test('a reconnect link stays a reconnect, whatever the address asks for', function () {
+    connectInviteFakeX('someone-else');
+    $this->channel->update(['status' => Status::Disconnected]);
+    [$invite, $token] = ConnectInvite::issue($this->workspace, Platform::X, $this->admin, $this->channel);
+
+    $this->post(route('socialhq.connect-invite.start', $token));
+    $this->get(route('app.social.x.connect', ['return_to' => route('app.calendar', absolute: false), 'switch' => '1']))
+        ->assertRedirect(CONNECT_INVITE_X_URL);
+
+    $pending = PendingConnection::current();
+    expect($pending?->reconnectId())->toBe($this->channel->id)
+        ->and($pending?->isSwitchingAccount())->toBeFalse()
+        ->and($pending?->returnRouteName())->toBe('app.workspace.channels');
+
+    // The network signs in another account: a reconnect offers nothing to pick.
+    $this->get(route('app.social.x.callback'))->assertRedirect(route('socialhq.connect-invite.show'));
+    $this->post(route('app.social.connect.finish', Platform::X), ['identities' => ['x:someone-else']])
+        ->assertRedirect(route('socialhq.connect-invite.show'));
+
+    expect($this->workspace->socialAccounts()->count())->toBe(1)
+        ->and($invite->fresh()->used_at)->toBeNull();
+});
+
+test('finish runs only on the connection the link started, once the network offered its accounts', function () {
+    connectInviteFakeX();
+    [$invite, $token] = ConnectInvite::issue($this->workspace, Platform::X, $this->admin);
+    $finish = fn () => $this->withHeader('Referer', route('app.channels.publish', $this->channel))
+        ->post(route('app.social.connect.finish', Platform::X), ['identities' => ['x:123456789']]);
+
+    // Pressed Continue, never went to the network.
+    $this->post(route('socialhq.connect-invite.start', $token));
+    $finish()->assertRedirect(route('socialhq.connect-invite.show'));
+
+    // Went to the network, never came back.
+    $this->get(route('app.social.x.connect'))->assertRedirect(CONNECT_INVITE_X_URL);
+    $finish()->assertRedirect(route('socialhq.connect-invite.show'));
+
+    expect($invite->fresh()->used_at)->toBeNull()
+        ->and($invite->fresh()->connected)->toBeNull()
+        ->and($this->workspace->socialAccounts()->count())->toBe(1)
+        ->and(Notice::query()->count())->toBe(0);
+});
+
+test('a finish while another one runs for the same link changes nothing', function () {
+    connectInviteFakeX();
+    [$invite, $token] = ConnectInvite::issue($this->workspace, Platform::X, $this->admin);
+    connectInviteWalkToConfirmation($this, $token);
+
+    $running = Cache::lock("shq_connect_invite:{$invite->id}", 60);
+    $running->get();
+
+    $this->post(route('app.social.connect.finish', Platform::X), ['identities' => ['x:123456789']])
+        ->assertRedirect(route('socialhq.connect-invite.show'));
+
+    expect($this->workspace->socialAccounts()->count())->toBe(1)
+        ->and($invite->fresh()->used_at)->toBeNull();
+
+    $running->release();
+    $this->post(route('app.social.connect.finish', Platform::X), ['identities' => ['x:123456789']]);
+
+    expect($this->workspace->socialAccounts()->count())->toBe(2)
+        ->and($invite->fresh()->used_at)->not->toBeNull();
+});
+
+test('the steps run as the admin leave the guest offer waiting and are limited per address', function () {
+    connectInviteFakeX();
+    [, $token] = ConnectInvite::issue($this->workspace, Platform::X, $this->admin);
+
+    $this->withSession([CaptureOffer::SESSION_KEY => 'black-friday-2026'])
+        ->post(route('socialhq.connect-invite.start', $token));
+    $this->get(route('app.social.x.connect'))->assertRedirect(CONNECT_INVITE_X_URL);
+
+    // TryPost would claim a waiting offer for the admin's account.
+    expect(session(CaptureOffer::SESSION_KEY))->toBe('black-friday-2026');
+
+    foreach (range(1, ActAsConnectInviter::STEPS_PER_MINUTE) as $ignored) {
+        RateLimiter::hit('socialhq-connect-invite-steps:127.0.0.1');
+    }
+
+    PendingConnection::forget();
+    $this->get(route('app.social.x.connect'))->assertRedirect(route('socialhq.connect-invite.show'));
+    expect(PendingConnection::current())->toBeNull();
 });
 
 test('an account the sign-in did not offer cannot be connected, and the link stays open', function () {

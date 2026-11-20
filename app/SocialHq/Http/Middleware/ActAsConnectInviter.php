@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\SocialHq\Http\Middleware;
 
 use App\Enums\SocialAccount\Platform;
+use App\Http\Middleware\App\CaptureOffer;
 use App\Models\SocialAccount;
+use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Channels\ConnectInvite;
 use App\SocialHq\Channels\ConnectInviteFlow;
@@ -16,10 +18,10 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Uri;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\RateLimiter;
+use Inertia\Support\SessionKey;
 use Symfony\Component\HttpFoundation\Response;
-use Throwable;
 
 /**
  * Lets a guest who opened a connect link walk TryPost's own connect flow.
@@ -33,10 +35,17 @@ use Throwable;
  *
  * The guest never receives a page rendered for that admin: whatever TryPost
  * answers is replaced by a redirect to the guest's own page, and TryPost's
- * confirmation page is never reached.
+ * confirmation page is never reached. The guest cannot widen what the link
+ * allows: the start route sees only the link's own options, and "Finish
+ * connection" runs only on the connection that start stored, once.
  */
 class ActAsConnectInviter
 {
+    /**
+     * Steps a guest may run as the admin per minute, from one IP address.
+     */
+    public const int STEPS_PER_MINUTE = 30;
+
     private const string START = 'start';
 
     private const string CALLBACK = 'callback';
@@ -66,7 +75,7 @@ class ActAsConnectInviter
         }
 
         if ($step === self::CONFIRM) {
-            return $this->toGuestPage();
+            return $this->toGuestPage($request);
         }
 
         $inviter = $invite->creator;
@@ -75,25 +84,19 @@ class ActAsConnectInviter
         if ($inviter === null || $workspace === null) {
             ConnectInviteFlow::forget();
 
-            return $this->toGuestPage();
+            return $this->toGuestPage($request);
         }
 
-        $before = $step === self::FINISH ? $this->accountStamps($workspace) : collect();
-
-        // In memory only: the admin's own current workspace is not changed.
-        $inviter->setRelation('currentWorkspace', $workspace);
-        Auth::guard()->setUser($inviter);
-
-        try {
-            $response = $next($request);
-        } finally {
-            Auth::guard()->forgetUser();
+        if (! RateLimiter::attempt('socialhq-connect-invite-steps:'.$request->ip(), self::STEPS_PER_MINUTE, fn (): bool => true)) {
+            return $this->toGuestPage($request);
         }
+
+        $this->onlyWhatTheLinkAllows($request, $invite, $step);
 
         return match ($step) {
-            self::START => $this->afterStart($invite, $response),
-            self::FINISH => $this->afterFinish($request, $invite, $workspace, $before, $response),
-            default => $this->toGuestPage(),
+            self::START => $this->start($request, $next, $invite, $inviter, $workspace),
+            self::FINISH => $this->finish($request, $next, $invite, $inviter, $workspace),
+            default => $this->callback($request, $next, $inviter, $workspace),
         };
     }
 
@@ -117,86 +120,153 @@ class ActAsConnectInviter
     }
 
     /**
-     * The start route answers with a redirect to the network once it has stored
-     * the pending connection for the link's workspace. Anything else is a refusal.
+     * The start route takes the link's own options and nothing from the address:
+     * a reconnect link stays a reconnect, with no `return_to` or `switch`. No step
+     * sees an `?offer=`, which TryPost would claim for the admin's account.
      */
-    private function afterStart(ConnectInvite $invite, Response $response): Response
+    private function onlyWhatTheLinkAllows(Request $request, ConnectInvite $invite, string $step): void
     {
+        $request->query->remove('offer');
+
+        if ($step === self::START) {
+            $request->query->replace(array_filter(['reconnect' => $invite->reconnect_account_id]));
+        }
+    }
+
+    /**
+     * The start route answers with a redirect to the network once it has stored
+     * the pending connection for the link. Anything else is a refusal. The old
+     * pending connection is dropped first, so one found afterwards was stored by
+     * this request.
+     */
+    private function start(Request $request, Closure $next, ConnectInvite $invite, User $inviter, Workspace $workspace): Response
+    {
+        PendingConnection::forget();
+
+        $response = $this->actAs($request, $next, $inviter, $workspace);
         $leaves = $response->isRedirection() || $response->headers->has('X-Inertia-Location');
 
-        if ($leaves && ConnectInviteFlow::pending($invite) !== null) {
+        if ($leaves && $this->isLinkConnection(ConnectInviteFlow::pending($invite), $invite)) {
             return $response;
         }
 
         $this->fail($invite);
 
-        return $this->toGuestPage();
+        return $this->toGuestPage($request);
+    }
+
+    private function callback(Request $request, Closure $next, User $inviter, Workspace $workspace): Response
+    {
+        $this->actAs($request, $next, $inviter, $workspace);
+
+        return $this->toGuestPage($request);
     }
 
     /**
-     * "Finish connection" forgets the pending connection only when it stored
-     * the channels.
-     *
-     * @param  Collection<string, string>  $before
+     * "Finish connection" runs only on the link's own connection once the network
+     * has offered its accounts, and one request at a time, so the link is used once.
      */
-    private function afterFinish(Request $request, ConnectInvite $invite, Workspace $workspace, Collection $before, Response $response): Response
+    private function finish(Request $request, Closure $next, ConnectInvite $invite, User $inviter, Workspace $workspace): Response
     {
-        if (! $response->isRedirection() || PendingConnection::current() !== null) {
-            return $this->toGuestPage();
+        $pending = ConnectInviteFlow::pending($invite);
+
+        if (! $this->isLinkConnection($pending, $invite) || ! $pending->isReady()) {
+            return $this->toGuestPage($request);
         }
 
-        $accounts = $this->connectedAccounts($workspace, $before, $response);
+        $lock = Cache::lock("shq_connect_invite:{$invite->id}", 60);
+
+        if (! $lock->get()) {
+            return $this->toGuestPage($request);
+        }
+
+        try {
+            if (! $invite->fresh()?->isOpen()) {
+                ConnectInviteFlow::forget();
+
+                return $this->toGuestPage($request);
+            }
+
+            $response = $this->actAs($request, $next, $inviter, $workspace);
+
+            // TryPost forgets the pending connection only once it stored the channels.
+            if ($response->isRedirection() && PendingConnection::current() === null) {
+                $this->complete($request, $invite, $workspace, $pending);
+            }
+        } finally {
+            $lock->release();
+        }
+
+        return $this->toGuestPage($request);
+    }
+
+    /**
+     * Runs TryPost's step as the admin who sent the link, for this request only.
+     * The guest's waiting offer is put aside so TryPost does not claim it for the
+     * admin's account.
+     */
+    private function actAs(Request $request, Closure $next, User $inviter, Workspace $workspace): Response
+    {
+        $offer = $request->session()->pull(CaptureOffer::SESSION_KEY);
+
+        // In memory only: the admin's own current workspace is not changed.
+        $inviter->setRelation('currentWorkspace', $workspace);
+        Auth::guard()->setUser($inviter);
+
+        try {
+            return $next($request);
+        } finally {
+            Auth::guard()->forgetUser();
+
+            if ($offer !== null) {
+                $request->session()->put(CaptureOffer::SESSION_KEY, $offer);
+            }
+        }
+    }
+
+    /**
+     * @phpstan-assert-if-true PendingConnection $pending
+     */
+    private function isLinkConnection(?PendingConnection $pending, ConnectInvite $invite): bool
+    {
+        return $pending !== null && $pending->reconnectId() === $invite->reconnect_account_id;
+    }
+
+    private function complete(Request $request, ConnectInvite $invite, Workspace $workspace, PendingConnection $pending): void
+    {
+        $accounts = $this->connectedAccounts($workspace, $pending->selected($this->pickedKeys($request)));
 
         ConnectInviteFlow::complete($invite, $accounts, $request->ip());
 
         if ($invite->creator !== null) {
             $accounts->each(fn (SocialAccount $account) => rescue(fn () => Notices::channelConnected($invite->creator, $account)));
         }
-
-        return $this->toGuestPage();
     }
 
     /**
-     * The channels the finish step created or refreshed: rows that are new or
-     * changed since it started, and the channel TryPost redirected to.
+     * @return list<string>
+     */
+    private function pickedKeys(Request $request): array
+    {
+        return array_values(array_filter((array) $request->input('identities', []), is_string(...)));
+    }
+
+    /**
+     * The workspace's channels for the accounts the guest picked: what they
+     * connected, and nothing another request changed meanwhile.
      *
-     * @param  Collection<string, string>  $before
+     * @param  list<array<string, mixed>>  $identities
      * @return Collection<int, SocialAccount>
      */
-    private function connectedAccounts(Workspace $workspace, Collection $before, Response $response): Collection
+    private function connectedAccounts(Workspace $workspace, array $identities): Collection
     {
-        $landed = $this->redirectedChannelId($response);
+        $keys = array_column($identities, 'key');
 
-        return $workspace->socialAccounts()->get()
-            ->filter(fn (SocialAccount $account): bool => $account->id === $landed
-                || $before->get($account->id) !== (string) $account->updated_at)
+        return $workspace->socialAccounts()
+            ->whereIn('platform_user_id', array_column($identities, 'platform_user_id'))
+            ->get()
+            ->filter(fn (SocialAccount $account): bool => in_array("{$account->platform->value}:{$account->platform_user_id}", $keys, true))
             ->values();
-    }
-
-    private function redirectedChannelId(Response $response): ?string
-    {
-        if (! $response instanceof RedirectResponse) {
-            return null;
-        }
-
-        try {
-            $route = Route::getRoutes()->match(Request::create(Uri::of($response->getTargetUrl())->path() ?? '/', 'GET'));
-        } catch (Throwable) {
-            return null;
-        }
-
-        $account = $route->getName() === 'app.channels.publish' ? $route->parameter('account') : null;
-
-        return is_string($account) ? $account : null;
-    }
-
-    /**
-     * @return Collection<string, string>
-     */
-    private function accountStamps(Workspace $workspace): Collection
-    {
-        return $workspace->socialAccounts()->get()
-            ->mapWithKeys(fn (SocialAccount $account): array => [$account->id => (string) $account->updated_at]);
     }
 
     private function fail(ConnectInvite $invite): void
@@ -214,8 +284,14 @@ class ActAsConnectInviter
         }
     }
 
-    private function toGuestPage(): RedirectResponse
+    /**
+     * The guest's own page. What TryPost flashed for the admin's next page (the
+     * channel it opened) is dropped, so the guest's page never carries it.
+     */
+    private function toGuestPage(Request $request): RedirectResponse
     {
+        $request->session()->forget(SessionKey::FLASH_DATA);
+
         return redirect()->route('socialhq.connect-invite.show');
     }
 }

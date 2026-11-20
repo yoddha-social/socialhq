@@ -522,13 +522,27 @@ picks the account, and the channel lands in the workspace.
   when its sender stops being an admin, and a paused company's links do too.
 - **What the guest can never get:** a page rendered for that admin. Whatever TryPost
   answers on those three requests is replaced by a redirect to the guest's page, and
-  TryPost's confirmation page is never reached. The guest's page shows the offered
-  accounts' names and pictures, never their tokens.
+  TryPost's confirmation page is never reached; what TryPost flashed for the admin's
+  next page is dropped. The guest's page shows the offered accounts' names and
+  pictures, never their tokens, and names connected channels as the network does,
+  never by their name in Social HQ.
+- **What the guest can never widen:** the start route sees only the link's own
+  options (a reconnect link stays a reconnect; `return_to`, `switch` and `?offer=`
+  are dropped). "Finish connection" runs only on the connection that start stored,
+  once the network offered its accounts, and one request at a time per link (a cache
+  lock), so a link connects once. The channels it records are the accounts the guest
+  picked, matched by network and account id. A guest's waiting offer is put aside
+  while TryPost runs as the admin, so it is never claimed for the admin's account.
 - **Someone signed in** who opens a link is told it is not for them; a flow left in
   their session is dropped.
 - **Afterwards:** the link is marked used with the channels it connected and the
   guest's IP, and the sender gets a "…is connected" notice in the bell.
-- Limits: 30 requests a minute per IP on the guest pages, 10 links a minute per admin.
+- Limits: 30 requests a minute per IP on the guest pages, 30 steps run as the admin a
+  minute per IP, 10 links a minute per admin. Telescope, when on, ignores
+  `socialhq/connect-invite*`, since the token is in the address.
+- Not done: a link cannot be cancelled before its hour ends, and it is not tied to
+  the first browser that opens it (two people holding it can each start; only one
+  finishes).
 - Every rule above has a test in `tests/Feature/SocialHq/Channels/ConnectInviteTest.php`.
   Changing the middleware, the routes it covers or the link's lifetime needs a
   security review.

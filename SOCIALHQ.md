@@ -556,6 +556,23 @@ picks the account, and the channel lands in the workspace.
   Changing the middleware, the routes it covers or the link's lifetime needs a
   security review.
 
+## The composer's footer
+
+Everything about when a post goes out sits in one bar (PATCHES.md rows 232–233):
+labels and "Repeat" on the left; the "when" button (a set time shows its weekday
+and time zone), "Save draft" and the primary button on the right. The primary
+button counts the posts it saves ("Schedule 4 posts", "Request approval for 4
+posts").
+
+- **Repeat** (`components/socialhq/composer/ComposerRepeat.vue`) is the post card's
+  "Make Recurring" rule, picked before saving. Only people who publish directly see
+  it, and only a set time can repeat: in the queue or "Now" the button is off and
+  says why, and the rule comes back when a time is set again.
+- The web store and update requests take `recurrence`; `App\SocialHq\Composer\ComposerRepeat`
+  applies it after the save. Saving a post of a series with its rule unchanged keeps
+  its place in the series; "Don't repeat" (`null`) stops it; a save without the key
+  changes nothing.
+
 ## Approvals
 
 Stricter than TryPost (`app/SocialHq/Approval/ApprovalRules.php`):

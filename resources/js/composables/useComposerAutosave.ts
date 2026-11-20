@@ -8,6 +8,7 @@ import type {
 } from '@/composables/usePostComposition';
 import dayjs from '@/dayjs';
 import { classify, MediaType } from '@/lib/mediaType';
+import type { RecurrenceRule } from '@/lib/recurrence';
 import type { MediaItem, MediaSource, SourceMetaValue } from '@/types/media';
 
 export const AUTOSAVE_DEBOUNCE_MS = 800;
@@ -41,6 +42,8 @@ export interface AutosaveSnapshot {
     scheduleMode: string | null;
     /** The custom time as a UTC instant; older snapshots hold a composer-zone wall clock. */
     scheduledAt: string | null;
+    /** Social HQ: the repeat picked for the custom time. */
+    recurrence?: RecurrenceRule | null;
 }
 
 const AUTOSAVE_PREFIX = 'trypost:composer:autosave:';

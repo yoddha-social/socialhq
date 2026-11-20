@@ -405,7 +405,7 @@ test('a restored custom time keeps its moment in the channel zone', function () 
     waitForComposerAutosaveTestId($page, 'composer-submit');
 
     $local = CarbonImmutable::parse("{$day} 10:00", 'America/Sao_Paulo');
-    expect(trim((string) $page->script('document.querySelector("[data-testid=composer-schedule-trigger]").textContent')))
+    expect(trim((string) $page->script('document.querySelector("[data-testid=composer-schedule-trigger-label]").textContent')))
         ->toBe($local->format($local->year === now()->year ? 'M j' : 'M j, Y').', 10:00')
         ->and($page->script('document.querySelector("[data-testid=composer-submit]").dataset.scheduleMode'))->toBe('custom');
 

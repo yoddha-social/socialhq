@@ -68,6 +68,7 @@ import date from '@/date';
 import dayjs from '@/dayjs';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { afterHistorySettles, cameFromAppPage } from '@/lib/inAppHistory';
+import { recurrenceRuleOf } from '@/lib/recurrence';
 import { calendar } from '@/routes/app';
 import {
     calendar as channelCalendar,
@@ -711,6 +712,7 @@ const initialPost = computed<ComposerInitialPost | null>(() => {
         content_type: post.content_type ?? '',
         meta: post.meta ?? {},
         label_ids: post.labels?.map((label) => label.id) ?? [],
+        recurrence: recurrenceRuleOf(post),
     };
 });
 
@@ -834,6 +836,10 @@ const submitComposition = (
         ...(composition.queue
             ? { queue: composition.queue }
             : { scheduled_at: composition.scheduled_at }),
+        // Social HQ: the repeat picked in the composer's footer.
+        ...('recurrence' in composition
+            ? { recurrence: composition.recurrence }
+            : {}),
     };
     router.put(updatePost.url(editPost.id), data, {
         ...options,

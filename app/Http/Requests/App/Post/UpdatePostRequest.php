@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\App\Post;
 
+use App\Enums\Post\RecurrenceFrequency;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Rules\ContentFitsPlatformLimits;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Rules\ContentTypeMatchesPostChannel;
 use App\Rules\PostContentFitsMaxLength;
+use App\SocialHq\Composer\ComposerRepeat;
 use App\Support\PostMediaRules;
 use App\Support\PostPlatformMetaRules;
 use App\Support\PostStatusRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 use Inertia\Inertia;
@@ -78,6 +82,11 @@ class UpdatePostRequest extends FormRequest
             ...PostPlatformMetaRules::rules(),
             'label_ids' => ['sometimes', 'array'],
             'label_ids.*' => ['uuid', Rule::exists('workspace_labels', 'id')->where('workspace_id', $this->user()->currentWorkspace->id)->withoutTrashed()],
+            // Social HQ: the repeat picked in the composer's footer (PATCHES.md row 233).
+            'recurrence' => ['sometimes', 'nullable', 'array'],
+            'recurrence.interval' => ['required_with:recurrence', 'integer', 'min:1', 'max:'.UpdatePostRecurrenceRequest::MAX_INTERVAL],
+            'recurrence.frequency' => ['required_with:recurrence', Rule::enum(RecurrenceFrequency::class)],
+            'recurrence.times' => ['required_with:recurrence', 'integer', 'min:1', 'max:'.UpdatePostRecurrenceRequest::MAX_TIMES],
         ];
     }
 
@@ -108,6 +117,39 @@ class UpdatePostRequest extends FormRequest
 
             PostPlatformMetaRules::addRequiredOnPublishErrors($validator, $post->socialAccount ?? $post->platform, $this->effectiveMeta(), contentType: $this->input('content_type') ?? $post->content_type);
         });
+
+        $validator->after(fn (Validator $validator) => $this->checkRepeat($validator));
+    }
+
+    /**
+     * Social HQ: a repeat needs someone who publishes directly and a set time
+     * whose series ends before the latest instant a post may be scheduled at.
+     */
+    private function checkRepeat(Validator $validator): void
+    {
+        $rule = $this->input('recurrence');
+
+        if (blank($rule) || $validator->errors()->isNotEmpty()) {
+            return;
+        }
+
+        $post = $this->route('post');
+
+        if (Gate::denies('publishDirectly', $post->workspace)) {
+            $validator->errors()->add('recurrence', __('socialhq.composer.repeat.errors.approval'));
+
+            return;
+        }
+
+        if ($this->input('status') !== Status::Scheduled->value || blank($this->input('scheduled_at')) || filled($this->input('queue')) || ! $post->hasChannel()) {
+            $validator->errors()->add('recurrence', __('posts.recurrence.errors.not_scheduled'));
+
+            return;
+        }
+
+        if (ComposerRepeat::endsTooLate(Carbon::parse($this->input('scheduled_at')), $post->socialAccount?->timezone, $rule)) {
+            $validator->errors()->add('recurrence', __('posts.recurrence.errors.too_far'));
+        }
     }
 
     private function isPublishingOrScheduling(): bool

@@ -60,10 +60,16 @@ function whenBarNewPost(Collection $channels): mixed
 
 /**
  * Picks "Set date and time" in the "when" menu and confirms the time the
- * picker offers.
+ * picker offers. A member whose posts need approval already starts there.
  */
 function whenBarSetTime(mixed $page): void
 {
+    waitFor($page, '@composer-submit');
+
+    if ($page->script('document.querySelector(\'[data-testid="composer-submit"]\').dataset.scheduleMode') === 'custom') {
+        return;
+    }
+
     $page->click('@composer-schedule-trigger');
     waitFor($page, '@composer-schedule-custom');
     $page->click('@composer-schedule-custom');

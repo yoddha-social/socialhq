@@ -33,10 +33,10 @@ class AccountFactory extends Factory
 
     /**
      * Social HQ: under SOCIALHQ_TEST_ACCOUNTS_APPROVED (set only by the
-     * socialhq-production-rules CI job), every account a test creates gets an
-     * approved company, as the backfill gave every real account. TryPost's
-     * suites then run with companies required, as production does, instead of
-     * meeting a company-less account no real install has.
+     * production-rules job of socialhq-ci.yml), every account a test creates
+     * gets an approved company, as the backfill gave every real account.
+     * TryPost's suites then run with companies required, as production does,
+     * instead of meeting a company-less account no real install has.
      */
     public function configure(): static
     {

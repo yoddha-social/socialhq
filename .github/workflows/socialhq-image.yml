@@ -22,38 +22,36 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # Only a commit whose tests, browser tests and lint passed becomes an image.
-  # The tag usually follows a merge to main, so wait for those runs (up to 75
-  # minutes) instead of failing while they are still going.
+  # Only a commit whose CI passed becomes an image: the `ci` check of
+  # socialhq-ci.yml, which passes only when lint, backend, browser and
+  # production-rules tests all passed. The tag usually follows a merge to main,
+  # so wait for that run (up to 75 minutes) instead of failing while it is still
+  # going. A commit from before socialhq-ci.yml has no `ci` check: tag a newer one.
   tested:
-    name: Tests passed for this commit
+    name: CI passed for this commit
     runs-on: ubuntu-latest
     timeout-minutes: 80
     permissions:
       checks: read
     steps:
-      - name: Wait for backend, e2e and quality
+      - name: Wait for the ci check
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           SHA: ${{ github.sha }}
         run: |
           for attempt in $(seq 1 75); do
-            pending=0
-            for check in backend e2e quality; do
-              result=$(gh api "repos/$REPO/commits/$SHA/check-runs?check_name=$check&filter=latest" \
-                --jq '[.check_runs[] | (.conclusion // .status)] | first // "missing"')
-              case "$result" in
-                success) ;;
-                queued|in_progress|waiting|pending|requested|missing) pending=1 ;;
-                *) echo "::error::$check is '$result' for $SHA"; exit 1 ;;
-              esac
-            done
-            [ "$pending" -eq 0 ] && { echo "All checks passed for $SHA"; exit 0; }
-            echo "Waiting for checks on $SHA (attempt $attempt)"
+            result=$(gh api "repos/$REPO/commits/$SHA/check-runs?check_name=ci&filter=latest" \
+              --jq '[.check_runs[] | (.conclusion // .status)] | first // "missing"')
+            case "$result" in
+              success) echo "CI passed for $SHA"; exit 0 ;;
+              queued|in_progress|waiting|pending|requested|missing) ;;
+              *) echo "::error::ci is '$result' for $SHA"; exit 1 ;;
+            esac
+            echo "Waiting for ci on $SHA (attempt $attempt)"
             sleep 60
           done
-          echo "::error::backend, e2e and quality did not all pass for $SHA within 75 minutes"
+          echo "::error::ci did not pass for $SHA within 75 minutes"
           exit 1
 
   build:

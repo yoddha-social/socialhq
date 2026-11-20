@@ -18,8 +18,10 @@ Last intake: !`awk '/^## Security intake/{f=1} f && /^\| 20[0-9][0-9]-/' PATCHES
 2. For each advisory: is the vulnerable code path reachable in our use? Upgrade the one
    package (`composer update vendor/package --with-dependencies`, or `npm update <pkg>`).
    Ask the user before a major-version jump.
-3. PHP itself: `ARG PHP_VERSION` in `docker/Dockerfile`, and the CI `php-version`.
-   Check php.net for security releases newer than the pinned one.
+3. PHP itself: `ARG PHP_VERSION` in `docker/Dockerfile`, and `php-version` in
+   `.github/workflows/socialhq-ci.yml`, `.github/workflows/socialhq-audit.yml` and
+   `.github/actions/setup-laravel/action.yml`. Check php.net for security releases newer
+   than the pinned one.
 4. After `composer update`, look at the diff of `.claude/skills/` and AGENTS.md if Boost
    ran, and drop changes that undo ours.
 
@@ -43,7 +45,9 @@ For each candidate:
 3. Fix buried in a feature commit: port only the security hunk by hand, and name the
    source commit in the message.
 4. A conflict in a file PATCHES.md lists: keep our change, apply theirs around it. A
-   conflict anywhere else means an unlisted edit: list it.
+   conflict anywhere else means an unlisted edit: list it. TryPost's `tests.yml` and
+   `lint.yml` are deleted here (our CI is `socialhq-ci.yml`), so a fix to them stops as
+   a modify/delete conflict: port the change into `socialhq-ci.yml`, then `git rm` the file.
 5. Add or port the test that proves the fix.
 
 ## 3. Finish

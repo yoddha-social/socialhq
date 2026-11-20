@@ -1,0 +1,411 @@
+# Social HQ CI: every check a change must pass, in one workflow.
+#
+#   quality ─────────────────────────────┐
+#   tests (1/2, 2/2) ──────► backend ─────┤
+#   browser (1/4 … 4/4) ───► e2e ─────────┼──► ci   (the check the ruleset is to require)
+#   production-rules (1/2, 2/2) ──────────┘
+#
+# It replaces TryPost's tests.yml and lint.yml and our socialhq-production-rules.yml
+# (PATCHES.md). PostgreSQL only: production runs PostgreSQL, so the MySQL leg is gone.
+# The backend and e2e gates stay while the main ruleset still names them; once the
+# ruleset requires only `ci`, they can go. socialhq-image.yml waits for `ci`.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  # Every PR, so stacked PRs (base is another PR's branch) get tested too. No paths
+  # filter: a required check whose workflow is skipped stays pending forever.
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DB_CONNECTION: pgsql
+  DB_DATABASE: trypost_test
+  DB_USERNAME: postgres
+  DB_PASSWORD: password
+  BROADCAST_CONNECTION: "null"
+  CACHE_STORE: array
+  QUEUE_CONNECTION: sync
+  SESSION_DRIVER: array
+
+jobs:
+  quality:
+    name: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          coverage: none
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: |
+          composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+          npm ci
+
+      # Checks only, never the fixers (pint, prettier --write, eslint --fix): a job
+      # that fixes can never fail.
+      - name: Pint
+        run: composer test:lint
+
+      # ESLint and vue-tsc resolve @/routes and @/actions, which Wayfinder generates.
+      - name: Generate Wayfinder routes
+        run: |
+          cp .env.ci .env
+          php artisan wayfinder:generate --with-form
+
+      - name: ESLint
+        run: npx eslint .
+
+      - name: Type check
+        run: npx vue-tsc --noEmit
+
+      # Much of the TryPost base isn't Prettier-clean, and reformatting it would make
+      # security cherry-picks conflict. Check the files this change touches, except
+      # those that weren't clean before it.
+      - name: Prettier (changed files)
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then BASE=HEAD^; fi
+          : > check.txt
+          git diff --name-only --diff-filter=ACMR "$BASE" HEAD -- 'resources/*.vue' 'resources/*.ts' 'resources/*.js' 'resources/*.css' |
+            while read -r f; do
+              if git cat-file -e "$BASE:$f" 2>/dev/null &&
+                ! git show "$BASE:$f" | npx prettier --check --stdin-filepath "$f" >/dev/null 2>&1; then
+                echo "Skipped (not Prettier-clean before this change): $f"
+              else
+                echo "$f" >> check.txt
+              fi
+            done
+          if [ -s check.txt ]; then xargs -a check.txt npx prettier --check; fi
+
+  tests:
+    name: Backend (${{ matrix.shard }}/2)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: trypost_test
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd="pg_isready"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379/tcp
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup test environment
+        uses: ./.github/actions/setup-laravel
+        with:
+          db-port: ${{ job.services.postgres.ports['5432'] }}
+          redis-port: ${{ job.services.redis.ports['6379'] }}
+
+      # Unit and Feature (phpunit.xml's test suites); tests/Browser runs in `browser`.
+      - name: Run backend tests
+        env:
+          DB_PORT: ${{ job.services.postgres.ports['5432'] }}
+          REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
+        run: ./vendor/bin/pest --compact --parallel --shard=${{ matrix.shard }}/2
+
+      - name: Show logged warnings of failed tests
+        if: failure()
+        run: grep -h "WARNING\|ERROR" storage/logs/*.log | tail -n 50 || true
+
+  backend:
+    name: backend
+    runs-on: ubuntu-latest
+    needs: [tests]
+    if: always()
+    steps:
+      - name: Fail unless every backend shard passed
+        run: '[ "${{ needs.tests.result }}" = "success" ]'
+
+  browser:
+    name: Browser (${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    # Four shards of three processes: each process runs its own PHP server and
+    # Chromium, and a public-repo runner has 4 vCPUs. Without tests/.pest/shards.json
+    # Pest deals files out by count, so CalendarDragAndDropTest and
+    # ComposerChannelSettingsTest both land in shard 2; three processes keep that
+    # shard as fast as a 3x3 shard was. Two may do once shards are time-balanced.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: trypost_test
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd="pg_isready"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379/tcp
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup test environment
+        uses: ./.github/actions/setup-laravel
+        with:
+          node: 'true'
+          db-port: ${{ job.services.postgres.ports['5432'] }}
+          redis-port: ${{ job.services.redis.ports['6379'] }}
+
+      - name: Build assets
+        run: npm run build
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+
+      # Downloads from Playwright's CDN only. No --with-deps: on the runner image it
+      # only added 9 font packages from the Ubuntu mirror, which took minutes when
+      # the mirror was slow and failed the job when it was down (25 jobs on 2026-11-11).
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install chromium
+
+      # The image's preinstalled browsers bring every library Chromium links against,
+      # and Playwright's own host check doesn't look at Chrome for Testing builds.
+      # Install the system dependencies only if one is really missing.
+      - name: Check Chromium system libraries
+        run: |
+          bins=$(find ~/.cache/ms-playwright -maxdepth 3 -type f \( -name chrome -o -name chrome-headless-shell \))
+          if [ -z "$bins" ]; then
+            echo "::error::No Chromium binary under ~/.cache/ms-playwright"
+            exit 1
+          fi
+          # Only the executables: the bundled libqt*_shim.so link Qt, which isn't installed.
+          missing=$(ldd $bins 2>/dev/null | grep 'not found' | sort -u || true)
+          if [ -n "$missing" ]; then
+            echo "::warning::Chromium is missing system libraries; running playwright install-deps"
+            echo "$missing"
+            npx playwright install-deps chromium
+          fi
+
+      - name: Run browser tests
+        env:
+          DB_PORT: ${{ job.services.postgres.ports['5432'] }}
+          REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
+          # Pest cuts FAILED lines to the terminal width; a cut class name made the
+          # retry look for a file that doesn't exist.
+          COLUMNS: '250'
+        # Failed files get one sequential retry; a pass on retry is reported as a
+        # warning and in the job summary, so flaky tests stay visible. A test that
+        # fails twice fails the job. Output goes to a file, not a pipe: the Playwright
+        # server Pest starts keeps a pipe open after Pest exits, so `| tee` never ends.
+        run: |
+          status=0
+          ./vendor/bin/pest tests/Browser --compact --colors=never --parallel --processes=3 \
+            --shard=${{ matrix.shard }}/4 > browser.log 2>&1 || status=$?
+          cat browser.log
+          [ "$status" -eq 0 ] && exit 0
+          # A class name can still come out cut short ("ComposerWhenBarTe…"): keep a
+          # path if its file exists, else take the files it is the start of. A name
+          # that leads to no file stays as a path, so Pest fails on it ("not found")
+          # instead of the shard passing on the other files' retry.
+          files=$(grep -oE 'FAILED +Tests\\Browser\\[A-Za-z0-9_\\]+' browser.log \
+            | sed -E 's/^FAILED +//; s#\\#/#g; s#^Tests/#tests/#' | sort -u \
+            | while read -r p; do
+                if [ -f "$p.php" ]; then echo "$p.php"; else ls "$p"*.php 2>/dev/null || echo "$p.php"; fi
+              done | sort -u)
+          if [ -z "$files" ]; then
+            echo "::error::Browser tests failed without a FAILED test line (crash or setup error)."
+            exit 1
+          fi
+          echo "Retrying once:"
+          echo "$files"
+          ./vendor/bin/pest $files --compact --colors=never
+          {
+            echo "### Flaky in Browser (${{ matrix.shard }}/4)"
+            echo
+            echo "Failed in the sharded run, passed when retried alone:"
+            echo
+            for f in $files; do echo "- \`$f\`"; done
+          } >> "$GITHUB_STEP_SUMMARY"
+          for f in $files; do
+            echo "::warning file=$f::Flaky: failed in the sharded run, passed on retry."
+          done
+
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-artifacts-${{ matrix.shard }}
+          path: |
+            tests/Browser/Screenshots
+            tests/Browser/Traces
+          if-no-files-found: ignore
+          retention-days: 7
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    needs: [browser]
+    if: always()
+    steps:
+      - name: Fail unless every browser shard passed
+        run: '[ "${{ needs.browser.result }}" = "success" ]'
+
+  # TryPost's own suites under Social HQ's production rules. phpunit.xml turns our
+  # approval and company rules off for the whole run, because TryPost's tests expect
+  # TryPost's rules; this job turns them back on (real environment variables win over
+  # phpunit.xml's <env>, which has no force="true") and runs the suites that write
+  # posts: API, MCP, parity, posts, repurpose, approvals.
+  #
+  # TryPost tests that assert TryPost's rules fail here by design. They are listed,
+  # with the reason, in tests/fixtures/socialhq/production-rules-exclusions.txt and
+  # skipped. Anything else that fails is a regression: a write path that breaks, or
+  # one our rules no longer reach.
+  production-rules:
+    name: Production rules (${{ matrix.shard }}/2)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+
+    # Job level, never workflow level: at workflow level these would turn our rules
+    # on for the backend and browser suites too.
+    env:
+      SOCIALHQ_MEMBERS_ALWAYS_REVIEWED: "true"
+      SOCIALHQ_AGENT_POSTS_REVIEWED: "true"
+      SOCIALHQ_COMPANY_REQUESTS: "true"
+      SOCIALHQ_COMPANIES_REQUIRED: "true"
+      # Every test account gets an approved company (database/factories/AccountFactory.php),
+      # as the backfill gave every real account.
+      SOCIALHQ_TEST_ACCOUNTS_APPROVED: "true"
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: trypost_test
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd="pg_isready"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379/tcp
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup test environment
+        uses: ./.github/actions/setup-laravel
+        with:
+          db-port: ${{ job.services.postgres.ports['5432'] }}
+          redis-port: ${{ job.services.redis.ports['6379'] }}
+
+      - name: Run the suites with our rules on
+        env:
+          DB_PORT: ${{ job.services.postgres.ports['5432'] }}
+          REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
+        run: |
+          # Sharded, not --parallel: ParaTest drops --exclude-filter.
+          exclude=$(bin/socialhq-production-rules-filter)
+          ./vendor/bin/pest --compact --shard=${{ matrix.shard }}/2 --exclude-filter "$exclude" \
+            tests/Feature/Api tests/Feature/Mcp tests/Feature/Parity tests/Feature/Posts \
+            tests/Feature/Repurpose tests/Feature/Permissions tests/Feature/Actions/Post \
+            tests/Feature/Create tests/Feature/Channels \
+            tests/Feature/PostControllerTest.php tests/Feature/PostNoteControllerTest.php \
+            tests/Feature/UpdatePostRequestTest.php tests/Feature/WorkspaceControllerTest.php \
+            tests/Feature/WorkspaceInviteControllerTest.php tests/Feature/AcceptInviteControllerTest.php \
+            tests/Feature/ApiKeyControllerTest.php tests/Feature/McpSettingsControllerTest.php
+
+  # The one check the main ruleset is to require (it lists quality, backend and e2e
+  # until the owner switches it). It always runs (a skipped job would count
+  # as passed) and passes only if every job above passed.
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    needs: [quality, backend, e2e, production-rules]
+    if: always()
+    steps:
+      - name: Fail unless every job passed
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$NEEDS" | jq -e 'to_entries | all(.value.result == "success")' > /dev/null

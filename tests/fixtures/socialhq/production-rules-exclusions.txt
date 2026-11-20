@@ -1,4 +1,4 @@
-# Upstream tests skipped by .github/workflows/socialhq-production-rules.yml.
+# Upstream tests skipped by the production-rules job of .github/workflows/socialhq-ci.yml.
 # They assert TryPost's rules, which Social HQ replaces in production, so they
 # fail there by design. One test per line, "<TestFile>::<test description>",
 # optionally followed by " with data set "<dataset>"" (as Pest prints it) to skip

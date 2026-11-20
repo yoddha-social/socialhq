@@ -970,6 +970,7 @@ Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` d
     - `waitForGone($page, '@id')`: no element matches.
     - `waitForState($page, '@id', "element.getAttribute('aria-checked') === 'true'")`: an element exists and the expression about `element` is true (attributes, `dataset`, `disabled`, position).
     - `waitForText($page, '[role="option"]', 'general')`: any matching element contains the text.
+    - `waitForCount($page, '@note-item', 2)`: that many elements match (`===`, or pass `'>='` / `'>'`).
     - `waitForGoneOrShown($page, gone: '@post-composer-dialog', shown: '@unsaved-changes-dialog')`: whichever happens first, so the assertion after it fails at once instead of waiting out the timeout.
     - `waitForPath($page, $path)`: the page is at that path.
     - `waitForCondition($page, $js)`: only for what is not about an element (`location.search`, a `window.__` spy).

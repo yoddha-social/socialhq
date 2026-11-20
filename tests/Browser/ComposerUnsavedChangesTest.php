@@ -178,6 +178,10 @@ test('after saving a post edited from the calendar, a channel drafts tab or the 
     $edit = $from === 'calendar' ? "@post-details-edit-{$post->id}" : "@post-edit-{$post->id}";
     if ($from === 'calendar') {
         waitFor($page, "@calendar-post-{$post->id}");
+        // Saving comes back here through Back, which Inertia ignores on an entry without its state.
+        waitForCondition($page, 'Boolean(window.history.state?.page)');
+        expect($page->script('Boolean(window.history.state?.page)'))
+            ->toBeTrue('The calendar loaded by its address has no Inertia history state.');
         $page->click("@calendar-post-{$post->id}");
     }
     waitFor($page, $edit);

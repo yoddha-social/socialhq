@@ -807,6 +807,17 @@ function waitForText(mixed $page, string $selector, string $text): void
 }
 
 /**
+ * Wait until the number of elements matching the selector compares to the
+ * count: exactly (`===`, the default) or with another operator (`>=`, `>`).
+ */
+function waitForCount(mixed $page, string $selector, int $count, string $operator = '==='): void
+{
+    $selector = jsSelector($selector);
+
+    waitForCondition($page, "document.querySelectorAll({$selector}).length {$operator} {$count}");
+}
+
+/**
  * Wait until one element is gone or another is shown, whichever happens
  * first, so the assertion after it fails at once on the other outcome
  * instead of waiting out the timeout.

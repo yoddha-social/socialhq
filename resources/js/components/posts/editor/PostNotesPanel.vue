@@ -83,7 +83,16 @@ const scrollToBottom = () => {
     }
 };
 
+/**
+ * Social HQ (PATCHES.md row 241): bumped by every send, edit and delete, so a
+ * page-1 load that started before one cannot wipe it; it loads again instead.
+ * A load can also land while a write is on its way, so the writes below apply
+ * to the list as it is then, matched by id.
+ */
+let localChanges = 0;
+
 const loadNotes = async (page = 1) => {
+    const changesAtStart = localChanges;
     loading.value = true;
 
     try {
@@ -96,6 +105,13 @@ const loadNotes = async (page = 1) => {
         }
 
         const data: PaginatedResponse = await response.json();
+
+        if (page === 1 && changesAtStart !== localChanges) {
+            await loadNotes(1);
+
+            return;
+        }
+
         const chronological = [...data.data].reverse();
         currentPage.value = data.meta.current_page;
         lastPage.value = data.meta.last_page;
@@ -146,9 +162,14 @@ const sendNote = async () => {
         }
 
         const created: PostNote = await response.json();
-        notes.value.push(created);
+        localChanges++;
 
-        total.value++;
+        // A load that answered while this was on its way may list it already.
+        if (!notes.value.some(({ id }) => id === created.id)) {
+            notes.value.push(created);
+            total.value++;
+        }
+
         newBody.value = '';
         await nextTick();
         scrollToBottom();
@@ -170,8 +191,14 @@ const saveNote = async (note: PostNote, body: string) => {
     }
 
     const updated: PostNote = await response.json();
-    note.body = updated.body;
-    note.updated_at = updated.updated_at;
+    const shown = notes.value.find(({ id }) => id === note.id);
+
+    if (shown) {
+        shown.body = updated.body;
+        shown.updated_at = updated.updated_at;
+    }
+
+    localChanges++;
 };
 
 const deleteNote = async (note: PostNote) => {
@@ -184,8 +211,12 @@ const deleteNote = async (note: PostNote) => {
         return;
     }
 
-    notes.value = notes.value.filter((item) => item.id !== note.id);
-    total.value = Math.max(0, total.value - 1);
+    if (notes.value.some(({ id }) => id === note.id)) {
+        notes.value = notes.value.filter((item) => item.id !== note.id);
+        total.value = Math.max(0, total.value - 1);
+    }
+
+    localChanges++;
 };
 
 const handleComposerKeydown = (event: KeyboardEvent) => {

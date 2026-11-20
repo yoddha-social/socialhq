@@ -205,7 +205,8 @@ test('an admin copies a connect link for the account owner', function () {
 
     $page = visit(route('app.channels.settings', $x))->resize(1440, 900);
     waitFor($page, '@channel-invite-copy');
-    $page->script('window.__copied = null; navigator.clipboard.writeText = async (text) => { window.__copied = text; };');
+    // End on a plain value: Playwright calls a script whose result is a function.
+    $page->script('window.__copied = null; navigator.clipboard.writeText = async (text) => { window.__copied = text; }; true;');
     $page->click('@channel-invite-copy');
     waitForCondition($page, 'typeof window.__copied === "string"');
 
@@ -215,7 +216,7 @@ test('an admin copies a connect link for the account owner', function () {
     expect($invite->workspace_id)->toBe($channel->workspace_id)
         ->and($invite->platform)->toBe(Platform::X)
         ->and($invite->token_hash)->toBe(ConnectInvite::hash(str($copied)->afterLast('/')->value()))
-        ->and($copied)->toStartWith(route('socialhq.connect-invite.landing', ''));
+        ->and($copied)->toStartWith(route('socialhq.connect-invite.show').'/');
     $page->assertMissing('@channel-invite-dialog')->assertNoJavaScriptErrors();
 });
 
@@ -226,7 +227,7 @@ test('when the browser refuses to copy, the connect link is shown instead', func
 
     $page = visit(route('app.channels.settings', $x))->resize(1440, 900);
     waitFor($page, '@channel-invite-copy');
-    $page->script('navigator.clipboard.writeText = async () => { throw new Error("denied"); };');
+    $page->script('navigator.clipboard.writeText = async () => { throw new Error("denied"); }; true;');
     $page->click('@channel-invite-copy');
     waitFor($page, '@channel-invite-url');
 

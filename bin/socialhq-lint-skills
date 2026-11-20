@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Lints the Social HQ skills (.ai/skills/socialhq-*/SKILL.md) for drift: skills
 # that describe files that no longer exist, or decisions we have moved past.
-# Bash only, so it runs on the laptop (no PHP) and in CI's linter job.
+# Bash only, so it runs on the laptop (no PHP) and in CI (.github/workflows/socialhq-audit.yml).
 #
 #   bin/socialhq-lint-skills
 #

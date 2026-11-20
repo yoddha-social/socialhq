@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PostToolUse (Edit|Write|MultiEdit): format and lint the one file just edited,
-# the way CI's linter job will (composer lint, npm run format, npm run lint).
+# with the same tools CI's quality job uses (pint, prettier, eslint).
 # Fixes what it can silently; reports the rest via stderr + exit 2 so Claude
 # corrects it. Records the file for checks-on-stop.sh.
 

@@ -24,7 +24,8 @@ Node tools (prettier, eslint, vue-tsc, `npm run build`) run on the laptop direct
 ./vendor/bin/pest --compact --parallel --tia                              # tests affected by the change
 ./vendor/bin/pint --dirty                                                 # format changed PHP
 npx --no-install vue-tsc --noEmit                                         # types
-npm run lint && npm run format:check                                      # what CI's linter checks
+composer test:lint && npx --no-install eslint .                           # Pint and ESLint as CI's quality job runs them
+                                                                          # (it also runs vue-tsc, above, and Prettier on changed files)
 ```
 
 Browser tests (Pest + Playwright) need built assets: `npm run build`, then
@@ -32,7 +33,7 @@ Browser tests (Pest + Playwright) need built assets: `npm run build`, then
 `php artisan test --parallel` for these (it doesn't start Playwright). Read AGENTS.md
 "Browser Tests" before writing one: shared `waitFor*` helpers, `data-testid`, no `sleep()`.
 
-Tests use PostgreSQL (`.env.testing`); CI also runs MySQL. Wayfinder output under
+Tests use PostgreSQL (`.env.testing`), as CI and production do. Wayfinder output under
 `resources/js/{actions,routes,wayfinder}` is generated: never edit it.
 
 ## Hooks in this repo

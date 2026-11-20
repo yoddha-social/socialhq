@@ -834,19 +834,12 @@ The client IP (`$request->ip()`, used by every per-IP rate limit and by the Chat
 - **openWorld**: `true` when the tool can publish to public networks, fetch arbitrary URLs, call or set arbitrary external endpoints, or read a public catalog. `false` inside the private workspace, including network APIs that only read the connected account's own data.
 - A new tool goes into `mcpExpectedToolAnnotations()` in `tests/Feature/Mcp/ToolAnnotationsTest.php`; the test fails when a registered tool is missing from that list or has a different value. Borderline cases already decided are listed in `.ai/rules/tools.md`; follow them instead of deciding again.
 
-## Database engines (PostgreSQL + MySQL)
+## Database engines (PostgreSQL only)
 
-TryPost runs on **both PostgreSQL and MySQL**. Cloud runs PostgreSQL; a self-hosted install may pick either. Every query, migration, and test must work on both — the suite is expected to be green on each.
+Social HQ runs and tests on **PostgreSQL only** (owner decision 2026-11-20): production runs PostgreSQL, and CI no longer has a MySQL leg. TryPost also supports MySQL, but we don't test it, so no rule here asks for MySQL compatibility. MySQL notes in TryPost's code and in `.ai/rules/` describe TryPost; leave them as they are.
 
-- **What the app supports is the intersection of the two engines, never the superset of one.** When they differ, take the narrower behaviour — a feature that only holds on PostgreSQL is a feature TryPost does not have.
-- Never use an engine-specific operator or function. Search uses `whereLike()` (Laravel handles the case-insensitive form per driver), never `ilike` or a raw `LOWER(...)` comparison.
-- Traps that only surface on MySQL:
-    - **JSON object key order is not preserved.** MySQL reorders object keys on storage (by length, then lexicographically); PostgreSQL keeps insertion order. Assert JSON read back from the database with `toEqual` (recursive, order-independent), never `toBe`/`assertSame`. Array *element* order is preserved on both.
-    - **`$table->timestamp()` tops out at 2038-01-19.** PostgreSQL has no such limit, so 2038-01-19 is the app's ceiling: nothing written to a `timestamp()` column may go past it — scheduled posts, expiry sentinels and test fixtures alike. `2037-12-31` reads as "far future" and works on both. Do not widen a column to escape the limit without a deliberate decision; it changes what self-hosted MySQL installs can store.
-    - **Raw query-builder reads carry no Eloquent cast**, so the driver's native shape leaks through: `DB::table(...)->value('some_bool')` is `true` on PostgreSQL and `1` on MySQL. Read through the model, or use `assertDatabaseHas`.
-    - **Identifier quoting differs** — PostgreSQL emits `"posts"`, MySQL emits backticks. Never match logged SQL (`DB::listen`) against a quoted identifier.
-    - **MySQL refuses to drop the only index backing a foreign key** (SQLSTATE `1553`). A migration `down()` that drops a unique whose leftmost prefix is an FK column must create a standalone index for that column first.
-    - **DDL implicitly commits**, which defeats `RefreshDatabase`'s rollback: schema changes made inside a test leak into the tests that follow. Keep them idempotent.
+- Search uses `whereLike()` (Laravel handles the case-insensitive form per driver), never `ilike` or a raw `LOWER(...)` comparison.
+- **2038-01-19 is the app's ceiling.** It comes from MySQL's `timestamp()` limit, and the validation rules (`before:2038-01-19`), the MCP tool descriptions and `PostingSchedule::MAX_INSTANT` use it. Nothing written to a `timestamp()` column may go past it: scheduled posts, expiry sentinels and test fixtures alike. `2037-12-31` reads as "far future". Do not lift the ceiling without a deliberate decision.
 
 ## One destination per post (`posts` carries its channel)
 
@@ -988,7 +981,7 @@ Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` d
 - The page starts on `about:blank`, so a `back()` with nothing behind it can land there and a test can pass for the wrong reason. A history test starts from an app page (`visit(...)->navigate(...)`) and asserts where it ended with `assertPathIs()`.
 - `assertQueryStringMissing()` checks only the query string: on a route whose id is in the path (`app.posts.edit`) it passes whatever happens. Assert the path instead.
 - A new test for a fix must fail without the fix. Check it by removing the change, running the test, and restoring it.
-- CI runs them in three shards, each in parallel with three processes (`./vendor/bin/pest tests/Browser --compact --parallel --processes=3 --shard=N/3`), leaving a CPU of the 4-vCPU runner to the database and the app server, against `npm run build` output, so keep them independent of a running dev server and of each other. Run them in parallel through `./vendor/bin/pest`, never `php artisan test --parallel`, which does not start the Playwright server. A test that only passes alone has a race: wait for the state you assert (poll the DOM or the database) instead of assuming timing.
+- CI (`.github/workflows/socialhq-ci.yml`) runs them in four shards, each in parallel with three processes (`./vendor/bin/pest tests/Browser --compact --parallel --processes=3 --shard=N/4`; each process runs its own PHP server and Chromium on a 4-vCPU runner), against `npm run build` output, so keep them independent of a running dev server and of each other. Run them in parallel through `./vendor/bin/pest`, never `php artisan test --parallel`, which does not start the Playwright server. A test that only passes alone has a race: wait for the state you assert (poll the DOM or the database) instead of assuming timing.
 
 ## Laravel helpers over native PHP
 

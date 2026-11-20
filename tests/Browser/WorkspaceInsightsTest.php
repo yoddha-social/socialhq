@@ -609,6 +609,9 @@ test('the custom range calendar opens under Custom on desktop and as a bottom sh
     waitFor($page, '@insights-range-custom');
     $page->click('@insights-range-custom');
     waitFor($page, '[data-slot="popover-content"]');
+    // The calendar can still be opening (scale-in, positioning) when it first lays out; it read 7px off on CI.
+    // Measure once its animation has ended and its left edge holds between two polls.
+    waitForState($page, '[data-slot="popover-content"]', '((left) => { const settled = element.getAnimations().length === 0 && element.__settledLeft === left; element.__settledLeft = left; return settled; })(element.getBoundingClientRect().left)');
 
     $alignment = $page->script(<<<'JS'
         (() => {

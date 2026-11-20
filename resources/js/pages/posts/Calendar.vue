@@ -273,21 +273,36 @@ const visit = (url: string): void => {
     );
 };
 
-const reload = (
-    only: string[],
-    reset: string[] = [],
-    preserveUrl = false,
-): void => {
+const reload = (only: string[], reset: string[] = []): void => {
     router.get(
         calendarUrl(props.view, currentDateQuery()),
         {},
         {
             preserveState: true,
             preserveScroll: true,
-            preserveUrl,
             replace: true,
             only,
             reset,
+        },
+    );
+};
+
+/**
+ * Social HQ (PATCHES.md row 240): the optional slots, asked for by name at the
+ * address shown. A preserveUrl visit here could land before Inertia's first
+ * history write and leave the entry without state, so Back onto it did
+ * nothing. Not router.reload: it is async, so a later week's visit would not
+ * cancel it and its answer would push the old week's address back.
+ */
+const loadSlots = (): void => {
+    router.get(
+        window.location.href,
+        {},
+        {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            only: ['slots'],
         },
     );
 };
@@ -376,7 +391,7 @@ watch(
     () => props.slots,
     (slots) => {
         if (showSlots.value && slots === undefined) {
-            reload(['slots'], [], true);
+            loadSlots();
         }
     },
 );
@@ -386,8 +401,14 @@ onMounted(() => {
         now.value = dayjs();
     }, 60_000);
 
-    if (showSlots.value && props.slots === undefined) {
-        reload(['slots'], [], true);
+    // A remembered time zone has just started its own visit, which asks for the
+    // slots too; another visit now would cancel it.
+    if (
+        showSlots.value &&
+        props.slots === undefined &&
+        timezone.value === props.displayTimezone
+    ) {
+        loadSlots();
     }
 
     const opensByDefault =

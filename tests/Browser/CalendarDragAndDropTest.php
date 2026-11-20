@@ -2491,6 +2491,10 @@ test('a move cancelled by going Back sends nothing more and announces the return
     $this->actingAs($user);
 
     $page = visit(calendarDragWeekUrl($day->subWeek()));
+    // Back below lands on this entry, which Inertia ignores without its state.
+    waitForCondition($page, 'Boolean(window.history.state?.page)');
+    expect($page->script('Boolean(window.history.state?.page)'))
+        ->toBeTrue('The calendar loaded by its address has no Inertia history state.');
     $page->click('@calendar-next');
     calendarDragAssertLive($page, "@calendar-post-{$post->id}");
     calendarDragWatchAnnouncer($page);

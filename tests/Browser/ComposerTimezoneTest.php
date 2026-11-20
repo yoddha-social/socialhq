@@ -41,7 +41,7 @@ function waitForComposerTimezoneTrigger(mixed $page, string $label): void
     $page->script(<<<JS
         (async () => {
             for (let attempt = 0; attempt < 100; attempt++) {
-                if (document.querySelector('[data-testid="composer-schedule-trigger"]')?.textContent.trim() === '{$label}') return;
+                if (document.querySelector('[data-testid="composer-schedule-trigger-label"]')?.textContent.trim() === '{$label}') return;
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
         })();
@@ -123,7 +123,7 @@ function composerTimezonePickFutureDay(mixed $page): string
 
 function composerTimezoneTrigger(mixed $page): string
 {
-    return trim((string) $page->script('document.querySelector("[data-testid=composer-schedule-trigger]").textContent'));
+    return trim((string) $page->script('document.querySelector("[data-testid=composer-schedule-trigger-label]").textContent'));
 }
 
 function composerTimezoneZoneLabel(mixed $page): string

@@ -17,6 +17,7 @@ use App\Http\Controllers\App\Concerns\RendersPublishPage;
 use App\Http\Requests\App\Post\StorePostRequest;
 use App\Http\Requests\App\Post\UpdatePostRequest;
 use App\Models\Post;
+use App\SocialHq\Composer\ComposerRepeat;
 use App\Support\PostStatusRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -124,6 +125,11 @@ class PostController extends Controller
             $posts = CreatePosts::execute($workspace, $request->user(), $composition);
         }
 
+        // Social HQ: the repeat picked in the composer's footer (PATCHES.md row 233).
+        if ($request->has('recurrence')) {
+            ComposerRepeat::apply($posts, $request->validated('recurrence') ?: null);
+        }
+
         $tab = match ($request->input('status')) {
             PostStatus::Draft->value => ['tab' => 'drafts'],
             PostStatus::Scheduled->value, PostStatus::Publishing->value => ['tab' => 'queue'],
@@ -180,6 +186,11 @@ class PostController extends Controller
             session()->flash('flash.bannerStyle', 'danger');
 
             return back();
+        }
+
+        // Social HQ: the repeat picked in the composer's footer (PATCHES.md row 233).
+        if ($request->has('recurrence')) {
+            ComposerRepeat::apply([data_get($result, 'post')], $request->validated('recurrence') ?: null);
         }
 
         $tab = match (true) {

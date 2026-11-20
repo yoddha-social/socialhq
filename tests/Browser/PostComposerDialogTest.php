@@ -1282,7 +1282,7 @@ test('customizing several channels uses plural actions and flags the collapsed c
         ->fill('@composer-base-content', 'Text only')
         ->click('@composer-next')
         ->assertSee('Save drafts')
-        ->assertSee('Publish posts')
+        ->assertSee('Publish 2 posts')
         ->assertVisible("@composer-issues-{$instagram->id}")
         ->assertSeeIn("@composer-issues-{$instagram->id}", '1')
         ->assertDisabled('@composer-submit')

@@ -465,7 +465,7 @@ test('picking a day and typing a time schedules a custom date with the user time
         ->click('@composer-schedule-done')
         ->assertMissing('@composer-schedule-picker');
 
-    expect(trim((string) $page->script('document.querySelector("[data-testid=composer-schedule-trigger]").textContent')))
+    expect(trim((string) $page->script('document.querySelector("[data-testid=composer-schedule-trigger-label]").textContent')))
         ->toBe(composerScheduleExpectedLabel($day, '5:15 PM', $user->timezone));
     $page->assertNoJavaScriptErrors();
 });

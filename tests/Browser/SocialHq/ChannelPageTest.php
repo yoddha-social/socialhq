@@ -219,9 +219,9 @@ test('the disconnect dialog shows what it deletes from Social HQ and that the ne
     $page->click('@disconnect-impact-toggle');
     waitFor($page, '@disconnect-impact-details');
 
-    $page->assertSeeIn('@disconnect-impact-scheduled', '1')
-        ->assertSeeIn('@disconnect-impact-drafts', '1')
-        ->assertSeeIn('@disconnect-impact-sent', '3')
+    $page->assertSeeIn('@disconnect-impact-scheduled-count', '1')
+        ->assertSeeIn('@disconnect-impact-drafts', '1 Draft')
+        ->assertSeeIn('@disconnect-impact-sent-count', '3')
         ->assertMissing('@disconnect-impact-failed')
         ->assertSeeIn('@disconnect-impact-upcoming', 'Winter menu is here')
         ->assertVisible('@confirm-delete-input')

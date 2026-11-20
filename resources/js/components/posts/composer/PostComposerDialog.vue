@@ -6,6 +6,7 @@ import {
     IconArrowRight,
     IconArrowsMaximize,
     IconArrowsMinimize,
+    IconCalendarCheck,
     IconCalendarClock,
     IconCheck,
     IconChevronDown,
@@ -13,7 +14,6 @@ import {
     IconCirclePlus,
     IconEye,
     IconLayoutGrid,
-    IconLoader2,
     IconPencil,
     IconPin,
     IconPlus,
@@ -74,6 +74,9 @@ import PlatformPreview from '@/components/posts/previews/PlatformPreview.vue';
 import PreviewPanelTitle from '@/components/posts/previews/PreviewPanelTitle.vue';
 import PublishEmptyIllustration from '@/components/publish/PublishEmptyIllustration.vue';
 import { useAiTask } from '@/components/socialhq/aiTasks';
+import ComposerRepeat from '@/components/socialhq/composer/ComposerRepeat.vue';
+import ComposerWhenText from '@/components/socialhq/composer/ComposerWhenText.vue';
+import { repeatRuleFrom } from '@/components/socialhq/composer/repeat';
 import SharedCounterChip from '@/components/socialhq/composer/SharedCounterChip.vue';
 import { confirmPublishNow } from '@/components/socialhq/publishNow';
 import { Button } from '@/components/ui/button';
@@ -329,7 +332,8 @@ if (
     composition.scheduledAt.value = date.nextFullHour(composerTimezone.value);
 }
 const { contentFor } = useXLinkDefuser();
-const { requiresApproval, canManageAccounts } = useWorkspaceAbilities();
+const { requiresApproval, canManageAccounts, canPublishDirectly } =
+    useWorkspaceAbilities();
 const errors = usePageErrors();
 type ComposerSidePanel = 'templates' | 'assistant' | 'preview';
 // Social HQ: the writing assistant shows only while the company's AI can write.
@@ -1573,6 +1577,50 @@ const scheduleTriggerIcon = computed(() => {
         ? { name: 'calendar-clock', component: IconCalendarClock }
         : { name: 'send', component: IconSend };
 });
+/**
+ * Social HQ: the primary button says what saving does, counted when it saves
+ * several posts ("Schedule 4 posts", "Request approval for 4 posts").
+ */
+const submitAction = computed(() => {
+    const action = requiresApproval.value
+        ? {
+              one: 'socialhq.composer.request_approval',
+              many: 'socialhq.composer.request_approval_count',
+              icon: IconSend,
+          }
+        : isQueueMode.value && !props.postId
+          ? {
+                one: 'posts.composer.queue.add',
+                many: 'posts.composer.queue.add_many',
+                icon: IconCalendarCheck,
+            }
+          : scheduleMode.value === 'now'
+            ? {
+                  one: 'posts.composer.publish_now',
+                  many: 'socialhq.composer.publish_count',
+                  icon: IconSend,
+              }
+            : {
+                  one: 'posts.edit.schedule',
+                  many: 'socialhq.composer.schedule_count',
+                  icon: IconCalendarCheck,
+              };
+
+    return {
+        key: isBatch.value ? action.many : action.one,
+        params: { count: String(selectedAccounts.value.length) },
+        icon: action.icon,
+    };
+});
+/** Social HQ: the set time a repeat counts from, as a UTC instant; empty in the queue and "Now". */
+const repeatInstant = computed(() =>
+    scheduleMode.value === 'custom' && composition.scheduledAt.value
+        ? date.wallClockToUtc(
+              composition.scheduledAt.value,
+              composerTimezone.value,
+          )
+        : '',
+);
 watch(scheduleMenuOpen, (open) => {
     if (open) {
         schedulePanel.value =
@@ -1809,6 +1857,8 @@ const submit = (
             ? scheduleMode.value
             : null;
     const payload = composition.materialize(status, queue);
+    // Social HQ: only someone who publishes directly can repeat a post.
+    if (!canPublishDirectly.value) delete payload.recurrence;
     if (status === PostStatus.Scheduled && !queue) {
         if (!scheduledInstant) return false;
         payload.scheduled_at = scheduledInstant;
@@ -1962,6 +2012,7 @@ const autosaveSnapshot = (): AutosaveSnapshot => ({
         scheduleModeChosen.value && scheduleMode.value === 'custom'
             ? scheduledInstant || null
             : null,
+    recurrence: composition.recurrence.value,
 });
 const restoredInstant = (saved: string): string =>
     /(Z|[+-]\d{2}:?\d{2})$/.test(saved)
@@ -1980,6 +2031,7 @@ if (autosaveEnabled) {
             composition.overrides,
             composition.selectedAccountIds,
             composition.labelIds,
+            composition.recurrence,
             scheduleMode,
             scheduleModeChosen,
             composition.scheduledAt,
@@ -2045,6 +2097,7 @@ const resumeUnfinishedPost = (): void => {
         );
         scheduleModeChosen.value = true;
         scheduleMode.value = 'custom';
+        composition.recurrence.value = repeatRuleFrom(snapshot.recurrence);
     }
 };
 const updateResumeOpen = (open: boolean): void => {
@@ -2333,70 +2386,6 @@ const onDialogOpenChange = (value: boolean): void => {
                             ? $t('posts.edit.title')
                             : $t('posts.create.title')
                     }}</DialogTitle>
-                    <LabelFilter
-                        v-model="composition.labelIds.value"
-                        :labels="availableLabels"
-                        :show-untagged="false"
-                        test-id="composer-label"
-                        align="start"
-                        sheet-below-sm
-                        @created="addLabel"
-                    >
-                        <template #trigger>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="default"
-                                class="max-w-72 max-sm:max-w-40"
-                                data-testid="composer-tags-trigger"
-                            >
-                                <IconTag
-                                    v-if="!selectedLabels.length"
-                                    class="size-4"
-                                />
-                                <span
-                                    v-if="!selectedLabels.length"
-                                    class="max-sm:sr-only"
-                                    >{{
-                                    $t('posts.edit.labels')
-                                }}</span>
-                                <span
-                                    v-else
-                                    class="flex min-w-0 items-center gap-1.5 overflow-hidden"
-                                >
-                                    <span
-                                        v-for="label in selectedLabels.slice(
-                                            0,
-                                            2,
-                                        )"
-                                        :key="label.id"
-                                        class="flex min-w-0 items-center gap-1"
-                                    >
-                                        <span
-                                            class="size-2 shrink-0 rounded-full"
-                                            :style="{
-                                                backgroundColor: label.color,
-                                            }"
-                                        />
-                                        <span class="truncate">{{
-                                            label.name
-                                        }}</span>
-                                    </span>
-                                    <span
-                                        v-if="selectedLabels.length > 2"
-                                        class="shrink-0 text-muted-foreground"
-                                        >+{{ selectedLabels.length - 2 }}</span
-                                    >
-                                </span>
-                                <IconChevronDown
-                                    class="size-4 shrink-0 text-muted-foreground"
-                                    :class="{
-                                        'max-sm:hidden': !selectedLabels.length,
-                                    }"
-                                />
-                            </Button>
-                        </template>
-                    </LabelFilter>
                 </div>
                 <div
                     class="ms-auto flex min-w-0 items-center justify-end gap-1 sm:gap-2"
@@ -3375,15 +3364,88 @@ const onDialogOpenChange = (value: boolean): void => {
             </div>
 
             <footer
-                class="flex shrink-0 flex-col gap-2 border-t px-4 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-8 sm:py-4"
+                class="flex shrink-0 flex-col gap-2 border-t px-4 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:px-8 sm:py-4"
                 data-testid="composer-footer"
             >
+                <!-- Social HQ: labels and repeat sit with the time, in one bar (PATCHES.md row 232). -->
                 <div
-                    class="flex flex-1 flex-wrap items-center gap-x-3.5 gap-y-1"
+                    class="flex flex-1 flex-wrap items-center gap-x-2 gap-y-1 sm:gap-x-3"
+                    data-testid="composer-footer-details"
                 >
+                    <LabelFilter
+                        v-model="composition.labelIds.value"
+                        :labels="availableLabels"
+                        :show-untagged="false"
+                        test-id="composer-label"
+                        align="start"
+                        sheet-below-sm
+                        @created="addLabel"
+                    >
+                        <template #trigger>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="lg"
+                                class="max-w-72 rounded-xl px-3 max-sm:h-8 max-sm:max-w-40 max-sm:px-2"
+                                data-testid="composer-tags-trigger"
+                            >
+                                <IconTag
+                                    v-if="!selectedLabels.length"
+                                    class="size-4"
+                                />
+                                <span
+                                    v-if="!selectedLabels.length"
+                                    class="max-sm:sr-only"
+                                    >{{
+                                    $t('posts.edit.labels')
+                                }}</span>
+                                <span
+                                    v-else
+                                    class="flex min-w-0 items-center gap-1.5 overflow-hidden"
+                                >
+                                    <span
+                                        v-for="label in selectedLabels.slice(
+                                            0,
+                                            2,
+                                        )"
+                                        :key="label.id"
+                                        class="flex min-w-0 items-center gap-1"
+                                    >
+                                        <span
+                                            class="size-2 shrink-0 rounded-full"
+                                            :style="{
+                                                backgroundColor: label.color,
+                                            }"
+                                        />
+                                        <span class="truncate">{{
+                                            label.name
+                                        }}</span>
+                                    </span>
+                                    <span
+                                        v-if="selectedLabels.length > 2"
+                                        class="shrink-0 text-muted-foreground"
+                                        >+{{ selectedLabels.length - 2 }}</span
+                                    >
+                                </span>
+                                <IconChevronDown
+                                    class="size-4 shrink-0 text-muted-foreground"
+                                    :class="{
+                                        'max-sm:hidden': !selectedLabels.length,
+                                    }"
+                                />
+                            </Button>
+                        </template>
+                    </LabelFilter>
+                    <ComposerRepeat
+                        v-if="canPublishDirectly && socialAccounts.length > 0"
+                        v-model="composition.recurrence.value"
+                        :scheduled-at="repeatInstant"
+                        :timezone="composerTimezone"
+                        :can-hover="canHover"
+                    />
                     <label
                         v-if="!postId"
-                        class="flex cursor-pointer items-center gap-2 text-sm font-medium"
+                        class="flex cursor-pointer items-center gap-2 text-sm font-medium sm:ms-1"
                     >
                         <Checkbox
                             v-model="createAnother"
@@ -3392,10 +3454,11 @@ const onDialogOpenChange = (value: boolean): void => {
                         {{ $t('posts.composer.create_another') }}
                     </label>
                     <Button
+                        v-if="belowSm"
                         type="button"
                         variant="ghost"
                         size="lg"
-                        class="max-sm:h-8 max-sm:px-3"
+                        class="h-8 px-3"
                         data-testid="composer-save-draft"
                         :disabled="!canSubmit"
                         @click="submitDraft"
@@ -3427,145 +3490,150 @@ const onDialogOpenChange = (value: boolean): void => {
                     @click="openConnectDialog()"
                     >{{ $t('posts.composer.connect_to_post') }}</Button
                 >
-                <Popover v-else v-model:open="scheduleMenuOpen">
-                    <PopoverAnchor as-child>
-                        <div class="flex items-center gap-0 max-sm:w-full">
-                            <PopoverTrigger as-child>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="lg"
-                                    class="rounded-l-xl rounded-r-none ps-3 pe-2"
-                                    data-testid="composer-schedule-trigger"
-                                >
-                                    <component
-                                        :is="scheduleTriggerIcon.component"
-                                        class="size-4"
-                                        data-testid="composer-schedule-trigger-icon"
-                                        :data-icon="scheduleTriggerIcon.name"
-                                    />{{
+                <div
+                    v-else
+                    class="flex min-w-0 items-center gap-2 max-sm:w-full"
+                    data-testid="composer-footer-actions"
+                >
+                    <Popover v-model:open="scheduleMenuOpen">
+                        <PopoverTrigger as-child>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="lg"
+                                class="min-w-0 rounded-xl ps-3 pe-2 max-sm:max-w-[55%]"
+                                data-testid="composer-schedule-trigger"
+                            >
+                                <component
+                                    :is="scheduleTriggerIcon.component"
+                                    class="size-4"
+                                    data-testid="composer-schedule-trigger-icon"
+                                    :data-icon="scheduleTriggerIcon.name"
+                                /><ComposerWhenText
+                                    :label="
                                         scheduleDateLabel ??
                                         $t(scheduleLabelKey)
-                                    }}<IconChevronUp
-                                        class="size-4"
-                                        data-testid="composer-schedule-trigger-chevron"
-                                    />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                                v-if="!belowSm"
-                                align="end"
-                                side="top"
-                                :class="
-                                    schedulePanel === 'picker'
-                                        ? 'w-[21rem] p-0'
-                                        : 'w-80 space-y-0.5 p-3'
-                                "
-                            >
-                                <ReuseScheduleMenu />
-                            </PopoverContent>
-                        <Button
-                            v-if="sharedStep"
-                            type="button"
-                            size="lg"
-                            class="rounded-l-none rounded-r-xl max-sm:min-w-0 max-sm:flex-1"
-                            data-testid="composer-next"
-                            @click="customizeNetworks"
-                            >{{ $t('posts.composer.customize_networks')
-                            }}<IconArrowRight class="size-4"
-                        /></Button>
-                        <TooltipProvider
-                            v-else
-                            :delay-duration="150"
-                            :disabled="!canHover"
+                                    "
+                                    :wall-clock="
+                                        scheduleDateLabel
+                                            ? composition.scheduledAt.value
+                                            : ''
+                                    "
+                                    :timezone="composerTimezone"
+                                /><IconChevronUp
+                                    class="size-4 shrink-0"
+                                    data-testid="composer-schedule-trigger-chevron"
+                                />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                            v-if="!belowSm"
+                            align="end"
+                            side="top"
+                            :class="
+                                schedulePanel === 'picker'
+                                    ? 'w-[21rem] p-0'
+                                    : 'w-80 space-y-0.5 p-3'
+                            "
                         >
-                            <Tooltip
-                                :disabled="
-                                    !canHover ||
-                                    (!blockingIssue && !submitBlockedKey)
-                                "
+                            <ReuseScheduleMenu />
+                        </PopoverContent>
+                    </Popover>
+                    <Button
+                        v-if="!belowSm"
+                        type="button"
+                        variant="secondary"
+                        size="lg"
+                        class="rounded-xl"
+                        data-testid="composer-save-draft"
+                        :disabled="!canSubmit"
+                        @click="submitDraft"
+                        >{{ $t(draftActionLabel) }}</Button
+                    >
+                    <Button
+                        v-if="sharedStep"
+                        type="button"
+                        size="lg"
+                        class="rounded-xl max-sm:min-w-0 max-sm:flex-1"
+                        data-testid="composer-next"
+                        @click="customizeNetworks"
+                        >{{ $t('posts.composer.customize_networks')
+                        }}<IconArrowRight class="size-4"
+                    /></Button>
+                    <TooltipProvider
+                        v-else
+                        :delay-duration="150"
+                        :disabled="!canHover"
+                    >
+                        <Tooltip
+                            :disabled="
+                                !canHover ||
+                                (!blockingIssue && !submitBlockedKey)
+                            "
+                        >
+                            <TooltipTrigger as-child>
+                                <Button
+                                    type="button"
+                                    size="lg"
+                                    class="rounded-xl aria-disabled:cursor-not-allowed aria-disabled:bg-border-strong aria-disabled:text-subtle-foreground aria-disabled:hover:bg-border-strong aria-disabled:active:translate-y-0 max-sm:min-w-0 max-sm:flex-1"
+                                    data-testid="composer-submit"
+                                    :data-schedule-mode="scheduleMode"
+                                    :loading="submitting || cropUploading"
+                                    :disabled="!canSubmit && !submitBlockedKey"
+                                    :aria-disabled="
+                                        hasBlockingIssues || submitBlockedKey
+                                            ? 'true'
+                                            : undefined
+                                    "
+                                    :aria-describedby="
+                                        submitBlockedKey
+                                            ? 'composer-submit-blocked'
+                                            : undefined
+                                    "
+                                    @click="submitSelectedSchedule"
+                                    ><component
+                                        :is="submitAction.icon"
+                                        class="size-4"
+                                    />{{
+                                        $t(
+                                            submitAction.key,
+                                            submitAction.params,
+                                        )
+                                    }}</Button
+                                >
+                            </TooltipTrigger>
+                            <TooltipContent
+                                v-if="!blockingIssue && submitBlockedKey"
+                                side="top"
+                                data-testid="composer-submit-blocked-tooltip"
                             >
-                                <TooltipTrigger as-child>
-                                    <Button
-                                        type="button"
-                                        size="lg"
-                                        class="rounded-l-none rounded-r-xl max-sm:min-w-0 max-sm:flex-1 aria-disabled:cursor-not-allowed aria-disabled:bg-border-strong aria-disabled:text-subtle-foreground aria-disabled:hover:bg-border-strong aria-disabled:active:translate-y-0"
-                                        data-testid="composer-submit"
-                                        :data-schedule-mode="scheduleMode"
-                                        :disabled="!canSubmit && !submitBlockedKey"
-                                        :aria-disabled="
-                                            hasBlockingIssues || submitBlockedKey
-                                                ? 'true'
-                                                : undefined
-                                        "
-                                        :aria-describedby="
-                                            submitBlockedKey
-                                                ? 'composer-submit-blocked'
-                                                : undefined
-                                        "
-                                        @click="submitSelectedSchedule"
-                                        ><IconLoader2
-                                            v-if="submitting || cropUploading"
-                                            class="size-4 animate-spin"
-                                        />{{
-                                            requiresApproval
-                                                ? $t('posts.composer.request_approval')
-                                                : isQueueMode && !postId
-                                                ? isBatch
-                                                    ? $t('posts.composer.queue.add_many', {
-                                                          count: String(
-                                                              selectedAccounts.length,
-                                                          ),
-                                                      })
-                                                    : $t('posts.composer.queue.add')
-                                                : scheduleMode === 'now'
-                                                ? $t(
-                                                      isBatch
-                                                          ? 'posts.composer.publish_posts'
-                                                          : 'posts.composer.publish_now',
+                                {{ $t(submitBlockedKey) }}
+                            </TooltipContent>
+                            <TooltipContent
+                                v-else-if="blockingIssue"
+                                side="top"
+                                data-testid="composer-blocked-tooltip"
+                            >
+                                {{
+                                    $t('posts.composer.blocked_tooltip', {
+                                        issue: $t(
+                                            blockingIssue.key,
+                                            blockingIssue.warning
+                                                ? mediaWarningParams(
+                                                      blockingIssue.warning,
+                                                      blockingIssue.contentType,
+                                                      $t,
                                                   )
-                                                : $t(
-                                                      isBatch
-                                                          ? 'posts.composer.schedule_posts'
-                                                          : 'posts.edit.schedule',
-                                                  )
-                                        }}</Button
-                                    >
-                                </TooltipTrigger>
-                                <TooltipContent
-                                    v-if="!blockingIssue && submitBlockedKey"
-                                    side="top"
-                                    data-testid="composer-submit-blocked-tooltip"
-                                >
-                                    {{ $t(submitBlockedKey) }}
-                                </TooltipContent>
-                                <TooltipContent
-                                    v-else-if="blockingIssue"
-                                    side="top"
-                                    data-testid="composer-blocked-tooltip"
-                                >
-                                    {{
-                                        $t('posts.composer.blocked_tooltip', {
-                                            issue: $t(
-                                                blockingIssue.key,
-                                                blockingIssue.warning
-                                                    ? mediaWarningParams(
-                                                          blockingIssue.warning,
-                                                          blockingIssue.contentType,
-                                                          $t,
-                                                      )
-                                                    : blockingIssue.params,
-                                            ),
-                                            channel:
-                                                blockingIssue.account.display_label,
-                                        })
-                                    }}
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                        </div>
-                    </PopoverAnchor>
-                </Popover>
+                                                : blockingIssue.params,
+                                        ),
+                                        channel:
+                                            blockingIssue.account.display_label,
+                                    })
+                                }}
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
                 <BottomSheet
                     v-if="belowSm && socialAccounts.length > 0"
                     v-model:open="scheduleSheetOpen"

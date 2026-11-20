@@ -2,6 +2,7 @@ import { computed, ref } from 'vue';
 
 import { getContentTypeOptions } from '@/composables/usePlatformLogo';
 import { derivedContentTypeFor } from '@/lib/derivedContentType';
+import type { RecurrenceRule } from '@/lib/recurrence';
 import type { MediaItem } from '@/types/media';
 import { Platform } from '@/types/platform';
 import {
@@ -48,6 +49,8 @@ export interface PostComposition {
         | typeof PostStatus.Publishing;
     label_ids: string[];
     destinations: DestinationDraft[];
+    /** Social HQ: the repeat picked in the footer, sent only for a post scheduled at a set time. */
+    recurrence?: RecurrenceRule | null;
 }
 
 export interface ComposerInitialPost {
@@ -61,6 +64,7 @@ export interface ComposerInitialPost {
     content_type: string;
     meta: Record<string, any>;
     label_ids: string[];
+    recurrence?: RecurrenceRule | null;
 }
 
 export interface ComposerInitialDraft {
@@ -104,6 +108,7 @@ export const usePostComposition = (
         initial?.scheduled_at ?? initialDraft?.scheduled_at ?? '',
     );
     const labelIds = ref(initial?.label_ids ?? initialDraft?.label_ids ?? []);
+    const recurrence = ref<RecurrenceRule | null>(initial?.recurrence ?? null);
     const selectedAccountIds = ref<string[]>(
         initial ? [initial.social_account_id] : [],
     );
@@ -367,6 +372,9 @@ export const usePostComposition = (
         destinations: selectedAccounts.value.map((account) =>
             resolvedDestination(account),
         ),
+        ...(status === PostStatus.Scheduled && !queue
+            ? { recurrence: recurrence.value ? { ...recurrence.value } : null }
+            : {}),
     });
 
     return {
@@ -374,6 +382,7 @@ export const usePostComposition = (
         media,
         scheduledAt,
         labelIds,
+        recurrence,
         selectedAccountIds,
         selectedAccounts,
         overrides,

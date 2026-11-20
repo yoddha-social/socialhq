@@ -114,7 +114,7 @@ function composerMobileTooltipCount(mixed $page): int
     return (int) $page->script('document.querySelectorAll(\'[data-slot="tooltip-content"]\').length');
 }
 
-test('at 768px the header shows icon-only panel buttons, the editor keeps a usable width and network cards do not overflow', function () {
+test('at 768px the header shows icon-only panel buttons, labels sit in the footer, the editor keeps a usable width and network cards do not overflow', function () {
     [$user, $workspace] = composerMobileWorkspace();
     $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
     $tiktok = SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id]);
@@ -128,11 +128,10 @@ test('at 768px the header shows icon-only panel buttons, the editor keeps a usab
     $header = $page->script(<<<'JS'
         (() => {
             const rect = (testId) => document.querySelector(`[data-testid="${testId}"]`).getBoundingClientRect();
-            const labels = rect('composer-tags-trigger');
             const templates = rect('composer-templates-toggle');
             const header = document.querySelector('[data-testid="composer-header"]');
             return {
-                overlap: labels.right > templates.left && labels.top < templates.bottom && templates.top < labels.bottom,
+                labelsInFooter: document.querySelector('[data-testid="composer-footer"] [data-testid="composer-tags-trigger"]') !== null,
                 templatesWidth: templates.width,
                 eyeHidden: getComputedStyle(document.querySelector('[data-testid="composer-preview-toggle"]')).display === 'none',
                 headerOverflow: header.scrollWidth > header.clientWidth,
@@ -140,7 +139,7 @@ test('at 768px the header shows icon-only panel buttons, the editor keeps a usab
         })()
     JS);
 
-    expect($header['overlap'])->toBeFalse()
+    expect($header['labelsInFooter'])->toBeTrue()
         ->and($header['templatesWidth'])->toBeLessThanOrEqual(33)
         ->and($header['eyeHidden'])->toBeTrue()
         ->and($header['headerOverflow'])->toBeFalse();

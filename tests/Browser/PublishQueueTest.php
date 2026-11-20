@@ -125,7 +125,7 @@ test('a slot opens the composer at that slot and saving places the post there as
     $label = $slot->format($slot->year === now('UTC')->year ? 'M j' : 'M j, Y').", {$slot->format('H:i')}";
 
     expect($page->script('document.querySelector(\'[data-testid="composer-submit"]\').dataset.scheduleMode'))->toBe('custom')
-        ->and(trim((string) $page->script('document.querySelector("[data-testid=composer-schedule-trigger]").textContent')))->toBe($label);
+        ->and(trim((string) $page->script('document.querySelector("[data-testid=composer-schedule-trigger-label]").textContent')))->toBe($label);
 
     $page->click('@composer-submit');
     waitForPublishQueueCondition($page, '!document.querySelector(\'[data-testid="post-composer-dialog"]\')');

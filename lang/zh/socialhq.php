@@ -358,6 +358,27 @@ return [
     'composer' => [
         'shared_counter' => ':used / :limit',
         'shared_counter_limit' => ':platform limit',
+        'schedule_count' => 'Schedule :count posts',
+        'publish_count' => 'Publish :count posts',
+        'request_approval' => 'Request approval',
+        'request_approval_count' => 'Request approval for :count posts',
+        'repeat' => [
+            'none' => 'Doesn’t repeat',
+            'rule' => [
+                'day' => '{1} Every day|[0,*] Every :count days',
+                'week' => '{1} Every week|[0,*] Every :count weeks',
+                'month' => '{1} Every month|[0,*] Every :count months',
+                'year' => '{1} Every year|[0,*] Every :count years',
+            ],
+            'times' => '{1} :rule, once|[0,*] :rule, :count times',
+            'title' => 'Repeat this post',
+            'apply' => 'Repeat',
+            'clear' => 'Don’t repeat',
+            'needs_time' => 'To repeat this post, choose “Set date and time” first.',
+            'errors' => [
+                'approval' => 'Only workspace admins can repeat posts.',
+            ],
+        ],
     ],
 
     'channels' => [
@@ -479,7 +500,7 @@ return [
             'statuses' => [
                 'scheduled' => 'Scheduled',
                 'pending_approval' => 'Needs approval',
-                'drafts' => 'Drafts',
+                'drafts' => '{1} Draft|[0,*] Drafts',
                 'failed' => 'Failed',
                 'sent' => 'Sent',
             ],

@@ -330,6 +330,23 @@ test('switching only the schedule of an edited post asks before closing', functi
     $page->assertVisible('@unsaved-changes-dialog')->assertNoJavaScriptErrors();
 });
 
+test('changing only the repeat of an edited post asks before closing', function () {
+    $post = seedUnsavedChangesReel();
+    $post->forceFill(['status' => PostStatus::Scheduled, 'schedule_mode' => ScheduleMode::Custom, 'scheduled_at' => now()->addDay()])->save();
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForState($page, '@composer-repeat-trigger', '!element.disabled');
+    $page->click('@composer-repeat-trigger');
+    waitFor($page, '@composer-repeat-apply');
+    $page->click('@composer-repeat-apply');
+    waitForState($page, '@composer-repeat-trigger', "element.dataset.repeating === 'true'");
+
+    $page->click('@composer-close');
+    waitFor($page, '@unsaved-changes-dialog');
+
+    $page->assertVisible('@unsaved-changes-dialog')->assertNoJavaScriptErrors();
+});
+
 test('picking a discord channel stores its name for the preview', function () {
     Http::fake(['*' => Http::response([], 200)]);
     $user = User::factory()->create();

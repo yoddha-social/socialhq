@@ -85,7 +85,7 @@ test('a requester never sees publish now and requests approval for the queue', f
         ->fill("@composer-caption-{$channel->id}", 'Please approve me');
     waitForComposerApprovalTestId($page, 'composer-submit');
 
-    expect(composerApprovalSubmitText($page))->toBe('Save and request approval');
+    expect(composerApprovalSubmitText($page))->toBe('Request approval');
 
     $page->assertVisible('@composer-save-draft')
         ->assertVisible('@composer-create-another')
@@ -125,7 +125,7 @@ test('editing a pending queue request starts on its stored position', function (
     waitForComposerApprovalTestId($page, 'composer-submit');
 
     expect($page->script('document.querySelector("[data-testid=composer-submit]").dataset.scheduleMode'))->toBe('top')
-        ->and(composerApprovalSubmitText($page))->toBe('Save and request approval');
+        ->and(composerApprovalSubmitText($page))->toBe('Request approval');
     $page->assertNoJavaScriptErrors();
 });
 
@@ -145,7 +145,7 @@ test('owners and admins keep publish now and their default action', function (st
     waitForComposerApprovalTestId($page, 'composer-submit');
 
     expect($page->script('document.querySelector("[data-testid=composer-submit]").dataset.scheduleMode'))->toBe('now')
-        ->and(composerApprovalSubmitText($page))->not->toBe('Save and request approval');
+        ->and(composerApprovalSubmitText($page))->not->toBe('Request approval');
 
     $page->click('@composer-schedule-trigger')
         ->assertVisible('@composer-schedule-now')
@@ -179,8 +179,8 @@ test('editing a pending custom time request starts on custom with its date', fun
 
     expect($page->script('document.querySelector("[data-testid=composer-submit]").dataset.scheduleMode'))->toBe('custom')
         ->and($page->script('document.querySelector("[data-testid=composer-schedule-trigger-icon]").dataset.icon'))->toBe('pin')
-        ->and($page->script('document.querySelector("[data-testid=composer-schedule-trigger]").textContent.trim()'))->toBe("{$day}, {$at->format('g:i A')}")
-        ->and(composerApprovalSubmitText($page))->toBe('Save and request approval');
+        ->and($page->script('document.querySelector("[data-testid=composer-schedule-trigger-label]").textContent.trim()'))->toBe("{$day}, {$at->format('g:i A')}")
+        ->and(composerApprovalSubmitText($page))->toBe('Request approval');
     $page->assertNoJavaScriptErrors();
 });
 
@@ -203,7 +203,7 @@ test('a requester whose channel has no posting times starts on a set time they c
     expect($page->script('document.querySelector("[data-testid=composer-submit]").dataset.scheduleMode'))->toBe('custom')
         ->and($page->script('document.querySelector("[data-testid=composer-submit]").disabled'))->toBeFalse()
         ->and($page->script('document.querySelector("[data-testid=composer-schedule-trigger-icon]").dataset.icon'))->toBe('pin')
-        ->and($page->script('document.querySelector("[data-testid=composer-schedule-trigger]").textContent.trim()'))->not->toBe('Now');
+        ->and($page->script('document.querySelector("[data-testid=composer-schedule-trigger-label]").textContent.trim()'))->not->toBe('Now');
 
     $page->click('@composer-submit');
     waitForComposerApprovalClosed($page);

@@ -46,6 +46,14 @@ function aiMissingMessage(string $key, User $user): string
 }
 
 /**
+ * Clicks a button that is aria-disabled, as a person can (Playwright refuses to).
+ */
+function aiMissingClick(mixed $page, string $testId): void
+{
+    $page->script("(() => { document.querySelector('[data-testid=\"{$testId}\"]').click(); return true; })()");
+}
+
+/**
  * The item page of a plan item whose creative waits for its first upload.
  */
 function aiMissingCreativePage(User $user): mixed
@@ -70,7 +78,7 @@ test('without an image provider, "Generate with AI" stays in the media menu and 
     $page->click('@composer-base-media-source-menu');
     waitFor($page, '@media-source-socialhq-ai');
 
-    expect($page->script('document.querySelector(\'[data-testid="media-source-socialhq-ai"]\').getAttribute("aria-disabled")'))->toBe('true');
+    expect($page->script('document.querySelector(\'[data-testid="media-source-socialhq-ai"]\').dataset.missing'))->toBe('true');
 
     $page->hover('@media-source-socialhq-ai');
     waitForText($page, '@ai-missing-tooltip', $message);
@@ -115,7 +123,7 @@ test('without AI that reads images, the creative\'s "Generate with AI" says grap
 
     expect($page->script('document.querySelector(\'[data-testid="item-creative-generate"]\').getAttribute("aria-disabled")'))->toBe('true');
 
-    $page->click('@item-creative-generate');
+    aiMissingClick($page, 'item-creative-generate');
     waitForText($page, '[data-sonner-toast]', $message);
 
     $page->assertMissing('@socialhq-ai-graphic-dialog')

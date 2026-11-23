@@ -9,7 +9,10 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 
 // Social HQ: "Generate with AI" in the media menu. It shows while the
 // company has some AI and the user may create posts here; when that AI
-// can't make graphics, it stays in the menu, dimmed, and says what's missing.
+// can't make graphics, it stays in the menu, dimmed, and says what's missing
+// (the tooltip on hover and focus, a toast when chosen). It stays a focusable
+// item, not a disabled one, so the keyboard reaches the reason too; the menu
+// item sets aria-disabled itself, so `data-missing` marks it.
 
 const emit = defineEmits<{ select: [] }>();
 
@@ -34,7 +37,7 @@ const choose = (): void => {
     >
         <DropdownMenuItem
             data-testid="media-source-socialhq-ai"
-            :aria-disabled="missingKey ? 'true' : undefined"
+            :data-missing="missingKey ? 'true' : undefined"
             :class="
                 missingKey
                     ? 'text-muted-foreground focus:text-muted-foreground'

@@ -326,7 +326,8 @@ test('without AI that reads images, Generate alt text stays and says why', funct
 
     expect($page->script('document.querySelector(\'[data-testid="media-editor-alt-generate"]\').getAttribute("aria-disabled")'))->toBe('true');
 
-    $page->click('@media-editor-alt-generate');
+    // A person can click it; Playwright refuses an aria-disabled button.
+    $page->script('(() => { document.querySelector(\'[data-testid="media-editor-alt-generate"]\').click(); return true; })()');
     waitForText($page, '[data-sonner-toast]', $message);
 
     expect($page->script('document.querySelector("[data-testid=media-editor-alt-text]").value'))->toBe('');

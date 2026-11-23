@@ -56,10 +56,18 @@ class ShareSocialHqProps
                 ];
             },
             'aiGraphics' => fn (): array => [
-                'available' => (function (): bool {
+                ...(function (): array {
                     $user = auth()->user();
+                    $workspace = $user instanceof User ? $user->currentWorkspace : null;
+                    $offered = $workspace !== null && AiGraphics::isOffered($user, $workspace);
 
-                    return $user instanceof User && $user->currentWorkspace !== null && AiGraphics::canUse($user, $user->currentWorkspace);
+                    return [
+                        // "Generate with AI" shows (offered) and works (available); when it shows but
+                        // can't work, `missing` says what the company's AI lacks (AiGraphics::missing()).
+                        'offered' => $offered,
+                        'available' => $offered && AiGraphics::canUse($user, $workspace),
+                        'missing' => $offered ? AiGraphics::missing() : null,
+                    ];
                 })(),
                 'maxReferences' => (int) config('socialhq.ai_graphics.max_reference_images', 3),
                 'maxReferenceKilobytes' => (int) config('socialhq.ai_graphics.max_reference_kilobytes', 10240),

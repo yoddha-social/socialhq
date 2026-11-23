@@ -27,10 +27,32 @@ return [
             'owner' => 'Your company\'s AI can\'t do this yet. To use it, add an AI provider that can in Settings › AI.',
             'member' => 'Your company\'s AI can\'t do this yet. Ask your company\'s owner to add an AI provider that can in Settings › AI.',
         ],
+        // An AI button the company's AI can't run yet: shown dimmed, said on hover and on click.
+        'missing' => [
+            'vision' => [
+                'owner' => 'Your company\'s AI can\'t read images yet. To write alt text with AI, add a provider that can in Settings › AI.',
+                'member' => 'Your company\'s AI can\'t read images yet. To write alt text with AI, your company\'s owner needs to add a provider that can in Settings › AI.',
+            ],
+        ],
     ],
 
     'ai_graphics' => [
         'menu_item' => 'Generate with AI',
+        // "Generate with AI" while the company's AI can't make graphics (AiGraphics::missing()).
+        'missing' => [
+            'image' => [
+                'owner' => 'Your company\'s AI can\'t make images yet. To generate graphics, add a provider that can in Settings › AI.',
+                'member' => 'Your company\'s AI can\'t make images yet. To generate graphics, your company\'s owner needs to add a provider that can in Settings › AI.',
+            ],
+            'vision' => [
+                'owner' => 'Your company\'s AI can\'t check images yet, and every AI graphic is checked before you get it. Add a provider that can read images in Settings › AI.',
+                'member' => 'Your company\'s AI can\'t check images yet, and every AI graphic is checked before you get it. Your company\'s owner needs to add a provider that can read images in Settings › AI.',
+            ],
+            'image_vision' => [
+                'owner' => 'Your company\'s AI can\'t make or check images yet. To generate graphics, add providers that can in Settings › AI.',
+                'member' => 'Your company\'s AI can\'t make or check images yet. To generate graphics, your company\'s owner needs to add providers that can in Settings › AI.',
+            ],
+        ],
         'title' => 'Generate a graphic with AI',
         'description' => 'Describe the graphic. Add up to :count reference images to use or follow, such as a product photo or a style.',
         'prompt_label' => 'Prompt',

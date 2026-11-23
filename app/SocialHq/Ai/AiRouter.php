@@ -125,6 +125,22 @@ final class AiRouter
     }
 
     /**
+     * Whether the company has any AI it can use now, whatever the task. AI
+     * buttons show while it does; one whose task can't run says what is
+     * missing instead of hiding.
+     */
+    public static function anyAvailable(): bool
+    {
+        foreach (AiTask::cases() as $task) {
+            if (self::isAvailable($task)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * The driver every target of the task's route shares, for
      * provider-specific request shapes such as image aspect ratios; null when
      * the route mixes drivers (or has none), so callers pick a shape every

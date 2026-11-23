@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
+use App\Models\AnalyticsAccountDailySnapshot;
+use App\Models\AnalyticsPublication;
+use App\Models\AnalyticsSyncState;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\Repurpose;
@@ -15,6 +18,7 @@ use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\ItemStatus;
 use App\SocialHq\Plan\PlanItem;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     Mail::fake();
@@ -99,6 +103,37 @@ test('it says what else stops: the queue, planned items and repurposes that read
         ->assertJsonPath('plan_items', 2)
         ->assertJsonPath('repurposes', 2)
         ->assertJsonPath('posting_times', $this->channel->posting_schedule?->slotCount() ?? 0);
+});
+
+test('it counts the Insights history the disconnect deletes, none while another channel is the same account', function () {
+    $identity = AnalyticsSyncState::providerIdentityFor($this->channel);
+    AnalyticsPublication::factory()->count(3)->create([...$identity, 'social_account_id' => $this->channel->id, 'platform' => $this->channel->platform]);
+    AnalyticsPublication::factory()->create([...$identity, 'social_account_key' => (string) Str::uuid(), 'platform' => $this->channel->platform]);
+    $impact = fn (SocialAccount $channel): mixed => $this->actingAs($this->user)
+        ->getJson(route('socialhq.channels.disconnect-impact.show', $channel))
+        ->assertOk()
+        ->json('insights');
+
+    $followersOnly = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+    AnalyticsAccountDailySnapshot::factory()->create([
+        ...AnalyticsSyncState::providerIdentityFor($followersOnly),
+        'social_account_id' => $followersOnly->id,
+        'platform' => $followersOnly->platform,
+    ]);
+
+    expect($impact($this->channel))->toBe(4)
+        ->and($impact($followersOnly))->toBe(0)
+        ->and($impact(SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id])))->toBeNull();
+
+    $sameAccount = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+    SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::InstagramFacebook,
+        'platform_user_id' => $sameAccount->platform_user_id,
+    ]);
+    AnalyticsPublication::factory()->create([...AnalyticsSyncState::providerIdentityFor($sameAccount), 'platform' => $sameAccount->platform]);
+
+    expect($impact($sameAccount))->toBeNull();
 });
 
 test('only admins of the channel workspace see what a disconnect deletes', function () {

@@ -20,7 +20,8 @@ use Illuminate\Database\Eloquent\Builder;
  * What disconnecting a channel deletes from Social HQ, shown in the disconnect
  * dialog before anyone types "disconnect". It counts what
  * `DisconnectSocialAccount` removes: every post of the channel with its media,
- * whatever its status or origin. Nothing on the network changes.
+ * whatever its status or origin, and its Insights history (`ChannelInsights`).
+ * Nothing on the network changes.
  */
 final class DisconnectImpact
 {
@@ -32,7 +33,7 @@ final class DisconnectImpact
     public const int EXCERPT_LENGTH = 90;
 
     /**
-     * @return array{posts: array{scheduled: int, pending_approval: int, drafts: int, failed: int, sent: int}, unsent: int, media: int, upcoming: list<array{id: string, scheduled_at: string|null, excerpt: string}>, posting_times: int, posting_goal: int|null, plan_items: int, repurposes: int, network: string}
+     * @return array{posts: array{scheduled: int, pending_approval: int, drafts: int, failed: int, sent: int}, unsent: int, media: int, upcoming: list<array{id: string, scheduled_at: string|null, excerpt: string}>, posting_times: int, posting_goal: int|null, plan_items: int, repurposes: int, insights: int|null, network: string}
      */
     public static function of(SocialAccount $channel): array
     {
@@ -65,6 +66,7 @@ final class DisconnectImpact
                 ->where('source_social_account_id', $channel->id)
                 ->whereIn('status', [RepurposeStatus::Active, RepurposeStatus::Paused])
                 ->count(),
+            'insights' => ChannelInsights::count($channel),
             'network' => self::networkName($channel->platform),
         ];
     }

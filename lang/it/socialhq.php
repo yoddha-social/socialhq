@@ -503,7 +503,7 @@ return [
         ],
         'disconnect' => [
             'title' => 'Disconnect',
-            'description' => 'Deletes this channel’s posts and its queue.',
+            'description' => 'Deletes this channel’s posts, its queue and its Insights history.',
             'action' => 'Disconnect',
         ],
         // What a disconnect deletes, inside the disconnect dialog.
@@ -516,6 +516,7 @@ return [
             'unsent' => '{0} no posts|{1} 1 post|[2,*] :count posts',
             'sent' => '{0} no sent posts|{1} 1 sent post|[2,*] :count sent posts',
             'media' => '{0} no media files|{1} 1 media file|[2,*] :count media files',
+            'insights' => '{0} Its Insights history goes too.|{1} Its Insights history goes too, with the numbers of 1 post.|[2,*] Its Insights history goes too, with the numbers of :count posts.',
             'network_stays' => 'Nothing is deleted on :network: posts already there stay live.',
             'show' => 'See what you’ll lose',
             'hide' => 'Hide details',
@@ -538,7 +539,6 @@ return [
             'repurposes' => '{1} 1 repurpose that reads from it|[2,*] :count repurposes that read from it',
             'stays' => 'Stays',
             'stays_network' => 'Everything already posted on :network',
-            'stays_insights' => 'Insights numbers',
             'stays_reconnect' => 'Connecting the same account again brings back its recent sent posts',
             'open_posts' => 'Open this channel’s posts',
         ],

@@ -25,6 +25,10 @@ import {
     type PlanListSort,
     type PlanListSortKey,
 } from '@/components/socialhq/plan/planListSort';
+import {
+    POST_STATUS_VARIANT,
+    postStatusLabelKey,
+} from '@/components/socialhq/plan/postStatus';
 import type { PlanItem, PlanLookups } from '@/components/socialhq/plan/types';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -442,6 +446,14 @@ const actionClass =
                                     )
                                 }}
                             </Badge>
+                            <Badge
+                                v-if="item.post_status"
+                                :variant="POST_STATUS_VARIANT[item.post_status]"
+                                class="min-w-0 shrink truncate px-1.5"
+                                :data-testid="`plan-row-post-${item.id}`"
+                            >
+                                {{ $t(postStatusLabelKey(item.post_status)) }}
+                            </Badge>
                             <span
                                 v-if="canWork"
                                 class="ms-auto flex shrink-0 items-center gap-0.5"
@@ -677,6 +689,14 @@ const actionClass =
                                 />
                                 {{ $t(copyStatusLabelKey(item.copy_status)) }}
                             </span>
+                            <Badge
+                                v-if="item.post_status"
+                                :variant="POST_STATUS_VARIANT[item.post_status]"
+                                class="px-1.5"
+                                :data-testid="`plan-row-post-${item.id}`"
+                            >
+                                {{ $t(postStatusLabelKey(item.post_status)) }}
+                            </Badge>
                         </div>
                         <div
                             v-if="canWork && item.status !== 'planned'"

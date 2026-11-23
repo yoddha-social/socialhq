@@ -116,6 +116,7 @@ return [
     'status' => [
         'ok' => 'Answered',
         'failed' => 'Failed',
+        'cut_off' => 'Cut off',
         'rate_limited' => 'Rate-limited',
         'blocked_budget' => 'Budget reached',
         'blocked_no_route' => 'No AI provider',
@@ -166,6 +167,7 @@ return [
         'blocked_budget' => 'LiteLLM refused it: the monthly budget in Settings › AI is spent.',
         'rate_limited' => 'Every provider for this task was busy or out of quota.',
         'failed' => 'The provider or LiteLLM answered with an error.',
+        'cut_off' => 'The answer stopped at its length limit, so it was missing or incomplete. A model that reasons can spend the limit thinking.',
         'fell_back' => 'The free providers failed, so the paid group answered.',
     ],
 

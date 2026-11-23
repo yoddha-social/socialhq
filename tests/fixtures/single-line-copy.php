@@ -294,6 +294,7 @@ return [
     'socialhq_ai_usage.row.free' => 4,
     'socialhq_ai_usage.status.blocked_budget' => 14,
     'socialhq_ai_usage.status.blocked_no_route' => 14,
+    'socialhq_ai_usage.status.cut_off' => 7,
     'socialhq_ai_usage.status.failed' => 6,
     'socialhq_ai_usage.status.ok' => 8,
     'socialhq_ai_usage.status.rate_limited' => 12,

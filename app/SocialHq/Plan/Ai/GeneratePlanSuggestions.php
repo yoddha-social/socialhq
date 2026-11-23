@@ -32,6 +32,7 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Laravel\Ai\Responses\Data\FinishReason;
 use Laravel\Ai\Responses\TextResponse;
 use RuntimeException;
 use Throwable;
@@ -111,7 +112,7 @@ class GeneratePlanSuggestions implements ShouldQueue
 
         if (! is_array($items)) {
             report(new RuntimeException(self::describeUnreadable($response)));
-            $this->markFailed('invalid_output');
+            $this->markFailed(self::stoppedAtLimit($response) ? 'cut_off' : 'invalid_output');
 
             return;
         }
@@ -326,6 +327,15 @@ class GeneratePlanSuggestions implements ShouldQueue
         $from = $event->starts_on->subDays(self::EVENT_LEAD_DAYS)->toDateString();
 
         return $date->toDateString() >= $from && $date->toDateString() <= $event->ends_on->toDateString();
+    }
+
+    /**
+     * Whether an answer without items stopped at its length limit: the model
+     * ran out of room (or spent it reasoning) before it wrote the items.
+     */
+    public static function stoppedAtLimit(mixed $response): bool
+    {
+        return $response instanceof TextResponse && $response->steps->last()?->finishReason === FinishReason::Length;
     }
 
     /**

@@ -275,6 +275,7 @@ return [
             'ai_unavailable' => 'AI drafts need your company\'s AI. Ask your company\'s owner to set it up in Settings › AI, then try again.',
             'ai_failed' => 'The AI couldn\'t draft this month. Try again in a few minutes.',
             'invalid_output' => 'The AI\'s draft couldn\'t be used. Try again.',
+            'cut_off' => 'The AI ran out of room before it finished the draft. Try again with fewer days.',
             'no_access' => 'The person who started this draft can no longer work on this plan. Try again to start a new draft.',
             'stale' => 'The last AI draft stopped before it finished. Try again.',
             'already_running' => 'The AI is already drafting this month. Wait for it to finish.',

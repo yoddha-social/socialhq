@@ -252,12 +252,16 @@ return [
                 'params' => [],
                 'tiers' => [
                     // OpenRouter's ":free" models change often: owners pick others per key.
+                    // Reasoning is off: the free reasoning models spent a call's whole output
+                    // limit thinking and answered nothing (QA 2026-11-23: plans, copy and
+                    // briefs all came back empty). OpenRouter ignores it for models that
+                    // don't reason.
                     'free' => [
                         'confirm' => 'may_train',
                         'tasks' => [
-                            'write' => ['model' => 'openrouter/nvidia/nemotron-3.5-super-vl:free', 'timeout' => 45],
-                            'structured' => ['model' => 'openrouter/nvidia/nemotron-3.5-super-vl:free', 'timeout' => 90],
-                            'vision' => ['model' => 'openrouter/nvidia/nemotron-3.5-super-vl:free', 'timeout' => 45],
+                            'write' => ['model' => 'openrouter/nvidia/nemotron-3.5-super-vl:free', 'timeout' => 45, 'params' => ['extra_body' => ['reasoning' => ['enabled' => false]]]],
+                            'structured' => ['model' => 'openrouter/nvidia/nemotron-3.5-super-vl:free', 'timeout' => 90, 'params' => ['extra_body' => ['reasoning' => ['enabled' => false]]]],
+                            'vision' => ['model' => 'openrouter/nvidia/nemotron-3.5-super-vl:free', 'timeout' => 45, 'params' => ['extra_body' => ['reasoning' => ['enabled' => false]]]],
                         ],
                     ],
                     'paid' => [

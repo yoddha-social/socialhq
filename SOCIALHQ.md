@@ -104,6 +104,14 @@ TryPost's four agents carry it too (PATCHES.md row 15). Code:
   deployment it added (`deployments`), so a change removes and adds only
   the deployments that differ; a key whose row doesn't know (older keys, or
   after a failed add) has all of its deployments removed and added once.
+  A plan's task in the catalogue may carry `params` for its deployments:
+  OpenRouter's free models run with reasoning off
+  (`extra_body.reasoning.enabled: false`), because the free reasoning
+  models spent a call's whole output limit thinking and answered nothing
+  (QA 2026-11-23). When a release changes the catalogue,
+  `php artisan socialhq:ai-sync` (run by the entrypoint on every start)
+  re-adds only the deployments whose settings differ; with nothing to
+  change it sends nothing.
   Provider keys live
   only in LiteLLM (credentials, encrypted with its salt key); the app keeps
   the last 4 characters. The team key is encrypted with
@@ -151,7 +159,9 @@ TryPost's four agents carry it too (PATCHES.md row 15). Code:
   (`UsesAiTask`, "No AI provider"): company, brand, person (a job gets the
   user of the request that queued it through hidden Context), feature (the
   agent's class), task, keys used (own or platform), status (answered,
-  failed, rate-limited, budget reached, no AI provider), and from LiteLLM's
+  failed, cut off, rate-limited, budget reached, no AI provider; "cut off"
+  is a 200 whose answer stopped at its length limit, from the SDK's finish
+  reason, so an empty answer is never counted as answered), and from LiteLLM's
   response headers the model that answered, the group that answered, the
   fallbacks, the cost and the duration; tokens come from the SDK. Only
   requests to the gateway's model endpoints carry our `x-litellm-call-id` and

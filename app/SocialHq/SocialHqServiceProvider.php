@@ -10,6 +10,7 @@ use App\Models\User;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiRoutesCommand;
 use App\SocialHq\Ai\ApprovedProvidersGuard;
+use App\SocialHq\Ai\Company\AiSyncCommand;
 use App\SocialHq\Ai\Company\CompanyAi;
 use App\SocialHq\Ai\Company\CompanyRouting;
 use App\SocialHq\Ai\Company\Jobs\TearDownCompanyAi;
@@ -116,7 +117,7 @@ class SocialHqServiceProvider extends ServiceProvider
         AiUsageLogging::register($this->app);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiRoutesCommand::class, ImportEventsCommand::class, PruneAiGraphicResultsCommand::class, PruneCalendarUploadsCommand::class, PruneGoneChannelInsightsCommand::class, PlatformAdminCommand::class, SecretsKeyCommand::class, SecretsReencryptCommand::class]);
+            $this->commands([AiRoutesCommand::class, AiSyncCommand::class, ImportEventsCommand::class, PruneAiGraphicResultsCommand::class, PruneCalendarUploadsCommand::class, PruneGoneChannelInsightsCommand::class, PlatformAdminCommand::class, SecretsKeyCommand::class, SecretsReencryptCommand::class]);
         }
 
         // Provider keys are write-only: never flashed back as old input after a

@@ -154,8 +154,10 @@ final readonly class ProviderCatalogue
     }
 
     /**
-     * The litellm_params of the deployment serving one task. A free plan's
-     * calls are priced at zero, so they never use up the company's budget.
+     * The litellm_params of the deployment serving one task: the provider's
+     * params, then the plan's for that task (e.g. reasoning off). A free
+     * plan's calls are priced at zero, so they never use up the company's
+     * budget.
      *
      * @return array<string, mixed>
      */
@@ -165,6 +167,7 @@ final readonly class ProviderCatalogue
 
         return array_filter([
             ...(array) data_get($this->config, 'params', []),
+            ...(array) data_get($this->config, "tiers.{$tier->value}.tasks.{$task->value}.params", []),
             ...$free,
             'model' => $model,
             'litellm_credential_name' => $credentialName,

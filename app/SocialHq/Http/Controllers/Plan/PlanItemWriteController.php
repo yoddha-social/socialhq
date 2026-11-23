@@ -8,6 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Http\Requests\Plan\DestroyPlanItemRequest;
+use App\SocialHq\Http\Requests\Plan\DropPlanItemRequest;
 use App\SocialHq\Http\Requests\Plan\MovePlanItemRequest;
 use App\SocialHq\Http\Requests\Plan\StorePlanItemRequest;
 use App\SocialHq\Http\Requests\Plan\UpdatePlanItemRequest;
@@ -16,6 +18,7 @@ use App\SocialHq\Plan\Ai\UnsupportedDetails;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\CopyStatus;
 use App\SocialHq\Plan\ItemCopy;
+use App\SocialHq\Plan\ItemPosts;
 use App\SocialHq\Plan\ItemSource;
 use App\SocialHq\Plan\ItemStatus;
 use App\SocialHq\Plan\PlanAccess;
@@ -35,6 +38,11 @@ use Illuminate\Validation\ValidationException;
  * approved plan sends it back for review; editing or moving an AI
  * suggestion accepts it, so a new AI draft never replaces that work. The
  * item page (copy, review, brief) has its own controller.
+ *
+ * Dropping or deleting an item whose post will still go out needs the
+ * person's choice for that post ("posts": back to drafts, or keep it
+ * scheduled); without one nothing changes, so a post scheduled since the
+ * page loaded is never dropped silently.
  */
 class PlanItemWriteController extends Controller
 {
@@ -127,10 +135,11 @@ class PlanItemWriteController extends Controller
         return back();
     }
 
-    public function drop(Request $request, int $item): RedirectResponse
+    public function drop(DropPlanItemRequest $request, int $item): RedirectResponse
     {
         $found = PlanAccess::item($request, $item);
         $this->ensureStatus($found, ItemStatus::Suggested, ItemStatus::Planned);
+        $this->settleUpcomingPosts($found, $request->validated('posts'), $request->user());
 
         $this->change($found, fn () => $found->update(['status' => ItemStatus::Dropped]));
 
@@ -159,7 +168,7 @@ class PlanItemWriteController extends Controller
      * Approved copy, an approved creative or a created post is approved work:
      * only approvers delete an item that has one. Others drop it instead.
      */
-    public function destroy(Request $request, int $item): RedirectResponse
+    public function destroy(DestroyPlanItemRequest $request, int $item): RedirectResponse
     {
         $found = PlanAccess::item($request, $item);
         $found->loadMissing('brief');
@@ -171,6 +180,8 @@ class PlanItemWriteController extends Controller
         if ($approvedWork && ! PlanAccess::canApprove($request->user(), $found->plan->workspace)) {
             throw ValidationException::withMessages(['item' => __('socialhq_plan.errors.delete_approved')]);
         }
+
+        $this->settleUpcomingPosts($found, $request->validated('posts'), $request->user());
 
         $this->change($found, fn () => $found->delete());
 
@@ -204,6 +215,26 @@ class PlanItemWriteController extends Controller
             $write();
             $item->plan->reopen();
         });
+    }
+
+    /**
+     * Before an item is dropped or deleted: its posts that will still go out
+     * go back to drafts or keep their schedule, as the person chose. No
+     * choice while there are any refuses the change.
+     */
+    private function settleUpcomingPosts(PlanItem $item, ?string $choice, User $user): void
+    {
+        if (ItemPosts::upcoming($item)->isEmpty()) {
+            return;
+        }
+
+        if ($choice === null) {
+            throw ValidationException::withMessages(['posts' => __('socialhq_plan.errors.posts_choice')]);
+        }
+
+        if ($choice === ItemPosts::TO_DRAFTS) {
+            ItemPosts::toDrafts($item, $user);
+        }
     }
 
     private function ensureStatus(PlanItem $item, ItemStatus ...$allowed): void

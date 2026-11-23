@@ -7,9 +7,10 @@ import {
     IconSend2,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
+import { localizedDay } from '@/components/socialhq/localizedDay';
 import type {
     CreativeWaiver,
     ItemPost,
@@ -17,6 +18,7 @@ import type {
     PlanItemDetail,
     PostBlocker,
 } from '@/components/socialhq/plan/item/types';
+import { followPosts } from '@/components/socialhq/plan/planRequests';
 import {
     POST_STATUS_VARIANT,
     postStatusLabelKey,
@@ -42,6 +44,8 @@ const props = defineProps<{
     /** Everything still in the way, all at once. */
     blockers: PostBlocker[];
     waiver: CreativeWaiver | null;
+    /** Whether the item's format can go out without an image or video. */
+    textOnlyAllowed: boolean;
     /** The posts saved from this item, with where each stands now. */
     posts: ItemPost[];
     /** Whether the item has something to make (a graphic or a video). */
@@ -70,6 +74,20 @@ onBeforeUnmount(() => {
 });
 
 const waiving = ref(false);
+
+/** Dated drafts and scheduled posts that aren't on the item's day. */
+const offDayCount = computed(
+    () => props.posts.filter((post) => post.off_day).length,
+);
+
+const itemDay = computed(() =>
+    localizedDay(props.item.scheduled_on).format('ddd D MMM'),
+);
+
+const following = ref(false);
+
+const movePostsToItemDay = (): void =>
+    followPosts(props.item.id, offDayCount.value, following);
 
 /** When the post went out, or when it is due; nothing for a draft without a time. */
 const postTime = (post: ItemPost): string | null => {
@@ -222,6 +240,23 @@ const createPost = async (): Promise<void> => {
                 {{ $t('socialhq_production.post.text_only_undo') }}
             </Button>
         </div>
+        <p
+            v-else-if="
+                abilities.canApprove &&
+                hasCreative &&
+                blockers.includes('creative') &&
+                !textOnlyAllowed
+            "
+            class="flex items-start gap-1.5 text-xs text-muted-foreground"
+            data-testid="item-text-only-unavailable"
+        >
+            <IconPhotoOff class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            {{
+                $t('socialhq_production.post.text_only_unavailable', {
+                    format: item.content_type_label ?? '',
+                })
+            }}
+        </p>
         <div
             v-else-if="
                 abilities.canApprove &&
@@ -273,6 +308,12 @@ const createPost = async (): Promise<void> => {
                         :data-testid="`item-post-status-${post.id}`"
                         >{{ $t(postStatusLabelKey(post.status)) }}</Badge
                     >
+                    <Badge
+                        v-if="post.off_day"
+                        variant="warning"
+                        :data-testid="`item-post-off-day-${post.id}`"
+                        >{{ $t('socialhq_production.post.off_day') }}</Badge
+                    >
                     <span class="min-w-0 truncate text-muted-foreground">
                         {{ post.channel }}
                         <template v-if="postTime(post)">
@@ -299,6 +340,17 @@ const createPost = async (): Promise<void> => {
                     </a>
                 </li>
             </ul>
+            <Button
+                v-if="abilities.canWork && offDayCount > 0"
+                variant="outline"
+                size="sm"
+                class="w-fit"
+                :loading="following"
+                data-testid="item-posts-follow"
+                @click="movePostsToItemDay"
+            >
+                {{ $t('socialhq_production.post.follow', { date: itemDay }) }}
+            </Button>
         </div>
         <Button
             v-if="abilities.canWork"

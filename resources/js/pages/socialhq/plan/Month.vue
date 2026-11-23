@@ -15,6 +15,7 @@ import { computed, ref, watch } from 'vue';
 
 import EmptyState from '@/components/EmptyState.vue';
 import { localizedDay } from '@/components/socialhq/localizedDay';
+import ItemPostsChoiceDialog from '@/components/socialhq/plan/ItemPostsChoiceDialog.vue';
 import PlanBrandSettingsDialog from '@/components/socialhq/plan/PlanBrandSettingsDialog.vue';
 import PlanGenerateDialog from '@/components/socialhq/plan/PlanGenerateDialog.vue';
 import PlanGenerationPanel from '@/components/socialhq/plan/PlanGenerationPanel.vue';
@@ -33,6 +34,7 @@ import PlanViewToggle, {
     type PlanView,
 } from '@/components/socialhq/plan/PlanViewToggle.vue';
 import PlanWhatWorkedPanel from '@/components/socialhq/plan/PlanWhatWorkedPanel.vue';
+import { askPostsChoice } from '@/components/socialhq/plan/postsChoice';
 import type {
     PlanAudience,
     PlanChannel,
@@ -201,27 +203,39 @@ const writeOptions = {
     onHttpException: toastRequestFailed,
 };
 
-const itemWrite = (item: PlanItem, url: string): void => {
-    router.post(
-        url,
-        {},
-        {
-            ...writeOptions,
-            onStart: () => {
-                busyItemId.value = item.id;
-            },
-            onFinish: () => {
-                busyItemId.value = null;
-            },
+const itemWrite = (
+    item: PlanItem,
+    url: string,
+    data: Record<string, string> = {},
+): void => {
+    router.post(url, data, {
+        ...writeOptions,
+        onStart: () => {
+            busyItemId.value = item.id;
         },
-    );
+        onFinish: () => {
+            busyItemId.value = null;
+        },
+    });
 };
 
 const acceptOne = (item: PlanItem): void =>
     itemWrite(item, acceptItem.url(item.id));
 
-const dropOne = (item: PlanItem): void =>
-    itemWrite(item, dropItem.url(item.id));
+/** An item whose post will still go out asks first what happens to that post. */
+const dropOne = async (item: PlanItem): Promise<void> => {
+    if (item.upcoming_posts.length === 0) {
+        itemWrite(item, dropItem.url(item.id));
+
+        return;
+    }
+
+    const choice = await askPostsChoice('drop', item.upcoming_posts);
+
+    if (choice) {
+        itemWrite(item, dropItem.url(item.id), { posts: choice });
+    }
+};
 
 const restoreOne = (item: PlanItem): void =>
     itemWrite(item, restoreItem.url(item.id));
@@ -656,6 +670,8 @@ const openBrandSettings = (): void => {
         :can-work="abilities.canWork"
         :main-timezone="audience.mainTimezone"
     />
+
+    <ItemPostsChoiceDialog />
 
     <PlanGenerateDialog
         v-if="abilities.canGenerate"

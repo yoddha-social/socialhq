@@ -33,6 +33,14 @@ export interface PlanData {
     approver: string | null;
 }
 
+/** A post of an item that will still go out (scheduled, or waiting for approval). */
+export interface UpcomingPost {
+    id: string;
+    status: PostStatus;
+    scheduled_at: string | null;
+    channel: string | null;
+}
+
 export interface PlanItem {
     id: number;
     scheduled_on: string;
@@ -59,6 +67,10 @@ export interface PlanItem {
     copy_status: CopyStatus;
     /** Where the item's posts stand, or null before any was saved. */
     post_status: PostStatus | null;
+    /** Posts that will still go out: the drop and delete dialog names them. */
+    upcoming_posts: UpcomingPost[];
+    /** How many of the item's posts aren't on its day. */
+    posts_off_day: number;
     position: number;
 }
 

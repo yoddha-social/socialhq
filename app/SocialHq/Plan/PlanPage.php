@@ -45,7 +45,7 @@ final class PlanPage
             'today' => CarbonImmutable::now(Timezone::normalize($user->timezone))->toDateString(),
             'plan' => $plan === null ? null : self::plan($plan),
             'items' => $plan === null ? [] : $plan->items()
-                ->with('posts:posts.id,posts.status')
+                ->with('posts:posts.id,posts.status,posts.scheduled_at,posts.social_account_id,posts.platform_name', 'posts.socialAccount')
                 ->orderBy('scheduled_on')
                 ->orderBy('position')
                 ->orderBy('id')
@@ -107,6 +107,9 @@ final class PlanPage
             'copy_status' => $item->copy_status->value,
             // Where the item's posts stand (ItemPosts::shownStatus), or null without one.
             'post_status' => $item->relationLoaded('posts') ? ItemPosts::shownStatus($item->posts->pluck('status')) : null,
+            // Posts that will still go out (the drop and delete dialog names them), and how many aren't on the item's day.
+            'upcoming_posts' => $item->relationLoaded('posts') ? ItemPosts::upcomingForPage($item) : [],
+            'posts_off_day' => $item->relationLoaded('posts') ? ItemPosts::offDayCount($item) : 0,
             'position' => $item->position,
         ];
     }

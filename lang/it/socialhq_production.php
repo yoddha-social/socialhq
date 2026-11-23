@@ -201,12 +201,16 @@ return [
         'text_only_on_unknown' => 'This post may go out text-only (allowed on :date).',
         'ready_text_only' => 'The copy is approved, and the post may go out without the creative. The button opens it in the composer, where you schedule it.',
         'text_only_undo' => 'Wait for the creative',
+        'text_only_unavailable' => 'This format (:format) needs an image or video, so the post waits for the creative.',
+        'off_day' => 'Not on the item\'s day',
+        'follow' => 'Move to :date',
         'failed' => 'Couldn\'t create the post. Try again.',
         'left_out' => 'Not added to the post: :names. This post\'s format doesn\'t take that type of file.',
         'errors' => [
             'not_ready' => 'To create the post, the copy needs approval first, and the creative too if the item has one.',
             'placeholders' => 'The copy still has gaps to fill: :gaps. Fill them in and get the copy approved, then create the post.',
             'nothing_to_waive' => 'This item has no creative to wait for.',
+            'needs_media' => 'This format (:format) needs an image or video, so the post can\'t go out text-only.',
         ],
     ],
 

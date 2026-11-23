@@ -34,6 +34,8 @@ const props = defineProps<{
     postReady: boolean;
     postBlockers: PostBlocker[];
     creativeWaiver: CreativeWaiver | null;
+    /** Whether an approver may let the post go out without its creative (the format allows it). */
+    textOnlyAllowed: boolean;
     itemPosts: ItemPost[];
     abilities: PlanAbilities;
     aiAvailable: boolean;
@@ -103,6 +105,7 @@ const useVersion = (version: CopyVersion): void => {
                         :ready="postReady"
                         :blockers="postBlockers"
                         :waiver="creativeWaiver"
+                        :text-only-allowed="textOnlyAllowed"
                         :posts="itemPosts"
                         :has-creative="briefKind !== null"
                         :creative-approved="brief?.stage === 'approved'"

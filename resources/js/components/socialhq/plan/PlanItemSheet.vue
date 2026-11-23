@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Page } from '@inertiajs/core';
 import { Link, router, useForm } from '@inertiajs/vue3';
 import { IconArrowBackUp, IconExternalLink, IconX } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
@@ -8,10 +9,12 @@ import { toast } from 'vue-sonner';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import { localizedDay } from '@/components/socialhq/localizedDay';
 import {
+    offerToMovePosts,
     toastFirstError,
     toastRequestFailed,
 } from '@/components/socialhq/plan/planRequests';
 import { placeOfZone } from '@/components/socialhq/plan/postingTime';
+import { askPostsChoice } from '@/components/socialhq/plan/postsChoice';
 import type {
     PlanChannel,
     PlanEvent,
@@ -249,7 +252,25 @@ const close = (): void => {
 };
 
 const save = (): void => {
-    const options = { preserveScroll: true, onSuccess: close };
+    const editedId = editingId.value;
+    const movedDay =
+        editedId !== null &&
+        props.item !== null &&
+        form.scheduled_on !== props.item.scheduled_on;
+    const options = {
+        preserveScroll: true,
+        onSuccess: (page: Page) => {
+            close();
+
+            if (movedDay) {
+                offerToMovePosts(
+                    (page.props.items as PlanItem[] | undefined)?.find(
+                        (item) => item.id === editedId,
+                    ),
+                );
+            }
+        },
+    };
 
     form.transform(({ time_hour, time_minute, ...data }) => ({
         ...data,
@@ -269,69 +290,95 @@ const save = (): void => {
     }
 };
 
-const toggleDropped = (): void => {
+/** Dropping an item whose post will still go out asks first what happens to that post. */
+const toggleDropped = async (): Promise<void> => {
     if (!props.item) {
         return;
     }
 
-    const route =
-        props.item.status === 'dropped'
-            ? restoreItem.url(props.item.id)
-            : dropItem.url(props.item.id);
+    const restoring = props.item.status === 'dropped';
+    const route = restoring
+        ? restoreItem.url(props.item.id)
+        : dropItem.url(props.item.id);
+    let data: Record<string, string> = {};
 
-    router.post(
-        route,
-        {},
-        {
-            preserveScroll: true,
-            onStart: () => {
-                statusProcessing.value = true;
-            },
-            onFinish: () => {
-                statusProcessing.value = false;
-            },
-            onSuccess: close,
-            onError: toastFirstError,
-            onHttpException: toastRequestFailed,
+    if (!restoring && props.item.upcoming_posts.length > 0) {
+        const choice = await askPostsChoice('drop', props.item.upcoming_posts);
+
+        if (!choice) {
+            return;
+        }
+
+        data = { posts: choice };
+    }
+
+    router.post(route, data, {
+        preserveScroll: true,
+        onStart: () => {
+            statusProcessing.value = true;
         },
-    );
+        onFinish: () => {
+            statusProcessing.value = false;
+        },
+        onSuccess: close,
+        onError: toastFirstError,
+        onHttpException: toastRequestFailed,
+    });
 };
 
 /**
  * Marks the delete so the sheet closes quietly when the item leaves the list.
  * Settles in onFinish, after any outcome.
  */
-const deleteItem = (url: string) => (): Promise<void> =>
-    new Promise((resolve, reject) => {
-        let deleted = false;
-        deleting.value = true;
+const deleteItem =
+    (url: string, data: Record<string, string> = {}) =>
+    (): Promise<void> =>
+        new Promise((resolve, reject) => {
+            let deleted = false;
+            deleting.value = true;
 
-        router.delete(url, {
-            preserveScroll: true,
-            preserveState: true,
-            onSuccess: () => {
-                deleted = true;
-            },
-            onError: toastFirstError,
-            onHttpException: toastRequestFailed,
-            onNetworkError: toastRequestFailed,
-            onFinish: () => {
-                if (deleted) {
-                    resolve();
-                } else {
-                    deleting.value = false;
-                    reject();
-                }
-            },
+            router.delete(url, {
+                data,
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => {
+                    deleted = true;
+                },
+                onError: toastFirstError,
+                onHttpException: toastRequestFailed,
+                onNetworkError: toastRequestFailed,
+                onFinish: () => {
+                    if (deleted) {
+                        resolve();
+                    } else {
+                        deleting.value = false;
+                        reject();
+                    }
+                },
+            });
         });
-    });
 
-/** Deleting an item with approved work is for approvers: the server refuses with a message saying to drop it instead. */
-const askDelete = (): void => {
-    if (props.item) {
-        const url = destroyItem.url(props.item.id);
+/**
+ * Deleting an item with approved work is for approvers: the server refuses with a message saying to drop it instead.
+ * An item whose post will still go out asks what happens to that post, in place of the plain confirmation.
+ */
+const askDelete = async (): Promise<void> => {
+    if (!props.item) {
+        return;
+    }
 
+    const url = destroyItem.url(props.item.id);
+
+    if (props.item.upcoming_posts.length === 0) {
         confirmDelete.value?.open({ url, request: deleteItem(url) });
+
+        return;
+    }
+
+    const choice = await askPostsChoice('delete', props.item.upcoming_posts);
+
+    if (choice) {
+        await deleteItem(url, { posts: choice })().catch(() => undefined);
     }
 };
 </script>

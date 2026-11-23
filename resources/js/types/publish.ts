@@ -92,6 +92,8 @@ export interface PostCard {
     media?: MediaItem[];
     can_delete: boolean;
     metrics?: PostCardMetrics | null;
+    /** Social HQ: the plan item the post was made from (PATCHES.md row 263). */
+    plan_item?: { id: number; title: string; url: string } | null;
 }
 
 export interface QueueItem {

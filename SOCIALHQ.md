@@ -397,7 +397,15 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   rounds, reviewed like copy, and kept on the private `local` disk, served only
   to members. "Create post" opens TryPost's composer with the approved copy,
   the final files, the date and the channel; posting follows TryPost's
-  approvals. Until then the card lists everything still in the way at once
+  approvals. The composer carries the item (`planItemId`), and saving links
+  the posts to it (`Plan\ItemPosts`, table `shq_plan_item_posts`, PATCHES.md
+  rows 260–263); a composer closed without saving changes nothing. The item
+  lists its posts with where each stands now (draft, pending approval,
+  scheduled, published, failed) and a link to each; the month's cards show
+  the item's post status (a failed post first, else the one furthest along);
+  a post card in Publish says "From plan: <title>" and links back. A deleted
+  post drops off the item. `post_created_at` is when the first post was
+  saved. Until then the card lists everything still in the way at once
   (`CreatePostFromItem::blockers()`: copy not approved, `[gaps]` in it, the
   creative not approved). An approver can "Post text-only": the post stops
   waiting for the creative (`creative_waived_at`/`_by` on the item; the brief

@@ -42,6 +42,8 @@ use App\SocialHq\Knowledge\Search\LexicalKnowledgeSearch;
 use App\SocialHq\Knowledge\TryPostPromptFocus;
 use App\SocialHq\Notices\Notice;
 use App\SocialHq\Notices\NoticeCreated;
+use App\SocialHq\Plan\ItemPosts;
+use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Production\BriefStorage;
 use App\SocialHq\Queue\CompactHorizon;
 use App\SocialHq\Secrets\SecretsKeyCommand;
@@ -56,6 +58,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Http\Kernel;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Exceptions\Handler;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Broadcast;
@@ -101,6 +104,9 @@ class SocialHqServiceProvider extends ServiceProvider
 
         // Platform admins run this server: they let companies in.
         Gate::define(PlatformAdmins::GATE, fn (User $user): bool => PlatformAdmins::is($user));
+
+        // The plan item a post was made from (ItemPosts), without changing TryPost's model.
+        Post::resolveRelationUsing('planItems', fn (Post $post): BelongsToMany => $post->belongsToMany(PlanItem::class, ItemPosts::TABLE, 'post_id', 'plan_item_id'));
 
         // A deleted company's team, key and provider keys leave LiteLLM too.
         Account::deleting(function (Account $account): void {

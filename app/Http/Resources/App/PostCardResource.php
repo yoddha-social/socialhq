@@ -29,6 +29,12 @@ class PostCardResource extends JsonResource
             ],
         ];
 
+        // Social HQ: the plan item the post was made from (PATCHES.md row 261).
+        if ($this->resource->relationLoaded('planItems')) {
+            $item = $this->resource->planItems->first();
+            $card['plan_item'] = $item === null ? null : ['id' => $item->id, 'title' => $item->title, 'url' => route('socialhq.plan.items.show', $item->id)];
+        }
+
         if ($this->resource->relationLoaded('user')) {
             $card['user'] = $this->user === null ? null : [
                 'id' => $this->user->id,

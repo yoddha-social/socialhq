@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { router, useHttp } from '@inertiajs/vue3';
+import { Link, router, useHttp } from '@inertiajs/vue3';
 import {
-    IconCircleCheck,
     IconCircleDashed,
+    IconExternalLink,
     IconPhotoOff,
     IconSend2,
 } from '@tabler/icons-vue';
@@ -12,14 +12,20 @@ import { toast } from 'vue-sonner';
 
 import type {
     CreativeWaiver,
+    ItemPost,
     PlanAbilities,
     PlanItemDetail,
     PostBlocker,
 } from '@/components/socialhq/plan/item/types';
 import {
+    POST_STATUS_VARIANT,
+    postStatusLabelKey,
+} from '@/components/socialhq/plan/postStatus';
+import {
     firstErrorOf,
     serverMessageOf,
 } from '@/components/socialhq/requestErrors';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import date from '@/date';
@@ -36,6 +42,8 @@ const props = defineProps<{
     /** Everything still in the way, all at once. */
     blockers: PostBlocker[];
     waiver: CreativeWaiver | null;
+    /** The posts saved from this item, with where each stands now. */
+    posts: ItemPost[];
     /** Whether the item has something to make (a graphic or a video). */
     hasCreative: boolean;
     /** Whether that creative is approved (its files go with the post). */
@@ -62,6 +70,13 @@ onBeforeUnmount(() => {
 });
 
 const waiving = ref(false);
+
+/** When the post went out, or when it is due; nothing for a draft without a time. */
+const postTime = (post: ItemPost): string | null => {
+    const at = post.published_at ?? post.scheduled_at;
+
+    return at ? date.formatDateTime(at) : null;
+};
 
 /** An approver lets the post go out without its creative, or takes that back. */
 const setTextOnly = (on: boolean): void => {
@@ -117,8 +132,9 @@ const createPost = async (): Promise<void> => {
                 scheduled_at: null,
                 label_ids: [],
             },
+            // Saving links the post to this item; closing without saving leaves it as it was.
+            planItemId: props.item.id,
         });
-        router.reload({ only: ['item'] });
 
         if (draft.left_out.length > 0) {
             toast.warning(
@@ -232,22 +248,60 @@ const createPost = async (): Promise<void> => {
                 {{ $t('socialhq_production.post.text_only_hint') }}
             </p>
         </div>
-        <p
-            v-if="item.post_created_at"
-            class="flex items-center gap-1.5 text-xs text-success-text"
-            data-testid="item-post-created"
+        <div
+            v-if="posts.length > 0"
+            class="grid gap-1.5"
+            data-testid="item-posts"
         >
-            <IconCircleCheck class="size-4" />
-            {{
-                $t('socialhq_production.post.created', {
-                    time: date.formatDateTime(item.post_created_at),
-                })
-            }}
-        </p>
+            <p class="text-xs font-medium text-muted-foreground">
+                {{
+                    $tChoice(
+                        'socialhq_production.post.posts_title',
+                        posts.length,
+                    )
+                }}
+            </p>
+            <ul class="grid gap-1.5">
+                <li
+                    v-for="post in posts"
+                    :key="post.id"
+                    class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
+                    :data-testid="`item-post-${post.id}`"
+                >
+                    <Badge
+                        :variant="POST_STATUS_VARIANT[post.status]"
+                        :data-testid="`item-post-status-${post.id}`"
+                        >{{ $t(postStatusLabelKey(post.status)) }}</Badge
+                    >
+                    <span class="min-w-0 truncate text-muted-foreground">
+                        {{ post.channel }}
+                        <template v-if="postTime(post)">
+                            · {{ postTime(post) }}
+                        </template>
+                    </span>
+                    <Link
+                        :href="post.url"
+                        class="ms-auto text-xs font-medium text-primary-text underline-offset-4 hover:underline"
+                        :data-testid="`item-post-open-${post.id}`"
+                        >{{ $t('socialhq_production.post.open') }}</Link
+                    >
+                    <a
+                        v-if="post.network_url"
+                        :href="post.network_url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-muted-foreground hover:text-foreground"
+                        :aria-label="$t('socialhq_production.post.open_on_network')"
+                    >
+                        <IconExternalLink class="size-4" aria-hidden="true" />
+                    </a>
+                </li>
+            </ul>
+        </div>
         <Button
             v-if="abilities.canWork"
             class="w-full"
-            :variant="ready && !item.post_created_at ? 'default' : 'outline'"
+            :variant="ready && posts.length === 0 ? 'default' : 'outline'"
             :class="ready ? '' : 'text-muted-foreground'"
             :disabled="!ready"
             :aria-describedby="
@@ -260,7 +314,7 @@ const createPost = async (): Promise<void> => {
             <IconSend2 />
             {{
                 $t(
-                    item.post_created_at
+                    posts.length > 0
                         ? 'socialhq_production.post.create_another'
                         : 'socialhq_production.post.create',
                 )

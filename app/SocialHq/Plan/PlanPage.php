@@ -45,6 +45,7 @@ final class PlanPage
             'today' => CarbonImmutable::now(Timezone::normalize($user->timezone))->toDateString(),
             'plan' => $plan === null ? null : self::plan($plan),
             'items' => $plan === null ? [] : $plan->items()
+                ->with('posts:posts.id,posts.status')
                 ->orderBy('scheduled_on')
                 ->orderBy('position')
                 ->orderBy('id')
@@ -104,6 +105,8 @@ final class PlanPage
             'status' => $item->status->value,
             'source' => $item->source->value,
             'copy_status' => $item->copy_status->value,
+            // Where the item's posts stand (ItemPosts::shownStatus), or null without one.
+            'post_status' => $item->relationLoaded('posts') ? ItemPosts::shownStatus($item->posts->pluck('status')) : null,
             'position' => $item->position,
         ];
     }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\SocialHq\Plan;
 
 use App\Enums\PostPlatform\ContentType;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -13,6 +14,7 @@ use App\SocialHq\Production\Brief;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -137,5 +139,16 @@ class PlanItem extends Model
     public function brief(): HasOne
     {
         return $this->hasOne(Brief::class, 'item_id');
+    }
+
+    /**
+     * The posts made from this item, linked when the composer saved them
+     * (ItemPosts). A deleted post drops out.
+     *
+     * @return BelongsToMany<Post, $this>
+     */
+    public function posts(): BelongsToMany
+    {
+        return $this->belongsToMany(Post::class, ItemPosts::TABLE, 'plan_item_id', 'post_id');
     }
 }

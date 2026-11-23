@@ -12,6 +12,7 @@ import type {
     BriefDetail,
     CopyVersion,
     CreativeWaiver,
+    ItemPost,
     PlanAbilities,
     PlanItemDetail,
     PlanPerson,
@@ -33,6 +34,7 @@ const props = defineProps<{
     postReady: boolean;
     postBlockers: PostBlocker[];
     creativeWaiver: CreativeWaiver | null;
+    itemPosts: ItemPost[];
     abilities: PlanAbilities;
     aiAvailable: boolean;
 }>();
@@ -101,6 +103,7 @@ const useVersion = (version: CopyVersion): void => {
                         :ready="postReady"
                         :blockers="postBlockers"
                         :waiver="creativeWaiver"
+                        :posts="itemPosts"
                         :has-creative="briefKind !== null"
                         :creative-approved="brief?.stage === 'approved'"
                         :abilities="abilities"

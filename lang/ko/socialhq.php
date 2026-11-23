@@ -602,6 +602,10 @@ return [
         'approve_and_schedule' => 'Approve and schedule',
         'approve_and_queue' => 'Approve and add to queue',
     ],
+    'post_card' => [
+        'from_plan' => 'From plan: :title',
+    ],
+
     'publish_now' => [
         'title' => 'Publish now?',
         'description' => 'This goes out right away on the connected channel, where your audience sees it. To pick a time instead, cancel and schedule it.',

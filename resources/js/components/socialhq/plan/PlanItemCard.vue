@@ -9,8 +9,13 @@ import {
 } from '@/components/socialhq/plan/copyStatus';
 import { pillarColor } from '@/components/socialhq/plan/pillarColors';
 import PlanItemTime from '@/components/socialhq/plan/PlanItemTime.vue';
+import {
+    POST_STATUS_VARIANT,
+    postStatusLabelKey,
+} from '@/components/socialhq/plan/postStatus';
 import type { PlanItem, PlanLookups } from '@/components/socialhq/plan/types';
 import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 
 const props = defineProps<{
     item: PlanItem;
@@ -72,6 +77,9 @@ const dropItem = (): void => emit('drop', props.item);
                     item.content_type_label,
                     item.title,
                     $t(`socialhq_plan.item_status.${item.status}`),
+                    item.post_status
+                        ? $t(postStatusLabelKey(item.post_status))
+                        : null,
                 ]
                     .filter(Boolean)
                     .join(' · ')
@@ -130,6 +138,13 @@ const dropItem = (): void => emit('drop', props.item);
                 :item="item"
                 class="text-[11px] leading-4 text-muted-foreground"
             />
+            <Badge
+                v-if="item.post_status"
+                :variant="POST_STATUS_VARIANT[item.post_status]"
+                class="text-[10px]"
+                :data-testid="`plan-item-post-${item.id}`"
+                >{{ $t(postStatusLabelKey(item.post_status)) }}</Badge
+            >
         </button>
 
         <div

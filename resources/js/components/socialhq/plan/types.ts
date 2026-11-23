@@ -1,3 +1,5 @@
+import type { PostStatus } from '@/components/socialhq/plan/postStatus';
+
 export type PlanStatus = 'draft' | 'in_review' | 'approved';
 export type GenerationStatus = 'idle' | 'running' | 'failed';
 export type ItemStatus = 'suggested' | 'planned' | 'dropped';
@@ -55,6 +57,8 @@ export interface PlanItem {
     status: ItemStatus;
     source: 'ai' | 'manual';
     copy_status: CopyStatus;
+    /** Where the item's posts stand, or null before any was saved. */
+    post_status: PostStatus | null;
     position: number;
 }
 

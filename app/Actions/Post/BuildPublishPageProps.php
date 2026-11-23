@@ -293,6 +293,8 @@ class BuildPublishPageProps
                 'socialAccount',
                 'user.avatarMedia',
                 'labels',
+                // Social HQ: the plan item a card links to (PATCHES.md row 261).
+                'planItems:shq_plan_items.id,shq_plan_items.title',
             ])
             ->withCount(['notes', 'groupPosts'])
             ->matchingLabelFilter($labelIds, $untagged);

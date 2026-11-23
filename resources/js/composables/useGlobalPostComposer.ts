@@ -9,6 +9,8 @@ export interface PostComposerRequest {
     socialAccountIds: string[];
     draft: ComposerInitialDraft | null;
     queueSlot: string | null;
+    /** Social HQ: the plan item the post is made from, linked when it's saved. */
+    planItemId: number | null;
 }
 
 let nextRequestId = 0;
@@ -47,6 +49,7 @@ export const openPostComposer = (
         socialAccountIds?: string[];
         draft?: ComposerInitialDraft | null;
         queueSlot?: string | null;
+        planItemId?: number | null;
     } = {},
 ): void => {
     if (typeof window === 'undefined') return;
@@ -58,6 +61,7 @@ export const openPostComposer = (
         socialAccountIds: options.socialAccountIds ?? [],
         draft: options.draft ?? null,
         queueSlot: options.queueSlot ?? null,
+        planItemId: options.planItemId ?? null,
     };
 };
 

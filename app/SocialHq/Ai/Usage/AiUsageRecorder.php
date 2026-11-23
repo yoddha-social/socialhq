@@ -22,6 +22,7 @@ use Laravel\Ai\Events\GeneratingEmbeddings;
 use Laravel\Ai\Events\GeneratingImage;
 use Laravel\Ai\Events\ImageGenerated;
 use Laravel\Ai\Events\PromptingAgent;
+use Laravel\Ai\Responses\Data\FinishReason;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\UriInterface;
 
@@ -168,6 +169,11 @@ final class AiUsageRecorder
 
             if ($rowId !== null && ($prompt !== null || $completion !== null)) {
                 AiUsageLog::query()->whereKey($rowId)->update(['prompt_tokens' => $prompt, 'completion_tokens' => $completion]);
+            }
+
+            // LiteLLM answered 200, but the answer stopped at its length limit: not "answered".
+            if ($rowId !== null && $event instanceof AgentPrompted && $event->response->steps->last()?->finishReason === FinishReason::Length) {
+                AiUsageLog::query()->whereKey($rowId)->where('status', AiUsageStatus::Ok)->update(['status' => AiUsageStatus::CutOff, 'error_type' => 'length']);
             }
 
             $this->forget($invocationId);

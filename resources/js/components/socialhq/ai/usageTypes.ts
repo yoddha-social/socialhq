@@ -1,6 +1,7 @@
 export type UsageStatus =
     | 'ok'
     | 'failed'
+    | 'cut_off'
     | 'rate_limited'
     | 'blocked_budget'
     | 'blocked_no_route';

@@ -155,6 +155,25 @@ test('a spent budget is logged as blocked, without the error text', function () 
         ->and(collect($row->getAttributes())->filter(fn ($value): bool => is_string($value) && str_contains($value, 'Budget has been exceeded')))->toBeEmpty();
 });
 
+test('an answer stopped at its length limit is logged as cut off, not answered', function () {
+    ['owner' => $owner] = usageCompany();
+    fakeGateway(body: [
+        'id' => 'chatcmpl-test',
+        'object' => 'chat.completion',
+        'model' => 'shq-write',
+        'choices' => [['index' => 0, 'message' => ['role' => 'assistant', 'content' => ''], 'finish_reason' => 'length']],
+        'usage' => ['prompt_tokens' => 5, 'completion_tokens' => 3000, 'total_tokens' => 3005],
+    ]);
+
+    $this->actingAs($owner);
+    shortenCaption();
+
+    $row = AiUsageLog::query()->sole();
+    expect($row->status)->toBe(AiUsageStatus::CutOff)
+        ->and($row->error_type)->toBe('length')
+        ->and($row->completion_tokens)->toBe(3000);
+});
+
 test('a rate limit is logged as rate limited', function () {
     ['owner' => $owner] = usageCompany();
     fakeGateway(429, body: ['error' => ['message' => 'No deployments available', 'type' => 'rate_limit_error', 'code' => '429']]);

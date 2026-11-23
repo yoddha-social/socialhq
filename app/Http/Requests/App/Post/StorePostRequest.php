@@ -8,6 +8,7 @@ use App\Enums\Post\RecurrenceFrequency;
 use App\Enums\Post\Status;
 use App\Models\SocialAccount;
 use App\SocialHq\Composer\ComposerRepeat;
+use App\SocialHq\Plan\ItemPosts;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
@@ -46,6 +47,8 @@ class StorePostRequest extends FormRequest
             'recurrence.interval' => ['required_with:recurrence', 'integer', 'min:1', 'max:'.UpdatePostRecurrenceRequest::MAX_INTERVAL],
             'recurrence.frequency' => ['required_with:recurrence', Rule::enum(RecurrenceFrequency::class)],
             'recurrence.times' => ['required_with:recurrence', 'integer', 'min:1', 'max:'.UpdatePostRecurrenceRequest::MAX_TIMES],
+            // Social HQ: the plan item the post is made from (PATCHES.md row 260).
+            'plan_item_id' => ['sometimes', 'nullable', 'integer', Rule::exists(ItemPosts::ITEMS_TABLE, 'id')->where('workspace_id', $this->user()?->current_workspace_id)],
         ];
     }
 

@@ -101,9 +101,9 @@ final class CreatePostFromItem
      * wins: it is the instant the audience should see the post, which may
      * fall on the day before or after scheduled_on in the user's zone.
      *
-     * post_created_at is set when the composer draft is prepared: TryPost's
-     * composer reports nothing back, so a draft closed without saving still
-     * counts.
+     * Nothing is recorded here: the composer sends the item with the post,
+     * and saving links them (ItemPosts), so a composer closed without saving
+     * leaves the item as it was.
      *
      * @return array{content: string, media: Collection<int, Media>, import_ids: list<string>, left_out: list<string>, scheduled_on: string, scheduled_at: ?string, social_account_id: ?string}
      */
@@ -131,8 +131,6 @@ final class CreatePostFromItem
                 $media->push($row);
             }
         }
-
-        $item->forceFill(['post_created_at' => now()])->save();
 
         $version = $item->latestVersion;
 

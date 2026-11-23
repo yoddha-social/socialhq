@@ -184,7 +184,9 @@ return [
 
     'post' => [
         'create' => 'Create post',
-        'created' => 'You started a post from this item on :time. Find it under Drafts or Scheduled.',
+        'posts_title' => 'Post from this item|Posts from this item',
+        'open' => 'Open',
+        'open_on_network' => 'See it on the network',
         'create_another' => 'Create another post',
         'ready' => 'Everything this item needs is approved. The button opens it in the composer, where you schedule it.',
         'waiting' => 'To create the post:',

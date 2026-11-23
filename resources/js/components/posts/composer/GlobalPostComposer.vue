@@ -74,6 +74,9 @@ const submitComposition = (
 ): void => {
     submitting.value = true;
     const payload: Record<string, any> = { ...composition };
+    // Social HQ: the post is linked to the plan item it was made from (PATCHES.md row 262).
+    const planItemId = postComposerRequest.value?.planItemId ?? null;
+    if (planItemId !== null) payload.plan_item_id = planItemId;
     router.post(storePost.url(), payload, {
         preserveScroll: true,
         onSuccess: () => {

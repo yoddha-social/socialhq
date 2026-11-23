@@ -72,7 +72,7 @@ test('create post imports the approved round into the workspace uploads and retu
         ->and($media->upload_token)->not->toBeNull()
         ->and(data_get($media->meta, 'brief_file_id'))->toBe($final->id)
         ->and($response->json('media.0.upload_token'))->toBe($media->upload_token)
-        ->and($this->item->fresh()->post_created_at)->not->toBeNull();
+        ->and($this->item->fresh()->post_created_at)->toBeNull();
 
     $status = MediaImportStatus::find($response->json('import_ids.0'), $this->member->id, $this->workspace->id);
 

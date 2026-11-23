@@ -30,8 +30,8 @@ return [
         // An AI button the company's AI can't run yet: shown dimmed, said on hover and on click.
         'missing' => [
             'vision' => [
-                'owner' => 'Your company\'s AI can\'t read images yet. To write alt text with AI, add a provider that can in Settings › AI.',
-                'member' => 'Your company\'s AI can\'t read images yet. To write alt text with AI, your company\'s owner needs to add a provider that can in Settings › AI.',
+                'owner' => 'No vision AI provider. Add one in Settings › AI.',
+                'member' => 'No vision AI provider. Ask your company\'s owner to add one.',
             ],
         ],
     ],
@@ -41,16 +41,16 @@ return [
         // "Generate with AI" while the company's AI can't make graphics (AiGraphics::missing()).
         'missing' => [
             'image' => [
-                'owner' => 'Your company\'s AI can\'t make images yet. To generate graphics, add a provider that can in Settings › AI.',
-                'member' => 'Your company\'s AI can\'t make images yet. To generate graphics, your company\'s owner needs to add a provider that can in Settings › AI.',
+                'owner' => 'No image AI provider. Add one in Settings › AI.',
+                'member' => 'No image AI provider. Ask your company\'s owner to add one.',
             ],
             'vision' => [
-                'owner' => 'Your company\'s AI can\'t check images yet, and every AI graphic is checked before you get it. Add a provider that can read images in Settings › AI.',
-                'member' => 'Your company\'s AI can\'t check images yet, and every AI graphic is checked before you get it. Your company\'s owner needs to add a provider that can read images in Settings › AI.',
+                'owner' => 'No vision AI provider to check graphics. Add one in Settings › AI.',
+                'member' => 'No vision AI provider to check graphics. Ask your company\'s owner to add one.',
             ],
             'image_vision' => [
-                'owner' => 'Your company\'s AI can\'t make or check images yet. To generate graphics, add providers that can in Settings › AI.',
-                'member' => 'Your company\'s AI can\'t make or check images yet. To generate graphics, your company\'s owner needs to add providers that can in Settings › AI.',
+                'owner' => 'No image or vision AI provider. Add them in Settings › AI.',
+                'member' => 'No image or vision AI provider. Ask your company\'s owner to add them.',
             ],
         ],
         'title' => 'Generate a graphic with AI',

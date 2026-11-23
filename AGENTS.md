@@ -424,8 +424,13 @@ history — a post without a channel is a history that no longer exists.
 - Quiet: no `post.deleted` webhook or notification per post.
 - It deletes by `posts.social_account_id`, without a workspace clause: a post
   has one channel, so every post pointing at the account goes.
-- Analytics publications stay and are only unlinked, never dismissed, so
-  reconnecting the same identity re-imports its recent posts once.
+- Its Insights history goes too (Social HQ, `App\SocialHq\Channels\ChannelInsights`,
+  called by `DisconnectSocialAccount`): the analytics publications with their
+  daily numbers, the follower snapshots and the sync states of the channel's
+  identity in its workspace, an earlier connection's included. They stay while
+  another channel of the workspace is the same identity. Reconnecting the same
+  identity reads its posts again from the network as a new channel.
+  `php artisan socialhq:insights:prune` deletes what disconnects left before this.
 
 ## Member permissions and post approvals
 

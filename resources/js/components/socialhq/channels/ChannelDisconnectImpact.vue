@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useHttp } from '@inertiajs/vue3';
 import {
-    IconChartBar,
     IconChevronDown,
     IconChevronUp,
     IconCircleCheck,
@@ -35,6 +34,7 @@ interface DisconnectImpact {
     posting_goal: number | null;
     plan_items: number;
     repurposes: number;
+    insights: number | null;
     network: string;
 }
 
@@ -143,6 +143,18 @@ const toggle = (): void => {
                                 impact.media,
                             ),
                         })
+                    }}
+                </p>
+                <p
+                    v-if="impact.insights !== null"
+                    class="mt-1"
+                    data-testid="disconnect-impact-insights"
+                >
+                    {{
+                        $tChoice(
+                            'socialhq.channels.impact.insights',
+                            impact.insights,
+                        )
                     }}
                 </p>
                 <p
@@ -352,13 +364,6 @@ const toggle = (): void => {
                                     network: impact.network,
                                 })
                             }}
-                        </li>
-                        <li class="flex items-start gap-1.5">
-                            <IconChartBar
-                                class="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
-                                aria-hidden="true"
-                            />
-                            {{ $t('socialhq.channels.impact.stays_insights') }}
                         </li>
                         <li class="flex items-start gap-1.5">
                             <IconRefresh

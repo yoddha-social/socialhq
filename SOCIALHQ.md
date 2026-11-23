@@ -511,11 +511,25 @@ channels listed beside it (`pages/socialhq/channels/Show.vue`, components in
   the dialog opens it reads `socialhq.channels.disconnect-impact.show`
   (`App\SocialHq\Channels\DisconnectImpact`, admins only) and says what goes from
   Social HQ: posts not sent yet and the record of sent ones (imported too), media
-  files, and that nothing is deleted on the network. "See what you'll lose" adds the
+  files, the channel's Insights history with the number of posts it has numbers
+  for, and that nothing is deleted on the network. "See what you'll lose" adds the
   counts by status, the next 3 scheduled posts, what else stops (the queue, the goal,
   planned items that lose their channel, repurposes that read from it), what stays
   and a link to the channel's posts. If the counts can't be read, the dialog is as
   before.
+- **Insights history goes with the channel** (owner decision 2026-11-23,
+  PATCHES.md row 280). TryPost keeps a disconnected channel's analytics
+  (publications with their daily numbers, follower snapshots, sync states) so a
+  reconnect picks them up again; Insights, its export and the planner's recent
+  posts then kept counting a channel the workspace no longer has, and a Meta data
+  deletion request left the Page's posts and numbers behind. `DisconnectSocialAccount`
+  now deletes them in the same transaction through `App\SocialHq\Channels\ChannelInsights`:
+  every row of the channel's identity (workspace, network, account id on the
+  network) and any row still linked to it, unless another channel of the workspace
+  is the same identity. A reconnect reads the posts and their numbers from the
+  network again; the old daily follower counts don't come back.
+  `php artisan socialhq:insights:prune` (`--dry-run` first) deletes the history of
+  identities no channel is connected to, left by disconnects before this change.
 
 ### Ask the account owner to connect
 

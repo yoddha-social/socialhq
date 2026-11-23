@@ -20,6 +20,7 @@ use App\SocialHq\AiGraphics\AiGraphics;
 use App\SocialHq\AiGraphics\PruneAiGraphicResultsCommand;
 use App\SocialHq\Approval\RecordApprovalEvents;
 use App\SocialHq\Channels\ConnectInvite;
+use App\SocialHq\Channels\PruneGoneChannelInsightsCommand;
 use App\SocialHq\Companies\CompanyRequests;
 use App\SocialHq\Companies\PlatformAdminCommand;
 use App\SocialHq\Companies\PlatformAdmins;
@@ -115,7 +116,7 @@ class SocialHqServiceProvider extends ServiceProvider
         AiUsageLogging::register($this->app);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiRoutesCommand::class, ImportEventsCommand::class, PruneAiGraphicResultsCommand::class, PruneCalendarUploadsCommand::class, PlatformAdminCommand::class, SecretsKeyCommand::class, SecretsReencryptCommand::class]);
+            $this->commands([AiRoutesCommand::class, ImportEventsCommand::class, PruneAiGraphicResultsCommand::class, PruneCalendarUploadsCommand::class, PruneGoneChannelInsightsCommand::class, PlatformAdminCommand::class, SecretsKeyCommand::class, SecretsReencryptCommand::class]);
         }
 
         // Provider keys are write-only: never flashed back as old input after a

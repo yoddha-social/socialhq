@@ -84,9 +84,8 @@ test('disconnecting deletes every post of the channel, whatever its status or or
         ->and(Post::query()->whereKey($posts->map(fn (array $row): string => $row[0]->id))->count())->toBe(0)
         ->and(Post::query()->whereNull('social_account_id')->whereNotNull('platform')->count())->toBe(0)
         ->and(Media::query()->whereKey($posts->map(fn (array $row): string => $row[1]->id))->count())->toBe(0)
-        ->and($publication->fresh()->post_id)->toBeNull()
-        ->and($publication->fresh()->post_dismissed_at)->toBeNull()
-        ->and(AnalyticsPublicationDailySnapshot::query()->whereKey($snapshot->id)->exists())->toBeTrue();
+        ->and(AnalyticsPublication::query()->whereKey($publication->id)->exists())->toBeFalse()
+        ->and(AnalyticsPublicationDailySnapshot::query()->whereKey($snapshot->id)->exists())->toBeFalse();
 
     $posts->each(fn (array $row) => Storage::assertMissing($row[1]->path));
     Event::assertNotDispatched(PostDeleted::class);
@@ -156,7 +155,7 @@ test('reconnecting the same identity imports its posts again without duplicates'
     $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account));
 
     expect(Post::query()->imported()->count())->toBe(0)
-        ->and($publication->fresh()->post_id)->toBeNull();
+        ->and(AnalyticsPublication::query()->whereKey($publication->id)->exists())->toBeFalse();
 
     $reconnected = SocialAccount::factory()->instagram()->create([
         'workspace_id' => $this->workspace->id,
@@ -170,7 +169,7 @@ test('reconnecting the same identity imports its posts again without duplicates'
 
     expect(AnalyticsPublication::query()->count())->toBe(1)
         ->and($imported->social_account_id)->toBe($reconnected->id)
-        ->and($publication->fresh()->post_id)->toBe($imported->id);
+        ->and(AnalyticsPublication::query()->sole()->post_id)->toBe($imported->id);
 });
 
 test('a disconnect that fails to delete the channel keeps its posts, media and images', function () {

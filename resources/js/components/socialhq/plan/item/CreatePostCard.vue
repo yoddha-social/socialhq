@@ -291,7 +291,9 @@ const createPost = async (): Promise<void> => {
                         target="_blank"
                         rel="noopener noreferrer"
                         class="text-muted-foreground hover:text-foreground"
-                        :aria-label="$t('socialhq_production.post.open_on_network')"
+                        :aria-label="
+                            $t('socialhq_production.post.open_on_network')
+                        "
                     >
                         <IconExternalLink class="size-4" aria-hidden="true" />
                     </a>

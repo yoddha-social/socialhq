@@ -7,12 +7,16 @@ import {
     IconMessageReport,
     IconPhoto,
     IconSend,
+    IconSparkles,
     IconUpload,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
+import AiGraphicDialog from '@/components/socialhq/AiGraphicDialog.vue';
+import { useAiGraphicsOffer } from '@/components/socialhq/aiGraphics';
+import AiMissingTooltip from '@/components/socialhq/AiMissingTooltip.vue';
 import ReviewDecisionDialog from '@/components/socialhq/plan/item/ReviewDecisionDialog.vue';
 import type {
     BriefDetail,
@@ -25,6 +29,7 @@ import { Textarea } from '@/components/ui/textarea';
 import date from '@/date';
 import { extractErrorMessage } from '@/lib/httpError';
 import { acceptAttribute } from '@/lib/mediaType';
+import { image as aiGraphicImage } from '@/routes/socialhq/ai-graphics';
 import {
     approve as approveCreative,
     requestChanges as requestCreativeChanges,
@@ -84,13 +89,16 @@ const uploadFailedMessage = (file: File, status?: number): string => {
 
 // Settles in onFinish, which runs after every outcome (success, validation
 // error, HTTP error, network error, cancel), so the upload loop never hangs.
-const uploadOne = (file: File): Promise<UploadResult> =>
+const uploadOne = (
+    file: File,
+    fileNote: string = note.value,
+): Promise<UploadResult> =>
     new Promise((resolve) => {
         let result: UploadResult = 'failed';
 
         router.post(
             storeFile.url(props.itemId),
-            { file, note: note.value },
+            { file, note: fileNote },
             {
                 forceFormData: true,
                 preserveScroll: true,
@@ -142,6 +150,94 @@ const onFilesChosen = async (event: Event): Promise<void> => {
     uploadingName.value = null;
 
     if (uploaded > 0) {
+        note.value = '';
+    }
+};
+
+// "Generate with AI": shows while the company has some AI; when that AI
+// can't make graphics it stays, can't be used, and says what's missing.
+const { shown: aiGraphicsShown, missingKey: aiGraphicsMissingKey } =
+    useAiGraphicsOffer();
+const aiGraphicOpen = ref(false);
+
+/** The note's limit (StoreBriefFileRequest), in characters. */
+const NOTE_MAX = 500;
+
+const AI_GRAPHIC_EXTENSIONS: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+};
+
+const openAiGraphic = (): void => {
+    if (aiGraphicsMissingKey.value) {
+        toast.error(trans(aiGraphicsMissingKey.value));
+
+        return;
+    }
+
+    aiGraphicOpen.value = true;
+};
+
+/** The note an AI graphic carries when the person wrote none: it was made with AI, and from what. */
+const aiGraphicNote = (prompt: string): string => {
+    const text = trans('socialhq_production.creative.ai_note', { prompt });
+    const characters = Array.from(text);
+
+    return characters.length > NOTE_MAX
+        ? `${characters.slice(0, NOTE_MAX - 1).join('')}…`
+        : text;
+};
+
+/**
+ * A finished AI graphic becomes a file of this round, like an upload: its
+ * bytes are read from the person's own graphic, then sent with the note.
+ */
+const uploadAiGraphic = async ({
+    importId,
+    prompt,
+}: {
+    importId: string;
+    prompt: string;
+}): Promise<void> => {
+    uploadingName.value = trans('socialhq.ai_graphics.label');
+
+    let blob: Blob;
+
+    try {
+        const response = await fetch(aiGraphicImage.url(importId), {
+            headers: { Accept: 'image/*' },
+        });
+
+        if (!response.ok) {
+            throw new Error(String(response.status));
+        }
+
+        blob = await response.blob();
+    } catch {
+        uploadingName.value = null;
+        toast.error(trans('socialhq_production.creative.ai_upload_failed'));
+
+        return;
+    }
+
+    const extension = AI_GRAPHIC_EXTENSIONS[blob.type] ?? 'png';
+    const file = new File(
+        [blob],
+        `ai-graphic-${importId.slice(0, 8)}.${extension}`,
+        { type: blob.type || 'image/png' },
+    );
+    const typedNote = note.value.trim() !== '';
+    uploadingName.value = file.name;
+
+    const result = await uploadOne(
+        file,
+        typedNote ? note.value : aiGraphicNote(prompt),
+    );
+
+    uploadingName.value = null;
+
+    if (result === 'uploaded' && typedNote) {
         note.value = '';
     }
 };
@@ -324,15 +420,39 @@ const downloadUrl = (file: BriefFileRow): string => `${file.url}?download=1`;
                     data-testid="item-creative-file"
                     @change="onFilesChosen"
                 />
-                <Button
-                    class="min-w-36"
-                    :loading="uploadingName !== null"
-                    data-testid="item-creative-pick"
-                    @click="pickFiles"
-                >
-                    <IconUpload />
-                    {{ $t('socialhq_production.creative.upload') }}
-                </Button>
+                <div class="flex flex-wrap items-center gap-2">
+                    <AiMissingTooltip
+                        v-if="aiGraphicsShown"
+                        :message="
+                            aiGraphicsMissingKey
+                                ? $t(aiGraphicsMissingKey)
+                                : null
+                        "
+                    >
+                        <Button
+                            variant="outline"
+                            class="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+                            :aria-disabled="
+                                aiGraphicsMissingKey ? 'true' : undefined
+                            "
+                            :disabled="uploadingName !== null"
+                            data-testid="item-creative-generate"
+                            @click="openAiGraphic"
+                        >
+                            <IconSparkles />
+                            {{ $t('socialhq.ai_graphics.menu_item') }}
+                        </Button>
+                    </AiMissingTooltip>
+                    <Button
+                        class="min-w-36"
+                        :loading="uploadingName !== null"
+                        data-testid="item-creative-pick"
+                        @click="pickFiles"
+                    >
+                        <IconUpload />
+                        {{ $t('socialhq_production.creative.upload') }}
+                    </Button>
+                </div>
             </div>
             <p
                 v-if="uploadingName"
@@ -476,6 +596,13 @@ const downloadUrl = (file: BriefFileRow): string => `${file.url}?download=1`;
                 </ul>
             </li>
         </ol>
+
+        <AiGraphicDialog
+            v-if="aiGraphicsShown && !aiGraphicsMissingKey"
+            v-model:open="aiGraphicOpen"
+            target="file"
+            @generated="uploadAiGraphic"
+        />
 
         <ReviewDecisionDialog
             :open="decisionOpen"

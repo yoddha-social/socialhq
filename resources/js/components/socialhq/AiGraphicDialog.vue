@@ -23,10 +23,11 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { attach, index, show, store } from '@/routes/socialhq/ai-graphics';
 
-// Social HQ: "Generate with AI" from the media menu of ideas and posts. The
-// request is vision-checked while the dialog waits, then generated (and
-// checked again) in the background; the finished graphic is handed to the
-// composer as a media import.
+// Social HQ: "Generate with AI" from the media menu of ideas and posts, and
+// from an item's creative. The request is vision-checked while the dialog
+// waits, then generated (and checked again) in the background; the finished
+// graphic is handed to the composer as a media import, or, for a creative
+// (target "file"), named by its own import id so it can be uploaded there.
 
 const FORMATS = ['square', 'portrait', 'story', 'landscape'] as const;
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -36,10 +37,20 @@ const MAX_POLLS = 300;
 
 type Phase = 'idle' | 'checking' | 'generating';
 
+const props = withDefaults(
+    defineProps<{
+        /** "media": attach to the composer; "file": hand back the graphic itself. */
+        target?: 'media' | 'file';
+    }>(),
+    { target: 'media' },
+);
+
 const open = defineModel<boolean>('open', { required: true });
 
 const emit = defineEmits<{
     started: [payload: { importId: string; label: string }];
+    /** Target "file": a finished graphic, by its own import id (ai-graphics.image). */
+    generated: [payload: { importId: string; prompt: string }];
 }>();
 
 const page = usePage();
@@ -157,6 +168,16 @@ const loadRecent = async (): Promise<void> => {
 
 const useRecent = async (graphic: RecentGraphic): Promise<void> => {
     if (attaching.value) {
+        return;
+    }
+
+    if (props.target === 'file') {
+        emit('generated', {
+            importId: graphic.import_id,
+            prompt: graphic.prompt,
+        });
+        open.value = false;
+
         return;
     }
 
@@ -303,7 +324,7 @@ const removeReference = (index: number): void => {
 const wait = (milliseconds: number): Promise<void> =>
     new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 
-const poll = async (importId: string): Promise<void> => {
+const poll = async (importId: string, prompt: string): Promise<void> => {
     const status = useHttp<
         Record<string, never>,
         { status: string; reason: string | null }
@@ -321,10 +342,15 @@ const poll = async (importId: string): Promise<void> => {
         }
 
         if (result.status === 'generated') {
-            emit('started', {
-                importId,
-                label: trans('socialhq.ai_graphics.label'),
-            });
+            if (props.target === 'file') {
+                emit('generated', { importId, prompt });
+            } else {
+                emit('started', {
+                    importId,
+                    label: trans('socialhq.ai_graphics.label'),
+                });
+            }
+
             reset();
             open.value = false;
 
@@ -355,6 +381,7 @@ const submit = async (): Promise<void> => {
     message.value = null;
     phase.value = 'checking';
 
+    const prompt = http.prompt.trim();
     let started: { import_id: string } | undefined;
 
     try {
@@ -376,7 +403,7 @@ const submit = async (): Promise<void> => {
     }
 
     phase.value = 'generating';
-    await poll(started.import_id);
+    await poll(started.import_id, prompt);
 };
 </script>
 

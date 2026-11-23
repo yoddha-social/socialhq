@@ -14,17 +14,52 @@ use App\SocialHq\Ai\AiTask;
  */
 final class AiGraphics
 {
+    /** The company's AI can't make images. */
+    public const MISSING_IMAGE = 'image';
+
+    /** The company's AI can't read images, which the content check needs. */
+    public const MISSING_VISION = 'vision';
+
+    /** Neither. */
+    public const MISSING_IMAGE_VISION = 'image_vision';
+
     /**
      * On, with an approved image provider that has credentials. When the
      * vision check is on, the vision task needs one too.
      */
     public static function isAvailable(): bool
     {
-        if (! config('socialhq.ai_graphics.enabled') || ! AiRouter::isAvailable(AiTask::Image)) {
-            return false;
-        }
+        return config('socialhq.ai_graphics.enabled') && self::missing() === null;
+    }
 
-        return ! self::visionCheckEnabled() || AiRouter::isAvailable(AiTask::Vision);
+    /**
+     * What the company's AI lacks for graphics (one of the MISSING_
+     * constants), or null when it can make them.
+     */
+    public static function missing(): ?string
+    {
+        $image = AiRouter::isAvailable(AiTask::Image);
+        $vision = ! self::visionCheckEnabled() || AiRouter::isAvailable(AiTask::Vision);
+
+        return match (true) {
+            $image && $vision => null,
+            $vision => self::MISSING_IMAGE,
+            $image => self::MISSING_VISION,
+            default => self::MISSING_IMAGE_VISION,
+        };
+    }
+
+    /**
+     * Whether "Generate with AI" shows at all: on, the person may create
+     * posts here, and the company has some AI. When that AI can't make
+     * graphics, the button says what is missing (missing()) instead of
+     * hiding, so people know graphics exist and who can turn them on.
+     */
+    public static function isOffered(User $user, Workspace $workspace): bool
+    {
+        return config('socialhq.ai_graphics.enabled')
+            && $user->can('createPost', $workspace)
+            && AiRouter::anyAvailable();
     }
 
     public static function timeoutSeconds(): int

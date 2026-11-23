@@ -109,8 +109,8 @@ test('pages share which AI tasks the company can use', function (bool $platformA
     $this->actingAs($this->owner)->get(route('app.posts.index'))
         ->assertInertia(fn (Assert $page) => $page->where('aiTasks', $tasks)->missing('aiEnabled'));
 })->with([
-    'no AI' => [false, ['write' => false, 'structured' => false, 'vision' => false]],
-    'platform AI without vision' => [true, ['write' => true, 'structured' => true, 'vision' => false]],
+    'no AI' => [false, ['write' => false, 'structured' => false, 'vision' => false, 'any' => false]],
+    'platform AI without vision' => [true, ['write' => true, 'structured' => true, 'vision' => false, 'any' => true]],
 ]);
 
 test('the item page hides AI the company can\'t use', function () {

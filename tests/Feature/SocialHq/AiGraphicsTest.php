@@ -149,7 +149,7 @@ test('people who cannot create posts here cannot generate graphics', function ()
     Image::assertNothingGenerated();
 });
 
-test('the feature is off without an image provider key, and the menu hides it', function () {
+test('without an image provider key nothing is generated, and the menu says images are missing', function () {
     config(['ai.providers.gemini.key' => null]);
 
     $this->actingAs($this->owner)
@@ -157,12 +157,41 @@ test('the feature is off without an image provider key, and the menu hides it', 
         ->assertForbidden();
 
     $this->get(route('app.members'))
-        ->assertInertia(fn ($page) => $page->where('socialhq.aiGraphics.available', false));
+        ->assertInertia(fn ($page) => $page->where('socialhq.aiGraphics.offered', true)
+            ->where('socialhq.aiGraphics.available', false)
+            ->where('socialhq.aiGraphics.missing', AiGraphics::MISSING_IMAGE));
 
     config(['ai.providers.gemini.key' => 'test-gemini-key']);
 
     $this->get(route('app.members'))
-        ->assertInertia(fn ($page) => $page->where('socialhq.aiGraphics.available', true));
+        ->assertInertia(fn ($page) => $page->where('socialhq.aiGraphics.offered', true)
+            ->where('socialhq.aiGraphics.available', true)
+            ->where('socialhq.aiGraphics.missing', null));
+});
+
+test('"Generate with AI" shows while the company has some AI, and says what graphics lack', function (array $keys, bool $offered, ?string $missing) {
+    // A third provider that only writes, so the company keeps some AI without images or vision.
+    config([
+        'socialhq.ai.approved_providers' => ['gemini', 'anthropic', 'openai'],
+        'socialhq.ai.routes.write' => 'openai',
+        'ai.providers.openai.key' => 'test-openai-key',
+        ...$keys,
+    ]);
+
+    $this->actingAs($this->owner)->get(route('app.members'))
+        ->assertInertia(fn ($page) => $page->where('socialhq.aiGraphics.offered', $offered)
+            ->where('socialhq.aiGraphics.available', false)
+            ->where('socialhq.aiGraphics.missing', $missing));
+})->with([
+    'no vision' => [['ai.providers.anthropic.key' => null], true, AiGraphics::MISSING_VISION],
+    'neither' => [['ai.providers.anthropic.key' => null, 'ai.providers.gemini.key' => null], true, AiGraphics::MISSING_IMAGE_VISION],
+    'no AI at all' => [['ai.providers.anthropic.key' => null, 'ai.providers.gemini.key' => null, 'ai.providers.openai.key' => null], false, null],
+    'switched off' => [['socialhq.ai_graphics.enabled' => false], false, null],
+]);
+
+test('people who cannot create posts here are not offered graphics', function () {
+    expect(AiGraphics::isOffered(workspaceOutsider($this->workspace), $this->workspace))->toBeFalse()
+        ->and(AiGraphics::isOffered($this->owner, $this->workspace))->toBeTrue();
 });
 
 test('a workspace stops at its daily limit', function () {

@@ -169,6 +169,8 @@ return [
         'download' => 'Download',
         'uploaded_by' => ':name, :time',
         'upload_failed' => 'Couldn\'t upload :name. Try again.',
+        'ai_note' => 'Made with AI from: “:prompt”',
+        'ai_upload_failed' => 'Couldn\'t add the AI graphic. Open Generate with AI and pick it under Your recent graphics.',
         'upload_too_large' => ':name is larger than uploads allow. Upload a smaller or compressed file.',
         'upload_rate_limited' => 'You\'ve uploaded many files in a short time. Wait a minute, then upload the rest.',
         'errors' => [

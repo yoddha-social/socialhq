@@ -69,7 +69,8 @@ TryPost's four agents carry it too (PATCHES.md row 15). Code:
 - **Gateway tasks** (`SOCIALHQ_AI_GATEWAY_TASKS`, default
   `write,structured,vision`): the gateway serves only these. `image` and
   `embed` have only paid Gemini in LiteLLM, so they stay off (and "Generate
-  with AI" stays hidden) until its key is set and they are listed.
+  with AI" says images aren't set up) until its key is set and they are
+  listed.
 - **Per company** (gateway only; `app/SocialHq/Ai/Company/`). Each call
   runs for a company (`AiTenant`): on the web the user's current workspace's
   account, in a job the workspace it carries (`AiTenant::run($workspace,
@@ -133,12 +134,15 @@ TryPost's four agents carry it too (PATCHES.md row 15). Code:
 - **"AI isn't set up"** (the company has no AI, or none that serves the
   task) is a configuration state, not an error: endpoints answer 409 with
   copy that says how to set it up (`AiResponses`), jobs don't report it, and
-  the shared `aiTasks` prop (`write`, `structured`, `vision`) hides the
-  assistant, alt text and idea buttons. A company key that no secrets key
-  opens (missing or rotated `SOCIALHQ_SECRETS_KEY`) turns that company's AI
-  off and is logged; after a rotation run `php artisan
-  socialhq:secrets-reencrypt` (`--dry-run` first), then drop the previous
-  key.
+  the shared `aiTasks` prop (`write`, `structured`, `vision`, and `any`) hides
+  the assistant and idea buttons. A company with some AI still sees "Generate
+  with AI" and alt text's "Generate" when its AI can't make or read images:
+  dimmed, with what is missing and who adds it on hover, focus and click
+  (`AiMissingTooltip.vue`); a company with no AI at all sees none of them.
+  A company key that no secrets key opens (missing or rotated
+  `SOCIALHQ_SECRETS_KEY`) turns that company's AI off and is logged; after a
+  rotation run `php artisan socialhq:secrets-reencrypt` (`--dry-run` first),
+  then drop the previous key.
 - **Settings › AI › Usage** (same owner; `/socialhq/settings/ai/usage`) lists
   each AI request and how it was routed; platform admins see every company's
   at `/socialhq/platform/ai-usage` (a link on the companies page, 404 for
@@ -426,7 +430,15 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
 "Generate with AI" in the media menu of ideas and posts makes a still graphic
 (no video) from a prompt and up to 3 reference images, through the `image`
 task. The finished graphic arrives through TryPost's media import, like an
-Unsplash pick. Code: `app/SocialHq/AiGraphics/`.
+Unsplash pick. On a plan item's Creative, the same button sits next to
+"Upload files" and adds the graphic to the current round as an upload, with
+the reviewer's note or, without one, "Made with AI from: …" and the prompt.
+Code: `app/SocialHq/AiGraphics/`.
+
+The button shows whenever the company has some AI and the person may create
+posts (`AiGraphics::isOffered()`). When that AI can't make images, or can't
+read them for the check below, it stays dimmed and says which and who adds it
+(`AiGraphics::missing()`, the `socialhq.aiGraphics` prop's `missing`).
 
 The vision gate, which fails closed:
 

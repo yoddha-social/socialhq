@@ -109,11 +109,13 @@ class HandleInertiaRequests extends Middleware
                 'privacy' => (string) config('trypost.legal.privacy_url'),
             ],
             'languages' => fn (): array => Locale::options(),
-            // Social HQ: which AI tasks the company can use now; each AI button hides when its task can't run.
+            // Social HQ: which AI tasks the company can use now, and whether it has any AI (`any`): an AI
+            // button hides without any, and one whose task can't run says what is missing (components/socialhq/aiTasks.ts).
             'aiTasks' => fn (): array => [
                 'write' => AiRouter::isAvailable(AiTask::Write),
                 'structured' => AiRouter::isAvailable(AiTask::Structured),
                 'vision' => AiRouter::isAvailable(AiTask::Vision),
+                'any' => AiRouter::anyAvailable(),
             ],
             'googleAuthEnabled' => fn (): bool => SocialAuthProvider::Google->isEnabled(),
             'githubAuthEnabled' => fn (): bool => SocialAuthProvider::GitHub->isEnabled(),

@@ -27,10 +27,32 @@ return [
             'owner' => 'Your company\'s AI can\'t do this yet. To use it, add an AI provider that can in Settings › AI.',
             'member' => 'Your company\'s AI can\'t do this yet. Ask your company\'s owner to add an AI provider that can in Settings › AI.',
         ],
+        // An AI button the company's AI can't run yet: shown dimmed, said on hover and on click.
+        'missing' => [
+            'vision' => [
+                'owner' => 'No vision AI provider. Add one in Settings › AI.',
+                'member' => 'No vision AI provider. Ask your company\'s owner to add one.',
+            ],
+        ],
     ],
 
     'ai_graphics' => [
         'menu_item' => 'Generate with AI',
+        // "Generate with AI" while the company's AI can't make graphics (AiGraphics::missing()).
+        'missing' => [
+            'image' => [
+                'owner' => 'No image AI provider. Add one in Settings › AI.',
+                'member' => 'No image AI provider. Ask your company\'s owner to add one.',
+            ],
+            'vision' => [
+                'owner' => 'No vision AI provider to check graphics. Add one in Settings › AI.',
+                'member' => 'No vision AI provider to check graphics. Ask your company\'s owner to add one.',
+            ],
+            'image_vision' => [
+                'owner' => 'No image or vision AI provider. Add them in Settings › AI.',
+                'member' => 'No image or vision AI provider. Ask your company\'s owner to add them.',
+            ],
+        ],
         'title' => 'Generate a graphic with AI',
         'description' => 'Describe the graphic. Add up to :count reference images to use or follow, such as a product photo or a style.',
         'prompt_label' => 'Prompt',

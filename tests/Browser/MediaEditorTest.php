@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Ai\Company\CompanyAiAccess;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -307,6 +308,30 @@ test('alt text can be generated with AI for a post image', function () {
 
     expect($page->script('document.querySelector("[data-testid=media-editor-alt-text]").value'))
         ->toBe('Four coloured squares in a grid.');
+    $page->assertNoJavaScriptErrors();
+});
+
+// Social HQ (PATCHES.md row 125): a company with AI that can't read images sees why instead of no button.
+test('without AI that reads images, Generate alt text stays and says why', function () {
+    config(['socialhq.ai.routes.vision' => 'gemini', 'ai.providers.gemini.key' => null]);
+    MediaAltTextGenerator::fake(['Never asked.']);
+    [$post] = seedMediaEditorPost();
+    $user = $post->user;
+    $message = __('socialhq.ai.missing.vision.'.(CompanyAiAccess::canManage($user) ? 'owner' : 'member'));
+    $page = visit(route('app.posts.edit', $post));
+    openMediaEditor($page, $post->social_account_id);
+
+    $page->click('@media-editor-alt-tab');
+    waitFor($page, '@media-editor-alt-generate');
+
+    expect($page->script('document.querySelector(\'[data-testid="media-editor-alt-generate"]\').getAttribute("aria-disabled")'))->toBe('true');
+
+    // A person can click it; Playwright refuses an aria-disabled button.
+    $page->script('(() => { document.querySelector(\'[data-testid="media-editor-alt-generate"]\').click(); return true; })()');
+    waitForText($page, '[data-sonner-toast]', $message);
+
+    expect($page->script('document.querySelector("[data-testid=media-editor-alt-text]").value'))->toBe('');
+    MediaAltTextGenerator::assertNeverPrompted();
     $page->assertNoJavaScriptErrors();
 });
 

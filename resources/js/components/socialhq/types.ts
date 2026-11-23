@@ -8,7 +8,12 @@ export interface SocialHqSharedProps {
     approvals: { membersAlwaysReviewed: boolean };
     publishNow: { confirm: boolean };
     aiGraphics: {
+        /** "Generate with AI" shows: the company has some AI and the person may create posts. */
+        offered: boolean;
+        /** It works now. */
         available: boolean;
+        /** What the company's AI lacks while it shows but can't work. */
+        missing: 'image' | 'vision' | 'image_vision' | null;
         maxReferences: number;
         maxReferenceKilobytes: number;
     };

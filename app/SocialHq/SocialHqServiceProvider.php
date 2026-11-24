@@ -36,6 +36,7 @@ use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\Calendars\CalendarStorage;
 use App\SocialHq\Knowledge\Calendars\PruneCalendarUploadsCommand;
 use App\SocialHq\Knowledge\Documents\DocumentStorage;
+use App\SocialHq\Knowledge\Keywords\BrandKeywords;
 use App\SocialHq\Knowledge\Look\LogoStorage;
 use App\SocialHq\Knowledge\Search\KnowledgeSearch;
 use App\SocialHq\Knowledge\Search\LexicalKnowledgeSearch;
@@ -199,8 +200,13 @@ class SocialHqServiceProvider extends ServiceProvider
             }
 
             $workspace = auth()->user() instanceof User ? auth()->user()->currentWorkspace : null;
+            $focus = TryPostPromptFocus::of($view->getData());
 
-            $view->with('brand_knowledge', $workspace === null ? '' : BrandKnowledge::forPrompt($workspace, TryPostPromptFocus::of($view->getData())));
+            $view->with('brand_knowledge', $workspace === null ? '' : BrandKnowledge::forPrompt($workspace, $focus));
+            // The SEO keywords, outside the knowledge budget. A rewrite of the person's caption
+            // (shorten, rephrase, tone) only keeps the ones it has; new text gets the rules.
+            $view->with('seo_keywords', $workspace === null ? [] : BrandKeywords::forPrompt($workspace, $focus));
+            $view->with('seo_keywords_keep_only', data_get($view->getData(), 'writes_new_text') === false);
         });
 
         RateLimiter::for('socialhq-ai-graphics', fn (Request $request): Limit => Limit::perHour(AiGraphics::userHourlyLimit())

@@ -14,6 +14,8 @@ use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Knowledge\Calendars\OldCalendars;
 use App\SocialHq\Knowledge\Documents\DocumentsPage;
+use App\SocialHq\Knowledge\Keywords\BrandKeywords;
+use App\SocialHq\Knowledge\Keywords\KeywordCheck;
 use App\SocialHq\Knowledge\KnowledgeEntry;
 use App\SocialHq\Knowledge\KnowledgeKind;
 use App\SocialHq\Knowledge\KnowledgePrompt;
@@ -92,6 +94,12 @@ class BrandKnowledgeController extends Controller
             'audience' => fn () => AudiencePage::prop($workspace, $user),
             'look' => fn () => LookPage::prop($workspace),
             'website' => fn () => WebsitePanel::prop($workspace),
+            // SEO keywords, and their check (deferred: it reads the whole brand knowledge and recent posts).
+            'keywords' => fn () => [
+                'items' => BrandKeywords::of($loadProfile()),
+                'limits' => ['main' => BrandKeywords::maxMain(), 'supporting' => BrandKeywords::maxSupporting(), 'prompt' => (int) config('socialhq.knowledge.keywords.prompt', 8)],
+            ],
+            'keywordCheck' => Inertia::defer(fn () => KeywordCheck::page($workspace)),
         ]);
     }
 

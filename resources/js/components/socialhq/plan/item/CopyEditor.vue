@@ -13,6 +13,7 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
+import KeywordsMissingNote from '@/components/socialhq/keywords/KeywordsMissingNote.vue';
 import ReviewDecisionDialog from '@/components/socialhq/plan/item/ReviewDecisionDialog.vue';
 import type {
     CopyVersion,
@@ -161,10 +162,15 @@ const loadVersion = (version: CopyVersion): void => {
 
 defineExpose({ loadVersion });
 
-const aiHttp = useHttp<{ instruction: string }, { number: number }>({
+const aiHttp = useHttp<
+    { instruction: string },
+    { number: number; keywords_missing?: boolean }
+>({
     instruction: '',
 });
 const aiError = ref('');
+/** The brand has no SEO keywords: a light note under the copy the AI just wrote. */
+const keywordsMissingAfter = ref<number | null>(null);
 
 /** AI writes from the saved copy, so it waits for unsaved edits to be saved or discarded. */
 const showAi = computed(
@@ -200,6 +206,8 @@ const writeCopyWithAi = async (): Promise<void> => {
         }
 
         aiHttp.instruction = '';
+        keywordsMissingAfter.value =
+            result.keywords_missing === true ? result.number : null;
         router.reload({
             only: ['item', 'versions', 'thread', 'postReady', 'postBlockers'],
         });
@@ -559,6 +567,12 @@ const confirmDecision = (note: string): void => {
             :title="$t('socialhq_production.item.copy.unsupported_title')"
             :body="$t('socialhq_production.item.copy.unsupported_body')"
             data-testid="item-copy-unsupported"
+        />
+        <KeywordsMissingNote
+            v-if="
+                latest && !hasChanges && keywordsMissingAfter === latest.number
+            "
+            class="mx-5 mb-4"
         />
 
         <div

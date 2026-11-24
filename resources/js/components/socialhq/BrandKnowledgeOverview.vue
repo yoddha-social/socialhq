@@ -24,6 +24,7 @@ import type {
     BrandLookProp,
     WebsiteProp,
 } from '@/components/socialhq/brandSources';
+import type { KeywordCheckProp } from '@/components/socialhq/keywords/keywords';
 import type { KnowledgeDocumentsProp } from '@/components/socialhq/KnowledgeDocumentsSection.vue';
 import type { KnowledgeEntryRow } from '@/components/socialhq/KnowledgeEntryDialog.vue';
 import type { PastCalendar } from '@/components/socialhq/oldCalendars';
@@ -49,6 +50,9 @@ const props = defineProps<{
     website: WebsiteProp;
     canEdit: boolean;
     isEmpty: boolean;
+    /** How many SEO keywords the brand has, and their check (undefined while it loads). */
+    keywordCount: number;
+    keywordCheck: KeywordCheckProp | undefined;
 }>();
 
 const emit = defineEmits<{
@@ -92,6 +96,16 @@ const kindCount = computed(
     () => new Set(props.entries.map((entry) => entry.kind)).size,
 );
 
+/** Keywords the check warns about, worst first, for the setup row. */
+const keywordWarnings = computed(() =>
+    (['conflict', 'weak', 'check'] as const)
+        .map((key) => ({ key, count: props.keywordCheck?.counts[key] ?? 0 }))
+        .filter((part) => part.count > 0),
+);
+const keywordConflicts = computed(
+    () => props.keywordCheck?.counts.conflict ?? 0,
+);
+
 type Health = 'empty' | 'attention' | 'ready';
 
 /** The first thing that needs a look, as a lang key and its count. */
@@ -106,6 +120,10 @@ const firstIssue = computed<{ key: string; count: number } | null>(() => {
 
     if (openSuggestions.value > 0) {
         return { key: 'suggestions', count: openSuggestions.value };
+    }
+
+    if (keywordConflicts.value > 0) {
+        return { key: 'keywords', count: keywordConflicts.value };
     }
 
     return profileComplete.value ? null : { key: 'profile', count: 0 };
@@ -201,7 +219,12 @@ interface SetupRow {
     key: string;
     tab: BrandTab;
     done: boolean;
-    hint: { key: string; count: number };
+    /** A lang key and its count, or (SEO keywords) the check's warnings to list. */
+    hint: {
+        key: string;
+        count: number;
+        parts?: { key: string; count: number }[];
+    };
     action: SetupAction;
     filter?: string;
 }
@@ -265,6 +288,26 @@ const setupRows = computed<SetupRow[]>(() => [
                 ? { key: 'sources_suggestions', count: openSuggestions.value }
                 : { key: 'sources_hint', count: 0 },
         action: actionFor(sourceCount.value > 0, openSuggestions.value > 0),
+    },
+    {
+        key: 'keywords',
+        tab: 'strategy',
+        done: props.keywordCount > 0 && keywordWarnings.value.length === 0,
+        hint:
+            props.keywordCount === 0
+                ? { key: 'keywords_hint', count: 0 }
+                : keywordWarnings.value.length > 0
+                  ? {
+                        key: 'keywords_fit',
+                        count: 0,
+                        parts: keywordWarnings.value,
+                    }
+                  : { key: 'keywords_fit', count: 0 },
+        action: actionFor(
+            props.keywordCount > 0,
+            keywordWarnings.value.length > 0,
+        ),
+        filter: 'keywords',
     },
 ]);
 
@@ -622,7 +665,29 @@ const fillProfile = (): void => {
                                     )
                                 }}
                             </p>
-                            <p class="text-xs text-muted-foreground">
+                            <p
+                                v-if="row.hint.parts"
+                                class="text-xs text-amber-700 dark:text-amber-400"
+                            >
+                                <template
+                                    v-for="(part, index) in row.hint.parts"
+                                    :key="part.key"
+                                >
+                                    {{ index > 0 ? ' · ' : ''
+                                    }}{{
+                                        $tChoice(
+                                            `socialhq.keywords.summary.${part.key}`,
+                                            part.count,
+                                            {
+                                                count: formatFullNumber(
+                                                    part.count,
+                                                ),
+                                            },
+                                        )
+                                    }}
+                                </template>
+                            </p>
+                            <p v-else class="text-xs text-muted-foreground">
                                 {{
                                     $tChoice(
                                         `socialhq.brand.overview.setup.hints.${row.hint.key}`,

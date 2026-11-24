@@ -6,6 +6,7 @@ namespace App\SocialHq\Mcp\Tools\Plan;
 
 use App\Models\Workspace;
 use App\SocialHq\Knowledge\BrandKnowledge;
+use App\SocialHq\Knowledge\Keywords\BrandKeywords;
 use App\SocialHq\Mcp\Concerns\WorksOnPlans;
 use App\SocialHq\Plan\Ai\UnsupportedDetails;
 use App\SocialHq\Plan\Ai\WriteItemCopy;
@@ -58,7 +59,7 @@ class SavePlanItemCopyTool extends Tool
         $item->loadMissing(['event', 'socialAccount', 'latestVersion']);
         $copy['unsupported_details'] = UnsupportedDetails::find(
             trim($copy['caption']."\n\n".($copy['script'] ?? '')),
-            WriteItemCopy::sources($item, WriteItemCopy::context($item), BrandKnowledge::forPrompt($workspace, WriteItemCopy::focus($item)), ''),
+            WriteItemCopy::sources($item, WriteItemCopy::context($item), BrandKnowledge::forPrompt($workspace, WriteItemCopy::focus($item)), '', BrandKeywords::sourceText(BrandKeywords::forWorkspace($workspace))),
         ) ?: null;
 
         // Checked under the item's lock, so a review that starts meanwhile is never undone.

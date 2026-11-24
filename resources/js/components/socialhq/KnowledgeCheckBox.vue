@@ -37,6 +37,8 @@ interface CheckResult {
     budget: number;
     profile: { used: number; trimmed: boolean };
     parts: CheckPart[];
+    /** The SEO keywords this request gets, outside the budget. */
+    keywords: { text: string; main: boolean }[];
 }
 
 /**
@@ -250,6 +252,38 @@ const check = async (): Promise<void> => {
                     </p>
                 </li>
             </ol>
+
+            <div
+                class="flex flex-col gap-1.5 rounded-xl border border-dashed border-border p-3"
+                data-testid="socialhq-knowledge-check-keywords"
+            >
+                <p class="text-sm font-medium text-foreground">
+                    {{ $t('socialhq.keywords.ai_reads.title') }}
+                </p>
+                <template v-if="result.keywords.length > 0">
+                    <p class="text-xs text-muted-foreground">
+                        {{ $t('socialhq.keywords.ai_reads.hint') }}
+                    </p>
+                    <div class="flex flex-wrap gap-1.5">
+                        <span
+                            v-for="keyword in result.keywords"
+                            :key="keyword.text"
+                            class="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-xs text-foreground"
+                        >
+                            <span
+                                v-if="keyword.main"
+                                class="text-[10.5px] font-semibold tracking-wide text-primary-text uppercase"
+                            >
+                                {{ $t('socialhq.keywords.preview.main') }}
+                            </span>
+                            {{ keyword.text }}
+                        </span>
+                    </div>
+                </template>
+                <p v-else class="text-xs text-muted-foreground">
+                    {{ $t('socialhq.keywords.ai_reads.none') }}
+                </p>
+            </div>
         </div>
     </section>
 </template>

@@ -448,6 +448,18 @@ return [
         'search' => [
             'min_relevance' => (float) env('SOCIALHQ_KNOWLEDGE_MIN_RELEVANCE', 0.25),
         ],
+        // SEO keywords (Strategy tab): up to max_main main and max_supporting supporting ones;
+        // a prompt gets at most `prompt` of them, outside prompt_characters. The check reads the
+        // brand's posts of the last recent_days, flags the claim_words, and never calls a word of
+        // not_places a place (time zone names that are everyday words).
+        'keywords' => [
+            'max_main' => 5,
+            'max_supporting' => 25,
+            'prompt' => 8,
+            'recent_days' => 90,
+            'claim_words' => ['best', 'top', 'cheapest', 'leading', 'guaranteed', 'number one', 'no 1', '#1', 'finest', 'greatest'],
+            'not_places' => ['christmas', 'easter', 'wake', 'midway', 'troll', 'casey', 'davis', 'palmer', 'vostok', 'mawson', 'syowa', 'macquarie', 'rothera', 'mcmurdo', 'currie', 'hope', 'universal', 'factory', 'zulu', 'greenwich'],
+        ],
         'documents' => [
             'max_documents' => (int) env('SOCIALHQ_KNOWLEDGE_MAX_DOCUMENTS', 30),
             'max_kilobytes' => (int) env('SOCIALHQ_KNOWLEDGE_DOCUMENT_KILOBYTES', 10240),

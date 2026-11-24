@@ -416,7 +416,7 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   and scheduled posts go to the item's day at the same time of day
   (`ReschedulePost`), read in the item's posting zone, else the
   channel's; one that can't move (about to go out, or the person may not
-  change it) keeps its time and is named. Until then the card lists everything still in the way at once
+  change it) keeps its time and is named. Until the first post is saved, the card lists everything still in the way at once
   (`CreatePostFromItem::blockers()`: copy not approved, `[gaps]` in it, the
   creative not approved). An approver can "Post text-only": the post stops
   waiting for the creative (`creative_waived_at`/`_by` on the item; the brief

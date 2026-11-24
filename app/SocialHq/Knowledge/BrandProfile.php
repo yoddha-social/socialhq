@@ -30,6 +30,8 @@ class BrandProfile extends Model
             'pillars' => 'array',
             // Posts per week, keyed by social account id; read by the planner.
             'cadence' => 'array',
+            // SEO keywords, [{text, main}] in the admin's order (Keywords\BrandKeywords).
+            'keywords' => 'array',
         ];
     }
 

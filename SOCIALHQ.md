@@ -277,6 +277,39 @@ our brand look" (the text goes in the image prompt and is kept on the
 of the 3 reference images; the vision check is told it is the company's
 own). An SVG logo can't be a reference: upload a PNG for that.
 
+**SEO keywords** (Strategy tab; admins edit, members read). Up to 5 main
+and 25 supporting keywords on the brand profile (`keywords`, `[{text,
+main}]`; `socialhq.knowledge.keywords`), cleaned (one line, lowercased, a
+leading `#` dropped) and without duplicates (case and accents ignored).
+Every change saves the whole list (`PUT socialhq/brand/keywords`). A CSV or
+text file can be dropped on the card or chosen: it is read in the browser
+(up to 100 KB; a `keyword` column or the first one, an optional `group`
+column), each row checked through `brand/keywords/check`, shown in a
+preview, and saved through the same `PUT`. The keyword check
+(`Knowledge\Keywords\KeywordCheck`, code, no AI, cached per brand until
+its knowledge changes) gives each keyword a verdict, first match wins:
+**Conflict** (a word or phrase of "words to avoid" is in it), **Weak** (no
+single profile field, entry used in AI or document excerpt holds all its
+words, claim words aside), **Check** (one word, a claim word from
+`claim_words`, a country or time zone city that isn't an audience place,
+or the same words as another keyword), else **Good fit**, with where it was
+found and how many posts of the last 90 days say it (`KeywordMatcher`:
+words in order, case and accents ignored, linking words between allowed,
+a hashtag of the words run together counts). Verdicts are warnings only
+(owner decision 2026-11-23): every keyword goes to the AI. It checks fit
+with the brand, never search demand; there is no score. A prompt gets the
+main keywords, then the supporting ones that share most words with its
+focus, 8 at most, outside the knowledge budget
+(`BrandKeywords::forPrompt()`): the copy writer through its own view, the
+caption assistant and the idea generator through the `brand_knowledge`
+view composer (a rewrite of the person's caption is only told to keep the
+keywords it has). The rules (`prompts/socialhq/seo_keywords.blade.php`):
+one or two where they read naturally, never as a claim, never translated.
+A place inside a keyword is a source for "Check these". When the brand has
+none, the plan item's AI copy and the composer assistant's new captions
+answer `keywords_missing` and show a light note (× hides it for 7 days in
+that browser).
+
 **Read our website** (admins). The brand's address starts `ReadWebsite`
 (queued, 5 an hour per person, one run at a time per brand):
 `WebsiteCrawler` reads robots.txt (rules for `SocialHQBot` or `*`, its

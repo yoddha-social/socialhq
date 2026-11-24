@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Models\User;
 use App\SocialHq\Ai\AiTenant;
 use App\SocialHq\Knowledge\BrandKnowledge;
+use App\SocialHq\Knowledge\Keywords\BrandKeywords;
 use App\SocialHq\Knowledge\Look\BrandLook;
 use App\SocialHq\Plan\CreativeKind;
 use App\SocialHq\Plan\ItemCopy;
@@ -44,11 +45,13 @@ final class WriteItemCopy
 
         $context = self::context($item);
         $brandKnowledge = '';
+        $focus = trim(self::focus($item)."\n{$instruction}");
+        $keywords = BrandKeywords::forPrompt($item->workspace, $focus);
 
         // The item's workspace decides whose AI it uses, whatever workspace the user has open.
         // The brand knowledge is read there too: its search may use the company's AI one day.
-        $response = AiTenant::run($item->workspace, function () use ($item, $user, $context, $instruction, $isVideo, $latest, $maxLength, $maxHashtags, &$brandKnowledge) {
-            $brandKnowledge = BrandKnowledge::forPrompt($item->workspace, trim(self::focus($item)."\n{$instruction}"));
+        $response = AiTenant::run($item->workspace, function () use ($item, $user, $context, $instruction, $isVideo, $latest, $maxLength, $maxHashtags, $focus, $keywords, &$brandKnowledge) {
+            $brandKnowledge = BrandKnowledge::forPrompt($item->workspace, $focus);
 
             return (new CopyWriter(
                 language: $user->locale->promptLanguage(),
@@ -60,6 +63,7 @@ final class WriteItemCopy
                 maxHashtags: $maxHashtags,
                 visualStyle: BrandLook::of($item->workspace)?->copyLine() ?? '',
                 instruction: $instruction,
+                seoKeywords: $keywords,
             ))->prompt($latest === null ? 'Write the copy for this post.' : 'Rewrite the copy for this post.');
         });
 
@@ -90,26 +94,27 @@ final class WriteItemCopy
             'notes' => Str::substr($notes, 0, 5000),
             'unsupported_details' => UnsupportedDetails::find(
                 trim("{$caption}\n\n{$script}"),
-                self::sources($item, $context, $brandKnowledge, $instruction),
+                self::sources($item, $context, $brandKnowledge, $instruction, BrandKeywords::sourceText($keywords)),
             ) ?: null,
         ], ItemSource::Ai);
     }
 
     /**
      * What the writer was given to write from, as one text: the item, its
-     * event, the open change requests, the brand knowledge and the team's
-     * request. The latest version counts only when a person wrote it: what an
-     * earlier AI version invented isn't a source.
+     * event, the open change requests, the brand knowledge, the team's
+     * request and the SEO keywords (a place in a keyword is not invented).
+     * The latest version counts only when a person wrote it: what an earlier
+     * AI version invented isn't a source.
      *
      * @param  array<string, mixed>  $context
      */
-    public static function sources(PlanItem $item, array $context, string $brandKnowledge, string $instruction): string
+    public static function sources(PlanItem $item, array $context, string $brandKnowledge, string $instruction, string $keywords = ''): string
     {
         if ($item->latestVersion?->source === ItemSource::Ai) {
             unset($context['latest_version']);
         }
 
-        return UnsupportedDetails::sourceText($context, $brandKnowledge, $instruction);
+        return UnsupportedDetails::sourceText($context, $brandKnowledge, $instruction, $keywords);
     }
 
     /**

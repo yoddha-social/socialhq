@@ -10,6 +10,7 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, ref } from 'vue';
 
 import CharacterCounter from '@/components/CharacterCounter.vue';
+import KeywordsMissingNote from '@/components/socialhq/keywords/KeywordsMissingNote.vue';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { extractErrorMessage } from '@/lib/httpError';
@@ -58,6 +59,8 @@ const prompt = ref('');
 const lastPrompt = ref('');
 const suggestion = ref('');
 const suggestionAction = ref<'insert' | 'replace'>('insert');
+/** Social HQ: a new caption for a brand without SEO keywords gets a light note. */
+const keywordsMissing = ref(false);
 const busy = ref(false);
 const error = ref('');
 const pendingMode = ref('generate');
@@ -109,7 +112,7 @@ const request = async (
     http.social_account_id = props.channel?.accountId ?? null;
     try {
         const result = (await http.post(assist.url())) as
-            | { content: string }
+            | { content: string; keywords_missing?: boolean }
             | undefined;
         if (!result) {
             error.value =
@@ -118,6 +121,7 @@ const request = async (
             return;
         }
         suggestion.value = result.content;
+        keywordsMissing.value = result.keywords_missing === true;
         suggestionAction.value = action;
         screen.value = 'suggestion';
     } catch (exception) {
@@ -294,6 +298,7 @@ const accept = (): void => {
                 >
                     {{ suggestion }}
                 </p>
+                <KeywordsMissingNote v-if="keywordsMissing" />
             </div>
             <div class="flex flex-wrap items-center justify-end gap-2">
                 <Button
@@ -349,7 +354,9 @@ const accept = (): void => {
             {{ error }}
         </p>
 
-        <div class="mt-auto space-y-2 border-t pt-4 text-xs text-muted-foreground">
+        <div
+            class="mt-auto space-y-2 border-t pt-4 text-xs text-muted-foreground"
+        >
             <p
                 v-if="channel && channel.limit !== null"
                 data-testid="writing-assistant-channel"

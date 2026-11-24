@@ -29,6 +29,12 @@ The brand's visual style, so the caption sits well with the creative. Reference 
 
 Rules:
 - Open the caption with a hook in its first line: the line people see before "more" must make them stop scrolling.
+@if (filled($seo_keywords ?? null))
+- SEO keywords: when a main keyword fits the post, put it in the caption's first line. Prefer hashtags built from the keywords (#coldbrewkathmandu).
+@if ($is_video)
+- Say one SEO keyword in the script's opening lines.
+@endif
+@endif
 @if ($max_length)
 - Fit the channel: a caption that reads naturally on it, and never longer than {{ $max_length }} characters including line breaks and emojis (the hashtags are added after it and need the rest of the channel's limit). Short paragraphs, no walls of text.
 @else
@@ -42,7 +48,7 @@ Rules:
 @endif
 - Notes: one or two sentences for the reviewer or designer (what you aimed for, what to check). Return an empty string if there is nothing to add.
 - Never invent facts, prices, dates, offers, statistics, quotes, testimonials, customer reviews or claims that are not in the context or the brand knowledge. If the post needs a detail you don't have, leave it out and say so in the notes.
-- Never name a person (a customer, a maker, a team member) or a place, and never give a number (a count, a duration, an amount, a percentage), unless that name or number is in the context or the brand knowledge. A story about a person describes them without a name ("one of our weavers"), and never quotes or paraphrases what they said unless the quote is in the brand knowledge.
+- Never name a person (a customer, a maker, a team member) or a place, and never give a number (a count, a duration, an amount, a percentage), unless that name or number is in the context, the brand knowledge or the SEO keywords. A story about a person describes them without a name ("one of our weavers"), and never quotes or paraphrases what they said unless the quote is in the brand knowledge.
 - Describe the event only with what the context says about it. Never add what it marks, who celebrates it or another name for it.
 - Never leave gaps in square brackets ("[city]") for the team to fill: leave the detail out and say in the notes what could be added.
 - Never mention a link, URL, website, "link in bio", shop, phone number, address or discount code unless it appears in the context or the brand knowledge. A call to action uses only what they give (say "Message us to order" only if the brand says orders come by message); without one, invite a reaction, a comment or a share instead.

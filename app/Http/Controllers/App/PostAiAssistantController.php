@@ -12,6 +12,7 @@ use App\Http\Requests\App\Ai\AssistPostContentRequest;
 use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Services\PostHogService;
 use App\SocialHq\Ai\AiResponses;
+use App\SocialHq\Knowledge\Keywords\BrandKeywords;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
@@ -65,6 +66,7 @@ class PostAiAssistantController extends Controller
             );
         });
 
-        return response()->json(['content' => $content]);
+        // Social HQ: a new caption for a brand without SEO keywords shows a light note (PATCHES.md row 290).
+        return response()->json(['content' => $content, 'keywords_missing' => $mode->requiresPrompt() && BrandKeywords::isEmpty($workspace)]);
     }
 }

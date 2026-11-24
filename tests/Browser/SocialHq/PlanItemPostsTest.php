@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\PostPlatform\ContentType;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -34,7 +35,13 @@ function planItemWithScheduledPost(): array
 
     $channel = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id, 'timezone' => 'UTC']);
     $plan = ContentPlan::factory()->create(['workspace_id' => $workspace->id]);
-    $item = PlanItem::factory()->create(['plan_id' => $plan->id, 'social_account_id' => $channel->id, 'creative' => CreativeKind::None]);
+    $item = PlanItem::factory()->create([
+        'plan_id' => $plan->id,
+        'social_account_id' => $channel->id,
+        'platform' => $channel->platform->value,
+        'content_type' => ContentType::LinkedInPost,
+        'creative' => CreativeKind::None,
+    ]);
     $post = Post::factory()->forAccount($channel)->scheduled()->create([
         'user_id' => $user->id,
         'content' => 'Happy Dashain',
@@ -92,6 +99,7 @@ test('moving an item to another day offers to move its post too', function () {
     $page->select('@plan-item-day', $newDay);
     $page->click('@plan-item-save');
     waitForDatabase($page, fn (): bool => $item->fresh()->scheduled_on->toDateString() === $newDay);
+    expect($item->fresh()->scheduled_on->toDateString())->toBe($newDay);
 
     waitForText($page, '[data-sonner-toast]', trans_choice('socialhq_plan.posts_follow.offer', 1));
     $page->click('[data-sonner-toast] [data-button]');

@@ -181,4 +181,3 @@ test('a post about to go out keeps its time and is named', function () {
 
     expect($post->fresh()->scheduled_at->toIso8601String())->toBe($due);
 });
-

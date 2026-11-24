@@ -36,7 +36,9 @@ final class ItemPage
             'team' => BriefTeam::members($workspace)->map(fn (User $member): ?array => self::person($member))->values()->all(),
             'postReady' => CreatePostFromItem::isReady($item),
             'postBlockers' => CreatePostFromItem::blockers($item),
-            'creativeWaiver' => $item->creative_waived_at === null ? null : [
+            // Whether an approver may let the post go out without its creative (the format allows it).
+            'textOnlyAllowed' => CreatePostFromItem::mayGoTextOnly($item),
+            'creativeWaiver' => $item->creative_waived_at === null || ! CreatePostFromItem::mayGoTextOnly($item) ? null : [
                 'at' => $item->creative_waived_at->toIso8601String(),
                 'by' => self::person($item->creativeWaivedBy),
             ],

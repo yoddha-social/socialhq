@@ -10,6 +10,7 @@ use App\SocialHq\Plan\Ai\CopyWriter;
 use App\SocialHq\Plan\Ai\UnsupportedDetails;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\CopyStatus;
+use App\SocialHq\Plan\CreatePostFromItem;
 use App\SocialHq\Plan\CreativeKind;
 use App\SocialHq\Plan\ItemSource;
 use App\SocialHq\Plan\ItemVersion;
@@ -143,6 +144,34 @@ test('an approver lets the post go out text-only, and can take it back', functio
     $this->actingAs($this->owner)->delete(route('socialhq.plan.items.post.text-only.destroy', $this->item->id))->assertSessionHasNoErrors();
 
     expect($this->item->fresh()->creative_waived_at)->toBeNull();
+});
+
+test('a format that needs an image or video can\'t go out text-only', function () {
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+    $this->item->update(['social_account_id' => $instagram->id, 'platform' => $instagram->platform->value, 'content_type' => ContentType::InstagramFeed, 'copy_status' => CopyStatus::Approved]);
+
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.post.text-only.store', $this->item->id))
+        ->assertSessionHasErrors(['creative' => __('socialhq_production.post.errors.needs_media', ['format' => ContentType::InstagramFeed->label()])]);
+
+    expect($this->item->fresh()->creative_waived_at)->toBeNull();
+    $this->actingAs($this->owner)->get(route('socialhq.plan.items.show', $this->item->id))
+        ->assertInertia(fn ($page) => $page->where('textOnlyAllowed', false));
+});
+
+test('a waiver given before the rule no longer lets a media format go out text-only', function () {
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+    $this->item->forceFill([
+        'social_account_id' => $instagram->id,
+        'platform' => $instagram->platform->value,
+        'content_type' => ContentType::InstagramFeed,
+        'copy_status' => CopyStatus::Approved,
+        'creative_waived_at' => now(),
+        'creative_waived_by' => $this->owner->id,
+    ])->save();
+
+    expect(CreatePostFromItem::blockers($this->item->fresh()))->toContain(CreatePostFromItem::BLOCKED_BY_CREATIVE);
+    $this->actingAs($this->owner)->get(route('socialhq.plan.items.show', $this->item->id))
+        ->assertInertia(fn ($page) => $page->where('creativeWaiver', null)->where('postReady', false));
 });
 
 test('an item with nothing to make has no creative to waive', function () {

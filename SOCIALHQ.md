@@ -405,11 +405,26 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   the item's post status (a failed post first, else the one furthest along);
   a post card in Publish says "From plan: <title>" and links back. A deleted
   post drops off the item. `post_created_at` is when the first post was
-  saved. Until then the card lists everything still in the way at once
+  saved. The plan keeps the posts in step (`ItemPosts`, through TryPost's
+  own actions, so rights and approvals still apply): dropping or deleting
+  an item whose post will still go out (scheduled, or waiting for
+  approval) asks first, "Move it to drafts" (Publish's "Move to drafts")
+  or "Keep it scheduled" (user decision 2026-11-23); the server refuses
+  the change without a choice (`posts`). An item moved to another day
+  offers "Move post too" (a toast after the sheet saves, and a button on
+  the item page by a post marked "Not on the item's day"): dated drafts
+  and scheduled posts go to the item's day at the same time of day
+  (`ReschedulePost`), read in the item's posting zone, else the
+  channel's; one that can't move (about to go out, or the person may not
+  change it) keeps its time and is named. Until the first post is saved, the card lists everything still in the way at once
   (`CreatePostFromItem::blockers()`: copy not approved, `[gaps]` in it, the
   creative not approved). An approver can "Post text-only": the post stops
   waiting for the creative (`creative_waived_at`/`_by` on the item; the brief
-  stays, and an approved creative is still added if it's ready first).
+  stays, and an approved creative is still added if it's ready first). Only
+  on a format TryPost can post without media (`ContentType::requiresMedia()`
+  false: a LinkedIn, X or Facebook post, not an Instagram feed post or a
+  reel); on the others the card says the format needs an image or video,
+  and a waiver given before this rule no longer counts.
 - **Copy checks** (QA 2026-11-18). A caption or hashtags with text in
   square brackets (`Placeholders`: "[city]", a markdown link too, since
   networks post it as typed; not a video script's "[close-up]") can't be

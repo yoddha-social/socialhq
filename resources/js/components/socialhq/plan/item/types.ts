@@ -144,4 +144,6 @@ export interface ItemPost {
     url: string;
     /** The post on the network, once published. */
     network_url: string | null;
+    /** A dated draft or scheduled post that isn't on the item's day. */
+    off_day: boolean;
 }

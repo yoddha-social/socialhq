@@ -61,6 +61,7 @@ const suggestion = ref('');
 const suggestionAction = ref<'insert' | 'replace'>('insert');
 /** Social HQ: a new caption for a brand without SEO keywords gets a light note. */
 const keywordsMissing = ref(false);
+const canAddKeywords = ref(false);
 const busy = ref(false);
 const error = ref('');
 const pendingMode = ref('generate');
@@ -112,7 +113,11 @@ const request = async (
     http.social_account_id = props.channel?.accountId ?? null;
     try {
         const result = (await http.post(assist.url())) as
-            | { content: string; keywords_missing?: boolean }
+            | {
+                  content: string;
+                  keywords_missing?: boolean;
+                  can_add_keywords?: boolean;
+              }
             | undefined;
         if (!result) {
             error.value =
@@ -122,6 +127,7 @@ const request = async (
         }
         suggestion.value = result.content;
         keywordsMissing.value = result.keywords_missing === true;
+        canAddKeywords.value = result.can_add_keywords === true;
         suggestionAction.value = action;
         screen.value = 'suggestion';
     } catch (exception) {
@@ -298,7 +304,10 @@ const accept = (): void => {
                 >
                     {{ suggestion }}
                 </p>
-                <KeywordsMissingNote v-if="keywordsMissing" />
+                <KeywordsMissingNote
+                    v-if="keywordsMissing"
+                    :can-add="canAddKeywords"
+                />
             </div>
             <div class="flex flex-wrap items-center justify-end gap-2">
                 <Button

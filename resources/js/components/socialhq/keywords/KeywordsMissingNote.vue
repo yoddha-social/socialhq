@@ -5,19 +5,22 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
-import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { index as brandKnowledge } from '@/routes/socialhq/brand';
 
 /**
- * The light note under AI text when the brand has no SEO keywords. Admins
- * get the link (Brand knowledge in a new tab, so unsaved work stays here);
- * members are told who adds them. × hides it for 7 days for this brand in
- * this browser: a per-viewer convenience, so localStorage.
+ * The light note under AI text when the brand has no SEO keywords. Whoever
+ * may add them gets the link (Brand knowledge in a new tab, so unsaved work
+ * stays here); the others are told who adds them. × hides it for 7 days for
+ * this brand in this browser: a per-viewer convenience, so localStorage.
  */
+defineProps<{
+    /** The AI answer's can_add_keywords: the rule that guards the keywords card. */
+    canAdd: boolean;
+}>();
+
 const HIDE_DAYS = 7;
 
 const page = usePage();
-const { canManageWorkspace } = useWorkspaceAbilities();
 
 const storageKey = computed(
     () =>
@@ -68,7 +71,7 @@ const hide = (): void => {
             class="mt-px size-4 shrink-0 text-subtle-foreground"
             aria-hidden="true"
         />
-        <p v-if="canManageWorkspace" class="min-w-0 flex-1">
+        <p v-if="canAdd" class="min-w-0 flex-1">
             {{ $t('socialhq.keywords.note.admin') }}
             <a
                 :href="href"

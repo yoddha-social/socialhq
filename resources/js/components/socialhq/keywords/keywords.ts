@@ -72,9 +72,14 @@ export const MAX_LENGTH = 60;
 /** Files the import reads: a keyword list is far smaller than this. */
 export const MAX_FILE_BYTES = 100 * 1024;
 
-/** One line, lowercased, a leading # dropped, runs of """ broken up. */
+/**
+ * One line, lowercased, commas and semicolons made spaces (they separate
+ * keywords, so a quoted CSV cell can't keep one), a leading # dropped, runs
+ * of """ broken up.
+ */
 export const clean = (text: string): string =>
     text
+        .replace(/[,;]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
         .toLowerCase()
@@ -190,6 +195,7 @@ export type ImportNote =
     | 'too_short'
     | 'too_long'
     | 'duplicate'
+    | 'repeated'
     | 'over_limit';
 
 export interface ImportRow {
@@ -201,14 +207,16 @@ export interface ImportRow {
 
 /**
  * What importing a file would do to the list: each row is added (main while
- * main slots are free) or skipped with the reason.
+ * main slots are free) or skipped with the reason: already a keyword
+ * (duplicate), or a second time in the file (repeated).
  */
 export const planImport = (
     parsed: ParsedFile,
     existing: Keyword[],
     limits: KeywordLimits,
 ): ImportRow[] => {
-    const seen = new Set(existing.map((keyword) => sameKey(keyword.text)));
+    const saved = new Set(existing.map((keyword) => sameKey(keyword.text)));
+    const inFile = new Set<string>();
     let mainFree =
         limits.main - existing.filter((keyword) => keyword.main).length;
     let supportingFree =
@@ -232,8 +240,12 @@ export const planImport = (
 
         const key = sameKey(row.text);
 
-        if (key === '' || seen.has(key)) {
+        if (key === '' || saved.has(key)) {
             return skip('duplicate');
+        }
+
+        if (inFile.has(key)) {
+            return skip('repeated');
         }
 
         const main = row.wantsMain && mainFree > 0;
@@ -242,7 +254,7 @@ export const planImport = (
             return skip('over_limit');
         }
 
-        seen.add(key);
+        inFile.add(key);
 
         if (main) {
             mainFree--;

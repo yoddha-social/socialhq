@@ -2,7 +2,7 @@
 import { router, useHttp } from '@inertiajs/vue3';
 import { IconFileUpload, IconListCheck, IconTag } from '@tabler/icons-vue';
 import { trans, transChoice } from 'laravel-vue-i18n';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
 import KeywordImportPanel from '@/components/socialhq/keywords/KeywordImportPanel.vue';
@@ -53,7 +53,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-    addEntry: [];
+    /** "Add an entry" on a keyword nothing backs up: the dialog starts from it. */
+    addEntry: [keyword: string];
 }>();
 
 /** The list shown: what is being saved, else what the server has. */
@@ -127,13 +128,25 @@ const save = (
 // ----- Add from the field (one keyword, or a pasted list)
 
 const newText = ref('');
-const group = ref<'main' | 'supporting'>(
-    mainCount(props.keywords.items) < props.keywords.limits.main
-        ? 'main'
-        : 'supporting',
-);
 
-/** An input drops line breaks from a pasted list: keep them as commas. */
+/**
+ * The group new keywords go to: Main while a main slot is free, else
+ * Supporting, following the list as it changes, until someone picks one.
+ */
+const pickedGroup = ref<'main' | 'supporting' | null>(null);
+const group = computed<'main' | 'supporting'>({
+    get: () =>
+        pickedGroup.value ??
+        (mainCount(items.value) < limits.value.main ? 'main' : 'supporting'),
+    set: (value) => {
+        pickedGroup.value = value;
+    },
+});
+
+/**
+ * An input drops line breaks from a pasted list: keep them as commas. The
+ * list takes the place of any selected text, as a paste does.
+ */
 const pasteList = (event: ClipboardEvent): void => {
     const text = event.clipboardData?.getData('text') ?? '';
 
@@ -142,12 +155,19 @@ const pasteList = (event: ClipboardEvent): void => {
     }
 
     event.preventDefault();
-    newText.value = [
-        newText.value.trim(),
-        text.trim().replace(/\s*\r?\n\s*/g, ', '),
-    ]
-        .filter(Boolean)
-        .join(', ');
+
+    const input = event.target as HTMLInputElement;
+    const list = text.trim().replace(/\s*\r?\n\s*/g, ', ');
+    const start = input.selectionStart ?? newText.value.length;
+    const end = input.selectionEnd ?? start;
+    const before = newText.value.slice(0, start).replace(/[\s,]+$/, '');
+    const after = newText.value.slice(end).replace(/^[\s,]+/, '');
+    const caret = (before ? before.length + 2 : 0) + list.length;
+
+    newText.value = [before, list, after].filter(Boolean).join(', ');
+    void nextTick(() => {
+        input.setSelectionRange(caret, caret);
+    });
 };
 
 const addFromField = (): void => {
@@ -160,6 +180,8 @@ const addFromField = (): void => {
     const next = [...items.value];
     const seen = new Set(next.map((keyword) => sameKey(keyword.text)));
     const added: string[] = [];
+    /** Asked for as main, added as supporting because main was full. */
+    let movedToSupporting = 0;
 
     for (const text of texts) {
         if (text.length < MIN_LENGTH) {
@@ -185,11 +207,7 @@ const addFromField = (): void => {
 
         if (main && mainCount(next) >= limits.value.main) {
             main = false;
-            toast.info(
-                trans('socialhq.keywords.toasts.main_full', {
-                    max: String(limits.value.main),
-                }),
-            );
+            movedToSupporting++;
         }
 
         if (!main && next.length - mainCount(next) >= limits.value.supporting) {
@@ -212,25 +230,37 @@ const addFromField = (): void => {
 
     newText.value = '';
 
-    if (mainCount(next) >= limits.value.main) {
-        group.value = 'supporting';
-    }
-
     save(
         next,
         () => {
-            toast.success(
-                added.length === 1
-                    ? trans('socialhq.keywords.toasts.added', {
-                          keyword: added[0],
-                      })
-                    : trans('socialhq.keywords.toasts.added_many', {
-                          count: String(added.length),
-                      }),
-            );
+            toast.success(addedMessage(added, movedToSupporting));
         },
         'add',
     );
+};
+
+/** One toast for what was added, saying how many went to supporting because main was full. */
+const addedMessage = (added: string[], movedToSupporting: number): string => {
+    const max = String(limits.value.main);
+
+    if (added.length === 1) {
+        return movedToSupporting > 0
+            ? trans('socialhq.keywords.toasts.added_supporting', {
+                  keyword: added[0],
+                  max,
+              })
+            : trans('socialhq.keywords.toasts.added', { keyword: added[0] });
+    }
+
+    return movedToSupporting > 0
+        ? trans('socialhq.keywords.toasts.added_many_supporting', {
+              count: String(added.length),
+              moved: String(movedToSupporting),
+              max,
+          })
+        : trans('socialhq.keywords.toasts.added_many', {
+              count: String(added.length),
+          });
 };
 
 // ----- Row actions
@@ -275,7 +305,28 @@ const makeSupporting = (keyword: Keyword): void => {
     setMain(keyword, false);
 };
 
+/** Each shown row, to put the keyboard on it. */
+const rowRefs = new Map<string, { focus: () => void }>();
+
+const setRowRef = (text: string, row: unknown): void => {
+    if (row) {
+        rowRefs.set(text, row as { focus: () => void });
+    } else {
+        rowRefs.delete(text);
+    }
+};
+
+const focusField = (): void => {
+    document.getElementById('socialhq-keyword-input')?.focus();
+};
+
 const remove = (keyword: Keyword): void => {
+    // The row goes at once, with the focus inside it: keep the keyboard in
+    // the list, on the row after it (else the one before, else the field).
+    const shown = [...mainItems.value, ...supportingItems.value];
+    const index = shown.findIndex((item) => item.text === keyword.text);
+    const neighbour = shown[index + 1] ?? shown[index - 1] ?? null;
+
     save(
         items.value.filter((item) => item.text !== keyword.text),
         () => {
@@ -286,10 +337,20 @@ const remove = (keyword: Keyword): void => {
             );
         },
     );
+
+    void nextTick(() => {
+        const row = neighbour ? rowRefs.get(neighbour.text) : undefined;
+
+        if (row) {
+            row.focus();
+        } else {
+            focusField();
+        }
+    });
 };
 
-const addEntry = (): void => {
-    emit('addEntry');
+const addEntry = (keyword: Keyword): void => {
+    emit('addEntry', keyword.text);
 };
 
 // ----- Import a CSV or text file (read here, checked, then saved like any change)
@@ -392,9 +453,15 @@ const chooseFile = (event: Event): void => {
     }
 };
 
+/** The preview closes with the focus inside it: back to the field. */
+const closeImport = (): void => {
+    importing.value = null;
+    void nextTick(focusField);
+};
+
 const cancelImport = (): void => {
     checkHttp.cancel();
-    importing.value = null;
+    closeImport();
 };
 
 const confirmImport = (): void => {
@@ -412,7 +479,7 @@ const confirmImport = (): void => {
     ).length;
 
     save([...items.value, ...added], () => {
-        importing.value = null;
+        closeImport();
         toast.success(
             warned > 0
                 ? trans('socialhq.keywords.toasts.imported_warned', {
@@ -750,7 +817,9 @@ const notThisTime = computed(() =>
                                 </template>
                                 {{
                                     $tChoice(
-                                        'socialhq.keywords.check.all_to_ai',
+                                        canEdit
+                                            ? 'socialhq.keywords.check.all_to_ai'
+                                            : 'socialhq.keywords.check.all_to_ai_member',
                                         total,
                                         {
                                             count: formatFullNumber(total),
@@ -908,6 +977,7 @@ const notThisTime = computed(() =>
                     <KeywordRow
                         v-for="keyword in main ? mainItems : supportingItems"
                         :key="keyword.text"
+                        :ref="(row) => setRowRef(keyword.text, row)"
                         :keyword="keyword"
                         :row="rowFor(keyword)"
                         :checked="check?.checked ?? null"
@@ -917,7 +987,7 @@ const notThisTime = computed(() =>
                         @make-main="makeMain(keyword)"
                         @make-supporting="makeSupporting(keyword)"
                         @remove="remove(keyword)"
-                        @add-entry="addEntry"
+                        @add-entry="addEntry(keyword)"
                     />
                     <li
                         v-if="(main ? mainItems : supportingItems).length === 0"

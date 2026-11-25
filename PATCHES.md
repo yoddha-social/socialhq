@@ -1,10 +1,15 @@
 # Changes to TryPost files
 
-Social HQ code lives in its own module (see [SOCIALHQ.md](SOCIALHQ.md)). We
-don't merge TryPost's feature releases; we take its security fixes one by one
-(see "Security intake" below). This file lists **every** change to a file that
-came with TryPost, so we know where one of its fixes may conflict with ours.
-Change a TryPost file when that is the right place, and add a row.
+Social HQ is a hard fork of TryPost v2.0.1 (owner decision 2026-11-25): TryPost's
+files are ours, we never merge its feature releases, and we port its security
+fixes by hand (see "Security intake" below). New features still live in their own
+module (see [SOCIALHQ.md](SOCIALHQ.md)).
+
+**Transition rule.** Until the five open branches have landed (p2-feedback,
+p2-time-zones, p2-events, p2-members, rbac-roles), every change to a file that
+came with TryPost still gets a row here. After that this table is replaced by a
+short map of where we diverged, by area (the file list comes from git), and rows
+stop. Don't rewrite the table before then.
 
 Row numbers have gaps on purpose: parallel branches each get a reserved range
 (see `docs/history/overnight/2026-11-05/LANE-RULES.md`), and unused numbers in a
@@ -16,7 +21,7 @@ range stay unused. No row is lost.
 | 2 | `resources/js/components/AppSidebar.vue` | Imports and renders `socialhq/SourceLink.vue` in the sidebar footer and `socialhq/WorkspaceSwitcher.vue` at the top of the sidebar content (4 lines) | AGPL-3.0 §13: users of the modified version can get its source. Upstream hides the workspace switcher in a submenu of the user menu |
 | 3 | `README.md` | Short Social HQ note at the top | Says what this fork is and where our docs are |
 | 4 | `app/Ai/Agents/{IdeaGenerator,MediaAltTextGenerator,PostContentShortener,PostWritingAssistant}.php` | `#[Temperature(x)]` replaced by `use UsesModelSafeTemperature` plus `preferredTemperature()` returning the same value | Claude 5 models reject `temperature`, which broke every AI feature. Candidate for an upstream PR |
-| 5 | `app/Support/Timezone.php` | `normalize()` asks ICU for an alias's canonical name without first requiring it in PHP's legacy tz list | Without the legacy tz database (Ubuntu's tzdata-legacy), every legacy alias became UTC; this also kept CI red. Proposed upstream (trypostit/trypost#478) |
+| 5 | `app/Support/Timezone.php` | `normalize()` asks ICU for an alias's canonical name without first requiring it in PHP's legacy tz list | Without the legacy tz database (Ubuntu's tzdata-legacy), every legacy alias became UTC; this also kept CI red. TryPost merged the same change (trypostit/trypost#479, after v2.0.1); its later zone changes were not taken |
 | 6 | `resources/js/types/command-palette.ts` | Adds the `workspaces` group (1 line) | Command palette entries to switch workspace |
 | 7 | `resources/js/components/command-palette/CommandPaletteContent.vue` | Adds `socialhq/workspaceCommandEntries.ts` entries to the palette, shown while searching (5 lines) | Same |
 | 8 | `app/Models/Traits/HasWorkspace.php` | `accessIn()`, `canPublishDirectlyIn()` and `publishesDirectlyThrough()` ask `App\SocialHq\Approval\ApprovalRules` (3 lines + import) | Every member who is not an admin needs approval; API and MCP callers need approval and cannot approve. Every post write and the approve gate read these |
@@ -187,6 +192,12 @@ range stay unused. No row is lost.
 | 281 | `docker/entrypoint.sh` | Runs `php artisan socialhq:ai-sync` after `changelog:sync`, without stopping the start when it fails | Companies' LiteLLM deployments follow the provider catalogue in `config/socialhq.php` (OpenRouter's free models now run with reasoning off). Only deployments whose settings differ are re-added, so a start with nothing to change sends nothing to LiteLLM |
 | 290 | `app/Http/Controllers/App/PostAiAssistantController.php` | The answer carries `keywords_missing` (true for a new caption, generate or regenerate, when the brand has no SEO keywords) and `can_add_keywords` (whether this person may add them), both from `App\SocialHq\Knowledge\Keywords\BrandKeywords::missingNote()` (1 line + import) | The composer assistant shows a light note after writing a caption for a brand without SEO keywords (owner request 2026-11-23); rewrites of the person's caption don't |
 | 291 | `resources/js/components/ai/WritingAssistantPanel.vue` | Reads `keywords_missing` and `can_add_keywords` and renders `socialhq/keywords/KeywordsMissingNote.vue` under the suggestion (about 12 lines) | Same note as on a plan item's copy: whoever may edit Brand knowledge gets "Add SEO keywords" (Brand knowledge in a new tab), the others are told who adds them |
+| 340 | `GEMINI.md`, `.cursor/`, `.claude/commands/release.md`, `.claude/commands/changelog.md`, `.claude/release-assets/{logo.png,render-thumbnail.mjs,thumbnail.template.html}`, `releases/` | Deleted | Hard fork (2026-11-25, audit ARC-09): instructions for other AI tools with old versions, and TryPost's own release ritual (v* tags, customer emails, about 9 MB of release media). Our releases use the `socialhq-release` skill. `.claude/release-assets/changelog-covers/` stays while AGENTS.md's changelog section points at it |
+| 341 | `tests/Feature/Auth/AuthenticationTest.php`, `tests/Feature/Auth/PasswordResetTest.php`, `tests/Feature/Auth/RegistrationTest.php`, `tests/Feature/InviteEmailCaseTest.php`, `tests/Feature/WorkspaceInviteControllerTest.php` | Tests for rows 178, 179 and 181: login and register take an email in any case and trim it, a domain without a dot is refused, the reset-link answer never reveals an account, and an invite to an address with an account elsewhere is sent without saying so | Row added late (audit ARC-11): the 2026-11-16 QA fixes changed these files without one |
+| 342 | `database/migrations/2026_11_19_120000_create_data_deletion_requests_table.php`, `database/migrations/2026_11_19_120100_add_profile_refreshed_at_to_social_accounts_table.php` | Our migrations, in TryPost's folder rather than `database/migrations/socialhq/` | Recorded only (audit ARC-11): they come with the platform-compliance change (row 220) that was also offered to TryPost as trypostit/trypost#520, so they kept TryPost's location. Moving them would re-run them on databases that already have them |
+| 345 | `app/Services/Social/Meta/GraphPaginator.php`, `tests/Unit/Social/Meta/GraphPaginatorTest.php` | A connection error is logged through `TokenRedactor::redact()`, like the URL and body next to it (1 line), with upstream's test | Security intake 2026-11-25, from TryPost `7647e06e`: a cURL error's message carries the whole paging URL, so the Facebook Page token reached the log |
+| 346 | `routes/ai.php`, `app/Providers/AppServiceProvider.php`, `config/trypost.php`, `tests/Feature/Mcp/McpRateLimitTest.php` (new), `tests/Feature/Parity/CrossCuttingParityTest.php` | The MCP endpoint takes `throttle:mcp`: per token, `MCP_REQUESTS_PER_MINUTE` (240) and `MCP_REQUESTS_PER_HOUR` (2400), in production only; a request without a user (ChatGPT listing tools) is not counted (about 25 lines) | Security intake 2026-11-25, TryPost `b569076f`: the REST API had a limit and MCP had none, so one token could send without end |
+| 347 | `app/Actions/Analytics/UpsertAnalyticsPublication.php`, `app/Actions/Analytics/WritePublicationDailySnapshot.php`, `app/Actions/Post/ImportExternalPosts.php`, `app/Models/AnalyticsPublication.php`, `app/Enums/Analytics/FacebookMediaKey.php` (new), `.ai/rules/analytics.md`, `.ai/rules/post.md`, `tests/Feature/Analytics/PublicationReconciliationTest.php`, `tests/Feature/Posts/ImportExternalPostsTest.php` | A Facebook Page post discovered with the video or photo of a post we published is merged into that post's publication (`mergeDiscovery()`, same-day snapshots through `WritePublicationDailySnapshot::combine()`), only when it is the post's own Page post (published within 120 minutes, the only one carrying that media); the post keeps its video id. TryPost `ee8b3a56` without the one-off command `1de3858d` removed, and without its poll and deleted-post parts we don't have | Insights listed a Facebook video or reel twice and doubled its numbers (audit X6). Duplicates older than the import's newest `EXTERNAL_POSTS_IMPORT_LIMIT` publications are not merged |
 | 350 | `config/mail.php` | The default mailer, when `MAIL_MAILER` is missing, is `log` instead of TryPost's hosted `sendkit` (1 line) | Audit 2026-11-24 (ARC-08, CQ-04): an install with a forgotten env line would hand mail to TryPost's service. The deploy env sets SMTP explicitly |
 | 351 | `config/trypost.php`, `.env.example`, `docker/.env.docker.example` | TikTok, Instagram without Facebook, Threads, Pinterest, Bluesky, Mastodon, Telegram, Discord and Google Business, plus the Google Drive and Canva media sources, default to off; `*_ENABLED=true` turns one on | Audit ARC-08: only the server's env file turned them off. We publish to Facebook, Instagram through Facebook, LinkedIn, YouTube and X. Nothing is deleted (the full prune is parked) |
 | 352 | `resources/js/posthog.ts`, `resources/js/components/WorkspaceMenuContent.vue` | `posthog-js` is imported dynamically, only when `VITE_POSTHOG_ENABLED` and a key are set; logout calls `resetPostHog()` | Audit ARC-08: the tracker library was bundled and loaded on every page though we never configure it |
@@ -206,11 +217,13 @@ compiled `resources/views/mail/socialhq-*`, `lang/*/socialhq*.php`,
 
 ## Security intake
 
-Monthly, with the `socialhq-security-intake` skill: dependency advisories
-(`composer audit`, `npm audit`, the PHP base image), then TryPost's security
-commits since the last intake, cherry-picked with `git cherry-pick -x` (or the
-security part ported by hand from a feature commit). One row per intake.
+With the `socialhq-security-intake` skill: dependency advisories (`composer
+audit`, `npm audit`, the PHP base image), then a read of TryPost's commits since
+the last review in security-relevant areas (login, permissions, outbound requests,
+the networks we publish to, webhooks, API, MCP), ported by hand. One dated row per
+review, with the TryPost commit it was reviewed up to, "nothing found" included.
 
 | Date | TryPost reviewed up to | Picked | Dependency upgrades |
 |---|---|---|---|
 | 2026-11-11 | Not reviewed this time (dependency advisories only) | — | Composer: phpseclib 3.0.58 and Symfony 8.1.11 (filesystem, http-foundation, http-kernel, routing, yaml, plus their 8.1/3.8 siblings), 19 packages, patch releases only; `composer audit` clean. npm (root): `npm audit fix` (vite 8.3.8, vue, dompurify 3.4.17, postcss, ws, shell-quote, protobufjs and more) plus the row 122 overrides; `npm audit` clean. npm (`maizzle/`): `npm audit fix` (markdown-it, js-yaml, undici, proxy-addr, baseline-browser-mapping and more) plus the row 123 overrides; `npm audit` clean, templates rebuild identical. Covers Dependabot PRs #17–#27 |
+| 2026-11-25 | `ca2b4eac` (2026-11-24): all 39 commits since v2.0.1 read, about 127 security-relevant files | Ported by hand: the MCP rate limit per token (`b569076f`, row 346) and the token redaction in the Meta paging log (from `7647e06e`, row 345). Not security, ported for Insights: a Facebook video counted once (`ee8b3a56`, audit X6, row 347). The legacy time zone fix (`8a04f3fb`) was already in (row 5). Nothing else found | None. Upstream's lockfile changes are new packages for its features (Nightwatch 1.30.6, laravel-database-backup, Tiptap), no advisory among them |

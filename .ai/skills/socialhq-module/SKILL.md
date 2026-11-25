@@ -5,9 +5,10 @@ description: Adds or changes a Social HQ feature - where the code goes, what Try
 
 # Building a Social HQ feature
 
-New features live in the module. Files that came with TryPost may be changed when that
-is the right place; each one gets a line in PATCHES.md, so the monthly security intake
-knows where a TryPost fix may conflict.
+New features live in the module. Social HQ is a hard fork (2026-11-25): files that came
+with TryPost are ours and may be changed whenever that is the right place. Until the five
+open branches land (see PATCHES.md, "Transition rule"), each one still gets a PATCHES.md
+row.
 
 ## Where things go
 
@@ -36,8 +37,8 @@ per area: read it before touching one.
 ## Changing a TryPost base file
 
 Do it when the change belongs there: a fix, a behaviour we want different, a place to
-render our component. Keep the change focused and add a PATCHES.md row (file, change,
-why). A small extension point (an event, a slot, a config value) is often cleaner than
+render our component. Keep the change focused and, during the transition, add a
+PATCHES.md row (file, change, why). A small extension point (an event, a slot, a config value) is often cleaner than
 scattering edits, but it isn't required.
 
 ## Checklist

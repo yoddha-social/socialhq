@@ -823,6 +823,20 @@ idle memory went from 1,408 MB to 578 MB and peak memory from 2,227 MB to
 Horizon refuses `minProcesses` 0. One worker per pool also keeps moving
 delayed and retried jobs onto its queues.
 
+## Switched off for a self-hosted team
+
+TryPost ships things for its hosted Cloud that we don't use. They stay in the code
+(a full prune is parked) but are off unless the env turns them on (audit 2026-11-24,
+ARC-08; PATCHES.md rows 350–353):
+
+- Cashier's Stripe webhook route isn't registered on a self-hosted install
+  (`SOCIALHQ_STRIPE_WEBHOOK`): without a secret it would take unsigned messages.
+- Only the networks we publish to are on by default (Facebook, Instagram through
+  Facebook, LinkedIn, YouTube, X); the others, Google Drive and Canva need
+  `*_ENABLED=true`.
+- A missing `MAIL_MAILER` logs mail instead of using TryPost's hosted mailer.
+- PostHog's library is loaded only when PostHog is enabled with a key.
+
 ## Interface copy
 
 Our screens use the `socialhq.*` keys in `lang/en/socialhq.php`, in English

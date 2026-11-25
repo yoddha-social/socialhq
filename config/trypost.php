@@ -202,7 +202,7 @@ return [
             'token_api' => env('GOOGLE_MEDIA_OAUTH_API', 'https://oauth2.googleapis.com'),
         ],
         'google_drive' => [
-            'enabled' => (bool) env('GOOGLE_DRIVE_ENABLED', true),
+            'enabled' => (bool) env('GOOGLE_DRIVE_ENABLED', false),
             'api' => env('GOOGLE_DRIVE_API_URL', 'https://www.googleapis.com/drive/v3'),
             'picker_sdk' => env('GOOGLE_PICKER_SDK_URL', 'https://apis.google.com/js/api.js'),
             'download_hosts' => env('GOOGLE_DRIVE_DOWNLOAD_HOSTS', 'www.googleapis.com,*.googleusercontent.com'),
@@ -215,7 +215,7 @@ return [
             'max_items' => (int) env('GOOGLE_PHOTOS_MAX_ITEMS', 10),
         ],
         'canva' => [
-            'enabled' => (bool) env('CANVA_ENABLED', true),
+            'enabled' => (bool) env('CANVA_ENABLED', false),
             'api' => env('CANVA_API_URL', 'https://api.canva.com/rest/v1'),
             'authorize_url' => env('CANVA_AUTHORIZE_URL', 'https://www.canva.com/api/oauth/authorize'),
             'code_challenge_method' => env('CANVA_CODE_CHALLENGE_METHOD', 's256'),
@@ -487,6 +487,9 @@ return [
     |
     */
 
+    // Social HQ: the networks we don't use (TikTok, Instagram without Facebook, Threads,
+    // Pinterest, Bluesky, Mastodon, Telegram, Discord, Google Business) are off unless
+    // their *_ENABLED says otherwise (PATCHES.md row 351).
     'platforms' => [
         'linkedin' => [
             'enabled' => env('LINKEDIN_ENABLED', true),
@@ -508,7 +511,7 @@ return [
             'defuse_links' => (bool) env('X_DEFUSE_LINKS', false),
         ],
         'tiktok' => [
-            'enabled' => env('TIKTOK_ENABLED', true),
+            'enabled' => env('TIKTOK_ENABLED', false),
             'api' => env('TIKTOK_API', 'https://open.tiktokapis.com/v2'),
             // OAuth scopes to request. Trim when the TikTok app lacks a product
             // (e.g. no Display API => drop user.info.profile, user.info.stats,
@@ -527,7 +530,7 @@ return [
             'rupload_host' => env('FACEBOOK_RUPLOAD_HOST', 'rupload.facebook.com'),
         ],
         'instagram' => [
-            'enabled' => env('INSTAGRAM_ENABLED', true),
+            'enabled' => env('INSTAGRAM_ENABLED', false),
             'graph_api' => env('INSTAGRAM_GRAPH_API', 'https://graph.instagram.com/v25.0'),
             // graph.instagram.com (no version) is the auth/refresh host.
             'auth_api' => env('INSTAGRAM_AUTH_API', 'https://graph.instagram.com'),
@@ -539,18 +542,18 @@ return [
             'graph_api' => env('INSTAGRAM_FACEBOOK_GRAPH_API', 'https://graph.facebook.com/v25.0'),
         ],
         'threads' => [
-            'enabled' => env('THREADS_ENABLED', true),
+            'enabled' => env('THREADS_ENABLED', false),
             'graph_api' => env('THREADS_GRAPH_API', 'https://graph.threads.net/v1.0'),
             // graph.threads.net (no version) is the auth/refresh host.
             'auth_api' => env('THREADS_AUTH_API', 'https://graph.threads.net'),
             'oauth_url' => env('THREADS_OAUTH_URL', 'https://threads.net'),
         ],
         'pinterest' => [
-            'enabled' => env('PINTEREST_ENABLED', true),
+            'enabled' => env('PINTEREST_ENABLED', false),
             'api' => env('PINTEREST_API', 'https://api.pinterest.com/v5'),
         ],
         'bluesky' => [
-            'enabled' => env('BLUESKY_ENABLED', true),
+            'enabled' => env('BLUESKY_ENABLED', false),
             'public_appview' => env('BLUESKY_PUBLIC_APPVIEW', 'https://public.api.bsky.app'),
             // Default PDS used when the account has no `meta.service` override.
             'default_service' => env('BLUESKY_DEFAULT_SERVICE', 'https://bsky.social'),
@@ -570,12 +573,12 @@ return [
             'plc_directory' => env('BLUESKY_PLC_DIRECTORY', 'https://plc.directory'),
         ],
         'mastodon' => [
-            'enabled' => env('MASTODON_ENABLED', true),
+            'enabled' => env('MASTODON_ENABLED', false),
             // Default instance used when the account has no `meta.instance` override.
             'default_instance' => env('MASTODON_DEFAULT_INSTANCE', 'https://mastodon.social'),
         ],
         'telegram' => [
-            'enabled' => env('TELEGRAM_ENABLED', true),
+            'enabled' => env('TELEGRAM_ENABLED', false),
             // Single shared bot (BotFather). Users add it as admin to their channel.
             'bot_token' => env('TELEGRAM_BOT_TOKEN'),
             'bot_username' => env('TELEGRAM_BOT_USERNAME'),
@@ -585,7 +588,7 @@ return [
             'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
         ],
         'discord' => [
-            'enabled' => env('DISCORD_ENABLED', true),
+            'enabled' => env('DISCORD_ENABLED', false),
             // Single shared bot application. OAuth (bot scope) authorizes adding the
             // bot to the user's server; channel listing, mentions and posting all
             // use this bot token, not the user's OAuth token.
@@ -599,7 +602,7 @@ return [
             'scopes' => array_values(array_filter(array_map('trim', explode(',', (string) env('DISCORD_SCOPES', 'bot,identify,guilds'))))),
         ],
         'google_business' => [
-            'enabled' => env('GOOGLE_BUSINESS_ENABLED', true),
+            'enabled' => env('GOOGLE_BUSINESS_ENABLED', false),
             // Account Management API — lists the Business accounts a user administers.
             'account_management_api' => env('GOOGLE_BUSINESS_ACCOUNT_MANAGEMENT_API', 'https://mybusinessaccountmanagement.googleapis.com/v1'),
             // Business Information API — lists locations under an account.

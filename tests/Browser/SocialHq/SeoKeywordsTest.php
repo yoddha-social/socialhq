@@ -276,3 +276,25 @@ test('after AI writes an item\'s copy for a brand without keywords, a member get
         ->assertMissing('@socialhq-keywords-missing-note-link')
         ->assertNoJavaScriptErrors();
 });
+
+test('after AI writes an item\'s copy for a brand with keywords, the line lists the ones it says and the main one in the first line', function () {
+    config([
+        'socialhq.ai.gateway' => 'direct',
+        'socialhq.ai.approved_providers' => ['anthropic'],
+        'socialhq.ai.routes.write' => 'anthropic',
+    ]);
+    [, $workspace] = seoKeywordsBrand([['text' => 'cold brew kathmandu', 'main' => true], ['text' => 'organic tea', 'main' => false]]);
+    $item = PlanItem::factory()->create(['plan_id' => ContentPlan::factory()->create(['workspace_id' => $workspace->id])->id]);
+    CopyWriter::fake([['caption' => "Cold brew in Kathmandu, poured slow.\n\nBack for the summer.", 'hashtags' => '#coldbrew', 'script' => '', 'notes' => '']]);
+
+    $page = visit(route('socialhq.plan.items.show', $item->id))->resize(1440, 900);
+    waitFor($page, '@item-copy-ai');
+    $page->click('@item-copy-ai');
+    waitFor($page, '@socialhq-keywords-used');
+
+    $page->assertSeeIn('@socialhq-keywords-used-keyword', 'cold brew kathmandu')
+        ->assertVisible('@socialhq-keywords-used-first-line')
+        ->assertMissing('@socialhq-keywords-missing-note')
+        ->assertNoJavaScriptErrors();
+    expect($page->script("document.querySelectorAll('[data-testid=\"socialhq-keywords-used-keyword\"]').length"))->toBe(1);
+});

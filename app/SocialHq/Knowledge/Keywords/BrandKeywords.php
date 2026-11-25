@@ -80,6 +80,45 @@ final class BrandKeywords
     }
 
     /**
+     * Everything an AI endpoint adds to its answer about keywords: the note
+     * when the brand has none (missingNote()), else which keywords the text
+     * says (main ones first, then supporting, in the admin's order) and
+     * whether a main one is in the caption's first line. Found by
+     * KeywordMatcher, never asked of the model.
+     *
+     * keywords_used is null when there is no line to show: the brand has no
+     * keywords, or a rewrite of the person's own text (never asked to add
+     * any) says none.
+     *
+     * @param  string  $caption  The caption (its first line is checked), as text or HTML
+     * @param  string  $more  The rest of the text that is posted (hashtags, a video script)
+     * @return array{keywords_missing: bool, can_add_keywords: bool, keywords_used: list<string>|null, main_in_first_line: bool}
+     */
+    public static function forAnswer(User $user, Workspace $workspace, string $caption, string $more = '', bool $newText = true): array
+    {
+        $keywords = self::forWorkspace($workspace);
+        $ordered = [...array_filter($keywords, fn (array $keyword): bool => $keyword['main']), ...array_filter($keywords, fn (array $keyword): bool => ! $keyword['main'])];
+        $caption = self::plain($caption);
+        $used = KeywordMatcher::in(trim("{$caption}\n{$more}"), array_column($ordered, 'text'));
+        $firstLine = Str::before(ltrim($caption), "\n");
+        $mainTexts = array_column(array_filter($keywords, fn (array $keyword): bool => $keyword['main']), 'text');
+
+        return [
+            ...self::missingNote($user, $workspace, $newText),
+            'keywords_used' => $keywords === [] || (! $newText && $used === []) ? null : $used,
+            'main_in_first_line' => KeywordMatcher::in($firstLine, $mainTexts) !== [],
+        ];
+    }
+
+    /**
+     * An editor's HTML as text, a paragraph or break per line.
+     */
+    private static function plain(string $text): string
+    {
+        return html_entity_decode(strip_tags((string) preg_replace('#</p>|<br\s*/?>#i', "\n", $text)));
+    }
+
+    /**
      * What one prompt is given: the main keywords, then the supporting ones
      * that share the most words with the focus (in the admin's order on a
      * tie), at most `knowledge.keywords.prompt` in all.

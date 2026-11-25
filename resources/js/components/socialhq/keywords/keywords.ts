@@ -58,6 +58,18 @@ export interface KeywordCheckProp {
     prompt: Keyword[];
 }
 
+/**
+ * What an AI answer says about keywords (BrandKeywords::forAnswer()): the
+ * note when the brand has none, else the keywords the text says (null when
+ * there is no line to show).
+ */
+export interface KeywordAnswer {
+    keywords_missing?: boolean;
+    can_add_keywords?: boolean;
+    keywords_used?: string[] | null;
+    main_in_first_line?: boolean;
+}
+
 /** The verdicts in the order the counts bar shows them. */
 export const VERDICTS: readonly KeywordVerdict[] = [
     'good',

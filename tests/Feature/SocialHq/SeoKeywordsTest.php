@@ -372,6 +372,36 @@ test('the assistant says when a new caption was written for a brand without keyw
         ->assertJsonPath('keywords_missing', false);
 });
 
+test('once the brand has keywords, the assistant says which ones a caption uses and whether a main one opens it', function () {
+    brandWithKeywords($this->workspace, ['cold brew', ['specialty coffee kathmandu', true], 'organic tea']);
+    PostWritingAssistant::fake([
+        "Specialty coffee in Kathmandu, poured slow.\n\nOur cold brew is back. #ColdBrew",
+        'Iced and ready for summer.',
+        'Shorter: iced and ready.',
+    ]);
+
+    // Main ones first, then supporting, in the admin's order; a hashtag of the words counts.
+    $this->actingAs($this->owner)
+        ->postJson(route('app.posts.ai.assist'), ['mode' => 'generate', 'prompt' => 'Cold brew is back'])
+        ->assertOk()
+        ->assertJsonPath('keywords_missing', false)
+        ->assertJsonPath('keywords_used', ['specialty coffee kathmandu', 'cold brew'])
+        ->assertJsonPath('main_in_first_line', true);
+
+    // New text that says none still gets the line ("No keyword fits this post").
+    $this->actingAs($this->owner)
+        ->postJson(route('app.posts.ai.assist'), ['mode' => 'generate', 'prompt' => 'A post about our summer menu'])
+        ->assertOk()
+        ->assertJsonPath('keywords_used', [])
+        ->assertJsonPath('main_in_first_line', false);
+
+    // A rewrite of the person's own text was never asked to add any: no line when it says none.
+    $this->actingAs($this->owner)
+        ->postJson(route('app.posts.ai.assist'), ['mode' => 'shorten', 'current_content' => 'Iced and ready for summer.'])
+        ->assertOk()
+        ->assertJsonPath('keywords_used', null);
+});
+
 describe('plan item copy', function () {
     beforeEach(function () {
         config([
@@ -397,11 +427,14 @@ describe('plan item copy', function () {
         CopyWriter::assertPrompted(fn (AgentPrompt $prompt): bool => ! str_contains($prompt->agent->instructions(), "The brand's SEO keywords"));
 
         brandWithKeywords($this->workspace, [['momo delivery lalitpur', true]]);
-        CopyWriter::fake([['caption' => 'Fresh momos now in Lalitpur.', 'hashtags' => '#momo', 'script' => '', 'notes' => '']]);
+        CopyWriter::fake([['caption' => "Fresh momos at your door.\n\nMomo delivery in Lalitpur, hot and fresh.", 'hashtags' => '#momo', 'script' => '', 'notes' => '']]);
 
+        // The keyword is in the caption, but not in its first line.
         $this->actingAs($this->owner)->postJson(route('socialhq.plan.items.copy.ai', $this->item->id))
             ->assertCreated()
-            ->assertJsonPath('keywords_missing', false);
+            ->assertJsonPath('keywords_missing', false)
+            ->assertJsonPath('keywords_used', ['momo delivery lalitpur'])
+            ->assertJsonPath('main_in_first_line', false);
 
         CopyWriter::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->agent->instructions(), '- momo delivery lalitpur (main)')
             && str_contains($prompt->agent->instructions(), 'when a main keyword fits the post, put it in the caption\'s first line')

@@ -21,7 +21,7 @@ SOCIALHQ.md (or AGENTS.md for a convention).
 **No more rows.** Until 2026-11-25 this file listed every change to a TryPost file,
 one row each. That ledger is frozen, unchanged, in
 [docs/history/PATCHES-ledger-2026-11-25.md](docs/history/PATCHES-ledger-2026-11-25.md)
-(rows 1–356). Code comments and docs that cite "PATCHES.md" or "PATCHES.md row N"
+(rows 1–360). Code comments and docs that cite "PATCHES.md" or "PATCHES.md row N"
 mean that file. A branch started before the freeze that adds rows here drops them
 when it merges: that is the whole resolution of its conflict in this file.
 

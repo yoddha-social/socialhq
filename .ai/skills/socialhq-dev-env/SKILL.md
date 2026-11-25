@@ -12,7 +12,7 @@ PHP runner right now: !`command -v php >/dev/null && echo "php on PATH" || (dock
 | Place | How | Notes |
 |---|---|---|
 | Laptop, one-off container | `docker run --rm` of `ghcr.io/trypostit/trypost:2.0.1` with the checkout (or worktree) at `/app`, the main checkout's `vendor` and `node_modules` mounted, against a throwaway Postgres (`shq-test-pg`, a database per branch) | The usual way. 8 GB RAM: one heavy run at a time, check `free -m` first. Pest locally needs `--no-tia` |
-| Laptop, compose | `docker compose up -d`, then `docker compose exec -T app <command>` | Stop other stacks first (`trypost/local`, HRMS). Building the image and Vite dev mode may not fit |
+| Laptop, compose | `docker compose up -d`, then `docker compose exec -T app <command>` | Stop other stacks first (`local-stack`, HRMS). Building the image and Vite dev mode may not fit |
 | Rented instance, while it is a dev box | Commands as written | Only before it becomes production (plan D3). Once it is production: no builds, tests or agent sessions there |
 | No PHP at all | Node tools only | Say plainly that pint and Pest did not run |
 

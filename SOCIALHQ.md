@@ -325,7 +325,16 @@ none, the plan item's AI copy and the composer assistant's new captions
 answer `keywords_missing` and show a light note (× hides it for 7 days in
 that browser). The link to the card shows only when the answer's
 `can_add_keywords` says so: `BrandKeywords::missingNote()` asks
-`BrandKnowledge::canEdit`, the rule that guards the card.
+`BrandKnowledge::canEdit`, the rule that guards the card. Once the brand
+has keywords, the same place shows "Keywords used:" instead: the keywords
+the text says (caption, hashtags and script, never the team's notes; main
+ones first), and whether a main one is in the caption's first line, found
+by `KeywordMatcher` after the answer arrives, never asked of the model
+(`BrandKeywords::forAnswer()`, `keywords_used` and `main_in_first_line`).
+New text that says none gets "No keyword fits this post"; a rewrite of the
+person's own text that says none shows nothing. Agents get the keywords a
+topic gets from `get-brand-knowledge-tool` (`keywords`, with the rules in
+its description).
 
 **Read our website** (admins). The brand's address starts `ReadWebsite`
 (queued, 5 an hour per person, one run at a time per brand):
@@ -724,7 +733,7 @@ admin's too. Besides the approval rules above:
   posts already made (`App\SocialHq\Mcp\IdempotentPostCreation`, cache).
 - **Planning tools** (`app/SocialHq/Mcp/Tools/Plan/`): read a month's plan,
   an item (copy, change requests, thread, brief), the month's events and
-  the brand knowledge AI writers get; save copy as an item's next version
+  the brand knowledge and SEO keywords AI writers get; save copy as an item's next version
   (source `ai`; refused while the copy is in review or approved) and send it
   for review. Approving stays in the app, and no tool calls our AI (AI is
   web only).

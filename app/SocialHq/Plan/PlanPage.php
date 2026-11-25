@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\SocialHq\Plan;
 
 use App\Enums\PostPlatform\ContentType;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -35,6 +36,7 @@ final class PlanPage
         $channels = PlanOptions::channels($workspace);
         $abilities = PlanAccess::abilities($user, $workspace);
         $aiAvailable = AiRouter::isAvailable(AiTask::Structured) && Gate::forUser($user)->allows('useAi', $workspace->account);
+        $movesNeedApproval = ItemPosts::movesNeedApproval($workspace, $user);
 
         return [
             'month' => PlanMonth::key($month),
@@ -44,12 +46,18 @@ final class PlanPage
             'today' => PlanMonth::today($user),
             'plan' => $plan === null ? null : self::plan($plan),
             'items' => $plan === null ? [] : $plan->items()
-                ->with('posts:posts.id,posts.status,posts.scheduled_at,posts.social_account_id,posts.platform,posts.platform_name', 'posts.socialAccount')
+                ->with('posts:posts.id,posts.workspace_id,posts.status,posts.scheduled_at,posts.social_account_id,posts.platform,posts.platform_name', 'posts.socialAccount')
                 ->orderBy('scheduled_on')
                 ->orderBy('position')
                 ->orderBy('id')
                 ->get()
-                ->map(fn (PlanItem $item): array => self::item($item))
+                ->map(fn (PlanItem $item): array => [
+                    ...self::item($item),
+                    // The times of its approved posts that "Move posts too" would send back for approval (the offer warns first).
+                    'posts_back_to_approval' => ItemPosts::backToApprovalOnMove($item, $user, $movesNeedApproval)
+                        ->map(fn (Post $post): string => $post->scheduled_at->toIso8601String())
+                        ->all(),
+                ])
                 ->all(),
             'events' => PlanOptions::events($workspace, $month, PlanMonth::end($month))
                 ->map(fn (CalendarEvent $event): array => self::event($event))

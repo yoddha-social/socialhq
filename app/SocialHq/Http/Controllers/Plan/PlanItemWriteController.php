@@ -74,11 +74,12 @@ class PlanItemWriteController extends Controller
     {
         $found = PlanAccess::item($request, $item);
         $channel = SocialAccount::query()->where('workspace_id', $found->workspace_id)->findOrFail($request->validated('social_account_id'));
+        $kept = 0;
 
-        $this->change($found, function (PlanItem $locked) use ($request, $channel): void {
+        $this->change($found, function (PlanItem $locked) use ($request, $channel, &$kept): void {
             // A post made for the old channel or format would still go out as it is.
             if ($locked->social_account_id !== $channel->id || $locked->content_type?->value !== $request->validated('content_type')) {
-                $this->settleUpcomingPosts($locked, $request->validated('posts'), $request->user());
+                $kept = $this->settleUpcomingPosts($locked, $request->validated('posts'), $request->user());
             }
 
             $locked->update([
@@ -107,6 +108,8 @@ class PlanItemWriteController extends Controller
 
             $locked->acceptForWork();
         });
+
+        self::sayKeptPosts($kept);
 
         return back();
     }
@@ -153,12 +156,15 @@ class PlanItemWriteController extends Controller
     public function drop(DropPlanItemRequest $request, int $item): RedirectResponse
     {
         $found = PlanAccess::item($request, $item);
+        $kept = 0;
 
-        $this->change($found, function (PlanItem $locked) use ($request): void {
+        $this->change($found, function (PlanItem $locked) use ($request, &$kept): void {
             $this->ensureStatus($locked, ItemStatus::Suggested, ItemStatus::Planned);
-            $this->settleUpcomingPosts($locked, $request->validated('posts'), $request->user());
+            $kept = $this->settleUpcomingPosts($locked, $request->validated('posts'), $request->user());
             $locked->update(['status' => ItemStatus::Dropped]);
         });
+
+        self::sayKeptPosts($kept);
 
         return back();
     }
@@ -192,8 +198,9 @@ class PlanItemWriteController extends Controller
     public function destroy(DestroyPlanItemRequest $request, int $item): RedirectResponse
     {
         $found = PlanAccess::item($request, $item);
+        $kept = 0;
 
-        $this->change($found, function (PlanItem $locked) use ($request): void {
+        $this->change($found, function (PlanItem $locked) use ($request, &$kept): void {
             $locked->loadMissing('brief');
 
             $approvedWork = $locked->copy_status === CopyStatus::Approved
@@ -204,9 +211,11 @@ class PlanItemWriteController extends Controller
                 throw ValidationException::withMessages(['item' => __('socialhq_plan.errors.delete_approved')]);
             }
 
-            $this->settleUpcomingPosts($locked, $request->validated('posts'), $request->user());
+            $kept = $this->settleUpcomingPosts($locked, $request->validated('posts'), $request->user());
             $locked->delete();
         });
+
+        self::sayKeptPosts($kept);
 
         return back();
     }
@@ -259,20 +268,31 @@ class PlanItemWriteController extends Controller
     /**
      * Before an item is dropped, deleted or given another channel or format: its posts that will still go out
      * go back to drafts or keep their schedule, as the person chose. No
-     * choice while there are any refuses the change.
+     * choice while there are any refuses the change. Returns how many posts
+     * couldn't go back to drafts (another member's request for approval, or
+     * one already going out).
      */
-    private function settleUpcomingPosts(PlanItem $item, ?string $choice, User $user): void
+    private function settleUpcomingPosts(PlanItem $item, ?string $choice, User $user): int
     {
         if (ItemPosts::upcoming($item)->isEmpty()) {
-            return;
+            return 0;
         }
 
         if ($choice === null) {
             throw ValidationException::withMessages(['posts' => __('socialhq_plan.errors.posts_choice')]);
         }
 
-        if ($choice === ItemPosts::TO_DRAFTS) {
-            ItemPosts::toDrafts($item, $user);
+        return $choice === ItemPosts::TO_DRAFTS ? ItemPosts::toDrafts($item, $user) : 0;
+    }
+
+    /**
+     * "Move to drafts" that left a post scheduled says so, once the change
+     * is saved: that post can still go out.
+     */
+    private static function sayKeptPosts(int $kept): void
+    {
+        if ($kept > 0) {
+            session()->flash('flash.warning', trans_choice('socialhq_plan.posts_choice.kept', $kept, ['count' => $kept]));
         }
     }
 

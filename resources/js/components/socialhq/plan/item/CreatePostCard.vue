@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Link, router, useHttp } from '@inertiajs/vue3';
 import {
+    IconAlertTriangle,
     IconCircleDashed,
     IconExternalLink,
     IconPhotoOff,
@@ -19,7 +20,10 @@ import type {
     PlanItemDetail,
     PostBlocker,
 } from '@/components/socialhq/plan/item/types';
-import { followPosts } from '@/components/socialhq/plan/planRequests';
+import {
+    backToApprovalWarning,
+    followPosts,
+} from '@/components/socialhq/plan/planRequests';
 import { postStatusLabelKey } from '@/components/socialhq/plan/postStatus';
 import { POST_STATUS_TONES } from '@/components/socialhq/postStatusTone';
 import {
@@ -83,10 +87,18 @@ const itemDay = computed(() =>
     localizedDay(props.item.scheduled_on).format('ddd D MMM'),
 );
 
+/** Approved posts that moving to the item's day sends back for approval, named before the move. */
+const followWarning = computed(() =>
+    backToApprovalWarning(
+        props.posts
+            .filter((post) => post.back_to_approval && post.scheduled_at)
+            .map((post) => post.scheduled_at as string),
+    ),
+);
+
 const following = ref(false);
 
-const movePostsToItemDay = (): void =>
-    followPosts(props.item.id, offDayCount.value, following);
+const movePostsToItemDay = (): void => followPosts(props.item.id, following);
 
 /** When the post went out, or when it is due; nothing for a draft without a time. */
 const postTime = (post: ItemPost): string | null => {
@@ -355,6 +367,18 @@ const createPost = async (): Promise<void> => {
                     </a>
                 </li>
             </ul>
+            <p
+                v-if="abilities.canWork && offDayCount > 0 && followWarning"
+                class="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-foreground"
+                role="status"
+                data-testid="item-posts-follow-warning"
+            >
+                <IconAlertTriangle
+                    class="size-4 shrink-0 text-warning"
+                    aria-hidden="true"
+                />
+                {{ followWarning }}
+            </p>
             <Button
                 v-if="abilities.canWork && offDayCount > 0"
                 variant="outline"

@@ -14,6 +14,8 @@ import { computed, nextTick, ref, type Component } from 'vue';
 
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
 import PostTimelineCard from '@/components/publish/PostTimelineCard.vue';
+import { postStatusTone } from '@/components/socialhq/postStatusTone';
+import { Badge } from '@/components/ui/badge';
 import {
     Tooltip,
     TooltipContent,
@@ -170,16 +172,26 @@ const loudKey = computed(() =>
     props.compact ? undefined : LOUD_STATUSES[statusKey.value],
 );
 
-const DOT_TONES: Record<StatusKey, string> = {
-    draft: 'bg-muted-foreground/50',
-    pending_approval: 'bg-warning',
-    queue: 'bg-primary-strong',
-    custom: 'bg-primary-strong',
-    recurring: 'bg-primary-strong',
-    publishing: 'bg-primary-strong',
-    published: 'bg-success',
-    failed: 'bg-destructive',
-};
+// Social HQ: the status colours come from our one table (PATCHES.md row 334).
+const tone = computed(() => postStatusTone(props.post.status));
+
+const showsThumbnail = computed(
+    () =>
+        !props.compact &&
+        thumbnail.value !== null &&
+        (props.rich || !loudKey.value),
+);
+
+/**
+ * Social HQ (PATCHES.md row 334): the word needs room beside the icon, the
+ * whole time and any thumbnail; a narrower chip shows the status's dot instead
+ * (the chip's row is the container). The tooltip and the names still say it.
+ */
+const loudRoom = computed(() =>
+    showsThumbnail.value
+        ? { word: '@max-[11rem]:hidden', dot: '@min-[11rem]:hidden' }
+        : { word: '@max-[9.5rem]:hidden', dot: '@min-[9.5rem]:hidden' },
+);
 
 const firstLine = computed(
     () =>
@@ -213,7 +225,7 @@ const firstLine = computed(
         >
           <span
             class="flex min-w-0 items-center"
-            :class="compact ? 'justify-center gap-0.5' : 'gap-1.5'"
+            :class="compact ? 'justify-center gap-0.5' : '@container gap-1.5'"
           >
             <span
                 class="flex min-w-0 items-center gap-1"
@@ -241,16 +253,19 @@ const firstLine = computed(
                         :data-testid="`${statusMarker.testId}-${post.id}`"
                         :data-mode="statusKey"
                     >
-                        <span
-                            v-if="loudKey"
-                            class="rounded px-1 text-[10px] leading-4 font-semibold tracking-wide uppercase"
-                            :class="
-                                statusKey === 'failed'
-                                    ? 'bg-destructive/10 text-destructive-text'
-                                    : 'bg-warning/15 text-warning'
-                            "
-                            >{{ $t(loudKey) }}</span
-                        >
+                        <template v-if="loudKey">
+                            <Badge
+                                :variant="tone.badge"
+                                class="h-4 rounded border-0 px-1 text-[10px] leading-4 font-semibold tracking-wide uppercase"
+                                :class="loudRoom.word"
+                                >{{ $t(loudKey) }}</Badge
+                            >
+                            <span
+                                class="m-0.5 size-2 rounded-full"
+                                :class="[tone.dot, loudRoom.dot]"
+                                aria-hidden="true"
+                            />
+                        </template>
                         <component
                             :is="statusMarker.icon"
                             v-else-if="compact"
@@ -260,7 +275,7 @@ const firstLine = computed(
                         <span
                             v-else
                             class="m-0.5 size-2 rounded-full"
-                            :class="DOT_TONES[statusKey]"
+                            :class="tone.dot"
                             aria-hidden="true"
                         />
                     </span>
@@ -268,7 +283,7 @@ const firstLine = computed(
                 <TooltipContent>{{ $t(statusLabelKey) }}</TooltipContent>
             </Tooltip>
             <span
-                v-if="!compact && thumbnail && (rich || !loudKey)"
+                v-if="showsThumbnail && thumbnail"
                 class="relative size-5 shrink-0 overflow-hidden rounded bg-secondary"
                 :data-testid="`calendar-post-thumbnail-${post.id}`"
             >

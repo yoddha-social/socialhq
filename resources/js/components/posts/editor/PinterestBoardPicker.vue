@@ -127,7 +127,7 @@ const create = async () => {
                 :aria-invalid="invalid ? true : undefined"
                 :disabled="disabled"
                 data-testid="pinterest-board-trigger"
-                class="flex min-h-8 w-full items-center justify-between gap-2 rounded-md border border-input bg-card px-1.5 py-1 text-left text-sm transition-[color,box-shadow] outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive"
+                class="flex min-h-8 w-full items-center justify-between gap-2 rounded-md border border-input bg-card px-1.5 py-1 text-left text-sm transition-[color,box-shadow] outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring focus-visible:outline-solid disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive"
             >
                 <span
                     v-if="selectedBoard"

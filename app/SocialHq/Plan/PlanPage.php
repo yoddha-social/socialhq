@@ -15,7 +15,6 @@ use App\SocialHq\Http\Controllers\Plan\PlanGenerationController;
 use App\SocialHq\Inbox\WaitingForYou;
 use App\SocialHq\Knowledge\Audience\Audience;
 use App\SocialHq\Knowledge\Audience\AudienceCountries;
-use App\Support\Timezone;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -42,10 +41,10 @@ final class PlanPage
             // Months with a plan, copy or creative waiting for this person, marked in the month picker.
             // A closure: the page's 3-second poll asks for plan and items only.
             'waitingMonths' => fn (): array => WaitingForYou::months($user, $workspace),
-            'today' => CarbonImmutable::now(Timezone::normalize($user->timezone))->toDateString(),
+            'today' => PlanMonth::today($user),
             'plan' => $plan === null ? null : self::plan($plan),
             'items' => $plan === null ? [] : $plan->items()
-                ->with('posts:posts.id,posts.status,posts.scheduled_at,posts.social_account_id,posts.platform_name', 'posts.socialAccount')
+                ->with('posts:posts.id,posts.status,posts.scheduled_at,posts.social_account_id,posts.platform,posts.platform_name', 'posts.socialAccount')
                 ->orderBy('scheduled_on')
                 ->orderBy('position')
                 ->orderBy('id')

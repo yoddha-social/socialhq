@@ -2,6 +2,7 @@
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
+import { POST_STATUS_TONES } from '@/components/socialhq/postStatusTone';
 import { publish } from '@/routes/app/channels';
 
 export interface ChannelStats {
@@ -22,10 +23,14 @@ const props = defineProps<{
 type TileKey = 'scheduled' | 'pending_approval' | 'drafts' | 'published';
 
 const TILES: { key: TileKey; tab: string; tone: string }[] = [
-    { key: 'scheduled', tab: 'queue', tone: 'bg-primary-strong' },
-    { key: 'pending_approval', tab: 'approvals', tone: 'bg-warning' },
-    { key: 'drafts', tab: 'drafts', tone: 'bg-muted-foreground/50' },
-    { key: 'published', tab: 'sent', tone: 'bg-success' },
+    { key: 'scheduled', tab: 'queue', tone: POST_STATUS_TONES.scheduled.dot },
+    {
+        key: 'pending_approval',
+        tab: 'approvals',
+        tone: POST_STATUS_TONES.pending_approval.dot,
+    },
+    { key: 'drafts', tab: 'drafts', tone: POST_STATUS_TONES.draft.dot },
+    { key: 'published', tab: 'sent', tone: POST_STATUS_TONES.published.dot },
 ];
 
 const tabUrl = (tab: string): string =>

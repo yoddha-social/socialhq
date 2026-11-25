@@ -233,7 +233,7 @@ const finishRename = (save: boolean): void => {
                 ref="renameInput"
                 v-model="draftName"
                 type="text"
-                class="h-7 min-w-0 flex-1 rounded-md border border-input bg-card px-2 text-sm font-emphasis text-foreground outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                class="h-7 min-w-0 flex-1 rounded-md border border-input bg-card px-2 text-sm font-emphasis text-foreground outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring focus-visible:outline-solid"
                 :aria-label="$t('create.ideas.rename')"
                 :data-testid="`idea-stage-rename-input-${key}`"
                 @keydown.enter.prevent="finishRename(true)"

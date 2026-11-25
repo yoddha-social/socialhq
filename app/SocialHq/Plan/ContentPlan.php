@@ -86,9 +86,17 @@ class ContentPlan extends Model
             && $this->generation_started_at->greaterThan(now()->subMinutes(self::STALE_MINUTES));
     }
 
-    public function hasOpenSuggestions(): bool
+    /**
+     * AI suggestions still to accept or drop, from $today (Y-m-d) on. One on
+     * a day already gone can't be accepted any more, so it doesn't hold the
+     * plan back.
+     */
+    public function hasOpenSuggestions(string $today): bool
     {
-        return $this->items()->where('status', ItemStatus::Suggested)->exists();
+        return $this->items()
+            ->where('status', ItemStatus::Suggested)
+            ->whereDate('scheduled_on', '>=', $today)
+            ->exists();
     }
 
     /**

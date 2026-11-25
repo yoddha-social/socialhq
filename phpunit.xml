@@ -33,6 +33,19 @@
         <env name="FILESYSTEM_DISK" value="local"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <!-- Social HQ: TryPost's tests cover every network, Canva, Drive and its Stripe webhook; ours default them off. -->
+        <env name="TIKTOK_ENABLED" value="true"/>
+        <env name="INSTAGRAM_ENABLED" value="true"/>
+        <env name="THREADS_ENABLED" value="true"/>
+        <env name="PINTEREST_ENABLED" value="true"/>
+        <env name="BLUESKY_ENABLED" value="true"/>
+        <env name="MASTODON_ENABLED" value="true"/>
+        <env name="TELEGRAM_ENABLED" value="true"/>
+        <env name="DISCORD_ENABLED" value="true"/>
+        <env name="GOOGLE_BUSINESS_ENABLED" value="true"/>
+        <env name="GOOGLE_DRIVE_ENABLED" value="true"/>
+        <env name="CANVA_ENABLED" value="true"/>
+        <env name="SOCIALHQ_STRIPE_WEBHOOK" value="true"/>
         <env name="SOCIALHQ_AI_GATEWAY" value="direct"/>
         <env name="SOCIALHQ_AI_APPROVED_PROVIDERS" value="openai,anthropic,gemini"/>
         <!-- Social HQ: upstream tests expect TryPost's own approval rules; ours switch them on. -->

@@ -232,12 +232,57 @@ test('a good fit says where it was found, and counts the recent posts that say i
     $row = $page['keywords'][0];
 
     expect($row['verdict'])->toBe('good')
-        ->and($row['reason'])->toBe('Found in 1 entry and 1 document.')
+        ->and($row['reason'])->toBe('Found in your entry “Cold brew bottles” and the document “Summer menu”.')
         ->and(collect($row['found'])->pluck('title')->all())->toBe(['Cold brew bottles', 'Summer menu'])
         ->and($row['found'][1]['snippet'])->toContain('cold brew is on the summer menu')
         ->and($row['posts'])->toBe(1)
         ->and($page['checked'])->toBe(['entries' => 1, 'documents' => 1, 'posts' => 2, 'days' => 90])
         ->and($page['verdict'])->toBe('on_brand');
+});
+
+test('reasons name what the check found, and fixes point to the brand\'s other keywords', function () {
+    brandWithKeywords(
+        $this->workspace,
+        [['cafe in thamel', true], 'coffee', 'coffee london', 'best coffee in kathmandu', 'specialty coffee kathmandu', 'coffee delivery lalitpur', 'cold brew'],
+        ['about' => 'Specialty coffee in Kathmandu, from our cafe in Thamel.', 'audience_locations' => [['country' => 'NP', 'city' => 'Kathmandu', 'timezone' => 'Asia/Kathmandu', 'share' => 100]]],
+    );
+    keywordEntry($this->workspace, 'Cold brew bottles', 'Our cold brew, in 330 ml bottles.');
+    keywordEntry($this->workspace, 'Summer menu', 'Cold brew and iced lattes.');
+
+    $rows = keywordVerdicts($this->workspace);
+
+    expect($rows['cafe in thamel']['reason'])->toBe('Found in your profile. Thamel is in Kathmandu, one of your audience places.')
+        ->and($rows['specialty coffee kathmandu']['reason'])->toBe('Found in your profile. Kathmandu is one of your audience places.')
+        // Only entries hold it, so both are named (newest first, as the AI reads them).
+        ->and($rows['cold brew']['reason'])->toBe('Found in your entries “Summer menu” and “Cold brew bottles”.')
+        // The example skips "coffee london" (a place outside the audience) and the claim.
+        ->and($rows['coffee']['fix'])->toBe('Pair it with what makes you different, like “specialty coffee kathmandu”.')
+        ->and($rows['best coffee in kathmandu']['fix'])->toBe('“specialty coffee kathmandu” says the same without the claim.')
+        ->and($rows['coffee delivery lalitpur']['verdict'])->toBe('weak')
+        ->and($rows['coffee delivery lalitpur']['reason'])->toBe('Your brand knowledge mentions “coffee” but never “delivery” or “lalitpur”. Lalitpur isn’t one of your audience places.')
+        ->and($rows['coffee delivery lalitpur']['fix'])->toBe('If it’s true, add an entry about “delivery” and “lalitpur”. The AI still uses it, only as a search phrase.')
+        ->and($rows['coffee delivery lalitpur'])->not->toHaveKey('member_fix');
+});
+
+test('someone who can\'t edit Brand knowledge gets fixes that say who can, and the page sends them those', function () {
+    brandWithKeywords($this->workspace, ['cheap coffee', 'coffee london'], ['about' => 'Coffee in Kathmandu, shipped to London.', 'words_to_avoid' => 'cheap', 'audience_locations' => [['country' => 'NP', 'city' => 'Kathmandu', 'timezone' => 'Asia/Kathmandu', 'share' => 100]]]);
+
+    $rows = collect(KeywordCheck::page($this->workspace, canEdit: false)['keywords'])->keyBy('text');
+
+    expect($rows['cheap coffee']['fix'])->toBe('The AI uses it as written. If that’s not what you want, a workspace admin can remove or reword it.')
+        ->and($rows['coffee london']['fix'])->toBe('If you post for people there, a workspace admin can add it under Where your audience is.')
+        ->and(keywordVerdicts($this->workspace)['cheap coffee']['fix'])->toStartWith('Your keyword wins');
+
+    $this->actingAs(workspaceMember($this->workspace))
+        ->get(route('socialhq.brand.index', ['tab' => 'strategy']))
+        ->assertInertia(fn (AssertableInertia $page) => $page->loadDeferredProps(fn (AssertableInertia $reload) => $reload
+            ->where('keywordCheck.keywords.0.fix', 'The AI uses it as written. If that’s not what you want, a workspace admin can remove or reword it.')
+            ->missing('keywordCheck.keywords.0.member_fix')));
+});
+
+test('a comma or semicolon never stays in a keyword: a quoted CSV cell is one keyword', function () {
+    expect(BrandKeywords::clean('"Latte art, Kathmandu"'))->toBe('"latte art kathmandu"')
+        ->and(BrandKeywords::clean('latte art; kathmandu'))->toBe('latte art kathmandu');
 });
 
 test('a file\'s keywords are checked before import, against the saved ones too', function () {
@@ -300,7 +345,15 @@ test('the assistant says when a new caption was written for a brand without keyw
     $this->actingAs($this->owner)
         ->postJson(route('app.posts.ai.assist'), ['mode' => 'generate', 'prompt' => 'Introduce our new cold brew bottles'])
         ->assertOk()
-        ->assertJsonPath('keywords_missing', true);
+        ->assertJsonPath('keywords_missing', true)
+        ->assertJsonPath('can_add_keywords', true);
+
+    // Someone who can't edit Brand knowledge gets the note without the link.
+    $this->actingAs(workspaceMember($this->workspace))
+        ->postJson(route('app.posts.ai.assist'), ['mode' => 'generate', 'prompt' => 'Introduce our new cold brew bottles'])
+        ->assertOk()
+        ->assertJsonPath('keywords_missing', true)
+        ->assertJsonPath('can_add_keywords', false);
 
     // A rewrite of the person's caption never shows the note.
     $this->actingAs($this->owner)

@@ -53,7 +53,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-    addEntry: [];
+    /** "Add an entry" on a keyword nothing backs up: the dialog starts from it. */
+    addEntry: [keyword: string];
 }>();
 
 /** The list shown: what is being saved, else what the server has. */
@@ -127,13 +128,25 @@ const save = (
 // ----- Add from the field (one keyword, or a pasted list)
 
 const newText = ref('');
-const group = ref<'main' | 'supporting'>(
-    mainCount(props.keywords.items) < props.keywords.limits.main
-        ? 'main'
-        : 'supporting',
-);
 
-/** An input drops line breaks from a pasted list: keep them as commas. */
+/**
+ * The group new keywords go to: Main while a main slot is free, else
+ * Supporting, following the list as it changes, until someone picks one.
+ */
+const pickedGroup = ref<'main' | 'supporting' | null>(null);
+const group = computed<'main' | 'supporting'>({
+    get: () =>
+        pickedGroup.value ??
+        (mainCount(items.value) < limits.value.main ? 'main' : 'supporting'),
+    set: (value) => {
+        pickedGroup.value = value;
+    },
+});
+
+/**
+ * An input drops line breaks from a pasted list: keep them as commas. The
+ * list takes the place of any selected text, as a paste does.
+ */
 const pasteList = (event: ClipboardEvent): void => {
     const text = event.clipboardData?.getData('text') ?? '';
 
@@ -142,12 +155,19 @@ const pasteList = (event: ClipboardEvent): void => {
     }
 
     event.preventDefault();
-    newText.value = [
-        newText.value.trim(),
-        text.trim().replace(/\s*\r?\n\s*/g, ', '),
-    ]
-        .filter(Boolean)
-        .join(', ');
+
+    const input = event.target as HTMLInputElement;
+    const list = text.trim().replace(/\s*\r?\n\s*/g, ', ');
+    const start = input.selectionStart ?? newText.value.length;
+    const end = input.selectionEnd ?? start;
+    const before = newText.value.slice(0, start).replace(/[\s,]+$/, '');
+    const after = newText.value.slice(end).replace(/^[\s,]+/, '');
+    const caret = (before ? before.length + 2 : 0) + list.length;
+
+    newText.value = [before, list, after].filter(Boolean).join(', ');
+    void nextTick(() => {
+        input.setSelectionRange(caret, caret);
+    });
 };
 
 const addFromField = (): void => {
@@ -209,10 +229,6 @@ const addFromField = (): void => {
     }
 
     newText.value = '';
-
-    if (mainCount(next) >= limits.value.main) {
-        group.value = 'supporting';
-    }
 
     save(
         next,
@@ -333,8 +349,8 @@ const remove = (keyword: Keyword): void => {
     });
 };
 
-const addEntry = (): void => {
-    emit('addEntry');
+const addEntry = (keyword: Keyword): void => {
+    emit('addEntry', keyword.text);
 };
 
 // ----- Import a CSV or text file (read here, checked, then saved like any change)
@@ -801,7 +817,9 @@ const notThisTime = computed(() =>
                                 </template>
                                 {{
                                     $tChoice(
-                                        'socialhq.keywords.check.all_to_ai',
+                                        canEdit
+                                            ? 'socialhq.keywords.check.all_to_ai'
+                                            : 'socialhq.keywords.check.all_to_ai_member',
                                         total,
                                         {
                                             count: formatFullNumber(total),
@@ -969,7 +987,7 @@ const notThisTime = computed(() =>
                         @make-main="makeMain(keyword)"
                         @make-supporting="makeSupporting(keyword)"
                         @remove="remove(keyword)"
-                        @add-entry="addEntry"
+                        @add-entry="addEntry(keyword)"
                     />
                     <li
                         v-if="(main ? mainItems : supportingItems).length === 0"

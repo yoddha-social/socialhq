@@ -12,7 +12,9 @@ releases; we only watch TryPost for security fixes and port them by hand (the
 
 Specs and handoff notes from before the fork are often out of date. When sources
 disagree, trust them in this order: the code on the current branch, then
-SOCIALHQ.md and PATCHES.md, then everything else. In particular these are
+SOCIALHQ.md, then everything else. The frozen change ledger
+(`docs/history/PATCHES-ledger-2026-11-25.md`) says why a change was made then, not
+what is true now. In particular these are
 **historical**: Social HQ as a separate Rails + React app, "talk to TryPost only
 through its REST API", "run TryPost unmodified", the Oracle server, and
 public/confidential LiteLLM model groups. If a doc you read contradicts the code,
@@ -25,10 +27,10 @@ say so instead of following the doc.
   `config/socialhq.php`, `resources/js/{pages,components}/socialhq/`,
   `tests/*/SocialHq/`), wired from `SocialHqServiceProvider`.
 - Change a file from the TryPost base whenever that is the right place: there is no
-  upstream merge to protect. **Transition rule:** until the five open branches have
-  landed (p2-feedback, p2-time-zones, p2-events, p2-members, rbac-roles), keep adding a
-  PATCHES.md row for each TryPost file you change. After that, PATCHES.md becomes a
-  short map of where we diverged, by area, and rows stop.
+  upstream merge to protect. **No PATCHES.md rows** (frozen 2026-11-25): write the
+  reason in the commit message, and git answers what we changed
+  (`git log v2.0.1..main -- <path>`, see PATCHES.md). A branch that still adds rows
+  drops them when it merges.
 - Interface copy: `lang/en/socialhq.php` only (the hook copies it to the other
   locales).
 

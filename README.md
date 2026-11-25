@@ -65,7 +65,7 @@ Horizon, Reverb for live updates, the Laravel AI SDK and LiteLLM.
 |---|---|
 | [SOCIALHQ.md](SOCIALHQ.md) | Where our code lives, AI routing, design decisions |
 | [AGENTS.md](AGENTS.md) and [CLAUDE.md](CLAUDE.md) | Conventions (Laravel Boost, Pest, Pint, Inertia, Wayfinder) |
-| [PATCHES.md](PATCHES.md) | Changes to files that came from TryPost, and the security watch |
+| [PATCHES.md](PATCHES.md) | The security watch, and how to see what we changed in TryPost's files |
 | [.ai/skills/socialhq-dev-env/SKILL.md](.ai/skills/socialhq-dev-env/SKILL.md) | Running PHP, tests and linters |
 
 ```bash

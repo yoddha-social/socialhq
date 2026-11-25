@@ -45,7 +45,8 @@ check TryPost's GitHub security advisories since the last review.
 
 For each candidate:
 
-1. Read the diff. Does the affected code exist in our fork and do we use it? Skip
+1. Read the diff. Does the affected code exist in our fork and do we use it?
+   `git log --oneline v2.0.1..main -- <file>` shows what we changed there and why. Skip
    features we don't run (billing, Stripe offers, PostHog, the ChatGPT sign-in), with a
    reason.
 2. Port the security change by hand onto our version of the file, on a

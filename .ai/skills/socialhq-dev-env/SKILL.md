@@ -60,9 +60,9 @@ Tests use PostgreSQL (`.env.testing`), as CI and production do. Wayfinder output
 ## Hooks in this repo
 
 - Before each edit: generated files and the non-English `lang/*/socialhq*.php` copies
-  are refused; a TryPost file without a PATCHES.md row gets a note.
+  are refused, a Boost skill copy gets a note, and the `.ai/rules` files that cover the
+  path are shown once per session.
 - After each edit: pint (PHP), prettier and eslint (`resources/js`), locale sync for
   `lang/en/socialhq*.php`, `shq_` check for module migrations.
-- After Claude stops, in the background: PATCHES.md completeness (TryPost files changed
-  against `main` with no row, `unlisted_patches` in `.claude/hooks/lib/common.sh`),
-  vue-tsc, `pint --test` and `pest --tia`. Failures wake Claude with a report.
+- After Claude stops, in the background: vue-tsc, `pint --test` and `pest --tia`.
+  Failures wake Claude with a report.

@@ -32,10 +32,13 @@ adds the planning and AI layer:
 | Claude Code setup | `CLAUDE.md`, `.claude/settings.json`, `.claude/hooks/`, `.claude/rules/`; skills in `.ai/skills/socialhq-*` (linked into `.claude/skills/` and `.agents/skills/`), checked by `bin/socialhq-lint-skills` |
 
 TryPost's files are ours to change; we never merge its feature releases, only
-port its security fixes by hand. [PATCHES.md](PATCHES.md) lists our changes to
-files that came with TryPost (rows are added until the five open branches land,
-then it becomes an area-level map of where we diverged) and records each
-security watch, with the TryPost commit it was reviewed up to. Follow the conventions in [AGENTS.md](AGENTS.md)
+port its security fixes by hand. [PATCHES.md](PATCHES.md) records each security
+watch, with the TryPost commit it was reviewed up to, and says how to ask git what
+we changed in a TryPost file (`git log v2.0.1..main -- <path>`). The per-file
+ledger of those changes was frozen on 2026-11-25
+([docs/history/PATCHES-ledger-2026-11-25.md](docs/history/PATCHES-ledger-2026-11-25.md)):
+"PATCHES.md row N" in this file and in code comments means a row there. New changes
+get no row; their reason goes in the commit message. Follow the conventions in [AGENTS.md](AGENTS.md)
 (Laravel Boost, Pest, Pint, Inertia v3, Wayfinder).
 
 ## AI routing

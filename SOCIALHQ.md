@@ -24,7 +24,7 @@ adds the planning and AI layer:
 | Routes | `routes/socialhq.php`, which loads `routes/socialhq/*.php` (all under `/socialhq/*`) |
 | Configuration | `config/socialhq.php` |
 | Inertia pages and components | `resources/js/pages/socialhq/`, `resources/js/components/socialhq/` |
-| Tests (Pest) | `tests/Feature/SocialHq/`, `tests/Unit/SocialHq/`, `tests/Browser/SocialHq/` |
+| Tests (Pest) | `tests/Feature/SocialHq/`, `tests/Unit/SocialHq/`, `tests/Browser/SocialHq/`. The feature and unit ones run under the production rules (`socialHqProductionRules()` in `tests/Pest.php`, undoing `phpunit.xml`'s switches), and every account they create has an approved company; a test that needs TryPost's rule sets it back and says why |
 | Interface copy | `lang/en/socialhq.php` (see below) |
 | Image build | `.github/workflows/socialhq-image.yml` (tags `shq-v*`) |
 | Dependency audit | `.github/workflows/socialhq-audit.yml` (PRs and weekly) |

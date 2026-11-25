@@ -9,6 +9,7 @@ use App\Enums\User\Locale;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Companies\Company;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\BrandProfile;
@@ -458,6 +459,8 @@ test('every AI writer asks for the knowledge that matches its request', function
         'socialhq.ai.routes.write' => 'anthropic',
         'ai.providers.anthropic.key' => 'test-anthropic-key',
     ]);
+    // AI runs for a company a platform admin allowed Social HQ's AI keys.
+    Company::factory()->usingPlatformAi()->create(['account_id' => $this->workspace->account_id]);
     docEntry($this->workspace);
     BrandProfile::query()->create(['workspace_id' => $this->workspace->id, 'pillars' => ['Craft', 'Offers']]);
     SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);

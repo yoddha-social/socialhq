@@ -58,6 +58,11 @@ const weekdayNames = computed(() =>
     ),
 );
 
+// Social HQ: what a narrow desktop column says instead (PATCHES.md row 333).
+const shortWeekdayNames = computed(() =>
+    (props.weeks[0] ?? []).map((day) => day.format('ddd')),
+);
+
 const dayTargetKey = (day: dayjs.Dayjs): string =>
     calendarTargetKey({ kind: 'day', dayKey: dayKey(day) });
 
@@ -135,10 +140,11 @@ const visibleMonthItems = (day: dayjs.Dayjs): CalendarItem[] =>
             <div
                 v-for="(name, index) in weekdayNames"
                 :key="name"
-                class="border-border-strong p-1.5 text-center text-sm font-medium text-muted-foreground capitalize md:p-2.5"
+                class="@container border-border-strong p-1.5 text-center text-sm font-medium text-muted-foreground capitalize md:p-2.5"
                 :class="{ 'border-l': index > 0 }"
             >
-                {{ name }}
+                <span :class="{ '@max-[6rem]:hidden': isDesktop }">{{ name }}</span>
+                <span v-if="isDesktop" class="hidden @max-[6rem]:inline">{{ shortWeekdayNames[index] }}</span>
             </div>
         </div>
 

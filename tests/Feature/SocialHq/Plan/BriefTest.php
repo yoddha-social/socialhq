@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\PostPlatform\ContentType;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Companies\Company;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\CreativeKind;
 use App\SocialHq\Plan\ItemReview;
@@ -31,6 +32,8 @@ beforeEach(function () {
 
     $this->owner = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['account_id' => $this->owner->account_id, 'user_id' => $this->owner->id]);
+    // AI runs for a company a platform admin allowed Social HQ's AI keys.
+    Company::factory()->usingPlatformAi()->create(['account_id' => $this->owner->account_id]);
     $this->workspace->members()->attach($this->owner->id, membershipPivot('admin'));
     $this->owner->update(['current_workspace_id' => $this->workspace->id]);
     $this->owner = $this->owner->fresh();

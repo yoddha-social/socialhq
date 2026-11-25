@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/native-select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import dayjs from '@/dayjs';
 import { generate } from '@/routes/socialhq/plan';
 
 type SourceSwitch = 'old_calendars' | 'past_posts' | 'audience_events';
@@ -107,12 +108,26 @@ const firstDay = (): string =>
         ? props.today
         : props.defaults.from;
 
+/**
+ * A week from the first day, or to the month's end: the AI keeps far more
+ * of a week's suggestions than of a whole month's (audit 2026-11-24, UX-12).
+ */
+const DAYS_PER_RUN = 7;
+
+const lastDay = (from: string): string => {
+    const weekEnd = dayjs(from)
+        .add(DAYS_PER_RUN - 1, 'day')
+        .format('YYYY-MM-DD');
+
+    return weekEnd < props.defaults.to ? weekEnd : props.defaults.to;
+};
+
 watch(open, (isOpen) => {
     if (isOpen) {
         form.clearErrors();
         form.goals = props.goals ?? '';
         form.from = firstDay();
-        form.to = props.defaults.to;
+        form.to = lastDay(form.from);
         form.old_calendars = props.defaults.old_calendars;
         form.past_posts = props.defaults.past_posts;
         form.audience_events =

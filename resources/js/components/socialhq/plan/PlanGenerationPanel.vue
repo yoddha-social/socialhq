@@ -8,6 +8,7 @@ import {
 } from '@tabler/icons-vue';
 import { computed, ref, watch } from 'vue';
 
+import { channelLabel } from '@/components/socialhq/channelLabel';
 import type { PlanData } from '@/components/socialhq/plan/types';
 import { Button } from '@/components/ui/button';
 
@@ -201,7 +202,13 @@ const retry = (): void => emit('retry');
                     >
                     <span class="shrink-0 text-xs text-muted-foreground">
                         {{
-                            [rejection.date, rejection.channel]
+                            [
+                                rejection.date,
+                                channelLabel(
+                                    rejection.channel,
+                                    rejection.platform,
+                                ),
+                            ]
                                 .filter(Boolean)
                                 .join(' · ')
                         }}

@@ -121,7 +121,7 @@ final class ItemPosts
     /**
      * The item page's list of its posts, oldest first.
      *
-     * @return list<array{id: string, status: string, status_label: string, scheduled_at: string|null, published_at: string|null, channel: string|null, platform: string|null, url: string, network_url: string|null, off_day: bool}>
+     * @return list<array{id: string, status: string, status_label: string, scheduled_at: string|null, published_at: string|null, channel: string|null, platform: string|null, url: string, network_url: string|null, off_day: bool, other_channel: bool, other_format: bool}>
      */
     public static function forItemPage(PlanItem $item): array
     {
@@ -141,6 +141,9 @@ final class ItemPosts
                 'url' => route('app.posts.edit', $post),
                 'network_url' => $post->platform_url,
                 'off_day' => self::isOffDay($item, $post),
+                // The item was given another channel or format after the post was made.
+                'other_channel' => $item->social_account_id !== null && $post->social_account_id !== $item->social_account_id,
+                'other_format' => $item->content_type !== null && $post->content_type !== null && $post->content_type !== $item->content_type,
             ])
             ->values()
             ->all();
@@ -166,7 +169,7 @@ final class ItemPosts
      * The month page's short list of an item's upcoming posts, for the drop
      * and delete dialog. Reads the loaded posts, so the page asks once.
      *
-     * @return list<array{id: string, status: string, scheduled_at: string|null, channel: string|null}>
+     * @return list<array{id: string, status: string, scheduled_at: string|null, channel: string|null, platform: string|null}>
      */
     public static function upcomingForPage(PlanItem $item): array
     {
@@ -178,6 +181,7 @@ final class ItemPosts
                 'status' => $post->status->value,
                 'scheduled_at' => $post->scheduled_at?->toIso8601String(),
                 'channel' => $post->socialAccount?->display_label ?? $post->platform_name,
+                'platform' => $post->platform?->value,
             ])
             ->values()
             ->all();

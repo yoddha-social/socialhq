@@ -8,7 +8,9 @@ import {
     IconPlus,
     IconSparkles,
 } from '@tabler/icons-vue';
+import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
+import { toast } from 'vue-sonner';
 
 import EmptyState from '@/components/EmptyState.vue';
 import SettingsListRow from '@/components/settings/SettingsListRow.vue';
@@ -105,7 +107,22 @@ const openReplace = (item: CompanyProvider): void => {
     isKeyDialogOpen.value = true;
 };
 
-// Test and order
+// Test, order and remove: the gateway or the secrets key failing comes back
+// as an error on no field, so it is said in a toast.
+const toastRefusal = (errors: Record<string, string>): void => {
+    const message = Object.values(errors)[0];
+
+    if (message) {
+        toast.error(message);
+    }
+};
+
+const toastRequestFailed = (): false => {
+    toast.error(trans('socialhq.refusals.request_failed'));
+
+    return false;
+};
+
 const busyId = ref<number | null>(null);
 
 const runTest = (item: CompanyProvider): void => {
@@ -120,15 +137,38 @@ const runTest = (item: CompanyProvider): void => {
             onFinish: () => {
                 busyId.value = null;
             },
+            onError: toastRefusal,
+            onNetworkError: toastRequestFailed,
         },
     );
 };
+
+/** One move at a time: a second one would read the order before the first is saved. */
+const moving = ref(false);
 
 const moveProvider = (
     item: CompanyProvider,
     direction: 'up' | 'down',
 ): void => {
-    router.post(move.url(item.id), { direction }, { preserveScroll: true });
+    if (moving.value) {
+        return;
+    }
+
+    router.post(
+        move.url(item.id),
+        { direction },
+        {
+            preserveScroll: true,
+            onStart: () => {
+                moving.value = true;
+            },
+            onFinish: () => {
+                moving.value = false;
+            },
+            onError: toastRefusal,
+            onNetworkError: toastRequestFailed,
+        },
+    );
 };
 
 const moveUp = (item: CompanyProvider): void => moveProvider(item, 'up');
@@ -173,6 +213,8 @@ const confirmRemove = (): void => {
             isRemoving.value = false;
         },
         onSuccess: closeRemove,
+        onError: toastRefusal,
+        onNetworkError: toastRequestFailed,
     });
 };
 
@@ -430,6 +472,7 @@ const saveBudget = (): void => {
                                 <DropdownMenuContent align="end">
                                     <DropdownMenuItem
                                         v-if="index > 0"
+                                        :disabled="moving"
                                         :data-testid="`socialhq-ai-up-${item.id}`"
                                         @select="moveUp(item)"
                                     >
@@ -442,6 +485,7 @@ const saveBudget = (): void => {
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                         v-if="index < providers.length - 1"
+                                        :disabled="moving"
                                         :data-testid="`socialhq-ai-down-${item.id}`"
                                         @select="moveDown(item)"
                                     >

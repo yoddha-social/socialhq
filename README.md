@@ -1,130 +1,94 @@
-> **Social HQ** — this is [yoddha-social](https://github.com/yoddha-social)'s fork of TryPost for internal use, with our features in a separate module. See [SOCIALHQ.md](SOCIALHQ.md). To deploy it, use [yoddha-social/socialhq-deploy](https://github.com/yoddha-social/socialhq-deploy) (private), not the self-hosting steps below. Everything below is upstream's README.
+# Social HQ
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/trypostit/trypost/main/public/images/trypost/logo-dark.png" alt="TryPost" width="190">
-</p>
+Social HQ is where our social media team does its work: plan the month, write
+captions and creative briefs with AI, review and approve, publish to every channel,
+and see what worked. It is an internal tool, built and run by
+[yoddha-social](https://github.com/yoddha-social).
 
-<h1 align="center">The open-source social media scheduler built for AI agents</h1>
+## What it does
 
-<p align="center">
-  Let your AI agents create, schedule and publish posts to every network through MCP or the REST API,<br/>
-  or write them yourself in a composer your team will love.
-</p>
+**Brand knowledge.** The AI reads the company's website and suggests the brand
+profile (what we sell, audience, voice) and knowledge entries (products, key facts);
+nothing is saved until someone accepts it. Add documents and Google Docs, old
+calendars, the brand look (logo, colours, fonts), content pillars, posts per week,
+where the audience is and SEO keywords. This is what the AI reads before it plans
+or writes anything.
 
-<p align="center">
-  <a href="https://github.com/trypostit/trypost/stargazers"><img src="https://img.shields.io/github/stars/trypostit/trypost?style=flat-square&color=7c3aed&labelColor=0a0a0a" alt="Stars"></a>
-  <a href="https://github.com/trypostit/trypost/blob/main/LICENSE.md"><img src="https://img.shields.io/badge/license-AGPL--3.0-7c3aed?style=flat-square&labelColor=0a0a0a" alt="License"></a>
-  <a href="https://github.com/trypostit/trypost/releases"><img src="https://img.shields.io/github/v/release/trypostit/trypost?style=flat-square&color=7c3aed&labelColor=0a0a0a" alt="Release"></a>
-  <a href="https://trypost.it/discord"><img src="https://img.shields.io/badge/discord-join-7c3aed?style=flat-square&labelColor=0a0a0a&logo=discord&logoColor=white" alt="Discord"></a>
-</p>
+**Month plan.** One click drafts a month of posts from the brand profile, the
+pillars, past posts and a verified events calendar (Nepali festivals from the official
+holiday list and international days; dates are never calculated by AI). The lead
+accepts or drops each suggestion; every item has a date, time, channel, format,
+pillar and objective.
 
-<p align="center">
-  <a href="https://trypost.it"><b>Try TryPost Cloud</b></a> &nbsp;&bull;&nbsp;
-  <a href="https://docs.trypost.it">Documentation</a> &nbsp;&bull;&nbsp;
-  <a href="https://trypost.it/discord">Discord</a> &nbsp;&bull;&nbsp;
-  <a href="https://github.com/trypostit/trypost/discussions">Community</a>
-</p>
+**Writing and production.** For each plan item the AI writes the caption in the
+brand voice and drafts the design brief (format, on-screen text, art direction).
+Captions keep their versions; designers upload creatives in rounds.
 
-<p align="center">
-  <img src="public/images/github/calendar.png" alt="TryPost calendar with a month of posts across eight channels" width="100%">
-</p>
+**Review and approval.** Copy and creative are reviewed separately. Reviewers
+comment, request changes or approve, and everything waiting on someone shows up in
+their *Waiting for you* inbox. Approved work is locked. Members who aren't admins,
+and every post made through an API key or MCP, always go to review.
 
----
+**Publishing.** An approved item becomes a post in the composer, with its caption,
+creative and time filled in, and is scheduled for its channel. Plan and posts stay
+linked: moving or dropping an item offers to move or hold its post too. Channels:
+Facebook Pages, Instagram (through a Facebook Page), LinkedIn, YouTube and X.
 
-## Two ways to post, one place to run it
+**Insights.** Followers, reactions, comments and engagement per channel and per
+post, compared with the previous period.
 
-Most posts on TryPost are no longer written by hand. They come from AI agents and scripts. The rest come from teams who still want a great editor, a calendar and someone to approve before anything goes live. TryPost is built for both.
+**Companies and workspaces.** A company signs up and waits for a platform admin to
+approve it. Each brand gets a workspace with its own channels, members and settings.
 
-### 🤖 For AI agents: MCP and REST API
+## AI
 
-Connect Claude, ChatGPT, Cursor or any MCP client and ask in plain words:
+Every AI call goes through a [LiteLLM](https://github.com/BerriAI/litellm) gateway,
+named by task (write, structured, vision, image, embed):
 
-> *"Write a week of posts about our spring tours for Instagram, LinkedIn and X, add them to each channel's queue and show me the Instagram insights for last month."*
+- Free providers first (Groq, Cloudflare Workers AI, Mistral), paid Gemini only as
+  the fallback, under a monthly budget.
+- The platform's keys only reach approved providers that don't train on prompts;
+  any other request is refused before it is sent.
+- Every call is logged without its content (Settings › AI › Usage).
+- A company can bring its own provider keys (Settings › AI).
 
-- **MCP server** with 80+ tools: posts, media, queues, ideas, labels, signatures, analytics and more. [Connect your assistant &rarr;](https://docs.trypost.it/ai/introduction)
-- **REST API** for your own scripts and automations: create posts in batch, upload media, read metrics, receive webhooks. [API reference &rarr;](https://docs.trypost.it/api-reference/introduction)
-- Everything the app can do, your agent can do. Same rules, same limits, same approvals.
+Details: [SOCIALHQ.md](SOCIALHQ.md#ai-routing).
 
-### ✍️ For teams: the web app
+## Built with
 
-- **Composer** that writes once and adapts per network, with a live preview of every post and an AI assistant to rephrase, shorten or expand.
-- **Calendar and queues**: drop posts on each channel's posting times, drag to reschedule, see the whole month at a glance.
-- **Approvals**: members who need a review send posts for approval, and admins approve or reject in one click. Built for agencies running many brands.
-- **Workspaces** to keep every client or brand apart, with its own channels, members and settings.
+Laravel 13 (PHP 8.4+), Inertia v3 with Vue 3, Tailwind CSS 4, PostgreSQL, Redis with
+Horizon, Reverb for live updates, the Laravel AI SDK and LiteLLM.
 
-## A closer look
+## Working on it
 
-<p align="center">
-  <img src="public/images/github/queue.png" alt="A channel queue with scheduled posts and labels" width="100%">
-  <br/><sub><b>Queues.</b> Set each channel's posting times once. New posts take the next free slot.</sub>
-</p>
+| Read | For |
+|---|---|
+| [SOCIALHQ.md](SOCIALHQ.md) | Where our code lives, AI routing, design decisions |
+| [AGENTS.md](AGENTS.md) and [CLAUDE.md](CLAUDE.md) | Conventions (Laravel Boost, Pest, Pint, Inertia, Wayfinder) |
+| [PATCHES.md](PATCHES.md) | Changes to files that came from TryPost, and the security watch |
+| [.ai/skills/socialhq-dev-env/SKILL.md](.ai/skills/socialhq-dev-env/SKILL.md) | Running PHP, tests and linters |
 
-<p align="center">
-  <img src="public/images/github/ideas.png" alt="Ideas board in dark mode with cards in To Do, In Progress and Done" width="100%">
-  <br/><sub><b>Ideas board, in dark mode.</b> Collect ideas, move them through your stages and turn them into posts.</sub>
-</p>
+```bash
+./vendor/bin/pest tests/Feature/SocialHq --compact   # our tests
+./vendor/bin/pint --dirty                            # format changed PHP
+npx --no-install vue-tsc --noEmit                    # types
+```
 
-<p align="center">
-  <img src="public/images/github/insights.png" alt="Channel insights compared with the previous period" width="100%">
-  <br/><sub><b>Insights.</b> Followers, reach and engagement per channel and per post, compared with the previous period.</sub>
-</p>
+CI (`.github/workflows/socialhq-ci.yml`) runs quality checks, the backend and
+browser suites on PostgreSQL, and TryPost's suites under our production rules. Pull
+requests merge into `main` once the `ci` check passes.
 
-## Supported networks
+Deployment lives in a separate private repository,
+[yoddha-social/socialhq-deploy](https://github.com/yoddha-social/socialhq-deploy).
 
-Every post is published natively through each network's official API. No reminders, no "finish in the mobile app".
+## Origin and license
 
-<p align="center">
-  <img src="public/images/github/networks/instagram.png" width="44" alt="Instagram" title="Instagram">&nbsp;
-  <img src="public/images/github/networks/tiktok.png" width="44" alt="TikTok" title="TikTok">&nbsp;
-  <img src="public/images/github/networks/linkedin.png" width="44" alt="LinkedIn" title="LinkedIn">&nbsp;
-  <img src="public/images/github/networks/x.png" width="44" alt="X" title="X">&nbsp;
-  <img src="public/images/github/networks/youtube.png" width="44" alt="YouTube" title="YouTube">&nbsp;
-  <img src="public/images/github/networks/facebook.png" width="44" alt="Facebook" title="Facebook">&nbsp;
-  <img src="public/images/github/networks/threads.png" width="44" alt="Threads" title="Threads">&nbsp;
-  <img src="public/images/github/networks/bluesky.png" width="44" alt="Bluesky" title="Bluesky">&nbsp;
-  <img src="public/images/github/networks/pinterest.png" width="44" alt="Pinterest" title="Pinterest">&nbsp;
-  <img src="public/images/github/networks/mastodon.png" width="44" alt="Mastodon" title="Mastodon">&nbsp;
-  <img src="public/images/github/networks/google_business.png" width="44" alt="Google Business" title="Google Business">&nbsp;
-  <img src="public/images/github/networks/telegram.png" width="44" alt="Telegram" title="Telegram">&nbsp;
-  <img src="public/images/github/networks/discord.png" width="44" alt="Discord" title="Discord">&nbsp;
-</p>
+Social HQ started as a hard fork of [TryPost](https://github.com/trypostit/trypost)
+v2.0.1, the open-source social media scheduler by Paulo Castellano. TryPost gave us
+the workspaces, members, composer, calendar, media handling and publishing. We don't
+merge TryPost releases; we review its security fixes and port them by hand
+([PATCHES.md](PATCHES.md#security-intake)).
 
-<p align="center"><sub>Instagram &middot; TikTok &middot; LinkedIn &middot; X &middot; YouTube &middot; Facebook &middot; Threads &middot; Bluesky &middot; Pinterest &middot; Mastodon &middot; Google Business &middot; Telegram &middot; Discord</sub></p>
-
-## Everything else you get
-
-- **Repurpose**: videos you post outside TryPost are copied to your other networks automatically.
-- **Media sources**: upload from your device, Unsplash, Google Drive, Google Photos and Canva.
-- **Signatures and labels**: reusable hashtag and CTA blocks, color-coded labels to filter the calendar.
-- **Notes**: leave feedback on a post and the rest of the team gets an email.
-- **Webhooks**: get notified when a post is created, scheduled, published, fails or is deleted.
-- **16 languages**: English, Portuguese, Spanish, French, German, Italian, Dutch, Polish, Greek, Ukrainian, Russian, Turkish, Arabic, Japanese, Korean and Chinese.
-
-## Open source, with every feature
-
-TryPost is open source under AGPL-3.0. You can self-host it on your own servers and keep your posts, drafts and metrics on your infrastructure. The self-hosted version has every feature of TryPost Cloud: no paid tiers, no locked features.
-
-If you would rather not run servers, [TryPost Cloud](https://trypost.it) is the same product, hosted and updated for you.
-
-## Built by Paulo Castellano
-
-<img src="public/images/github/paulo.png" width="96" align="left" alt="Paulo Castellano">
-
-Hi, I'm Paulo, and I build TryPost in the open. Follow me for what is coming next to TryPost.
-
-<a href="https://www.linkedin.com/in/paulocastellano"><img src="public/images/github/follow-linkedin.png" height="44" alt="Follow Paulo on LinkedIn"></a>&nbsp;
-<a href="https://x.com/paulocastellano"><img src="public/images/github/follow-x.png" height="44" alt="Follow Paulo on X"></a>
-
-<br clear="left"/>
-
-## Community and contributing
-
-- **Questions or ideas?** Join the [Discord](https://trypost.it/discord) or open a [Discussion](https://github.com/trypostit/trypost/discussions).
-- **Found a bug?** Open an [issue](https://github.com/trypostit/trypost/issues).
-- **Want to help?** Pull requests of any size are welcome.
-
-Short on time? A ⭐ is the best way to help. It puts TryPost in front of more people.
-
-## License
-
-[GNU Affero General Public License v3.0](LICENSE.md). Use, modify, fork, self-host and redistribute, including commercially. If you run a modified version as a network service, make your changes available to its users (AGPL §13).
+Social HQ is licensed under the [GNU Affero General Public License v3.0](LICENSE.md),
+like TryPost. If you run a modified version as a network service, you must offer
+its users the source (AGPL §13); the app's sidebar links to this repository.

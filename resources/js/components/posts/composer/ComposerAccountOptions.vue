@@ -89,9 +89,12 @@ const allSelected = (): boolean => visibleAccounts.value.every(isSelected);
                         :name="account.display_label"
                         ring="popover"
                     />
-                    <span class="min-w-0 flex-1 truncate">{{
-                        account.display_label
-                    }}</span>
+                    <span class="min-w-0 flex-1 truncate"
+                        >{{ account.display_label }}
+                        <span class="text-muted-foreground"
+                            >· {{ getPlatformLabel(account.platform) }}</span
+                        ></span
+                    >
                     <span
                         class="flex size-4 shrink-0 items-center justify-center rounded-sm border transition-control"
                         :class="

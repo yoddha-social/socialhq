@@ -11,6 +11,7 @@ use App\SocialHq\Ai\Usage\AiUsageStatus;
 use App\SocialHq\Companies\Company;
 use App\SocialHq\Companies\PlatformAdmins;
 use Carbon\CarbonImmutable;
+use Database\Factories\AccountFactory;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
@@ -164,7 +165,8 @@ test('a day\'s rows load under the page\'s filters, for the owner only', functio
         ->getJson(route('socialhq.ai-usage.day', ['day' => 'yesterday']))
         ->assertUnprocessable();
 
-    $member = User::factory()->create(['current_workspace_id' => $this->workspace->id]);
+    // An invited admin: their own account is empty, not a company (AccountFactory would make it one).
+    $member = AccountFactory::withoutCompany(fn (): User => User::factory()->create(['current_workspace_id' => $this->workspace->id]));
     $this->workspace->members()->attach($member->id, membershipPivot('admin'));
 
     $this->actingAs($member)
@@ -173,7 +175,8 @@ test('a day\'s rows load under the page\'s filters, for the owner only', functio
 });
 
 test('only the company owner sees the page', function () {
-    $member = User::factory()->create(['current_workspace_id' => $this->workspace->id]);
+    // An invited admin: their own account is empty, not a company (AccountFactory would make it one).
+    $member = AccountFactory::withoutCompany(fn (): User => User::factory()->create(['current_workspace_id' => $this->workspace->id]));
     $this->workspace->members()->attach($member->id, membershipPivot('admin'));
 
     $this->actingAs($member)->get(route('socialhq.ai-usage.show'))->assertForbidden();

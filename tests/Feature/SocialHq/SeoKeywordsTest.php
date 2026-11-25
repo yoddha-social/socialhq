@@ -9,6 +9,7 @@ use App\Enums\User\Locale;
 use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Companies\Company;
 use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Knowledge\Documents\DocumentStatus;
 use App\SocialHq\Knowledge\Documents\DocumentStorage;
@@ -340,6 +341,8 @@ test('the caption assistant gets the keywords and the rules for new text, and on
 });
 
 test('the assistant says when a new caption was written for a brand without keywords', function () {
+    // AI runs for a company a platform admin allowed Social HQ's AI keys.
+    Company::factory()->usingPlatformAi()->create(['account_id' => $this->owner->account_id]);
     PostWritingAssistant::fake(['One', 'Two', 'Three']);
 
     $this->actingAs($this->owner)
@@ -407,6 +410,8 @@ describe('plan item copy', function () {
             'socialhq.ai.routes.write' => 'anthropic',
             'ai.providers.anthropic.key' => 'test-anthropic-key',
         ]);
+        // AI runs for a company a platform admin allowed Social HQ's AI keys.
+        Company::factory()->usingPlatformAi()->create(['account_id' => $this->owner->account_id]);
 
         $plan = ContentPlan::factory()->create(['workspace_id' => $this->workspace->id]);
         $this->item = PlanItem::factory()->create(['plan_id' => $plan->id, 'title' => 'Momo delivery week']);

@@ -10,6 +10,7 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
+import { channelLabel } from '@/components/socialhq/channelLabel';
 import { localizedDay } from '@/components/socialhq/localizedDay';
 import type {
     CreativeWaiver,
@@ -19,10 +20,8 @@ import type {
     PostBlocker,
 } from '@/components/socialhq/plan/item/types';
 import { followPosts } from '@/components/socialhq/plan/planRequests';
-import {
-    POST_STATUS_VARIANT,
-    postStatusLabelKey,
-} from '@/components/socialhq/plan/postStatus';
+import { postStatusLabelKey } from '@/components/socialhq/plan/postStatus';
+import { POST_STATUS_TONES } from '@/components/socialhq/postStatusTone';
 import {
     firstErrorOf,
     serverMessageOf,
@@ -229,7 +228,7 @@ const createPost = async (): Promise<void> => {
                 }}
             </span>
             <Button
-                v-if="abilities.canApprove && !item.post_created_at"
+                v-if="abilities.canApprove && posts.length === 0"
                 variant="link"
                 size="sm"
                 class="h-auto p-0 text-xs"
@@ -304,7 +303,7 @@ const createPost = async (): Promise<void> => {
                     :data-testid="`item-post-${post.id}`"
                 >
                     <Badge
-                        :variant="POST_STATUS_VARIANT[post.status]"
+                        :variant="POST_STATUS_TONES[post.status].badge"
                         :data-testid="`item-post-status-${post.id}`"
                         >{{ $t(postStatusLabelKey(post.status)) }}</Badge
                     >
@@ -314,8 +313,24 @@ const createPost = async (): Promise<void> => {
                         :data-testid="`item-post-off-day-${post.id}`"
                         >{{ $t('socialhq_production.post.off_day') }}</Badge
                     >
+                    <Badge
+                        v-if="post.other_channel"
+                        variant="warning"
+                        :data-testid="`item-post-other-channel-${post.id}`"
+                        >{{
+                            $t('socialhq_production.post.other_channel')
+                        }}</Badge
+                    >
+                    <Badge
+                        v-else-if="post.other_format"
+                        variant="warning"
+                        :data-testid="`item-post-other-format-${post.id}`"
+                        >{{
+                            $t('socialhq_production.post.other_format')
+                        }}</Badge
+                    >
                     <span class="min-w-0 truncate text-muted-foreground">
-                        {{ post.channel }}
+                        {{ channelLabel(post.channel, post.platform) }}
                         <template v-if="postTime(post)">
                             · {{ postTime(post) }}
                         </template>

@@ -15,6 +15,7 @@ use App\SocialHq\Companies\Mail\AccountExists;
 use App\SocialHq\Companies\Mail\CompanyRequested;
 use App\SocialHq\Companies\PlatformAdmins;
 use App\SocialHq\Signup\AccessRequest;
+use Database\Factories\AccountFactory;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Support\Facades\Bus;
@@ -131,7 +132,8 @@ test('someone off the lists asks for a company: a pending company, no workspace,
 test('asking for a company with an email that has an account says the same and emails "you already have an account"', function () {
     Notification::fake();
     Mail::fake();
-    $existing = User::factory()->create(['email' => 'mina@himaltea.test']);
+    // An account of their own that isn't a company (AccountFactory would make it one).
+    $existing = AccountFactory::withoutCompany(fn (): User => User::factory()->create(['email' => 'mina@himaltea.test']));
 
     registerForCompany('Mina@HimalTea.test')
         ->assertSessionHasNoErrors()
@@ -340,7 +342,7 @@ test('an invited person registers with an empty account, can\'t create workspace
 });
 
 test('someone with an empty account asks to start a company from the no-workspace page', function () {
-    $account = Account::factory()->create();
+    $account = AccountFactory::withoutCompany(fn (): Account => Account::factory()->create());
     $user = User::factory()->create(['account_id' => $account->id]);
     $account->update(['owner_id' => $user->id]);
 
@@ -445,7 +447,7 @@ test('a google or github sign-up with someone else\'s invite in the session stil
 })->with(['google', 'github']);
 
 test('an account with workspaces but no company is not approved: its people are stopped and its owner asks for one', function () {
-    $account = Account::factory()->create();
+    $account = AccountFactory::withoutCompany(fn (): Account => Account::factory()->create());
     $owner = User::factory()->create(['account_id' => $account->id]);
     $account->update(['owner_id' => $owner->id]);
     $workspace = Workspace::factory()->create(['account_id' => $account->id, 'user_id' => $owner->id]);
@@ -464,7 +466,7 @@ test('an account with workspaces but no company is not approved: its people are 
 });
 
 test('the API keys of an account with workspaces but no company are refused, an approved company\'s work', function () {
-    $api = createApiTestToken();
+    $api = AccountFactory::withoutCompany(fn (): array => createApiTestToken());
     $callApi = fn () => $this->withHeaders(['Authorization' => "Bearer {$api['plain_token']}"])
         ->getJson(route('api.workspace.show'), ['HTTP_HOST' => 'api.trypost.test']);
 
@@ -502,7 +504,7 @@ test('sign-ups join the account the configured owner owns, only while its compan
 });
 
 test('asking twice at once from the no-workspace page ends on the waiting page, with one company', function () {
-    $account = Account::factory()->create();
+    $account = AccountFactory::withoutCompany(fn (): Account => Account::factory()->create());
     $user = User::factory()->create(['account_id' => $account->id]);
     $account->update(['owner_id' => $user->id]);
 

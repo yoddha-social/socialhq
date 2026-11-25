@@ -49,7 +49,7 @@ const remove = (): void => {
                         type="button"
                         :data-testid="`composer-account-${account.id}`"
                         :aria-pressed="active"
-                        class="relative block rounded-xl transition-shadow outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                        class="relative block rounded-xl transition-shadow outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring focus-visible:outline-solid"
                         @click="focusAccount"
                     >
                         <ChannelAvatar

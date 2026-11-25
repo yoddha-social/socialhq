@@ -113,6 +113,21 @@ test('copy goes through review: submit, changes requested with a note, approve',
     expect($approval->version->number)->toBe(2);
 });
 
+test('copy sent back with changes goes for review again only as a new version', function () {
+    $writer = workspaceMember($this->workspace, 'approval');
+    $this->actingAs($writer)->post(route('socialhq.plan.items.versions.store', $this->item->id), copyPayload());
+    $this->actingAs($writer)->post(route('socialhq.plan.items.copy.submit', $this->item->id));
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.request-changes', $this->item->id), ['note' => 'Shorter hook', 'version_id' => shownVersion($this->item)]);
+
+    $this->actingAs($writer)->post(route('socialhq.plan.items.copy.submit', $this->item->id))
+        ->assertSessionHasErrors(['copy' => __('socialhq_production.item.copy.errors.changes_first')]);
+    expect($this->item->fresh()->copy_status)->toBe(CopyStatus::ChangesRequested);
+
+    $this->actingAs($writer)->post(route('socialhq.plan.items.versions.store', $this->item->id), copyPayload('Shorter'));
+    $this->actingAs($writer)->post(route('socialhq.plan.items.copy.submit', $this->item->id))->assertSessionHasNoErrors();
+    expect($this->item->fresh()->copy_status)->toBe(CopyStatus::InReview);
+});
+
 test('copy that is not in review cannot be approved, and an empty item cannot be submitted', function () {
     $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.submit', $this->item->id))->assertSessionHasErrors('copy');
 

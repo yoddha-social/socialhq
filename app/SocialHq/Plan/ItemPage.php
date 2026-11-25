@@ -43,7 +43,7 @@ final class ItemPage
                 'by' => self::person($item->creativeWaivedBy),
             ],
             // The posts made from the item, with where each stands now.
-            'itemPosts' => ItemPosts::forItemPage($item),
+            'itemPosts' => ItemPosts::forItemPage($item, $user, $workspace),
             'abilities' => PlanAccess::abilities($user, $workspace),
             'aiAvailable' => AiResponses::isUsable(AiTask::Write, $user, $workspace),
         ];

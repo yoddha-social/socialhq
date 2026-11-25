@@ -267,11 +267,14 @@ return [
         'drop' => 'Drop item',
         'delete' => 'Delete item',
         'save' => 'Save changes',
+        'kept' => ':count post couldn\'t go back to drafts, so it can still go out. Someone who approves posts can move it to drafts in Publish.|:count posts couldn\'t go back to drafts, so they can still go out. Someone who approves posts can move them to drafts in Publish.',
     ],
     'posts_follow' => [
         'offer' => 'The item moved, but its post is still on its old day.|The item moved, but :count of its posts are still on their old days.',
         'action' => 'Move post too|Move posts too',
+        'back_to_approval' => 'The post set for :time is approved. Moving it sends it back for approval.|:count of the posts are approved. Moving them sends them back for approval.',
         'moved' => 'Post moved to the item\'s day.|Posts moved to the item\'s day.',
+        'pending' => 'Moved to :day, waiting for approval. It won\'t go out until someone approves it.|:count posts moved to :day, waiting for approval. They won\'t go out until someone approves them.',
         'kept' => ':count post couldn\'t move. Open it in Publish to change its time.|:count posts couldn\'t move. Open them in Publish to change their times.',
     ],
     'generation' => [

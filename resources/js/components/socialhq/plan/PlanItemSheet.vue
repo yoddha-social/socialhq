@@ -250,11 +250,23 @@ watch(
     },
 );
 
-const onChannelChange = (): void => {
-    if (!contentTypes.value.some((type) => type.value === form.content_type)) {
-        form.content_type = contentTypes.value[0]?.value ?? '';
-    }
-};
+/**
+ * Another channel keeps the format when it offers it, else takes its first.
+ * A watcher, not the select's change event, which fires before the select's
+ * v-model has updated the form (the format went blank). A channel no longer
+ * connected offers none, and its item keeps the format it has.
+ */
+watch(
+    () => form.social_account_id,
+    () => {
+        if (
+            contentTypes.value.length > 0 &&
+            !contentTypes.value.some((type) => type.value === form.content_type)
+        ) {
+            form.content_type = contentTypes.value[0]?.value ?? '';
+        }
+    },
+);
 
 const close = (): void => {
     open.value = false;
@@ -625,7 +637,6 @@ const askDelete = async (): Promise<void> => {
                                     id="plan-item-channel"
                                     v-model="form.social_account_id"
                                     data-testid="plan-item-channel"
-                                    @change="onChannelChange"
                                 >
                                     <NativeSelectOption
                                         v-for="option in channelOptions"

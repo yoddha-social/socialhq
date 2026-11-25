@@ -2257,7 +2257,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                     },
                                 )
                             "
-                            class="absolute top-2 right-2 flex size-6 items-center justify-center rounded-md text-muted-foreground transition-[opacity,background-color,color] duration-150 outline-none hover:bg-sidebar-action-hover focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring"
+                            class="absolute top-2 right-2 flex size-6 items-center justify-center rounded-md text-muted-foreground transition-[opacity,background-color,color] duration-150 outline-none hover:bg-sidebar-action-hover focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-solid"
                             :class="
                                 currentDefaultPostAction ===
                                 option.mode
@@ -2487,7 +2487,7 @@ const onDialogOpenChange = (value: boolean): void => {
                             type="button"
                             :aria-pressed="mobileView === view"
                             :data-testid="`composer-view-${view}`"
-                            class="inline-flex h-full min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-sm font-medium transition-control outline-none focus-visible:outline-2 focus-visible:outline-ring"
+                            class="inline-flex h-full min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-sm font-medium transition-control outline-none focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-solid"
                             :class="
                                 mobileView === view
                                     ? 'bg-primary-selected text-primary-text'

@@ -26,11 +26,9 @@ import {
     type PlanListSort,
     type PlanListSortKey,
 } from '@/components/socialhq/plan/planListSort';
-import {
-    POST_STATUS_VARIANT,
-    postStatusLabelKey,
-} from '@/components/socialhq/plan/postStatus';
+import { postStatusLabelKey } from '@/components/socialhq/plan/postStatus';
 import type { PlanItem, PlanLookups } from '@/components/socialhq/plan/types';
+import { POST_STATUS_TONES } from '@/components/socialhq/postStatusTone';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useAtLeastBreakpoint } from '@/composables/useBreakpoint';
@@ -461,7 +459,9 @@ const actionClass =
                             </Badge>
                             <Badge
                                 v-if="item.post_status"
-                                :variant="POST_STATUS_VARIANT[item.post_status]"
+                                :variant="
+                                    POST_STATUS_TONES[item.post_status].badge
+                                "
                                 class="min-w-0 shrink truncate px-1.5"
                                 :data-testid="`plan-row-post-${item.id}`"
                             >
@@ -706,7 +706,9 @@ const actionClass =
                             </span>
                             <Badge
                                 v-if="item.post_status"
-                                :variant="POST_STATUS_VARIANT[item.post_status]"
+                                :variant="
+                                    POST_STATUS_TONES[item.post_status].badge
+                                "
                                 class="px-1.5"
                                 :data-testid="`plan-row-post-${item.id}`"
                             >

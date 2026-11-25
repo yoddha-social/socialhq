@@ -20,10 +20,8 @@ import type {
     PostBlocker,
 } from '@/components/socialhq/plan/item/types';
 import { followPosts } from '@/components/socialhq/plan/planRequests';
-import {
-    POST_STATUS_VARIANT,
-    postStatusLabelKey,
-} from '@/components/socialhq/plan/postStatus';
+import { postStatusLabelKey } from '@/components/socialhq/plan/postStatus';
+import { POST_STATUS_TONES } from '@/components/socialhq/postStatusTone';
 import {
     firstErrorOf,
     serverMessageOf,
@@ -305,7 +303,7 @@ const createPost = async (): Promise<void> => {
                     :data-testid="`item-post-${post.id}`"
                 >
                     <Badge
-                        :variant="POST_STATUS_VARIANT[post.status]"
+                        :variant="POST_STATUS_TONES[post.status].badge"
                         :data-testid="`item-post-status-${post.id}`"
                         >{{ $t(postStatusLabelKey(post.status)) }}</Badge
                     >

@@ -373,6 +373,8 @@ test('the assistant says when a new caption was written for a brand without keyw
 });
 
 test('once the brand has keywords, the assistant says which ones a caption uses and whether a main one opens it', function () {
+    // AI runs for a company a platform admin allowed Social HQ's AI keys.
+    Company::factory()->usingPlatformAi()->create(['account_id' => $this->owner->account_id]);
     brandWithKeywords($this->workspace, ['cold brew', ['specialty coffee kathmandu', true], 'organic tea']);
     PostWritingAssistant::fake([
         "Specialty coffee in Kathmandu, poured slow.\n\nOur cold brew is back. #ColdBrew",

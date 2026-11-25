@@ -98,7 +98,33 @@ test('an admin adds a pasted list in the field the link focuses, moves one to su
     waitForDatabase($page, fn (): bool => BrandKeywords::forWorkspace($workspace) === [
         ['text' => 'cheap coffee', 'main' => false],
     ]);
+    // The removed row had the focus: it moves to the row after it, not to the page.
+    waitForState($page, '@socialhq-keyword-toggle-cheap-coffee', 'element === document.activeElement');
 
+    $page->assertNoJavaScriptErrors();
+});
+
+test('keywords asked for as main while main is full go to supporting, said in one toast', function () {
+    [, $workspace] = seoKeywordsBrand(array_map(
+        fn (string $text): array => ['text' => $text, 'main' => true],
+        ['cold brew kathmandu', 'cafe in kathmandu', 'kathmandu coffee shop', 'coffee kathmandu', 'brew kathmandu'],
+    ));
+
+    $page = visit(route('socialhq.brand.index', ['tab' => 'strategy', 'focus' => 'keywords']))->resize(1440, 900);
+    waitFor($page, '@socialhq-keywords-input');
+    $page->select('@socialhq-keywords-group', 'main')
+        ->fill('@socialhq-keywords-input', 'iced coffee kathmandu, cold brew bottles')
+        ->click('@socialhq-keywords-add');
+
+    $message = __('socialhq.keywords.toasts.added_many_supporting', ['count' => 2, 'max' => 5, 'moved' => 2]);
+    waitForText($page, '[data-sonner-toast]', $message);
+    waitForDatabase($page, fn (): bool => count(BrandKeywords::forWorkspace($workspace)) === 7);
+
+    expect(array_slice(BrandKeywords::forWorkspace($workspace), 5))->toBe([
+        ['text' => 'iced coffee kathmandu', 'main' => false],
+        ['text' => 'cold brew bottles', 'main' => false],
+    ])
+        ->and($page->script("document.querySelectorAll('[data-sonner-toast]').length"))->toBe(1);
     $page->assertNoJavaScriptErrors();
 });
 
@@ -122,6 +148,8 @@ test('a file\'s keywords are checked before anything is saved, and saved only wh
         ['text' => 'cheap coffee', 'main' => false],
     ]);
     waitFor($page, '@socialhq-keywords-group-supporting @socialhq-keyword-cheap-coffee');
+    // The preview had the focus: it goes back to the field.
+    waitForState($page, '@socialhq-keywords-input', 'element === document.activeElement');
 
     $page->assertNoJavaScriptErrors();
 });

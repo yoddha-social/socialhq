@@ -291,11 +291,15 @@ its knowledge changes) gives each keyword a verdict, first match wins:
 **Conflict** (a word or phrase of "words to avoid" is in it), **Weak** (no
 single profile field, entry used in AI or document excerpt holds all its
 words, claim words aside), **Check** (one word, a claim word from
-`claim_words`, a country or time zone city that isn't an audience place,
-or the same words as another keyword), else **Good fit**, with where it was
+`claim_words`, a place that isn't an audience place or part of one, or the
+same words as another keyword), else **Good fit**, with where it was
 found and how many posts of the last 90 days say it (`KeywordMatcher`:
 words in order, case and accents ignored, linking words between allowed,
-a hashtag of the words run together counts). Verdicts are warnings only
+a hashtag of the words run together counts). Places are countries, time
+zone cities and `LocalPlaces` (Nepal's towns and city neighbourhoods, each
+with the city it is part of, so Thamel counts as Kathmandu; districts named
+for a product, like Ilam, are left out); an audience place without a city
+covers its whole country. Verdicts are warnings only
 (owner decision 2026-11-23): every keyword goes to the AI. It checks fit
 with the brand, never search demand; there is no score. A prompt gets the
 main keywords, then the supporting ones that share most words with its

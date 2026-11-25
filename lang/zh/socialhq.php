@@ -427,6 +427,8 @@ return [
         'toasts' => [
             'added' => 'Added “:keyword”.',
             'added_many' => 'Added :count keywords.',
+            'added_supporting' => 'Added “:keyword” as supporting: you already have :max main keywords.',
+            'added_many_supporting' => 'Added :count keywords. You already have :max main keywords, so :moved went to supporting.',
             'duplicate' => '“:keyword” is already in your keywords.',
             'removed' => 'Removed “:keyword”.',
             'main_full' => 'You already have :max main keywords. Make one supporting first.',

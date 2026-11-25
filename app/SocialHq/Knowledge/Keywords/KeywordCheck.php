@@ -28,8 +28,9 @@ use Illuminate\Support\Str;
  * 2. Weak: no single place (a profile field, an entry used in AI, an excerpt
  *    of a document used in AI) holds every word of it, linking and claim
  *    words aside. Words are compared as search compares them (Tokens).
- * 3. Check: one word (too broad), a claim word, a place we know that isn't
- *    one of the audience places, or the same words as another keyword.
+ * 3. Check: one word (too broad), a claim word, a place we know (a country,
+ *    a time zone city or a LocalPlaces town) that isn't an audience place or
+ *    part of one, or the same words as another keyword.
  * 4. Good fit.
  *
  * Every verdict is a warning; every keyword still goes to the AI.
@@ -46,7 +47,7 @@ final class KeywordCheck
     private const int POSTS_LIMIT = 1000;
 
     /** Part of the cache key: raise it when the rules change, so cached verdicts are read again. */
-    private const int RULES_VERSION = 2;
+    private const int RULES_VERSION = 3;
 
     /**
      * @param  list<array{kind: 'profile'|'entry'|'document', id: int|string, document_id: int|null, title: string, label: string, terms: array<string, mixed>, text: string|null}>  $places
@@ -459,7 +460,7 @@ final class KeywordCheck
     private function placeOutsideAudience(array $words): ?string
     {
         foreach (self::knownPlaces() as $place) {
-            if (! isset($this->audiencePlaces[$place]) && KeywordMatcher::saysWords($words, $place)) {
+            if (! $this->inAudience($place) && KeywordMatcher::saysWords($words, $place)) {
                 return Str::title($place);
             }
         }
@@ -468,8 +469,23 @@ final class KeywordCheck
     }
 
     /**
-     * Country names and the cities of the time zone database, as words
-     * joined by a space, longest first (so "new york" wins over "york").
+     * An audience place, or part of one (Thamel, when Kathmandu is).
+     */
+    private function inAudience(string $place): bool
+    {
+        for ($current = $place; $current !== null; $current = LocalPlaces::partOf($current)) {
+            if (isset($this->audiencePlaces[$current])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Country names, the cities of the time zone database and the local
+     * places (LocalPlaces), as words joined by a space, longest first (so
+     * "new york" wins over "york").
      *
      * @return list<string>
      */
@@ -482,7 +498,7 @@ final class KeywordCheck
         }
 
         $notPlaces = array_fill_keys(array_map(fn (mixed $word): string => mb_strtolower((string) $word), (array) config('socialhq.knowledge.keywords.not_places', [])), true);
-        $names = array_map(fn (array $country): string => $country['name'], AudienceCountries::all());
+        $names = [...array_map(fn (array $country): string => $country['name'], AudienceCountries::all()), ...LocalPlaces::all()];
 
         foreach (DateTimeZone::listIdentifiers() as $zone) {
             $names[] = self::zoneCity($zone);
@@ -500,7 +516,9 @@ final class KeywordCheck
     }
 
     /**
-     * The audience's countries, cities and time zone cities.
+     * The audience's countries, cities and time zone cities. A whole country
+     * (a place without a city) covers its towns too: its local places and
+     * the cities of its time zones.
      *
      * @return array<string, true>
      */
@@ -509,7 +527,17 @@ final class KeywordCheck
         $places = [];
 
         foreach (Audience::locations($profile) as $location) {
-            foreach ([AudienceCountries::name($location['country']), (string) $location['city'], self::zoneCity($location['timezone'])] as $name) {
+            $names = [AudienceCountries::name($location['country']), (string) $location['city'], self::zoneCity($location['timezone'])];
+
+            if ($location['city'] === null) {
+                $names = [
+                    ...$names,
+                    ...LocalPlaces::inCountry($location['country']),
+                    ...array_map(self::zoneCity(...), DateTimeZone::listIdentifiers(DateTimeZone::PER_COUNTRY, $location['country'])),
+                ];
+            }
+
+            foreach ($names as $name) {
                 $key = implode(' ', KeywordMatcher::words($name));
 
                 if ($key !== '') {

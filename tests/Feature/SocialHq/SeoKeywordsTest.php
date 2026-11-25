@@ -21,6 +21,7 @@ use App\SocialHq\Plan\Ai\CopyWriter;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\ItemVersion;
 use App\SocialHq\Plan\PlanItem;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
 use Laravel\Ai\Prompts\AgentPrompt;
@@ -191,6 +192,30 @@ test('broad, claim, foreign-place and twin keywords are to check', function () {
         ->and($rows['kathmandu coffee']['reason'])->toBe('Almost the same as “coffee kathmandu”.')
         ->and(collect($rows)->pluck('verdict')->unique()->values()->all())->toBe(['check'])
         ->and(KeywordCheck::page($this->workspace)['verdict'])->toBe('mostly');
+});
+
+test('a town the time zones don\'t name is a place too: outside the audience unless its city or its whole country is', function () {
+    $kathmandu = [['country' => 'NP', 'city' => 'Kathmandu', 'timezone' => 'Asia/Kathmandu', 'share' => 100]];
+    brandWithKeywords(
+        $this->workspace,
+        ['coffee delivery lalitpur', 'cafe in thamel', 'momo in patan'],
+        ['about' => 'Coffee delivery across Lalitpur, momo in Patan and our cafe in Thamel.', 'audience_locations' => $kathmandu],
+    );
+
+    $rows = keywordVerdicts($this->workspace);
+
+    expect($rows['coffee delivery lalitpur']['verdict'])->toBe('check')
+        ->and($rows['coffee delivery lalitpur']['reason'])->toBe('Lalitpur isn’t one of your audience places.')
+        // Thamel is part of Kathmandu; Patan is part of Lalitpur, which isn't an audience place.
+        ->and($rows['cafe in thamel']['verdict'])->toBe('good')
+        ->and($rows['momo in patan']['reason'])->toBe('Patan isn’t one of your audience places.');
+
+    // An audience in the whole of Nepal (no city) covers its towns.
+    BrandProfile::query()->where('workspace_id', $this->workspace->id)->sole()
+        ->update(['audience_locations' => [['country' => 'NP', 'city' => null, 'timezone' => 'Asia/Kathmandu', 'share' => 100]]]);
+    Cache::flush();
+
+    expect(collect(keywordVerdicts($this->workspace))->pluck('verdict')->unique()->values()->all())->toBe(['good']);
 });
 
 test('a good fit says where it was found, and counts the recent posts that say it', function () {

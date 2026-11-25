@@ -70,6 +70,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
+use Laravel\Cashier\Cashier;
 use Laravel\Telescope\Telescope;
 
 /**
@@ -84,6 +85,11 @@ class SocialHqServiceProvider extends ServiceProvider
     public function register(): void
     {
         AiRouter::registerGateway();
+
+        // No Stripe webhook on a self-hosted install: it would take unsigned messages (socialhq.billing).
+        if (config('trypost.self_hosted') && ! config('socialhq.billing.stripe_webhook')) {
+            Cashier::ignoreRoutes();
+        }
 
         // Three Horizon supervisors instead of TryPost's seven (socialhq.horizon).
         CompactHorizon::apply($this->app->make('config'));

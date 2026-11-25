@@ -508,6 +508,13 @@ return [
             'hide' => 'Hide for 7 days',
             'hidden' => 'Hidden for 7 days for this brand, in this browser. It comes back after that until keywords are added.',
         ],
+        // Under AI text once the brand has keywords: the ones it says.
+        'used' => [
+            'label' => 'Keywords used:',
+            'main_first_line' => 'main keyword in the first line',
+            'none' => 'No keyword fits this post. That’s fine: the AI skips them rather than force one in.',
+            'link' => 'Keywords',
+        ],
         'errors' => [
             'too_many' => 'A brand can have up to :max SEO keywords.',
             'too_many_main' => 'A brand can have up to :max main keywords.',

@@ -164,13 +164,14 @@ defineExpose({ loadVersion });
 
 const aiHttp = useHttp<
     { instruction: string },
-    { number: number; keywords_missing?: boolean }
+    { number: number; keywords_missing?: boolean; can_add_keywords?: boolean }
 >({
     instruction: '',
 });
 const aiError = ref('');
 /** The brand has no SEO keywords: a light note under the copy the AI just wrote. */
 const keywordsMissingAfter = ref<number | null>(null);
+const canAddKeywords = ref(false);
 
 /** AI writes from the saved copy, so it waits for unsaved edits to be saved or discarded. */
 const showAi = computed(
@@ -208,6 +209,7 @@ const writeCopyWithAi = async (): Promise<void> => {
         aiHttp.instruction = '';
         keywordsMissingAfter.value =
             result.keywords_missing === true ? result.number : null;
+        canAddKeywords.value = result.can_add_keywords === true;
         router.reload({
             only: ['item', 'versions', 'thread', 'postReady', 'postBlockers'],
         });
@@ -572,6 +574,7 @@ const confirmDecision = (note: string): void => {
             v-if="
                 latest && !hasChanges && keywordsMissingAfter === latest.number
             "
+            :can-add="canAddKeywords"
             class="mx-5 mb-4"
         />
 

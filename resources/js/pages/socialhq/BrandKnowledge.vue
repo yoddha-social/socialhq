@@ -242,12 +242,21 @@ const discardIdentity = (): void => {
 
 const isEntryDialogOpen = ref(false);
 const editingEntry = ref<KnowledgeEntryRow | null>(null);
+/** A new entry's title to start from: the SEO keyword it is meant to back up. */
+const entryDraftTitle = ref('');
 const deletingEntry = ref<KnowledgeEntryRow | null>(null);
 const isDeleteOpen = ref(false);
 const isDeleting = ref(false);
 
 const openAddEntry = (): void => {
     editingEntry.value = null;
+    entryDraftTitle.value = '';
+    isEntryDialogOpen.value = true;
+};
+
+const openAddEntryFor = (keyword: string): void => {
+    editingEntry.value = null;
+    entryDraftTitle.value = keyword.charAt(0).toUpperCase() + keyword.slice(1);
     isEntryDialogOpen.value = true;
 };
 
@@ -521,7 +530,7 @@ const openCheck = (): void => {
                                 :keywords="keywords"
                                 :check="keywordCheck"
                                 :can-edit="canEdit"
-                                @add-entry="openAddEntry"
+                                @add-entry="openAddEntryFor"
                             />
                         </TabsContent>
 
@@ -605,6 +614,7 @@ const openCheck = (): void => {
     <KnowledgeEntryDialog
         v-model:open="isEntryDialogOpen"
         :entry="editingEntry"
+        :draft-title="entryDraftTitle"
         :kinds="kinds"
     />
 

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\SocialHq\Knowledge\Keywords;
 
+use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Knowledge\Search\Tokens;
 use Illuminate\Support\Str;
@@ -63,6 +65,21 @@ final class BrandKeywords
     }
 
     /**
+     * What an AI endpoint adds to its answer after writing new text: whether
+     * the brand has no keywords (the page shows a light note) and whether
+     * this person may add them, by the rule that guards the keywords card
+     * (BrandKnowledge::canEdit), so the note links only those it lets in.
+     *
+     * @return array{keywords_missing: bool, can_add_keywords: bool}
+     */
+    public static function missingNote(User $user, Workspace $workspace, bool $newText = true): array
+    {
+        $missing = $newText && self::isEmpty($workspace);
+
+        return ['keywords_missing' => $missing, 'can_add_keywords' => $missing && BrandKnowledge::canEdit($user, $workspace)];
+    }
+
+    /**
      * What one prompt is given: the main keywords, then the supporting ones
      * that share the most words with the focus (in the admin's order on a
      * tie), at most `knowledge.keywords.prompt` in all.
@@ -110,12 +127,14 @@ final class BrandKeywords
     }
 
     /**
-     * A keyword as stored: one line, lowercased, a leading # dropped, runs of
-     * """ broken up (no text may close the prompt's quoted block).
+     * A keyword as stored: one line, lowercased, commas and semicolons made
+     * spaces (they separate keywords in a list or a CSV, so a quoted CSV cell
+     * can't keep one), a leading # dropped, runs of """ broken up (no text may
+     * close the prompt's quoted block).
      */
     public static function clean(string $text): string
     {
-        $text = Str::lower(Str::squish($text));
+        $text = Str::lower(Str::squish(str_replace([',', ';'], ' ', $text)));
         $text = ltrim($text, '#');
         $text = (string) preg_replace_callback('/"{3,}/', fn (array $quotes): string => implode(' ', mb_str_split($quotes[0])), $text);
 

@@ -43,7 +43,7 @@ class ItemCopyAiController extends Controller
         // keywords_missing: the brand has no SEO keywords, so the page shows a light note under the copy.
         return response()->json([
             'number' => $version->number,
-            'keywords_missing' => BrandKeywords::isEmpty($planItem->workspace),
+            ...BrandKeywords::missingNote($request->user(), $planItem->workspace),
         ], Response::HTTP_CREATED);
     }
 }

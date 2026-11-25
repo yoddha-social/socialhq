@@ -3,8 +3,10 @@
 
 # Social HQ
 
-Social HQ is built on a fork of TryPost. We own all of it now: AGENTS.md (above) came
-with TryPost and is ours to edit. These rules win where the two differ.
+Social HQ is a **hard fork** of TryPost (owner decision 2026-11-25): TryPost's files,
+AGENTS.md (above) included, are ours to change. We never merge TryPost's feature
+releases; we only watch TryPost for security fixes and port them by hand (the
+`socialhq-security-intake` skill). These rules win where AGENTS.md differs.
 
 ## What is true
 
@@ -22,17 +24,20 @@ say so instead of following the doc.
   `database/migrations/socialhq/` with `shq_` tables, `routes/socialhq.php`,
   `config/socialhq.php`, `resources/js/{pages,components}/socialhq/`,
   `tests/*/SocialHq/`), wired from `SocialHqServiceProvider`.
-- Change a file from the TryPost base when that is the right place, and add a line to
-  PATCHES.md. The list tells the monthly security intake (`socialhq-security-intake`)
-  where TryPost's fixes may conflict with ours.
+- Change a file from the TryPost base whenever that is the right place: there is no
+  upstream merge to protect. **Transition rule:** until the five open branches have
+  landed (p2-feedback, p2-time-zones, p2-events, p2-members, rbac-roles), keep adding a
+  PATCHES.md row for each TryPost file you change. After that, PATCHES.md becomes a
+  short map of where we diverged, by area, and rows stop.
 - Interface copy: `lang/en/socialhq.php` only (the hook copies it to the other
   locales).
 
 ## Working here
 
-- The laptop has no PHP. PHP tools run on the dev box or in the `app` container of
-  compose.yaml (see the socialhq-dev-env skill). If neither is available, say the
-  PHP checks did not run; never report them as passing.
+- The laptop has no PHP. PHP tools run in Docker with TryPost's PHP image (see the
+  socialhq-dev-env skill). If they couldn't run, say the PHP checks did not run;
+  never report them as passing. Never develop, build or run tests on the production
+  server.
 - Our skills are the `socialhq-*` ones (canonical copies in `.ai/skills/`). The other
   skills in `.claude/skills/` are Boost's: a manual `boost:update` copies them again.
 - Commits: no Co-Authored-By or AI attribution lines.

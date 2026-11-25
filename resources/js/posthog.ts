@@ -1,5 +1,5 @@
 import type { Page } from '@inertiajs/core';
-import posthog from 'posthog-js';
+import type { PostHog } from 'posthog-js';
 
 import type { Auth, Usage } from '@/types';
 
@@ -9,11 +9,7 @@ const host = import.meta.env.VITE_POSTHOG_HOST as string | undefined;
 // gotcha where 'false' would be truthy. Mirrors backend `POSTHOG_ENABLED`.
 const enabled = import.meta.env.VITE_POSTHOG_ENABLED === 'true' && !!apiKey;
 
-export const initializePostHog = (): void => {
-    if (!enabled) {
-        return;
-    }
-
+const initialize = (posthog: PostHog): void => {
     posthog.init(apiKey as string, {
         api_host: host || 'https://us.i.posthog.com',
         ui_host: 'https://us.posthog.com',
@@ -27,6 +23,25 @@ export const initializePostHog = (): void => {
         },
     });
 };
+
+// Social HQ: the library is fetched only when a key is configured (PATCHES.md row 352).
+let client: Promise<PostHog> | null = null;
+
+const withPostHog = (use: (posthog: PostHog) => void): void => {
+    if (!enabled) {
+        return;
+    }
+
+    client ??= import('posthog-js').then(({ default: posthog }) => {
+        initialize(posthog);
+
+        return posthog;
+    });
+
+    void client.then(use);
+};
+
+export const initializePostHog = (): void => withPostHog(() => undefined);
 
 /**
  * Identify the current person and refresh the dual group context (account +
@@ -54,27 +69,29 @@ export const syncPostHogContext = (page: Page): void => {
         return;
     }
 
-    posthog.identify(auth.user.id, {
-        $email: auth.user.email,
-        $name: auth.user.name,
+    withPostHog((posthog) => {
+        posthog.identify(auth.user.id, {
+            $email: auth.user.email,
+            $name: auth.user.name,
+        });
+
+        if (auth.account) {
+            posthog.group('account', auth.account.id, {
+                name: auth.account.name,
+                workspaces_count: usage?.workspaceCount,
+                social_accounts_count: usage?.socialAccountCount,
+                members_count: usage?.memberCount,
+                posts_count: usage?.postCount,
+            });
+        }
+
+        if (auth.currentWorkspace) {
+            posthog.group('workspace', auth.currentWorkspace.id, {
+                name: auth.currentWorkspace.name,
+                account_id: auth.account?.id,
+            });
+        }
     });
-
-    if (auth.account) {
-        posthog.group('account', auth.account.id, {
-            name: auth.account.name,
-            workspaces_count: usage?.workspaceCount,
-            social_accounts_count: usage?.socialAccountCount,
-            members_count: usage?.memberCount,
-            posts_count: usage?.postCount,
-        });
-    }
-
-    if (auth.currentWorkspace) {
-        posthog.group('workspace', auth.currentWorkspace.id, {
-            name: auth.currentWorkspace.name,
-            account_id: auth.account?.id,
-        });
-    }
 };
 
 /**
@@ -83,10 +100,14 @@ export const syncPostHogContext = (page: Page): void => {
  * every navigation (and once at boot for the first page).
  */
 export const capturePageview = (): void => {
-    if (!enabled) {
-        return;
-    }
-    posthog.capture('$pageview', { $current_url: window.location.href });
+    const url = window.location.href;
+
+    withPostHog((posthog) =>
+        posthog.capture('$pageview', { $current_url: url }),
+    );
 };
 
-export default posthog;
+/** Forget the person on logout (nothing to do when PostHog isn't loaded). */
+export const resetPostHog = (): void => {
+    void client?.then((posthog) => posthog.reset());
+};

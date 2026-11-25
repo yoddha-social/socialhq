@@ -29,6 +29,26 @@ composer test:lint && npx --no-install eslint .                           # Pint
                                                                           # (it also runs vue-tsc, above, and Prettier on changed files)
 ```
 
+### The whole suite on a fresh checkout
+
+A new checkout or worktree has no Passport keys, and Pest's test impact analysis
+(`->tia()->locally()` in `tests/Pest.php`) asks git which branch it is on. Both make a
+full run fail in confusing ways, so:
+
+```bash
+php artisan passport:keys                  # once per checkout or worktree (CI makes them in .github/actions/setup-laravel)
+./vendor/bin/pest --compact --no-tia       # the whole suite, without test impact analysis
+```
+
+- Without the keys, about 1,700 API and MCP tests fail on the missing key files.
+- Without `--no-tia`, a full run stops when git can't answer for the folder (a worktree
+  mounted alone into a container, or git's "dubious ownership" refusal).
+- A targeted run (a path or `--filter`) is unaffected: Pest skips test impact analysis for it.
+- Not with `--parallel`: Pest drops `--no-tia` before it starts the workers. With no
+  recorded graph yet, each worker still asks git and fails the same way (read in Pest's
+  `Plugins/Tia.php` and `Plugins/Parallel.php`, not reproduced). Run the whole suite
+  serially, or make git work where the tests run.
+
 Browser tests (Pest + Playwright) need built assets: `npm run build`, then
 `./vendor/bin/pest tests/Browser/SocialHq --parallel --processes=3`. Never
 `php artisan test --parallel` for these (it doesn't start Playwright). Read AGENTS.md

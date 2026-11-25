@@ -1,8 +1,8 @@
 # Social HQ
 
-Social HQ is the internal social media platform of our team: a fork of
-[TryPost](https://github.com/trypostit/trypost) (AGPL-3.0) with our own
-features in a separate module. TryPost gives us workspaces, members,
+Social HQ is the internal social media platform of our team: a hard fork of
+[TryPost](https://github.com/trypostit/trypost) v2.0.1 (AGPL-3.0, owner decision
+2026-11-25), with our own features in a separate module. TryPost gives us workspaces, members,
 approvals, the calendar, the post composer, media and publishing; Social HQ
 adds the planning and AI layer:
 
@@ -31,9 +31,11 @@ adds the planning and AI layer:
 | CI | `.github/workflows/socialhq-ci.yml` (PRs and pushes to `main`), PostgreSQL only: quality (Pint, ESLint, `vue-tsc`, Prettier on changed files), backend in 2 shards, browser in 4 shards, and production rules: TryPost's post, API, MCP, parity and repurpose suites with the approval and company rules on (`phpunit.xml` turns them off), skipping the tests listed with the reason in `tests/fixtures/socialhq/production-rules-exclusions.txt`. The job `ci` passes only when all of them pass; it is the check `main`'s ruleset is to require (until the owner switches it, the ruleset requires `quality`, `backend` and `e2e`, which the workflow still reports) |
 | Claude Code setup | `CLAUDE.md`, `.claude/settings.json`, `.claude/hooks/`, `.claude/rules/`; skills in `.ai/skills/socialhq-*` (linked into `.claude/skills/` and `.agents/skills/`), checked by `bin/socialhq-lint-skills` |
 
-Changes to files that came with TryPost are listed in [PATCHES.md](PATCHES.md),
-which also logs the monthly security intake (we take TryPost's security fixes,
-not its feature releases). Follow the conventions in [AGENTS.md](AGENTS.md)
+TryPost's files are ours to change; we never merge its feature releases, only
+port its security fixes by hand. [PATCHES.md](PATCHES.md) lists our changes to
+files that came with TryPost (rows are added until the five open branches land,
+then it becomes an area-level map of where we diverged) and records each
+security watch, with the TryPost commit it was reviewed up to. Follow the conventions in [AGENTS.md](AGENTS.md)
 (Laravel Boost, Pest, Pint, Inertia v3, Wayfinder).
 
 ## AI routing

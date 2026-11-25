@@ -306,7 +306,7 @@ const updateEmbed = (index: number, patch: Partial<EmbedDraft>) =>
                     :disabled="disabled"
                     :placeholder="$t('posts.form.discord.embed_description')"
                     rows="2"
-                    class="w-full rounded-md border border-input bg-card px-2 py-1 text-sm transition-[color,box-shadow] outline-none placeholder:text-subtle-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    class="w-full rounded-md border border-input bg-card px-2 py-1 text-sm transition-[color,box-shadow] outline-none placeholder:text-subtle-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring focus-visible:outline-solid disabled:cursor-not-allowed disabled:opacity-50"
                     @input="
                         updateEmbed(index, {
                             description: ($event.target as HTMLTextAreaElement)

@@ -413,7 +413,10 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   Its suggestions are checked in code (date in the month and not past, channel,
   format, confirmed event around its dates, paused channels, duplicates) before
   they show, dashed, to accept or drop. "Approve plan" waits until no
-  suggestion is open; any change sends an approved plan back to review.
+  suggestion on a coming day is open (one on a day already gone can't be
+  accepted, alone or by "Accept all"; move it or drop it); any change sends
+  an approved plan back to review. The dialog plans a week by default: the
+  free models keep far more of a week's suggestions than of a month's.
   The dialog's options (`PlannerOptions`, saved on the plan as
   `generation_options`; the switches remembered per brand in the profile's
   `planner_options`): the days to plan, any range inside the plan's month (a
@@ -437,7 +440,9 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   cards below `md`.
 - **Item** (`/socialhq/plan/items/{id}`). Copy (caption, hashtags, script for
   video, notes) saved as numbered versions, never edited in place; AI writes or
-  rewrites a version (`CopyWriter`). Review thread: send for review, request
+  rewrites a version (`CopyWriter`); hashtags the model also pasted at the
+  caption's end are kept in the hashtag list only, and a tag written with
+  spaces ("#ghar ko swad") becomes one ("#GharKoSwad") (`WriteItemCopy`). Review thread: send for review, request
   changes (a note is required), approve; approved copy is locked until someone
   starts a new version. The brief (graphic or video) is prefilled from the
   format; `BriefWriter` drafts empty fields. Creative files are uploaded in
@@ -452,12 +457,16 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   the item's post status (a failed post first, else the one furthest along);
   a post card in Publish says "From plan: <title>" and links back. A deleted
   post drops off the item. `post_created_at` is when the first post was
-  saved. The plan keeps the posts in step (`ItemPosts`, through TryPost's
+  saved; whether an item has a post is read from its linked posts
+  (`PlanItem::hasPosts()`), never from that stamp. The plan keeps the posts in step (`ItemPosts`, through TryPost's
   own actions, so rights and approvals still apply): dropping or deleting
   an item whose post will still go out (scheduled, or waiting for
-  approval) asks first, "Move it to drafts" (Publish's "Move to drafts")
-  or "Keep it scheduled" (user decision 2026-11-23); the server refuses
-  the change without a choice (`posts`). An item moved to another day
+  approval), or giving it another channel or format, asks first, "Move it
+  to drafts" (Publish's "Move to drafts") or "Keep it scheduled" (user
+  decision 2026-11-23); the server refuses the change without a choice
+  (`posts`). A post kept on the old channel or format is marked on the item
+  page ("Not on the item's channel"). Every item write runs in one
+  transaction under the item's row lock, posts to drafts included. An item moved to another day
   offers "Move post too" (a toast after the sheet saves, and a button on
   the item page by a post marked "Not on the item's day"): dated drafts
   and scheduled posts go to the item's day at the same time of day

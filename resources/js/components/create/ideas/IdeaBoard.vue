@@ -261,7 +261,7 @@ const submitStage = (): void => {
                     ref="newStageInput"
                     v-model="newStageName"
                     type="text"
-                    class="h-7 min-w-0 flex-1 rounded-md border border-input bg-card px-2 text-sm font-emphasis text-foreground outline-none placeholder:text-subtle-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                    class="h-7 min-w-0 flex-1 rounded-md border border-input bg-card px-2 text-sm font-emphasis text-foreground outline-none placeholder:text-subtle-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring focus-visible:outline-solid"
                     :placeholder="$t('create.ideas.new_stage_placeholder')"
                     :aria-label="$t('create.ideas.new_stage')"
                     data-testid="idea-stage-new-input"

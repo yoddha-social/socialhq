@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\ItemReview;
+use App\SocialHq\Plan\ItemStatus;
 use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Plan\ReviewKind;
 use App\SocialHq\Production\Brief;
@@ -62,6 +64,33 @@ test('the board lists the workspace\'s briefs with their cards, and filters them
     $elsewhere = $this->plan->month->addMonths(3)->format('Y-m');
     $this->actingAs($this->designer)->get(route('socialhq.plan.production', ['month' => $elsewhere]))
         ->assertInertia(fn (Assert $page) => $page->has('cards', 0)->where('hasBriefs', true));
+});
+
+test('a dropped item\'s brief leaves the board until the item is restored', function () {
+    $brief = boardBrief($this->plan, ['stage' => BriefStage::InProgress]);
+    boardBrief($this->plan);
+
+    $brief->item->update(['status' => ItemStatus::Dropped]);
+
+    $this->actingAs($this->designer)->get(route('socialhq.plan.production'))
+        ->assertInertia(fn (Assert $page) => $page->has('cards', 1)->where('cards.0.id', fn (int $id): bool => $id !== $brief->id));
+
+    $brief->item->update(['status' => ItemStatus::Planned]);
+
+    $this->actingAs($this->designer)->get(route('socialhq.plan.production'))
+        ->assertInertia(fn (Assert $page) => $page->has('cards', 2));
+});
+
+test('the board and the item page name a channel the way the team does, with its network', function () {
+    $channel = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id, 'display_name' => 'Acme']);
+    $channel->forceFill(['shq_name' => 'Acme Kathmandu'])->save();
+    $brief = boardBrief($this->plan, [], ['social_account_id' => $channel->id, 'platform' => 'facebook']);
+
+    $this->actingAs($this->designer)->get(route('socialhq.plan.production'))
+        ->assertInertia(fn (Assert $page) => $page->where('cards.0.channel', 'Acme Kathmandu')->where('cards.0.platform', 'facebook'));
+
+    $this->actingAs($this->designer)->get(route('socialhq.plan.items.show', $brief->item_id))
+        ->assertInertia(fn (Assert $page) => $page->where('item.channel.name', 'Acme Kathmandu')->where('item.channel.platform', 'facebook'));
 });
 
 test('a card moves between columns and keeps the order it was dropped in', function () {

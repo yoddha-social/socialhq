@@ -253,7 +253,7 @@ final class KeywordCheck
      * @param  list<string>  $meaningful
      * @param  list<array<string, mixed>>  $holders
      * @param  list<array{text: string, main: bool}>  $all
-     * @return array{0: KeywordVerdict, 1: string, 2: string|null, 3: string|null}  The verdict, the reason and the two fixes
+     * @return array{0: KeywordVerdict, 1: string, 2: string|null, 3: string|null} The verdict, the reason and the two fixes
      */
     private function verdict(string $text, array $words, array $tokens, array $meaningful, array $holders, array $all): array
     {

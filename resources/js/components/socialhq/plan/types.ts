@@ -14,6 +14,8 @@ export interface PlanRejection {
     title: string;
     date: string;
     channel: string;
+    /** Missing on drafts made before rejections named the network. */
+    platform?: string | null;
     reason: string;
 }
 
@@ -39,6 +41,7 @@ export interface UpcomingPost {
     status: PostStatus;
     scheduled_at: string | null;
     channel: string | null;
+    platform: string | null;
 }
 
 export interface PlanItem {

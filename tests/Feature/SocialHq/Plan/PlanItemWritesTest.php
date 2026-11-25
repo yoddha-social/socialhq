@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -11,6 +12,7 @@ use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\CopyStatus;
 use App\SocialHq\Plan\CreativeKind;
+use App\SocialHq\Plan\ItemPosts;
 use App\SocialHq\Plan\ItemReview;
 use App\SocialHq\Plan\ItemSource;
 use App\SocialHq\Plan\ItemStatus;
@@ -314,5 +316,70 @@ test('only approvers delete an item with approved work; others are told to drop 
 })->with([
     'approved copy' => [fn (PlanItem $item) => $item->update(['copy_status' => CopyStatus::Approved])],
     'an approved creative' => [fn (PlanItem $item) => Brief::factory()->for($item, 'item')->create(['stage' => 'approved'])],
-    'a created post' => [fn (PlanItem $item) => $item->update(['post_created_at' => now()])],
+    'a post made from it' => [fn (PlanItem $item) => ItemPosts::link($item, collect([Post::factory()->create(['workspace_id' => $item->workspace_id])]), $this->owner)],
 ]);
+
+test('a post made from the item and deleted since no longer makes it approved work', function () {
+    $item = ($this->planWithItem)();
+    $post = Post::factory()->create(['workspace_id' => $item->workspace_id]);
+    ItemPosts::link($item, collect([$post]), $this->owner);
+    $post->delete();
+
+    expect($item->fresh()->post_created_at)->not->toBeNull();
+
+    $this->actingAs($this->member)->delete(route('socialhq.plan.items.destroy', $item->id))->assertSessionHasNoErrors();
+    expect($item->fresh())->toBeNull();
+});
+
+test('suggestions on days already gone don\'t hold back approval, stay out of Accept all and can\'t be accepted alone', function () {
+    $planned = ($this->planWithItem)();
+    $plan = $planned->plan;
+    $gone = PlanItem::factory()->for($plan, 'plan')->suggested()->create(['scheduled_on' => $this->month->addDays(4)->toDateString()]);
+    $coming = PlanItem::factory()->for($plan, 'plan')->suggested()->create(['scheduled_on' => $this->month->addDays(24)->toDateString()]);
+    $monthKey = $this->month->format('Y-m');
+    $this->travelTo($this->month->addDays(14)->setTime(12, 0));
+
+    // The coming suggestion is still open.
+    $this->actingAs($this->owner)->post(route('socialhq.plan.approve', $monthKey))->assertSessionHasErrors('plan');
+
+    $this->actingAs($this->member)->post(route('socialhq.plan.suggestions.accept', $monthKey))->assertSessionHasNoErrors();
+    expect($coming->fresh()->status)->toBe(ItemStatus::Planned)
+        ->and($gone->fresh()->status)->toBe(ItemStatus::Suggested);
+
+    $this->actingAs($this->member)->post(route('socialhq.plan.items.accept', $gone->id))
+        ->assertSessionHasErrors(['item' => __('socialhq_plan.errors.suggestion_past')]);
+    expect($gone->fresh()->status)->toBe(ItemStatus::Suggested);
+
+    $this->actingAs($this->owner)->post(route('socialhq.plan.approve', $monthKey))->assertSessionHasNoErrors();
+    expect($plan->fresh()->status)->toBe(PlanStatus::Approved);
+});
+
+test('deleting a date clears it from the items planned around it', function () {
+    $event = CalendarEvent::factory()->verified()->create(['account_id' => $this->workspace->account_id, 'starts_on' => $this->month->addDays(5), 'ends_on' => $this->month->addDays(5)]);
+    $item = ($this->planWithItem)([], ['event_id' => $event->id]);
+
+    $this->actingAs($this->owner)->delete(route('socialhq.plan.events.destroy', $event->id))->assertRedirect();
+
+    expect($item->fresh()->event_id)->toBeNull()
+        ->and($item->fresh()->scheduled_on->toDateString())->toBe($item->scheduled_on->toDateString());
+});
+
+test('the clean-up clears post stamps without a linked post and links to deleted dates, once', function () {
+    $stale = ($this->planWithItem)([], ['post_created_at' => now()]);
+    $linked = PlanItem::factory()->for($stale->plan, 'plan')->create(['post_created_at' => now()]);
+    ItemPosts::link($linked, collect([Post::factory()->create(['workspace_id' => $this->workspace->id])]), $this->owner);
+    $event = CalendarEvent::factory()->create(['account_id' => $this->workspace->account_id]);
+    $gone = CalendarEvent::factory()->create(['account_id' => $this->workspace->account_id]);
+    $kept = PlanItem::factory()->for($stale->plan, 'plan')->create(['event_id' => $event->id]);
+    $orphan = PlanItem::factory()->for($stale->plan, 'plan')->create(['event_id' => $gone->id]);
+    $gone->delete();
+
+    $migration = require database_path('migrations/socialhq/2026_11_25_000101_clear_stale_plan_item_links.php');
+    $migration->up();
+    $migration->up();
+
+    expect($stale->fresh()->post_created_at)->toBeNull()
+        ->and($linked->fresh()->post_created_at)->not->toBeNull()
+        ->and($kept->fresh()->event_id)->toBe($event->id)
+        ->and($orphan->fresh()->event_id)->toBeNull();
+});

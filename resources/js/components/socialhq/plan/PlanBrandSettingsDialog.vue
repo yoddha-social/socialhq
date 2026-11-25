@@ -4,6 +4,7 @@ import { IconPlus, IconX } from '@tabler/icons-vue';
 import { computed, nextTick, watch } from 'vue';
 
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
+import { channelLabel } from '@/components/socialhq/channelLabel';
 import { pillarColorAt } from '@/components/socialhq/plan/pillarColors';
 import type { PlanChannel } from '@/components/socialhq/plan/types';
 import { Button } from '@/components/ui/button';
@@ -228,7 +229,9 @@ const save = (): void => {
                             <label
                                 :for="`plan-cadence-${channel.id}`"
                                 class="min-w-0 flex-1 truncate text-sm"
-                                >{{ channel.name }}</label
+                                >{{
+                                    channelLabel(channel.name, channel.platform)
+                                }}</label
                             >
                             <NativeSelect
                                 :id="`plan-cadence-${channel.id}`"

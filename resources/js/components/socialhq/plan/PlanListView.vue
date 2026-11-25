@@ -13,6 +13,7 @@ import {
 import { computed, ref, watch } from 'vue';
 
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
+import { channelLabel } from '@/components/socialhq/channelLabel';
 import { localizedDay } from '@/components/socialhq/localizedDay';
 import {
     COPY_STATUS_DOT,
@@ -139,6 +140,15 @@ const channelName = (item: PlanItem): string =>
         : null) ??
     item.platform ??
     '';
+
+/** The name with its network, for the hover text: the icon says it, the name alone may not. */
+const channelTitle = (item: PlanItem): string =>
+    channelLabel(
+        item.social_account_id
+            ? props.lookups.channels[item.social_account_id]?.name
+            : null,
+        item.platform,
+    );
 
 const ownerOf = (item: PlanItem) =>
     item.owner_id ? (props.lookups.owners[item.owner_id] ?? null) : null;
@@ -377,7 +387,10 @@ const actionClass =
                                 colored
                                 class="size-4 shrink-0"
                             />
-                            <span class="min-w-0 truncate">
+                            <span
+                                class="min-w-0 truncate"
+                                :title="channelTitle(item)"
+                            >
                                 {{ channelName(item) }}
                                 <span
                                     v-if="item.content_type_label"
@@ -657,9 +670,11 @@ const actionClass =
                                     colored
                                     class="size-3.5 shrink-0"
                                 />
-                                <span class="truncate">{{
-                                    channelName(item)
-                                }}</span>
+                                <span
+                                    class="truncate"
+                                    :title="channelTitle(item)"
+                                    >{{ channelName(item) }}</span
+                                >
                             </span>
                             <span
                                 v-if="item.pillar"

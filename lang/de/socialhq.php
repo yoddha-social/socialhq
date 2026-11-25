@@ -819,6 +819,10 @@ return [
         'idempotency_key_busy' => 'A call with this idempotency_key is still running. Try again in a moment.',
     ],
     'skip_to_content' => 'Skip to content',
+    'refusals' => [
+        'rate_limited' => 'Too many tries in a short time. Wait a minute, then try again.',
+        'request_failed' => 'Couldn\'t reach Social HQ. Check your connection and try again.',
+    ],
     'errors' => [
         'back' => 'Back to Social HQ',
         'code' => 'Error :status',

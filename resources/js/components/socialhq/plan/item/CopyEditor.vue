@@ -118,12 +118,12 @@ const overBy = computed(() =>
         : Math.max(0, captionLength.value - props.item.max_length),
 );
 
+/** Copy sent back with changes goes for review again only as a new version (saving one makes it a draft). */
 const canSubmit = computed(
     () =>
         props.latest !== null &&
         !hasChanges.value &&
-        (props.item.copy_status === 'draft' ||
-            props.item.copy_status === 'changes_requested'),
+        props.item.copy_status === 'draft',
 );
 
 const copyError = computed(

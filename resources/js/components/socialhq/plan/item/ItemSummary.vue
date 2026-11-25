@@ -8,6 +8,7 @@ import {
 import { computed } from 'vue';
 
 import PlatformLogo from '@/components/PlatformLogo.vue';
+import { channelLabel } from '@/components/socialhq/channelLabel';
 import { localizedDay } from '@/components/socialhq/localizedDay';
 import { reviewBadgeVariant } from '@/components/socialhq/plan/copyStatus';
 import type { PlanItemDetail } from '@/components/socialhq/plan/item/types';
@@ -77,9 +78,10 @@ const dayLabel = computed(() =>
                     size="xs"
                 />
                 {{
-                    item.channel?.name ??
-                    item.platform_label ??
-                    $t('socialhq_production.item.no_channel')
+                    channelLabel(
+                        item.channel?.name,
+                        item.channel?.platform ?? item.platform,
+                    ) || $t('socialhq_production.item.no_channel')
                 }}
                 <template v-if="item.content_type_label">
                     · {{ item.content_type_label }}

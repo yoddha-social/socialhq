@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\PostPlatform\ContentType;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -180,4 +181,80 @@ test('a post about to go out keeps its time and is named', function () {
         ->assertSessionHasErrors(['posts' => trans_choice('socialhq_plan.posts_follow.kept', 1, ['count' => 1])]);
 
     expect($post->fresh()->scheduled_at->toIso8601String())->toBe($due);
+});
+
+/**
+ * The item edit form's fields, with the given changes.
+ *
+ * @param  array<string, mixed>  $changes
+ * @return array<string, mixed>
+ */
+function itemEdit(PlanItem $item, array $changes = []): array
+{
+    return [
+        'scheduled_on' => $item->scheduled_on->toDateString(),
+        'social_account_id' => $item->social_account_id,
+        'content_type' => $item->content_type?->value,
+        'creative' => $item->creative->value,
+        'title' => $item->title,
+        ...$changes,
+    ];
+}
+
+test('giving an item another channel while its post is scheduled asks what happens to the post first', function () {
+    $this->item->update(['platform' => 'linkedin', 'content_type' => ContentType::LinkedInPost]);
+    $post = itemPostAt($this->item, $this->account, $this->owner, 'scheduled', $this->item->scheduled_on->toDateString());
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    $edit = itemEdit($this->item, ['social_account_id' => $facebook->id, 'content_type' => ContentType::FacebookPost->value]);
+
+    $this->actingAs($this->owner)->put(route('socialhq.plan.items.update', $this->item->id), $edit)
+        ->assertSessionHasErrors('posts');
+
+    expect($this->item->fresh()->social_account_id)->toBe($this->account->id)
+        ->and($post->fresh()->status)->toBe(PostStatus::Scheduled);
+
+    $this->actingAs($this->owner)->put(route('socialhq.plan.items.update', $this->item->id), [...$edit, 'posts' => ItemPosts::TO_DRAFTS])
+        ->assertSessionHasNoErrors();
+
+    expect($this->item->fresh())
+        ->social_account_id->toBe($facebook->id)
+        ->platform->toBe('facebook')
+        ->copy_status->toBe(CopyStatus::Draft)
+        ->and($post->fresh()->status)->toBe(PostStatus::Draft);
+});
+
+test('an item can keep its post scheduled on the old channel, and its page says the post is on another channel', function () {
+    $this->item->update(['platform' => 'linkedin', 'content_type' => ContentType::LinkedInPost]);
+    $post = itemPostAt($this->item, $this->account, $this->owner, 'scheduled', $this->item->scheduled_on->toDateString());
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($this->owner)->put(route('socialhq.plan.items.update', $this->item->id), itemEdit($this->item, [
+        'social_account_id' => $facebook->id,
+        'content_type' => ContentType::FacebookPost->value,
+        'posts' => ItemPosts::KEEP,
+    ]))->assertSessionHasNoErrors();
+
+    expect($post->fresh()->status)->toBe(PostStatus::Scheduled);
+
+    $this->actingAs($this->owner)->get(route('socialhq.plan.items.show', $this->item->id))
+        ->assertInertia(fn ($page) => $page->where('itemPosts.0.id', $post->id)
+            ->where('itemPosts.0.other_channel', true)
+            ->where('itemPosts.0.other_format', true));
+});
+
+test('a new format asks too, and edits that keep the channel and format never ask', function () {
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    $this->item->update(['social_account_id' => $facebook->id, 'platform' => 'facebook', 'content_type' => ContentType::FacebookPost]);
+    $post = itemPostAt($this->item, $facebook, $this->owner, 'scheduled', $this->item->scheduled_on->toDateString());
+
+    $this->actingAs($this->owner)->put(route('socialhq.plan.items.update', $this->item->id), itemEdit($this->item, ['title' => 'A new title']))
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($this->owner)->put(route('socialhq.plan.items.update', $this->item->id), itemEdit($this->item->fresh(), ['content_type' => ContentType::FacebookReel->value, 'creative' => CreativeKind::Video->value]))
+        ->assertSessionHasErrors('posts');
+
+    expect($this->item->fresh())
+        ->title->toBe('A new title')
+        ->content_type->toBe(ContentType::FacebookPost)
+        ->and($post->fresh()->status)->toBe(PostStatus::Scheduled);
 });

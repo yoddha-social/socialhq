@@ -3,6 +3,7 @@ import { IconCheck, IconSparkles, IconX } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
+import { channelLabel } from '@/components/socialhq/channelLabel';
 import {
     COPY_STATUS_DOT,
     copyStatusLabelKey,
@@ -73,7 +74,7 @@ const dropItem = (): void => emit('drop', props.item);
             class="flex min-w-0 flex-col gap-1 rounded-lg px-2 py-1.5 text-start focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
             :aria-label="
                 [
-                    channel?.name ?? item.platform,
+                    channelLabel(channel?.name, item.platform),
                     item.content_type_label,
                     item.title,
                     $t(`socialhq_plan.item_status.${item.status}`),

@@ -47,6 +47,8 @@ class PostAiAssistantController extends Controller
                 account: $request->filled('social_account_id')
                     ? $workspace->socialAccounts()->find($request->input('social_account_id'))
                     : null,
+                // Social HQ: the keywords a person left under "Keywords for this post"; null: the app picks.
+                seoKeywords: is_array($request->validated('seo_keywords')) ? $request->validated('seo_keywords') : null,
             );
         } catch (AiException|RequestException|ConnectionException $exception) {
             // Social HQ: AI not set up for the company is a 409 with how to set it up; other failures are reported.

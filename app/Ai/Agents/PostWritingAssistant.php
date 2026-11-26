@@ -27,6 +27,8 @@ class PostWritingAssistant implements Agent, HasProviderOptions
         public ?Platform $platform = null,
         public ?string $previousContent = null,
         public ?int $hardMaxChars = null,
+        // Social HQ: the SEO keywords a person left under "Keywords for this post"; null: the app picks.
+        public ?array $seoKeywords = null,
     ) {}
 
     /**
@@ -49,6 +51,8 @@ class PostWritingAssistant implements Agent, HasProviderOptions
             'platform_label' => $this->platform?->label(),
             'hard_max_chars' => $this->hardMaxChars ?? $this->platform?->maxContentLength(),
             'target_chars' => $this->platform?->recommendedAiContentLength(),
+            // Social HQ: read by the brand_knowledge view composer (Knowledge\Keywords\TryPostPromptKeywords).
+            'seo_keywords_chosen' => $this->seoKeywords,
         ])->render();
     }
 

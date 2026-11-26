@@ -12,6 +12,7 @@ use App\SocialHq\Http\Controllers\Plan\BrandSettingsController;
 use App\SocialHq\Http\Controllers\Plan\ItemCommentController;
 use App\SocialHq\Http\Controllers\Plan\ItemCopyAiController;
 use App\SocialHq\Http\Controllers\Plan\ItemCopyReviewController;
+use App\SocialHq\Http\Controllers\Plan\ItemKeywordsController;
 use App\SocialHq\Http\Controllers\Plan\ItemPostController;
 use App\SocialHq\Http\Controllers\Plan\ItemVersionController;
 use App\SocialHq\Http\Controllers\Plan\PlanController;
@@ -27,6 +28,7 @@ Route::get('items/{item}', [PlanItemController::class, 'show'])->whereNumber('it
 
 // The item page: copy versions, copy review and the review thread.
 Route::post('items/{item}/versions', [ItemVersionController::class, 'store'])->whereNumber('item')->name('items.versions.store');
+Route::put('items/{item}/keywords', [ItemKeywordsController::class, 'update'])->whereNumber('item')->name('items.keywords.update');
 Route::post('items/{item}/copy/ai', ItemCopyAiController::class)->whereNumber('item')->middleware('throttle:socialhq-plan-ai')->name('items.copy.ai');
 Route::post('items/{item}/copy/submit', [ItemCopyReviewController::class, 'submit'])->whereNumber('item')->name('items.copy.submit');
 Route::post('items/{item}/copy/approve', [ItemCopyReviewController::class, 'approve'])->whereNumber('item')->name('items.copy.approve');

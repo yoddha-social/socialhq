@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 import ComposerDiscardDialog from '@/components/posts/composer/ComposerDiscardDialog.vue';
+import type { KeywordPanel } from '@/components/socialhq/keywords/keywords';
 import BriefPanel from '@/components/socialhq/plan/item/BriefPanel.vue';
 import CopyEditor from '@/components/socialhq/plan/item/CopyEditor.vue';
 import CreatePostCard from '@/components/socialhq/plan/item/CreatePostCard.vue';
@@ -41,6 +42,8 @@ const props = defineProps<{
     itemPosts: ItemPost[];
     abilities: PlanAbilities;
     aiAvailable: boolean;
+    /** "Keywords for this post"; null when the brand has no SEO keywords. */
+    keywords: KeywordPanel | null;
 }>();
 
 const latest = computed(
@@ -81,6 +84,7 @@ const useVersion = (version: CopyVersion): void => {
                         :latest="latest"
                         :abilities="abilities"
                         :ai-available="aiAvailable"
+                        :keywords="keywords"
                     />
                     <VersionHistory
                         :versions="versions"

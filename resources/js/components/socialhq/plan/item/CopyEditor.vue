@@ -13,8 +13,12 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
-import type { KeywordAnswer } from '@/components/socialhq/keywords/keywords';
+import type {
+    KeywordAnswer,
+    KeywordPanel,
+} from '@/components/socialhq/keywords/keywords';
 import KeywordsAfterAnswer from '@/components/socialhq/keywords/KeywordsAfterAnswer.vue';
+import KeywordsForPost from '@/components/socialhq/keywords/KeywordsForPost.vue';
 import ReviewDecisionDialog from '@/components/socialhq/plan/item/ReviewDecisionDialog.vue';
 import type {
     CopyVersion,
@@ -35,6 +39,7 @@ import {
     submit as submitCopy,
     ai as writeWithAi,
 } from '@/routes/socialhq/plan/items/copy';
+import { update as updateItemKeywords } from '@/routes/socialhq/plan/items/keywords';
 import { store as storeVersion } from '@/routes/socialhq/plan/items/versions';
 
 const props = defineProps<{
@@ -42,6 +47,8 @@ const props = defineProps<{
     latest: CopyVersion | null;
     abilities: PlanAbilities;
     aiAvailable: boolean;
+    /** "Keywords for this post"; null when the brand has no SEO keywords. */
+    keywords: KeywordPanel | null;
 }>();
 
 type CopyFields = {
@@ -183,6 +190,30 @@ const showAi = computed(
 onBeforeUnmount(() => {
     aiHttp.cancel();
 });
+
+/** The keywords this item's copy is written with: a person's choice, or null for the app's pick. */
+const savingKeywords = ref(false);
+
+const changeKeywords = (texts: string[] | null): void => {
+    router.put(
+        updateItemKeywords.url(props.item.id),
+        { keywords: texts },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            only: ['keywords'],
+            onStart: () => {
+                savingKeywords.value = true;
+            },
+            onError: () => {
+                toast.error(trans('socialhq.keywords.for_post.save_failed'));
+            },
+            onFinish: () => {
+                savingKeywords.value = false;
+            },
+        },
+    );
+};
 
 /** Fields are read-only while approved copy is locked, and while AI writes the next version. */
 const isReadonly = computed(() => isLocked.value || aiHttp.processing);
@@ -376,6 +407,13 @@ const confirmDecision = (note: string): void => {
                 </Button>
             </form>
         </header>
+        <KeywordsForPost
+            v-if="showAi && keywords"
+            class="px-5 pt-3"
+            :panel="keywords"
+            :disabled="aiHttp.processing || savingKeywords"
+            @change="changeKeywords"
+        />
 
         <p
             v-if="latest === null && !hasChanges"

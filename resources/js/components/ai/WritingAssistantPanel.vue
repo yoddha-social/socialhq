@@ -7,11 +7,15 @@ import {
     IconSparkles,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import CharacterCounter from '@/components/CharacterCounter.vue';
-import type { KeywordAnswer } from '@/components/socialhq/keywords/keywords';
+import type {
+    KeywordAnswer,
+    KeywordPanel,
+} from '@/components/socialhq/keywords/keywords';
 import KeywordsAfterAnswer from '@/components/socialhq/keywords/KeywordsAfterAnswer.vue';
+import KeywordsForPost from '@/components/socialhq/keywords/KeywordsForPost.vue';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { extractErrorMessage } from '@/lib/httpError';
@@ -22,6 +26,7 @@ import {
 } from '@/lib/promptWords';
 import { formatNumber } from '@/lib/utils';
 import { assist } from '@/routes/app/posts/ai';
+import { forPost as keywordsForPost } from '@/routes/socialhq/brand/keywords';
 
 export type AssistantChannel = {
     accountId: string;
@@ -48,6 +53,12 @@ const REWRITE_MODES: RewriteMode[] = [
 const props = defineProps<{
     content: string;
     channel: AssistantChannel | null;
+    /**
+     * Social HQ: what the post is (the plan item it is made from, else the
+     * day it goes out), for "Keywords for this post". Without it the panel
+     * shows none and the server picks.
+     */
+    seo?: { planItemId: number | null; date: string | null } | null;
 }>();
 
 const emit = defineEmits<{
@@ -73,10 +84,75 @@ const http = useHttp({
     previous_content: '',
     platform: null as string | null,
     social_account_id: null as string | null,
+    seo_keywords: null as string[] | null,
 });
+
+/**
+ * Social HQ: "Keywords for this post", as the server picked them for the
+ * post; a person's change stays in this panel and goes with each request.
+ */
+const keywordPanel = ref<KeywordPanel | null>(null);
+const keywordsHttp = useHttp({});
+
+const loadKeywords = async (): Promise<void> => {
+    if (!props.seo) {
+        keywordPanel.value = null;
+        return;
+    }
+
+    const query: Record<string, string | number> = {};
+
+    if (props.seo.planItemId !== null) {
+        query.plan_item_id = props.seo.planItemId;
+    } else if (props.seo.date) {
+        query.date = props.seo.date;
+    }
+
+    try {
+        const result = (await keywordsHttp.get(
+            keywordsForPost.url({ query }),
+        )) as { keywords: KeywordPanel | null } | undefined;
+        keywordPanel.value = result?.keywords ?? null;
+    } catch {
+        keywordPanel.value = null;
+    }
+};
+
+watch(
+    () => [props.seo?.planItemId ?? null, props.seo?.date ?? null],
+    () => void loadKeywords(),
+    { immediate: true },
+);
+
+/** A person's change: their list, or null for the app's pick again. */
+const changeKeywords = (texts: string[] | null): void => {
+    const panel = keywordPanel.value;
+
+    if (!panel) {
+        return;
+    }
+
+    const byText = new Map(
+        panel.catalogue.map((keyword) => [keyword.text, keyword]),
+    );
+
+    keywordPanel.value = {
+        ...panel,
+        chosen: texts !== null,
+        picked:
+            texts === null
+                ? panel.app_pick
+                : texts.flatMap((text) => {
+                      const keyword = byText.get(text);
+
+                      return keyword ? [{ ...keyword, matched: [] }] : [];
+                  }),
+    };
+};
 
 onBeforeUnmount(() => {
     http.cancel();
+    keywordsHttp.cancel();
 });
 
 const spinnerLabel = computed(() =>
@@ -111,6 +187,9 @@ const request = async (
     http.previous_content = payload.previous_content ?? '';
     http.platform = props.channel?.platform ?? null;
     http.social_account_id = props.channel?.accountId ?? null;
+    http.seo_keywords = keywordPanel.value
+        ? keywordPanel.value.picked.map((keyword) => keyword.text)
+        : null;
     try {
         const result = (await http.post(assist.url())) as
             | ({ content: string } & KeywordAnswer)
@@ -185,6 +264,12 @@ const accept = (): void => {
             <p class="text-sm">
                 {{ $t('posts.composer.assistant_question') }}
             </p>
+            <KeywordsForPost
+                v-if="keywordPanel"
+                :panel="keywordPanel"
+                :disabled="busy"
+                @change="changeKeywords"
+            />
             <div class="space-y-2">
                 <Button
                     type="button"
@@ -275,6 +360,12 @@ const accept = (): void => {
                     }}
                 </p>
             </div>
+            <KeywordsForPost
+                v-if="keywordPanel"
+                :panel="keywordPanel"
+                :disabled="busy"
+                @change="changeKeywords"
+            />
             <Button
                 type="button"
                 class="ml-auto"

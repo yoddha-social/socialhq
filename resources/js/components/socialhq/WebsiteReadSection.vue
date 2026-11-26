@@ -7,6 +7,7 @@ import {
     isRunningCrawl,
     type WebsiteProp,
 } from '@/components/socialhq/brandSources';
+import WebsiteKeywordSuggestions from '@/components/socialhq/WebsiteKeywordSuggestions.vue';
 import WebsiteSuggestionItem from '@/components/socialhq/WebsiteSuggestionItem.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,6 +43,10 @@ const reviewedSuggestions = computed(() =>
     suggestions.value.filter((suggestion) => suggestion.status !== 'open'),
 );
 const hasOpen = computed(() => openSuggestions.value.length > 0);
+/** Open SEO keywords are listed in their own groups, after the rest. */
+const openOthers = computed(() =>
+    openSuggestions.value.filter((suggestion) => suggestion.type !== 'keyword'),
+);
 /** The accepted and skipped suggestions start folded away. */
 const isReviewedOpen = ref(false);
 const showsSuggestions = computed(
@@ -219,14 +224,18 @@ const read = (): void => {
                 {{ $t('socialhq_knowledge.website.review.none') }}
             </p>
             <template v-else>
-                <ul v-if="hasOpen" class="flex flex-col gap-2">
+                <ul v-if="openOthers.length > 0" class="flex flex-col gap-2">
                     <WebsiteSuggestionItem
-                        v-for="suggestion in openSuggestions"
+                        v-for="suggestion in openOthers"
                         :key="suggestion.key"
                         :crawl-id="crawl.id"
                         :suggestion="suggestion"
                     />
                 </ul>
+                <WebsiteKeywordSuggestions
+                    :crawl-id="crawl.id"
+                    :suggestions="openSuggestions"
+                />
 
                 <Collapsible
                     v-if="reviewedSuggestions.length > 0"

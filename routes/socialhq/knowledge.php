@@ -35,11 +35,16 @@ Route::post('brand/search', BrandKnowledgeSearchController::class)
     ->middleware('throttle:socialhq-knowledge-search')
     ->name('brand.search');
 
-// SEO keywords: the whole list on every change, and the check of a file's keywords before import.
+// SEO keywords: the whole catalogue on every change, the check of a file's keywords before import,
+// and what one post gets.
 Route::put('brand/keywords', [BrandKeywordsController::class, 'update'])->name('brand.keywords.update');
 Route::post('brand/keywords/check', [BrandKeywordsController::class, 'check'])
     ->middleware('throttle:socialhq-knowledge-search')
     ->name('brand.keywords.check');
+// "Keywords for this post" in the composer.
+Route::get('brand/keywords/for-post', [BrandKeywordsController::class, 'forPost'])
+    ->middleware('throttle:socialhq-knowledge-search')
+    ->name('brand.keywords.for-post');
 
 // Brand look: logo, colours, fonts and visual style.
 Route::put('brand/look', [BrandLookController::class, 'update'])->name('brand.look.update');

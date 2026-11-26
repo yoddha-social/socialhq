@@ -7,22 +7,90 @@
  * server, which cleans and drops duplicates again on save.
  */
 
+export type KeywordTagKind = 'pillar' | 'product' | 'event' | 'months';
+
+/**
+ * A keyword's tag (BrandKeywords::presentTag()): a pillar by name, a product
+ * or service by its knowledge entry, an event by its occasion key (the same
+ * every year), or a range of months. `label` is what the page shows.
+ */
+export interface KeywordTag {
+    kind: KeywordTagKind;
+    value: string | null;
+    entry_id: number | null;
+    from: number | null;
+    to: number | null;
+    label: string;
+}
+
 export interface Keyword {
     text: string;
     main: boolean;
+    tags: KeywordTag[];
 }
 
 export interface KeywordLimits {
     main: number;
     supporting: number;
-    prompt: number;
+    /** Tags on one keyword. */
+    tags: number;
+    /** Library keywords one post gets. */
+    per_post: number;
+}
+
+/** One of the brand's dates to tag keywords with (Occasion::choices()). */
+export interface KeywordOccasion {
+    key: string;
+    name: string;
+    starts_on: string;
 }
 
 /** BrandKnowledgeController's `keywords` prop. */
 export interface KeywordsProp {
     items: Keyword[];
     limits: KeywordLimits;
+    occasions: KeywordOccasion[];
+    occasion_days: { before: number; after: number };
 }
+
+/** A tag as one post's keywords carry it. */
+export interface ShortTag {
+    kind: KeywordTagKind;
+    label: string;
+}
+
+/** A keyword picked for one post (KeywordPicker): `matched` are the tags that fit it. */
+export interface PickedKeyword {
+    text: string;
+    main: boolean;
+    tags: ShortTag[];
+    matched: ShortTag[];
+}
+
+/** "Keywords for this post" (KeywordPicker::panel()). */
+export interface KeywordPanel {
+    /** What goes to the AI: the person's choice, else the app's pick. */
+    picked: PickedKeyword[];
+    app_pick: PickedKeyword[];
+    /** Whether a person changed them for this post. */
+    chosen: boolean;
+    catalogue: { text: string; main: boolean; tags: ShortTag[] }[];
+    max: number;
+}
+
+/** What identifies a tag, for filters and for spotting the same tag twice. */
+export const tagKey = (tag: KeywordTag): string => {
+    switch (tag.kind) {
+        case 'pillar':
+            return `pillar:${(tag.value ?? '').toLowerCase()}`;
+        case 'product':
+            return `product:${tag.entry_id}`;
+        case 'event':
+            return `event:${tag.value}`;
+        default:
+            return `months:${tag.from}-${tag.to}`;
+    }
+};
 
 export type KeywordVerdict = 'good' | 'check' | 'weak' | 'conflict';
 
@@ -42,6 +110,8 @@ export interface KeywordCheckRow {
     fix: string | null;
     found: KeywordFound[];
     posts: number;
+    /** On the list for longer than the health days, and no post of those days says it. */
+    stale: boolean;
 }
 
 /** BrandKnowledgeController's deferred `keywordCheck` prop (KeywordCheck::page()). */
@@ -55,7 +125,9 @@ export interface KeywordCheckProp {
         posts: number;
         days: number;
     };
-    prompt: Keyword[];
+    stale: { count: number; days: number };
+    /** What a post going out today with no pillar or product gets. */
+    prompt: PickedKeyword[];
 }
 
 /**
@@ -148,13 +220,13 @@ const cells = (line: string): string[] => {
 
 const KEYWORD_COLUMNS = ['keyword', 'keywords', 'phrase', 'search term'];
 const GROUP_COLUMNS = ['group', 'type', 'priority'];
-const GROUPS = ['main', 'supporting'];
+const GROUPS = ['main', 'supporting', 'library'];
 
 /**
  * A text file is one keyword per line (commas split too). A CSV takes a
  * "keyword" column (or "keywords", "phrase", "search term"), else the first
  * one, and an optional "group" column (or "type", "priority") that says main
- * or supporting.
+ * or library ("supporting" still reads as library).
  */
 export const parseKeywordFile = (name: string, text: string): ParsedFile => {
     const lines = text
@@ -288,7 +360,7 @@ export const SAMPLE_FILE = [
     'keyword,group',
     'handmade pashmina kathmandu,main',
     'nepali tea gifts,main',
-    'pashmina shawl,supporting',
-    'gift ideas nepal,supporting',
-    'thamel shopping,supporting',
+    'pashmina shawl,library',
+    'gift ideas nepal,library',
+    'thamel shopping,library',
 ].join('\n');

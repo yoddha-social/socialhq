@@ -418,6 +418,27 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   per country. Nepal never comes from Nager.Date. The country filter and
   `EventsForMonth`'s `$countries` keep the chosen countries' dates plus every
   date without a country.
+  **Each brand follows its own countries** (owner decision 2026-11-24,
+  `Events\BrandEventCountries`, `shq_brand_profiles.event_countries`): the
+  admins' choice ("Change countries" on the events page), else the audience's
+  countries, else Nepal. A brand sees, plans and gets planned around only those
+  countries' dates, international days and its own dates
+  (`CalendarEvent::scopeForBrand`, used by `EventsForMonth`, so the events page,
+  the plan, the planner, the publish calendar markers and MCP all follow it);
+  a brand abroad never sees Nepal's. "Import official dates" brings Nepal's list
+  only for a brand that follows Nepal; "Add a country" adds the country to the
+  brand. The page has a chip per followed country and, when the audience is in
+  a country the brand doesn't follow, offers to add its holidays. A brand's
+  approvers **hide** a shared date for that brand only (`shq_event_hides`,
+  "Hidden for this brand" lists them with "Show again"); a brand's own date is
+  deleted instead. Anyone working on the plan **flags** a date with a note
+  (`shq_event_flags`): it shows on the date and in "Waiting for you" for the
+  brand's approvers, and confirming, editing or hiding the date, or "Mark
+  handled", closes it. One day under one name is one event: a country's
+  holiday that is also the international day (New Year) shows once, naming
+  the country. "Confirm all shown" offers Undo (the batch's ids and time, for
+  that person's confirmations only); a single confirmation says so. "Generate
+  with AI" says how many dates of the month still need a check.
 - **Content plan** (`/socialhq/plan/{YYYY-MM}`). Items with a date, channel,
   format (TryPost's content type), what to make, pillar, owner, event, objective
   and angle. "Generate with AI" (`ContentPlanner`, a queued job) drafts the

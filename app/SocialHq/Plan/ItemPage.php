@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Ai\AiResponses;
 use App\SocialHq\Ai\AiTask;
+use App\SocialHq\Knowledge\Keywords\KeywordPicker;
+use App\SocialHq\Knowledge\Keywords\PostContext;
 use App\SocialHq\Production\Brief;
 use App\SocialHq\Production\BriefFile;
 use App\SocialHq\Production\BriefRounds;
@@ -47,6 +49,8 @@ final class ItemPage
             'itemPosts' => ItemPosts::forItemPage($item, $user, $workspace),
             'abilities' => PlanAccess::abilities($user, $workspace),
             'aiAvailable' => AiResponses::isUsable(AiTask::Write, $user, $workspace),
+            // "Keywords for this post": what the copy writer gets, and the catalogue to change it from.
+            'keywords' => KeywordPicker::panel($item->workspace, PostContext::forItem($item), is_array($item->seo_keywords) ? $item->seo_keywords : null),
         ];
     }
 

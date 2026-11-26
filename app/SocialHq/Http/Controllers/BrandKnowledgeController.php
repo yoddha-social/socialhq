@@ -16,6 +16,8 @@ use App\SocialHq\Knowledge\Calendars\OldCalendars;
 use App\SocialHq\Knowledge\Documents\DocumentsPage;
 use App\SocialHq\Knowledge\Keywords\BrandKeywords;
 use App\SocialHq\Knowledge\Keywords\KeywordCheck;
+use App\SocialHq\Knowledge\Keywords\KeywordPicker;
+use App\SocialHq\Knowledge\Keywords\Occasion;
 use App\SocialHq\Knowledge\KnowledgeEntry;
 use App\SocialHq\Knowledge\KnowledgeKind;
 use App\SocialHq\Knowledge\KnowledgePrompt;
@@ -25,6 +27,7 @@ use App\SocialHq\Plan\PlanOptions;
 use App\SocialHq\Plan\PlanPage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -94,10 +97,13 @@ class BrandKnowledgeController extends Controller
             'audience' => fn () => AudiencePage::prop($workspace, $user),
             'look' => fn () => LookPage::prop($workspace),
             'website' => fn () => WebsitePanel::prop($workspace),
-            // SEO keywords, and their check (deferred: it reads the whole brand knowledge and recent posts).
+            // The SEO keyword catalogue with its tags, the brand's dates to tag them with, and their
+            // check (deferred: it reads the whole brand knowledge and recent posts).
             'keywords' => fn () => [
-                'items' => BrandKeywords::of($loadProfile()),
-                'limits' => ['main' => BrandKeywords::maxMain(), 'supporting' => BrandKeywords::maxSupporting(), 'prompt' => (int) config('socialhq.knowledge.keywords.prompt', 8)],
+                'items' => array_map(fn (array $keyword): array => Arr::except($keyword, 'added_at'), BrandKeywords::catalogue($workspace)),
+                'limits' => ['main' => BrandKeywords::maxMain(), 'supporting' => BrandKeywords::maxSupporting(), 'tags' => BrandKeywords::MAX_TAGS, 'per_post' => KeywordPicker::libraryPerPost()],
+                'occasions' => Occasion::choices($workspace),
+                'occasion_days' => ['before' => Occasion::daysBefore(), 'after' => Occasion::daysAfter()],
             ],
             // Members get the fixes that say who can act.
             'keywordCheck' => Inertia::defer(fn () => KeywordCheck::page($workspace, BrandKnowledge::canEdit($user, $workspace))),

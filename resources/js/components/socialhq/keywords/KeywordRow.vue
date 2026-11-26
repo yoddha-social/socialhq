@@ -4,7 +4,9 @@ import {
     IconArrowUp,
     IconBulb,
     IconChevronDown,
+    IconClockPause,
     IconDots,
+    IconTags,
     IconTrash,
 } from '@tabler/icons-vue';
 import { computed, ref, useId } from 'vue';
@@ -14,6 +16,7 @@ import type {
     KeywordCheckProp,
     KeywordCheckRow,
 } from '@/components/socialhq/keywords/keywords';
+import KeywordTagChip from '@/components/socialhq/keywords/KeywordTagChip.vue';
 import KeywordVerdictPill from '@/components/socialhq/keywords/KeywordVerdictPill.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,12 +30,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatFullNumber } from '@/lib/utils';
 
 /**
- * One SEO keyword: its verdict, why and the fix on the second line, how
+ * One SEO keyword: its verdict and tags (or "General" in the library), a
+ * flag when no post said it lately, why and the fix on the second line, how
  * many recent posts say it, and (opened) where the brand knowledge says it.
  */
 
 const emit = defineEmits<{
     toggle: [];
+    editTags: [];
     makeMain: [];
     makeSupporting: [];
     remove: [];
@@ -44,6 +49,8 @@ const props = defineProps<{
     /** Its check, or null while the check loads. */
     row: KeywordCheckRow | null;
     checked: KeywordCheckProp['checked'] | null;
+    /** How long a keyword goes unsaid before it is flagged. */
+    staleDays: number | null;
     open: boolean;
     canEdit: boolean;
 }>();
@@ -55,6 +62,10 @@ const slug = computed(() => props.keyword.text.replace(/\s+/g, '-'));
 
 const toggle = (): void => {
     emit('toggle');
+};
+
+const editTags = (): void => {
+    emit('editTags');
 };
 
 const makeMain = (): void => {
@@ -114,6 +125,33 @@ defineExpose({ focus });
                     </span>
                     <KeywordVerdictPill v-if="row" :verdict="row.verdict" />
                     <Skeleton v-else class="h-[22px] w-16 rounded-full" />
+                    <span
+                        v-if="row?.stale"
+                        class="inline-flex h-[22px] shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-400"
+                        :title="
+                            $t('socialhq.keywords.tags.stale_title', {
+                                days: String(staleDays ?? 0),
+                            })
+                        "
+                        :data-testid="`socialhq-keyword-stale-${slug}`"
+                    >
+                        <IconClockPause class="size-3.5" aria-hidden="true" />
+                        {{ $t('socialhq.keywords.tags.stale') }}
+                    </span>
+                    <KeywordTagChip
+                        v-for="(tag, index) in keyword.tags"
+                        :key="index"
+                        :kind="tag.kind"
+                        :label="tag.label"
+                    />
+                    <span
+                        v-if="!keyword.main && keyword.tags.length === 0"
+                        class="text-xs text-subtle-foreground"
+                        :title="$t('socialhq.keywords.tags.general_title')"
+                        :data-testid="`socialhq-keyword-general-${slug}`"
+                    >
+                        {{ $t('socialhq.keywords.tags.general') }}
+                    </span>
                 </span>
                 <span
                     v-if="row"
@@ -166,6 +204,13 @@ defineExpose({ focus });
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                            :data-testid="`socialhq-keyword-tags-${slug}`"
+                            @select="editTags"
+                        >
+                            <IconTags class="size-4" />
+                            {{ $t('socialhq.keywords.menu.tags') }}
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                             v-if="keyword.main"
                             :data-testid="`socialhq-keyword-supporting-${slug}`"

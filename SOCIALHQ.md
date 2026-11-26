@@ -283,18 +283,56 @@ our brand look" (the text goes in the image prompt and is kept on the
 of the 3 reference images; the vision check is told it is the company's
 own). An SVG logo can't be a reference: upload a PNG for that.
 
-**SEO keywords** (Strategy tab; admins edit, members read). Up to 5 main
-and 25 supporting keywords on the brand profile (`keywords`, `[{text,
-main}]`; `socialhq.knowledge.keywords`), cleaned (one line, lowercased,
-commas and semicolons made spaces, a leading `#` dropped) and without
-duplicates (case and accents ignored).
-Every change saves the whole list (`PUT socialhq/brand/keywords`). A CSV or
-text file can be dropped on the card or chosen: it is read in the browser
-(up to 100 KB; a `keyword` column or the first one, an optional `group`
-column), each row checked through `brand/keywords/check`, shown in a
-preview, and saved through the same `PUT`. The keyword check
-(`Knowledge\Keywords\KeywordCheck`, code, no AI, cached per brand until
-its knowledge changes) gives each keyword a verdict, first match wins:
+**SEO keywords** (Strategy tab; admins edit, members read). A catalogue
+(`shq_keywords`, tags in `shq_keyword_tags`; `socialhq.knowledge.keywords`):
+up to 5 main keywords, brand-wide, and a library of up to 75 more
+(`SOCIALHQ_KEYWORDS_MAX_LIBRARY`), each tagged with any of the brand's content
+pillars (by name), products or services (knowledge entries of that kind; the
+tag goes with the entry) and occasions: an event of the Events page, kept
+by its key without the year (`Keywords\Occasion::key()`, so "Nepali New Year
+2084" is the same occasion as 2083's) and in season from 14 days before
+its first day to 2 days after its last
+(`SOCIALHQ_KEYWORDS_OCCASION_DAYS_BEFORE` / `_AFTER`), or a range of months
+for a season without an event (it may run over the new year). Untagged is
+general. No per-format or per-channel tags, and no free-form groups (owner
+decision 2026-11-26). Each keyword is cleaned (one line, lowercased, commas
+and semicolons made spaces, a leading `#` dropped) and without duplicates
+(case and accents ignored, `match_key`). Every change saves the whole list
+(`PUT socialhq/brand/keywords`, `BrandKeywords::save()`): a keyword that
+stays keeps its row and the day it was added. The card filters the lists by
+tag ("General", each tag in use, "Not used lately"); a keyword added while a
+tag's filter is on gets that tag; "Edit tags" in a row's ⋯ menu ticks pillars
+and products and adds events and month ranges. The JSON list on the profile
+(`keywords`, PR #58) was moved to the table by the migration, text, main and
+order as they were.
+
+**The app picks, not the person** (`Keywords\KeywordPicker`, owner
+decision 2026-11-26). Before the AI writes for a post, the app chooses: one
+main keyword (the one whose tags fit best, then the one sharing most words
+with what the post is about, then the next in turn, so posts take turns: by
+item id on the plan, by day in the composer), and up to 3 library keywords
+whose tags fit the post (an occasion in season counts most, then its pillar
+and a product its title or angle names), general ones filling in up to 2. A
+library keyword whose tags don't fit stays out (a Dashain greeting no longer
+gets "payroll software"). Only those go into the prompt, outside the
+knowledge budget; the rules (`prompts/socialhq/seo_keywords.blade.php`): one
+to three in all, the main one in the first line when it reads naturally,
+never as a claim, never translated. "Keywords for this post"
+(`KeywordsForPost.vue`) shows them on the item page, above the copy, and in
+the composer's assistant; "Change" picks others from the catalogue (up to 4)
+or goes back to the app's pick. An item keeps a person's choice
+(`shq_plan_items.seo_keywords`, `PUT socialhq/plan/items/{item}/keywords`);
+the composer sends it with each request (`seo_keywords`, handed to TryPost's
+assistant agent and read by `TryPostPromptKeywords`); without one the
+server picks for the request's topic, going out today. A rewrite of the
+person's caption is only told to keep the catalogue keywords it already
+says. "What a post gets" on the card shows the pick for a post going out
+today with no pillar or product; "Check what the AI reads" the pick for its
+topic.
+
+**Keyword check.** `Knowledge\Keywords\KeywordCheck` (code, no AI, cached
+per brand until its knowledge, its keywords or the day change) gives each
+keyword a verdict, first match wins:
 **Conflict** (a word or phrase of "words to avoid" is in it), **Weak** (no
 single profile field, entry used in AI or document excerpt holds all its
 words, claim words aside), **Check** (one word, a claim word from
@@ -312,30 +350,31 @@ place a keyword names; a fix may point to another of the brand's keywords
 (one to pair a single word with, one that says a claim's words without
 it). Someone who can't edit Brand knowledge gets each fix in the form that
 says who can (`member_fixes`). Verdicts are warnings only
-(owner decision 2026-11-23): every keyword goes to the AI. It checks fit
-with the brand, never search demand; there is no score. A prompt gets the
-main keywords, then the supporting ones that share most words with its
-focus, 8 at most, outside the knowledge budget
-(`BrandKeywords::forPrompt()`): the copy writer through its own view, the
-caption assistant and the idea generator through the `brand_knowledge`
-view composer (a rewrite of the person's caption is only told to keep the
-keywords it has). The rules (`prompts/socialhq/seo_keywords.blade.php`):
-one or two where they read naturally, never as a claim, never translated.
+(owner decision 2026-11-23): every keyword may still be picked. It checks
+fit with the brand, never search demand; there is no score. A keyword on the
+list for more than 60 days (`health_days`) that no scheduled or published
+post of those days says is "Not used lately" (`stale`), with a count and
+"Show them" on the card. A CSV or text file can be dropped on the card or
+chosen: it is read in the browser (up to 100 KB; a `keyword` column or the
+first one, an optional `group` column, main or library), each row checked
+through `brand/keywords/check`, shown in a preview, and saved through the
+same `PUT`, untagged.
 A place inside a keyword is a source for "Check these". When the brand has
 none, the plan item's AI copy and the composer assistant's new captions
 answer `keywords_missing` and show a light note (× hides it for 7 days in
 that browser). The link to the card shows only when the answer's
 `can_add_keywords` says so: `BrandKeywords::missingNote()` asks
 `BrandKnowledge::canEdit`, the rule that guards the card. Once the brand
-has keywords, the same place shows "Keywords used:" instead: the keywords
-the text says (caption, hashtags and script, never the team's notes; main
-ones first), and whether a main one is in the caption's first line, found
-by `KeywordMatcher` after the answer arrives, never asked of the model
-(`BrandKeywords::forAnswer()`, `keywords_used` and `main_in_first_line`).
-New text that says none gets "No keyword fits this post"; a rewrite of the
-person's own text that says none shows nothing. Agents get the keywords a
-topic gets from `get-brand-knowledge-tool` (`keywords`, with the rules in
-its description).
+has keywords, the same place shows "Keywords used:" instead: the catalogue
+keywords the text says (caption, hashtags and script, never the team's
+notes; main ones first), and whether a main one is in the caption's first
+line, found by `KeywordMatcher` after the answer arrives, never asked of
+the model (`BrandKeywords::forAnswer()`, `keywords_used` and
+`main_in_first_line`). New text that says none gets "No keyword fits this
+post"; a rewrite of the person's own text that says none shows nothing.
+Agents get the keywords a post about a topic gets today from
+`get-brand-knowledge-tool` (`keywords`: text, main and tags, with the rules
+in its description).
 
 **Read our website** (admins). The brand's address starts `ReadWebsite`
 (queued, 5 an hour per person, one run at a time per brand):

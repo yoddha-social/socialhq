@@ -7,14 +7,15 @@ namespace App\SocialHq\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\SocialHq\Http\Requests\SearchBrandKnowledgeRequest;
 use App\SocialHq\Knowledge\BrandKnowledge;
-use App\SocialHq\Knowledge\Keywords\BrandKeywords;
+use App\SocialHq\Knowledge\Keywords\KeywordPicker;
+use App\SocialHq\Knowledge\Keywords\PostContext;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * "Check what the AI reads": what BrandKnowledge::assemble() gives an AI
  * request about a topic, in order, with the space each part takes, and the
- * SEO keywords it gets (BrandKeywords::forPrompt()). It is how the team
+ * SEO keywords a post about it going out today gets (KeywordPicker). It is how the team
  * tests search; nothing is sent to an AI.
  */
 class BrandKnowledgeSearchController extends Controller
@@ -35,8 +36,8 @@ class BrandKnowledgeSearchController extends Controller
             'budget' => $prompt->budget,
             'profile' => ['used' => $prompt->profileUsed, 'trimmed' => $prompt->profileTrimmed],
             'parts' => $prompt->parts,
-            // The SEO keywords a request about this topic gets, outside the budget.
-            'keywords' => BrandKeywords::forPrompt($workspace, $focus),
+            // The SEO keywords a post about this topic going out today gets, outside the budget.
+            'keywords' => KeywordPicker::pick($workspace, PostContext::forTopic($focus)),
         ]);
     }
 }

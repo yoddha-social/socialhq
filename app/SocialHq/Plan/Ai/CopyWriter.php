@@ -27,7 +27,7 @@ class CopyWriter implements Agent, HasProviderOptions, HasStructuredOutput
 
     /**
      * @param  array<string, mixed>  $context  The item, its event and channel, the latest version and open change requests.
-     * @param  list<array{text: string, main: bool}>  $seoKeywords  The brand's SEO keywords for this post (BrandKeywords::forPrompt())
+     * @param  list<array{text: string, main: bool}>  $seoKeywords  The SEO keywords picked for this post (KeywordPicker::forItem())
      */
     public function __construct(
         public string $language,

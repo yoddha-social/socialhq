@@ -8,6 +8,8 @@ use App\Enums\Ai\PostAssistantMode;
 use App\Enums\SocialAccount\Platform;
 use App\Rules\PostContentFitsMaxLength;
 use App\Rules\PromptHasMinimumWords;
+use App\SocialHq\Knowledge\Keywords\BrandKeywords;
+use App\SocialHq\Knowledge\Keywords\KeywordPicker;
 use App\Support\AiPromptRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -48,6 +50,10 @@ class AssistPostContentRequest extends FormRequest
                 'uuid',
                 Rule::exists('social_accounts', 'id')->where('workspace_id', $this->user()->currentWorkspace->id),
             ],
+            // Social HQ: the SEO keywords shown under "Keywords for this post", as the person left them
+            // (Knowledge\Keywords\TryPostPromptKeywords). Absent: the app picks.
+            'seo_keywords' => ['nullable', 'array', 'list', 'max:'.KeywordPicker::maxPerPost()],
+            'seo_keywords.*' => ['string', 'max:'.BrandKeywords::MAX_LENGTH],
         ];
     }
 }

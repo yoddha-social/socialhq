@@ -14,6 +14,8 @@ export interface PlanRejection {
     title: string;
     date: string;
     channel: string;
+    /** Missing on drafts made before rejections named the network. */
+    platform?: string | null;
     reason: string;
 }
 
@@ -39,6 +41,7 @@ export interface UpcomingPost {
     status: PostStatus;
     scheduled_at: string | null;
     channel: string | null;
+    platform: string | null;
 }
 
 export interface PlanItem {
@@ -71,6 +74,8 @@ export interface PlanItem {
     upcoming_posts: UpcomingPost[];
     /** How many of the item's posts aren't on its day. */
     posts_off_day: number;
+    /** The times of its approved posts that moving them to its day sends back for approval. */
+    posts_back_to_approval: string[];
     position: number;
 }
 

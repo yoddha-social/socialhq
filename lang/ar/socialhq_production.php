@@ -68,6 +68,7 @@ return [
             'save_first' => 'To send the copy for review, save your changes first.',
             'errors' => [
                 'cannot_submit' => 'This copy can\'t be sent for review now. Save a version first, or wait for the current review to finish.',
+                'changes_first' => 'This version was sent back with changes. To send it for review again, save a new version with the changes.',
                 'cannot_approve' => 'This copy isn\'t in review, so it can\'t be approved. Reload the page to see where it stands.',
                 'cannot_request_changes' => 'This copy isn\'t in review, so you can\'t request changes. Reload the page to see where it stands.',
                 'placeholders' => 'Fill in :gaps first. Copy with gaps in square brackets can\'t be approved.',
@@ -205,6 +206,8 @@ return [
         'text_only_undo' => 'Wait for the creative',
         'text_only_unavailable' => 'This format (:format) needs an image or video, so the post waits for the creative.',
         'off_day' => 'Not on the item\'s day',
+        'other_channel' => 'Not on the item\'s channel',
+        'other_format' => 'Not in the item\'s format',
         'follow' => 'Move to :date',
         'failed' => 'Couldn\'t create the post. Try again.',
         'left_out' => 'Not added to the post: :names. This post\'s format doesn\'t take that type of file.',

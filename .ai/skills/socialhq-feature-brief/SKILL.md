@@ -18,7 +18,7 @@ page. Ask the user only what you can't find in the code or SOCIALHQ.md.
 3. **Smallest useful slice.** The first version someone would use next week.
 4. **What TryPost already does** here (check the code and AGENTS.md), and what we add.
 5. **Shape.** Tables (`shq_*`), screens, AI calls (`socialhq-ai-features`), TryPost
-   files to change (each one a PATCHES.md row).
+   files to change.
 6. **Not doing.** At least two things, said plainly.
 7. **Risks.** Wrong dates, data sent to the wrong provider, posts published without
    approval, cost. One line each, with the guard.

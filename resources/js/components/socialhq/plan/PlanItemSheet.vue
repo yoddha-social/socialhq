@@ -7,6 +7,7 @@ import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
+import { channelLabel } from '@/components/socialhq/channelLabel';
 import { localizedDay } from '@/components/socialhq/localizedDay';
 import {
     offerToMovePosts,
@@ -14,7 +15,10 @@ import {
     toastRequestFailed,
 } from '@/components/socialhq/plan/planRequests';
 import { placeOfZone } from '@/components/socialhq/plan/postingTime';
-import { askPostsChoice } from '@/components/socialhq/plan/postsChoice';
+import {
+    askPostsChoice,
+    type PostsChoice,
+} from '@/components/socialhq/plan/postsChoice';
 import type {
     PlanChannel,
     PlanEvent,
@@ -157,11 +161,14 @@ const days = computed(() => {
     });
 });
 
-/** The item's channel stays pickable even when it is no longer connected. */
+/**
+ * The item's channel stays pickable even when it is no longer connected.
+ * Each says its network: a brand's channels usually share its name.
+ */
 const channelOptions = computed(() => {
     const options = props.channels.map((channel) => ({
         value: channel.id,
-        label: channel.name,
+        label: channelLabel(channel.name, channel.platform),
     }));
 
     if (
@@ -172,7 +179,9 @@ const channelOptions = computed(() => {
     ) {
         options.push({
             value: props.item.social_account_id,
-            label: props.item.platform ?? props.item.social_account_id,
+            label:
+                channelLabel(null, props.item.platform) ||
+                props.item.social_account_id,
         });
     }
 
@@ -241,17 +250,65 @@ watch(
     },
 );
 
-const onChannelChange = (): void => {
-    if (!contentTypes.value.some((type) => type.value === form.content_type)) {
-        form.content_type = contentTypes.value[0]?.value ?? '';
-    }
-};
+/**
+ * Another channel keeps the format when it offers it, else takes its first.
+ * A watcher, not the select's change event, which fires before the select's
+ * v-model has updated the form (the format went blank). A channel no longer
+ * connected offers none, and its item keeps the format it has.
+ */
+watch(
+    () => form.social_account_id,
+    () => {
+        if (
+            contentTypes.value.length > 0 &&
+            !contentTypes.value.some((type) => type.value === form.content_type)
+        ) {
+            form.content_type = contentTypes.value[0]?.value ?? '';
+        }
+    },
+);
 
 const close = (): void => {
     open.value = false;
 };
 
-const save = (): void => {
+/**
+ * What a save changes for the item's posts that will still go out: a new
+ * channel or format leaves them made for the old one, so it asks first.
+ */
+const postsChange = (): 'channel' | 'format' | null => {
+    const item = props.item;
+
+    if (editingId.value === null || !item || item.upcoming_posts.length === 0) {
+        return null;
+    }
+
+    if (form.social_account_id !== item.social_account_id) {
+        return 'channel';
+    }
+
+    return form.content_type !== item.content_type ? 'format' : null;
+};
+
+/** Refusals no field shows (the post still set to go out) come back as a toast. */
+const toastFormError = (errors: Record<string, string>): void => {
+    if (errors.posts) {
+        toast.error(errors.posts);
+    }
+};
+
+const save = async (): Promise<void> => {
+    const change = postsChange();
+    let posts: PostsChoice | null = null;
+
+    if (change && props.item) {
+        posts = await askPostsChoice(change, props.item.upcoming_posts);
+
+        if (!posts) {
+            return;
+        }
+    }
+
     const editedId = editingId.value;
     const movedDay =
         editedId !== null &&
@@ -270,6 +327,7 @@ const save = (): void => {
                 );
             }
         },
+        onError: toastFormError,
     };
 
     form.transform(({ time_hour, time_minute, ...data }) => ({
@@ -281,6 +339,7 @@ const save = (): void => {
         angle: data.angle || null,
         event_id: data.event_id ? Number(data.event_id) : null,
         owner_id: data.owner_id || null,
+        ...(posts ? { posts } : {}),
     }));
 
     if (editingId.value === null) {
@@ -578,7 +637,6 @@ const askDelete = async (): Promise<void> => {
                                     id="plan-item-channel"
                                     v-model="form.social_account_id"
                                     data-testid="plan-item-channel"
-                                    @change="onChannelChange"
                                 >
                                     <NativeSelectOption
                                         v-for="option in channelOptions"

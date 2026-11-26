@@ -13,4 +13,4 @@ paths:
 - Workspace-owned rows carry `workspace_id` with a foreign key, and every query
   scopes by it. `.ai/rules/migrations.md` also applies.
 - A column on one of TryPost's tables is fine when it belongs there: put the migration
-  in `database/migrations/socialhq/` and list the table in PATCHES.md.
+  in `database/migrations/socialhq/` (no PATCHES.md row; say why in the commit).

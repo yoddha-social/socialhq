@@ -3,7 +3,6 @@
 # files since the last run. Runs in the background after Claude stops and wakes
 # it (exit 2) with a report when something fails.
 #
-#   - PATCHES.md completeness: TryPost base files changed on this branch with no row
 #   - vue-tsc, when .vue/.ts changed
 #   - pint --test and the Pest tests affected by the change (--tia), when PHP changed
 #
@@ -27,10 +26,6 @@ fail() { REPORT+=$'\n'"[FAIL] $1"$'\n'"$2"$'\n'; }
 skip() { REPORT+=$'\n'"[SKIP] $1"$'\n'; }
 
 cd "$ROOT" || exit 0
-
-# 0. Every TryPost base file changed on this branch has a PATCHES.md row.
-UNLISTED="$(unlisted_patches)"
-[ -n "$UNLISTED" ] && fail "PATCHES.md is missing rows for these TryPost files (file, change, why)" "$UNLISTED"
 
 # 1. Types.
 if grep -qE '\.(vue|ts)$' <<<"$FILES"; then

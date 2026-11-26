@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\SocialHq\Ai\AiResponses;
 use App\SocialHq\Ai\AiTask;
 use App\SocialHq\Http\Requests\Plan\WriteItemCopyRequest;
+use App\SocialHq\Knowledge\Keywords\BrandKeywords;
 use App\SocialHq\Plan\Ai\WriteItemCopy;
 use App\SocialHq\Plan\PlanAccess;
 use Illuminate\Http\JsonResponse;
@@ -39,6 +40,10 @@ class ItemCopyAiController extends Controller
             return response()->json(['message' => __('socialhq_production.item.copy.ai_failed')], Response::HTTP_BAD_GATEWAY);
         }
 
-        return response()->json(['number' => $version->number], Response::HTTP_CREATED);
+        // Under the copy: the note when the brand has no SEO keywords, else the keywords this version says.
+        return response()->json([
+            'number' => $version->number,
+            ...BrandKeywords::forAnswer($request->user(), $planItem->workspace, (string) $version->caption, "{$version->hashtags}\n{$version->script}"),
+        ], Response::HTTP_CREATED);
     }
 }

@@ -41,6 +41,8 @@ type EntryField = 'kind' | 'title' | 'body' | 'use_in_ai' | 'pinned';
 
 const props = defineProps<{
     entry: KnowledgeEntryRow | null;
+    /** A new entry's title to start from (the SEO keyword it backs up). */
+    draftTitle?: string;
     kinds: string[];
 }>();
 
@@ -76,7 +78,7 @@ const errorAttributes = (
 const fill = (): void => {
     form.clearErrors();
     form.kind = props.entry?.kind ?? props.kinds[0] ?? 'product';
-    form.title = props.entry?.title ?? '';
+    form.title = props.entry?.title ?? props.draftTitle ?? '';
     form.body = props.entry?.body ?? '';
     form.use_in_ai = props.entry?.use_in_ai ?? true;
     form.pinned = props.entry?.pinned ?? false;

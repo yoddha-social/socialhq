@@ -9,6 +9,7 @@ use App\SocialHq\AiGraphics\AiGraphic;
 use App\SocialHq\AiGraphics\AiGraphics;
 use App\SocialHq\AiGraphics\GenerateAiGraphic;
 use App\SocialHq\AiGraphics\GraphicSafetyReviewer;
+use App\SocialHq\Companies\Company;
 use App\Support\MediaImportStatus;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -32,6 +33,8 @@ beforeEach(function () {
 
     $this->owner = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['account_id' => $this->owner->account_id, 'user_id' => $this->owner->id]);
+    // AI runs for a company a platform admin allowed Social HQ's AI keys.
+    Company::factory()->usingPlatformAi()->create(['account_id' => $this->owner->account_id]);
     $this->workspace->members()->attach($this->owner->id, membershipPivot('admin'));
     $this->owner->update(['current_workspace_id' => $this->workspace->id]);
     $this->owner = $this->owner->fresh();
@@ -190,6 +193,9 @@ test('"Generate with AI" shows while the company has some AI, and says what grap
 ]);
 
 test('people who cannot create posts here are not offered graphics', function () {
+    // As on the web: AI runs for the signed-in person's current workspace.
+    $this->actingAs($this->owner);
+
     expect(AiGraphics::isOffered(workspaceOutsider($this->workspace), $this->workspace))->toBeFalse()
         ->and(AiGraphics::isOffered($this->owner, $this->workspace))->toBeTrue();
 });

@@ -27,6 +27,7 @@ class CopyWriter implements Agent, HasProviderOptions, HasStructuredOutput
 
     /**
      * @param  array<string, mixed>  $context  The item, its event and channel, the latest version and open change requests.
+     * @param  list<array{text: string, main: bool}>  $seoKeywords  The brand's SEO keywords for this post (BrandKeywords::forPrompt())
      */
     public function __construct(
         public string $language,
@@ -38,6 +39,7 @@ class CopyWriter implements Agent, HasProviderOptions, HasStructuredOutput
         public int $maxHashtags,
         public string $visualStyle = '',
         public string $instruction = '',
+        public array $seoKeywords = [],
     ) {}
 
     public function aiTask(): AiTask
@@ -57,6 +59,7 @@ class CopyWriter implements Agent, HasProviderOptions, HasStructuredOutput
             'max_hashtags' => $this->maxHashtags,
             'visual_style' => $this->visualStyle,
             'instruction' => $this->instruction,
+            'seo_keywords' => $this->seoKeywords,
         ])->render();
     }
 

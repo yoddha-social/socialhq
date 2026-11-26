@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { IconLock, IconSparkles } from '@tabler/icons-vue';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import type { AudienceProp } from '@/components/socialhq/audience';
 import AudienceSection from '@/components/socialhq/AudienceSection.vue';
@@ -22,6 +22,11 @@ import type {
     WebsiteProp,
 } from '@/components/socialhq/brandSources';
 import BrandWebsiteCard from '@/components/socialhq/BrandWebsiteCard.vue';
+import type {
+    KeywordCheckProp,
+    KeywordsProp,
+} from '@/components/socialhq/keywords/keywords';
+import SeoKeywordsCard from '@/components/socialhq/keywords/SeoKeywordsCard.vue';
 import KnowledgeCheckBox from '@/components/socialhq/KnowledgeCheckBox.vue';
 import KnowledgeDocumentsSection, {
     type KnowledgeDocumentsProp,
@@ -65,6 +70,9 @@ const props = defineProps<{
     audience: AudienceProp;
     look: BrandLookProp;
     website: WebsiteProp;
+    keywords: KeywordsProp;
+    /** Deferred: undefined until the keyword check has run. */
+    keywordCheck?: KeywordCheckProp;
 }>();
 
 /** Rows and placeholder per profile field; the first three are wide. */
@@ -85,7 +93,30 @@ const selectTab = (value: string | number): void => {
     }
 };
 
+/** Opens the Strategy tab at the SEO keywords card, with the cursor in its field for admins. */
+const openKeywords = (): void => {
+    tab.value = 'strategy';
+
+    nextTick(() => {
+        document
+            .getElementById('socialhq-seo-keywords')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        if (props.canEdit) {
+            document
+                .getElementById('socialhq-keyword-input')
+                ?.focus({ preventScroll: true });
+        }
+    });
+};
+
 const openTab = (next: BrandTab, filter?: string): void => {
+    if (next === 'strategy' && filter === 'keywords') {
+        openKeywords();
+
+        return;
+    }
+
     tab.value = next;
 
     if (next === 'knowledge') {
@@ -98,6 +129,18 @@ const openTab = (next: BrandTab, filter?: string): void => {
             ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 };
+
+// A link can open a tab (?tab=strategy) and the SEO keywords (?focus=keywords), as the
+// note under AI copy does.
+onMounted(() => {
+    const query = new URLSearchParams(window.location.search);
+
+    if (query.get('focus') === 'keywords') {
+        openKeywords();
+    } else {
+        selectTab(query.get('tab') ?? '');
+    }
+});
 
 /** Opens a tab and puts the cursor in one of its fields. */
 const openTabAt = (next: BrandTab, fieldId: string): void => {
@@ -199,12 +242,21 @@ const discardIdentity = (): void => {
 
 const isEntryDialogOpen = ref(false);
 const editingEntry = ref<KnowledgeEntryRow | null>(null);
+/** A new entry's title to start from: the SEO keyword it is meant to back up. */
+const entryDraftTitle = ref('');
 const deletingEntry = ref<KnowledgeEntryRow | null>(null);
 const isDeleteOpen = ref(false);
 const isDeleting = ref(false);
 
 const openAddEntry = (): void => {
     editingEntry.value = null;
+    entryDraftTitle.value = '';
+    isEntryDialogOpen.value = true;
+};
+
+const openAddEntryFor = (keyword: string): void => {
+    editingEntry.value = null;
+    entryDraftTitle.value = keyword.charAt(0).toUpperCase() + keyword.slice(1);
     isEntryDialogOpen.value = true;
 };
 
@@ -335,6 +387,8 @@ const openCheck = (): void => {
                                 :website="website"
                                 :can-edit="canEdit"
                                 :is-empty="isEmpty"
+                                :keyword-count="keywords.items.length"
+                                :keyword-check="keywordCheck"
                                 @open="openTab"
                                 @add-entry="openAddEntry"
                                 @read-website="readWebsite"
@@ -450,7 +504,7 @@ const openCheck = (): void => {
                         <TabsContent
                             value="strategy"
                             force-mount
-                            class="data-[state=inactive]:hidden"
+                            class="flex flex-col gap-6 data-[state=inactive]:hidden"
                         >
                             <div class="grid items-start gap-6 xl:grid-cols-2">
                                 <div
@@ -472,6 +526,12 @@ const openCheck = (): void => {
                                     />
                                 </div>
                             </div>
+                            <SeoKeywordsCard
+                                :keywords="keywords"
+                                :check="keywordCheck"
+                                :can-edit="canEdit"
+                                @add-entry="openAddEntryFor"
+                            />
                         </TabsContent>
 
                         <TabsContent
@@ -535,7 +595,11 @@ const openCheck = (): void => {
                     </div>
 
                     <aside class="flex flex-col gap-4 lg:sticky lg:top-6">
-                        <BrandContextCard :usage="usage" @check="openCheck" />
+                        <BrandContextCard
+                            :usage="usage"
+                            :keyword-count="keywords.items.length"
+                            @check="openCheck"
+                        />
                         <BrandWebsiteCard
                             v-if="canEdit"
                             :website="website"
@@ -550,6 +614,7 @@ const openCheck = (): void => {
     <KnowledgeEntryDialog
         v-model:open="isEntryDialogOpen"
         :entry="editingEntry"
+        :draft-title="entryDraftTitle"
         :kinds="kinds"
     />
 

@@ -59,7 +59,7 @@ final class DisconnectImpact
             'plan_items' => PlanItem::query()
                 ->where('social_account_id', $channel->id)
                 ->where('status', '!=', ItemStatus::Dropped)
-                ->whereNull('post_created_at')
+                ->whereDoesntHave('posts')
                 ->whereDate('scheduled_on', '>=', now()->toDateString())
                 ->count(),
             'repurposes' => Repurpose::query()

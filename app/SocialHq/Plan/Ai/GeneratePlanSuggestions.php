@@ -255,6 +255,8 @@ class GeneratePlanSuggestions implements ShouldQueue
                     'title' => $title,
                     'date' => Str::limit($dateText, 20, ''),
                     'channel' => $channel?->display_label ?? Str::limit($channelId, 60, ''),
+                    // The page adds the network, so same-named channels stay apart.
+                    'platform' => $channel?->platform->value,
                     'reason' => $reason,
                 ];
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { IconSparkles } from '@tabler/icons-vue';
+import { IconSparkles, IconTag } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import type { BrandUsage } from '@/components/socialhq/brandKnowledge';
@@ -7,10 +7,13 @@ import { formatFullNumber } from '@/lib/utils';
 
 /**
  * "AI context" beside Brand knowledge: how much of the space the AI reads
- * is used, split between the profile and the knowledge entries.
+ * is used, split between the profile and the knowledge entries, and the
+ * SEO keywords, which come on top of it.
  */
 const props = defineProps<{
     usage: BrandUsage;
+    /** How many SEO keywords the brand has; they go to the AI outside the limit. */
+    keywordCount: number;
 }>();
 
 const emit = defineEmits<{
@@ -115,6 +118,22 @@ const openCheck = (): void => {
                 </dt>
                 <dd class="font-medium text-foreground tabular-nums">
                     {{ formatFullNumber(knowledgeUsed) }}
+                </dd>
+            </div>
+            <div
+                v-if="keywordCount > 0"
+                class="flex items-center justify-between gap-2 border-t border-dashed border-border pt-1.5"
+                data-testid="socialhq-brand-context-keywords"
+            >
+                <dt class="flex items-center gap-2 text-muted-foreground">
+                    <IconTag class="size-3.5" aria-hidden="true" />
+                    {{ $t('socialhq.brand.context.keywords') }}
+                </dt>
+                <dd class="font-medium text-foreground tabular-nums">
+                    {{ formatFullNumber(keywordCount) }}
+                    <span class="text-xs font-normal text-muted-foreground">
+                        · {{ $t('socialhq.brand.context.keywords_outside') }}
+                    </span>
                 </dd>
             </div>
         </dl>

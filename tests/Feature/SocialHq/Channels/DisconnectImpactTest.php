@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Channels\DisconnectImpact;
 use App\SocialHq\Plan\ContentPlan;
+use App\SocialHq\Plan\ItemPosts;
 use App\SocialHq\Plan\ItemStatus;
 use App\SocialHq\Plan\PlanItem;
 use Illuminate\Support\Facades\Mail;
@@ -84,7 +85,9 @@ test('it says what else stops: the queue, planned items and repurposes that read
     $item();
     $item();
     $item(['status' => ItemStatus::Dropped]);
-    $item(['post_created_at' => now()]);
+    // An item that has its post already; one whose post was deleted still counts.
+    ItemPosts::link($item(), collect([Post::factory()->create(['workspace_id' => $this->workspace->id])]), $this->user);
+    $orphaned = $item(['post_created_at' => now()]);
     $item(['scheduled_on' => now()->subDays(3)->toDateString()]);
 
     $repurpose = fn () => Repurpose::factory()->state([
@@ -100,7 +103,7 @@ test('it says what else stops: the queue, planned items and repurposes that read
     $this->actingAs($this->user)
         ->getJson(route('socialhq.channels.disconnect-impact.show', $this->channel))
         ->assertOk()
-        ->assertJsonPath('plan_items', 2)
+        ->assertJsonPath('plan_items', 3)
         ->assertJsonPath('repurposes', 2)
         ->assertJsonPath('posting_times', $this->channel->posting_schedule?->slotCount() ?? 0);
 });

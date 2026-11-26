@@ -4,6 +4,7 @@ import { IconDots, IconMovie, IconPhoto, IconStack2 } from '@tabler/icons-vue';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import PlatformLogo from '@/components/PlatformLogo.vue';
+import { channelLabel } from '@/components/socialhq/channelLabel';
 import type { BriefStage } from '@/components/socialhq/plan/item/types';
 import type { BoardCardData } from '@/components/socialhq/plan/production/types';
 import type { BoardCardHandle } from '@/components/socialhq/plan/production/useProductionBoard';
@@ -155,7 +156,7 @@ const moveTo = (stage: BriefStage): void => {
                         size="xs"
                     />
                     <span class="truncate">
-                        {{ card.channel
+                        {{ channelLabel(card.channel, card.platform)
                         }}<template v-if="card.format">
                             · {{ card.format }}</template
                         >

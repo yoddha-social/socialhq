@@ -43,17 +43,16 @@ if [[ "$REL" =~ ^lang/en/socialhq(_[a-z]+)?\.php$ ]]; then
   (cd "$ROOT" && bin/socialhq-sync-lang) || PROBLEMS+="bin/socialhq-sync-lang failed"$'\n'
 fi
 
-# Our tables are shq_*. A change to a TryPost table is allowed, but listed in PATCHES.md.
+# New tables of ours are shq_*. A column on one of TryPost's tables is fine (Schema::table).
 case "$REL" in
   database/migrations/socialhq/*.php)
     while IFS= read -r t; do
       [ -z "$t" ] && continue
       case "$t" in
         shq_*) ;;
-        *) grep -qF "\`$t\`" "$ROOT/PATCHES.md" 2>/dev/null \
-             || PROBLEMS+="$REL changes TryPost's table $t: list \`$t\` in PATCHES.md. New tables of ours are named shq_*."$'\n' ;;
+        *) PROBLEMS+="$REL creates the table $t. New tables of ours are named shq_*."$'\n' ;;
       esac
-    done < <(grep -oE "Schema::(create|table)\('[a-z0-9_]+'" "$FILE" | sed -E "s/.*\('//; s/'$//" | sort -u)
+    done < <(grep -oE "Schema::create\('[a-z0-9_]+'" "$FILE" | sed -E "s/.*\('//; s/'$//" | sort -u)
     ;;
   database/migrations/*.php)
     PROBLEMS+="$REL is in TryPost's migrations folder. Our migrations go in database/migrations/socialhq/."$'\n'

@@ -44,24 +44,29 @@ class PlanController extends Controller
     }
 
     /**
-     * Draft → in review, by anyone who works on the plan.
+     * Draft → in review, by anyone who works on the plan. The plan row is
+     * locked, like approving: two sends at once record one submitter.
      */
     public function submit(Request $request, string $month): RedirectResponse
     {
         $workspace = PlanAccess::workspace($request);
-        $plan = PlanMonth::find($workspace, PlanMonth::parse($month, $request->user()));
+        $found = PlanMonth::find($workspace, PlanMonth::parse($month, $request->user()));
 
-        $this->ensureHasPlannedItems($plan);
+        DB::transaction(function () use ($found, $request): void {
+            $plan = $found === null ? null : ContentPlan::query()->lockForUpdate()->find($found->id);
 
-        if ($plan->status === PlanStatus::Draft) {
-            $plan->forceFill(['status' => PlanStatus::InReview, 'submitted_at' => now(), 'submitted_by' => $request->user()->id])->save();
-        }
+            $this->ensureHasPlannedItems($plan);
+
+            if ($plan->status === PlanStatus::Draft) {
+                $plan->forceFill(['status' => PlanStatus::InReview, 'submitted_at' => now(), 'submitted_by' => $request->user()->id])->save();
+            }
+        });
 
         return back();
     }
 
     /**
-     * Approvers only, once every AI suggestion was accepted or dropped and no
+     * Approvers only, once every AI suggestion on a coming day was accepted or dropped and no
      * AI draft is running (it would add suggestions to the approved plan).
      * The plan row is locked, so a run finishing at the same moment waits.
      */
@@ -79,7 +84,7 @@ class PlanController extends Controller
                 throw ValidationException::withMessages(['plan' => __('socialhq_plan.errors.generating')]);
             }
 
-            if ($plan->hasOpenSuggestions()) {
+            if ($plan->hasOpenSuggestions(PlanMonth::today($request->user()))) {
                 throw ValidationException::withMessages(['plan' => __('socialhq_plan.errors.open_suggestions')]);
             }
 

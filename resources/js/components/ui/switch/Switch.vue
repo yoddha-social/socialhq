@@ -28,7 +28,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
     :data-size="size"
     v-bind="forwarded"
     :class="cn(
-      'peer relative data-[state=checked]:bg-primary-strong data-[state=unchecked]:bg-subtle-foreground inline-flex shrink-0 cursor-pointer items-center rounded-full transition-control outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50',
+      'peer relative data-[state=checked]:bg-primary-strong data-[state=unchecked]:bg-subtle-foreground inline-flex shrink-0 cursor-pointer items-center rounded-full transition-control outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50',
       size === 'sm' ? 'h-4 w-[30px] p-0.5' : 'h-6 w-[43px] p-[3px]',
       props.class,
     )"

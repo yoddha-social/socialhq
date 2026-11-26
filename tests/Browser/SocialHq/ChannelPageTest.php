@@ -6,6 +6,8 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Enums\User\TimeFormat;
 use App\Enums\User\WeekStart;
+use App\Models\AnalyticsPublication;
+use App\Models\AnalyticsSyncState;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -204,6 +206,11 @@ test('the disconnect dialog shows what it deletes from Social HQ and that the ne
     $posts()->scheduled()->create(['scheduled_at' => now()->addDays(2), 'content' => '<p>Winter menu is here</p>']);
     $posts()->draft()->create();
     $posts()->published()->count(3)->create();
+    AnalyticsPublication::factory()->count(5)->create([
+        ...AnalyticsSyncState::providerIdentityFor($channel),
+        'social_account_id' => $channel->id,
+        'platform' => $channel->platform,
+    ]);
     $this->actingAs($user);
 
     $page = visit(route('app.channels.settings', $channel))->resize(1440, 900);
@@ -213,6 +220,7 @@ test('the disconnect dialog shows what it deletes from Social HQ and that the ne
 
     $page->assertSeeIn('@disconnect-impact-summary', '2 posts')
         ->assertSeeIn('@disconnect-impact-summary', '3 sent posts')
+        ->assertSeeIn('@disconnect-impact-insights', trans_choice('socialhq.channels.impact.insights', 5))
         ->assertSeeIn('@disconnect-impact-network', __('socialhq.channels.impact.network_stays', ['network' => 'LinkedIn']))
         ->assertMissing('@disconnect-impact-details');
 

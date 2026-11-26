@@ -15,6 +15,7 @@ use App\SocialHq\Knowledge\Documents\KnowledgeDocument;
 use App\SocialHq\Knowledge\Sources\ReadLinkedDocument;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
@@ -77,8 +78,20 @@ class KnowledgeLinkController extends Controller
 
         abort_unless($found->source->isGoogle(), Response::HTTP_NOT_FOUND);
 
-        if ($found->status !== DocumentStatus::Processing) {
-            $found->forceFill(['status' => DocumentStatus::Processing, 'failure' => null, 'updated_by' => $request->user()->id])->save();
+        // The row is locked while it is marked: a double click starts one read, not two.
+        $started = DB::transaction(function () use ($found, $request): bool {
+            $locked = KnowledgeDocument::query()->lockForUpdate()->findOrFail($found->id);
+
+            if ($locked->status === DocumentStatus::Processing) {
+                return false;
+            }
+
+            $locked->forceFill(['status' => DocumentStatus::Processing, 'failure' => null, 'updated_by' => $request->user()->id])->save();
+
+            return true;
+        });
+
+        if ($started) {
             ReadLinkedDocument::dispatch($found->id);
         }
 

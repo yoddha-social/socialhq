@@ -3,14 +3,18 @@ import { IconCheck, IconSparkles, IconX } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
+import { channelLabel } from '@/components/socialhq/channelLabel';
 import {
     COPY_STATUS_DOT,
     copyStatusLabelKey,
 } from '@/components/socialhq/plan/copyStatus';
 import { pillarColor } from '@/components/socialhq/plan/pillarColors';
 import PlanItemTime from '@/components/socialhq/plan/PlanItemTime.vue';
+import { postStatusLabelKey } from '@/components/socialhq/plan/postStatus';
 import type { PlanItem, PlanLookups } from '@/components/socialhq/plan/types';
+import { POST_STATUS_TONES } from '@/components/socialhq/postStatusTone';
 import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 
 const props = defineProps<{
     item: PlanItem;
@@ -68,10 +72,13 @@ const dropItem = (): void => emit('drop', props.item);
             class="flex min-w-0 flex-col gap-1 rounded-lg px-2 py-1.5 text-start focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
             :aria-label="
                 [
-                    channel?.name ?? item.platform,
+                    channelLabel(channel?.name, item.platform),
                     item.content_type_label,
                     item.title,
                     $t(`socialhq_plan.item_status.${item.status}`),
+                    item.post_status
+                        ? $t(postStatusLabelKey(item.post_status))
+                        : null,
                 ]
                     .filter(Boolean)
                     .join(' · ')
@@ -130,6 +137,13 @@ const dropItem = (): void => emit('drop', props.item);
                 :item="item"
                 class="text-[11px] leading-4 text-muted-foreground"
             />
+            <Badge
+                v-if="item.post_status"
+                :variant="POST_STATUS_TONES[item.post_status].badge"
+                class="text-[10px]"
+                :data-testid="`plan-item-post-${item.id}`"
+                >{{ $t(postStatusLabelKey(item.post_status)) }}</Badge
+            >
         </button>
 
         <div

@@ -9,6 +9,7 @@ use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Companies\Company;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Plan\Ai\ContentPlanner;
@@ -26,6 +27,11 @@ use Illuminate\JsonSchema\JsonSchemaTypeFactory;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Str;
 use Laravel\Ai\Exceptions\AiException;
+use Laravel\Ai\Responses\Data\FinishReason;
+use Laravel\Ai\Responses\Data\Meta;
+use Laravel\Ai\Responses\Data\Step;
+use Laravel\Ai\Responses\Data\Usage;
+use Laravel\Ai\Responses\TextResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 beforeEach(function () {
@@ -38,6 +44,8 @@ beforeEach(function () {
 
     $this->owner = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['account_id' => $this->owner->account_id, 'user_id' => $this->owner->id]);
+    // AI runs for a company a platform admin allowed Social HQ's AI keys.
+    Company::factory()->usingPlatformAi()->create(['account_id' => $this->owner->account_id]);
     $this->workspace->members()->attach($this->owner->id, membershipPivot('admin'));
     $this->owner->update(['current_workspace_id' => $this->workspace->id]);
     $this->owner = $this->owner->fresh();
@@ -394,6 +402,20 @@ test('an answer without items is logged with who answered and how it stopped', f
 
     expect($this->plan->fresh()->generation_error)->toBe('invalid_output');
     Exceptions::assertReported(fn (RuntimeException $exception): bool => str_contains($exception->getMessage(), 'Content plan draft without items: provider'));
+});
+
+test('an answer without items that stopped at its length limit tells the planner to try fewer days', function () {
+    $answer = fn (FinishReason $reason): TextResponse => (new TextResponse('', new Usage(10, 12000), new Meta('litellm', 'shq-structured')))
+        ->withSteps(collect([new Step('', [], [], $reason, new Usage(10, 12000), new Meta('litellm', 'shq-structured'))]));
+
+    expect(GeneratePlanSuggestions::stoppedAtLimit($answer(FinishReason::Length)))->toBeTrue()
+        ->and(GeneratePlanSuggestions::stoppedAtLimit($answer(FinishReason::Stop)))->toBeFalse()
+        ->and(GeneratePlanSuggestions::stoppedAtLimit(['summary' => 'Not a response']))->toBeFalse();
+
+    $this->plan->update(['generation_status' => GenerationStatus::Failed, 'generation_error' => 'cut_off']);
+
+    $this->actingAs($this->member)->get(route('socialhq.plan.show', $this->monthKey))
+        ->assertInertia(fn ($page) => $page->where('plan.generation.error', __('socialhq_plan.generation.errors.cut_off')));
 });
 
 test('a new draft keeps a suggestion someone already started work on', function () {

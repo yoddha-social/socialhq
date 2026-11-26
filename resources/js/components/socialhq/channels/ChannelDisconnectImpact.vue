@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useHttp } from '@inertiajs/vue3';
 import {
-    IconChartBar,
     IconChevronDown,
     IconChevronUp,
     IconCircleCheck,
@@ -15,6 +14,7 @@ import {
 } from '@tabler/icons-vue';
 import { computed, onMounted, ref } from 'vue';
 
+import { POST_STATUS_TONES } from '@/components/socialhq/postStatusTone';
 import date from '@/date';
 import { userTimezone } from '@/preferences';
 import { publish } from '@/routes/app/channels';
@@ -35,17 +35,18 @@ interface DisconnectImpact {
     posting_goal: number | null;
     plan_items: number;
     repurposes: number;
+    insights: number | null;
     network: string;
 }
 
 type StatusKey = keyof DisconnectImpact['posts'];
 
 const STATUSES: { key: StatusKey; dot: string }[] = [
-    { key: 'scheduled', dot: 'bg-primary-strong' },
-    { key: 'pending_approval', dot: 'bg-warning' },
-    { key: 'drafts', dot: 'bg-muted-foreground/50' },
-    { key: 'failed', dot: 'bg-destructive' },
-    { key: 'sent', dot: 'bg-success' },
+    { key: 'scheduled', dot: POST_STATUS_TONES.scheduled.dot },
+    { key: 'pending_approval', dot: POST_STATUS_TONES.pending_approval.dot },
+    { key: 'drafts', dot: POST_STATUS_TONES.draft.dot },
+    { key: 'failed', dot: POST_STATUS_TONES.failed.dot },
+    { key: 'sent', dot: POST_STATUS_TONES.published.dot },
 ];
 
 const props = defineProps<{
@@ -143,6 +144,18 @@ const toggle = (): void => {
                                 impact.media,
                             ),
                         })
+                    }}
+                </p>
+                <p
+                    v-if="impact.insights !== null"
+                    class="mt-1"
+                    data-testid="disconnect-impact-insights"
+                >
+                    {{
+                        $tChoice(
+                            'socialhq.channels.impact.insights',
+                            impact.insights,
+                        )
                     }}
                 </p>
                 <p
@@ -352,13 +365,6 @@ const toggle = (): void => {
                                     network: impact.network,
                                 })
                             }}
-                        </li>
-                        <li class="flex items-start gap-1.5">
-                            <IconChartBar
-                                class="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
-                                aria-hidden="true"
-                            />
-                            {{ $t('socialhq.channels.impact.stays_insights') }}
                         </li>
                         <li class="flex items-start gap-1.5">
                             <IconRefresh

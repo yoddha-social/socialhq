@@ -10,6 +10,8 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, ref } from 'vue';
 
 import CharacterCounter from '@/components/CharacterCounter.vue';
+import type { KeywordAnswer } from '@/components/socialhq/keywords/keywords';
+import KeywordsAfterAnswer from '@/components/socialhq/keywords/KeywordsAfterAnswer.vue';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { extractErrorMessage } from '@/lib/httpError';
@@ -58,6 +60,8 @@ const prompt = ref('');
 const lastPrompt = ref('');
 const suggestion = ref('');
 const suggestionAction = ref<'insert' | 'replace'>('insert');
+/** Social HQ: the SEO keywords note, or the keywords the caption says. */
+const keywordAnswer = ref<KeywordAnswer | null>(null);
 const busy = ref(false);
 const error = ref('');
 const pendingMode = ref('generate');
@@ -109,7 +113,7 @@ const request = async (
     http.social_account_id = props.channel?.accountId ?? null;
     try {
         const result = (await http.post(assist.url())) as
-            | { content: string }
+            | ({ content: string } & KeywordAnswer)
             | undefined;
         if (!result) {
             error.value =
@@ -118,6 +122,7 @@ const request = async (
             return;
         }
         suggestion.value = result.content;
+        keywordAnswer.value = result;
         suggestionAction.value = action;
         screen.value = 'suggestion';
     } catch (exception) {
@@ -294,6 +299,7 @@ const accept = (): void => {
                 >
                     {{ suggestion }}
                 </p>
+                <KeywordsAfterAnswer :answer="keywordAnswer" />
             </div>
             <div class="flex flex-wrap items-center justify-end gap-2">
                 <Button
@@ -349,7 +355,9 @@ const accept = (): void => {
             {{ error }}
         </p>
 
-        <div class="mt-auto space-y-2 border-t pt-4 text-xs text-muted-foreground">
+        <div
+            class="mt-auto space-y-2 border-t pt-4 text-xs text-muted-foreground"
+        >
             <p
                 v-if="channel && channel.limit !== null"
                 data-testid="writing-assistant-channel"

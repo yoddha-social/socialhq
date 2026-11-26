@@ -40,6 +40,8 @@ beforeEach(function () {
     $this->owner->update(['current_workspace_id' => $this->workspace->id]);
     $this->otherWorkspace = Workspace::factory()->create(['account_id' => $this->account->id, 'user_id' => $this->owner->id, 'name' => 'Brand B']);
     $this->otherWorkspace->members()->attach($this->owner->id, membershipPivot('admin'));
+    // With company requests on (production), sign-ups join the account its owner names.
+    config(['socialhq.signup.account_owner' => $this->owner->email]);
 });
 
 function signUp(string $email): TestResponse
@@ -96,6 +98,9 @@ test('admins hear about a sign-up once its email is confirmed, and only once', f
 });
 
 test('a single listed email may sign up, other emails and public domains may not', function (string $email, bool $allowed) {
+    // TryPost-style refusal: with company requests on, an email off the lists asks for a company instead (CompanySignupTest).
+    config(['socialhq.companies.requests' => false]);
+
     $response = signUp($email);
 
     $allowed ? $response->assertSessionHasNoErrors() : $response->assertSessionHasErrors(['email' => __('socialhq.signup.not_allowed')]);
@@ -108,7 +113,8 @@ test('a single listed email may sign up, other emails and public domains may not
 ]);
 
 test('with no domains or emails, sign-up stays invites only and the login page has no link', function () {
-    config(['socialhq.signup.domains' => [], 'socialhq.signup.emails' => []]);
+    // Invites only exists with company requests off: with them on, anyone may ask for a company.
+    config(['socialhq.companies.requests' => false, 'socialhq.signup.domains' => [], 'socialhq.signup.emails' => []]);
 
     $this->get(route('login'))
         ->assertInertia(fn ($page) => $page->where('socialhq.signup.open', false));
@@ -332,6 +338,8 @@ test('a google answer without the email_verified claim proves nothing', function
 });
 
 test('an email that may not sign up never learns whether it has an account', function () {
+    // The refusal itself, with company requests off; with them on, CompanySignupTest covers "you already have an account".
+    config(['socialhq.companies.requests' => false]);
     User::factory()->create(['email' => 'boss@other.test']);
 
     signUp('boss@other.test')->assertSessionHasErrors('email');
@@ -341,7 +349,7 @@ test('an email that may not sign up never learns whether it has an account', fun
 
 test('signing up by email is limited per address', function () {
     foreach (range(1, 5) as $attempt) {
-        signUp("someone{$attempt}@other.test")->assertSessionHasErrors('email');
+        signUp("someone{$attempt}@other.test")->assertSessionHasErrors();
     }
 
     signUp('someone6@other.test')->assertTooManyRequests();
@@ -350,7 +358,7 @@ test('signing up by email is limited per address', function () {
 test('signing up by email is limited to 20 tries an hour per address, past the minute limit', function () {
     foreach (range(1, 4) as $minute) {
         foreach (range(1, 5) as $attempt) {
-            signUp("someone{$minute}x{$attempt}@other.test")->assertSessionHasErrors('email');
+            signUp("someone{$minute}x{$attempt}@other.test")->assertSessionHasErrors();
         }
 
         $this->travel(61)->seconds();
@@ -359,7 +367,7 @@ test('signing up by email is limited to 20 tries an hour per address, past the m
     signUp('one-more@other.test')->assertTooManyRequests();
 
     $this->travel(1)->hours();
-    signUp('next-hour@other.test')->assertSessionHasErrors('email');
+    signUp('next-hour@other.test')->assertSessionHasErrors();
 });
 
 test('a declined person who signs up again does not email the admins again within the hour', function () {
@@ -422,6 +430,8 @@ test('approving a request someone already declined changes nothing, and the reve
 });
 
 test('with no owner configured, sign-up joins the oldest account that owns a workspace', function () {
+    // This fallback exists only with company requests off: with them on, the owner must be configured.
+    config(['socialhq.companies.requests' => false, 'socialhq.signup.account_owner' => null]);
     // Someone invited elsewhere holds an empty account of their own until they accept.
     Account::factory()->create();
 
@@ -444,7 +454,8 @@ test('the configured owner is found whatever the case of the address', function 
 });
 
 test('when no account can take sign-ups, sign-up stays closed and the log says why once', function () {
-    config(['socialhq.signup.account_owner' => 'nobody@acme.test']);
+    // Company requests off: with them on, the page stays open for company requests.
+    config(['socialhq.companies.requests' => false, 'socialhq.signup.account_owner' => 'nobody@acme.test']);
     Log::spy();
 
     $this->get(route('login'))->assertInertia(fn ($page) => $page->where('socialhq.signup.open', false));
@@ -599,6 +610,8 @@ test('google finds the sign-up whatever the case of the address and creates no s
 });
 
 test('an invite someone already accepted does not let a sign-up skip the allow list', function () {
+    // The allow list's own refusal, with company requests off: with them on, an email off the lists asks for a company.
+    config(['socialhq.companies.requests' => false]);
     $invite = Invite::factory()->create([
         'account_id' => $this->account->id,
         'invited_by' => $this->owner->id,

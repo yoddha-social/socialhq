@@ -10,6 +10,7 @@ use App\Models\User;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiRoutesCommand;
 use App\SocialHq\Ai\ApprovedProvidersGuard;
+use App\SocialHq\Ai\Company\AiSyncCommand;
 use App\SocialHq\Ai\Company\CompanyAi;
 use App\SocialHq\Ai\Company\CompanyRouting;
 use App\SocialHq\Ai\Company\Jobs\TearDownCompanyAi;
@@ -20,6 +21,7 @@ use App\SocialHq\AiGraphics\AiGraphics;
 use App\SocialHq\AiGraphics\PruneAiGraphicResultsCommand;
 use App\SocialHq\Approval\RecordApprovalEvents;
 use App\SocialHq\Channels\ConnectInvite;
+use App\SocialHq\Channels\PruneGoneChannelInsightsCommand;
 use App\SocialHq\Companies\CompanyRequests;
 use App\SocialHq\Companies\PlatformAdminCommand;
 use App\SocialHq\Companies\PlatformAdmins;
@@ -34,12 +36,15 @@ use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\Calendars\CalendarStorage;
 use App\SocialHq\Knowledge\Calendars\PruneCalendarUploadsCommand;
 use App\SocialHq\Knowledge\Documents\DocumentStorage;
+use App\SocialHq\Knowledge\Keywords\BrandKeywords;
 use App\SocialHq\Knowledge\Look\LogoStorage;
 use App\SocialHq\Knowledge\Search\KnowledgeSearch;
 use App\SocialHq\Knowledge\Search\LexicalKnowledgeSearch;
 use App\SocialHq\Knowledge\TryPostPromptFocus;
 use App\SocialHq\Notices\Notice;
 use App\SocialHq\Notices\NoticeCreated;
+use App\SocialHq\Plan\ItemPosts;
+use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Production\BriefStorage;
 use App\SocialHq\Queue\CompactHorizon;
 use App\SocialHq\Secrets\SecretsKeyCommand;
@@ -54,6 +59,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Http\Kernel;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Exceptions\Handler;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Broadcast;
@@ -64,6 +70,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
+use Laravel\Cashier\Cashier;
 use Laravel\Telescope\Telescope;
 
 /**
@@ -78,6 +85,11 @@ class SocialHqServiceProvider extends ServiceProvider
     public function register(): void
     {
         AiRouter::registerGateway();
+
+        // No Stripe webhook on a self-hosted install: it would take unsigned messages (socialhq.billing).
+        if (config('trypost.self_hosted') && ! config('socialhq.billing.stripe_webhook')) {
+            Cashier::ignoreRoutes();
+        }
 
         // Three Horizon supervisors instead of TryPost's seven (socialhq.horizon).
         CompactHorizon::apply($this->app->make('config'));
@@ -100,6 +112,9 @@ class SocialHqServiceProvider extends ServiceProvider
         // Platform admins run this server: they let companies in.
         Gate::define(PlatformAdmins::GATE, fn (User $user): bool => PlatformAdmins::is($user));
 
+        // The plan item a post was made from (ItemPosts), without changing TryPost's model.
+        Post::resolveRelationUsing('planItems', fn (Post $post): BelongsToMany => $post->belongsToMany(PlanItem::class, ItemPosts::TABLE, 'post_id', 'plan_item_id'));
+
         // A deleted company's team, key and provider keys leave LiteLLM too.
         Account::deleting(function (Account $account): void {
             $teamId = CompanyAi::query()->where('account_id', $account->id)->value('litellm_team_id');
@@ -115,7 +130,7 @@ class SocialHqServiceProvider extends ServiceProvider
         AiUsageLogging::register($this->app);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([AiRoutesCommand::class, ImportEventsCommand::class, PruneAiGraphicResultsCommand::class, PruneCalendarUploadsCommand::class, PlatformAdminCommand::class, SecretsKeyCommand::class, SecretsReencryptCommand::class]);
+            $this->commands([AiRoutesCommand::class, AiSyncCommand::class, ImportEventsCommand::class, PruneAiGraphicResultsCommand::class, PruneCalendarUploadsCommand::class, PruneGoneChannelInsightsCommand::class, PlatformAdminCommand::class, SecretsKeyCommand::class, SecretsReencryptCommand::class]);
         }
 
         // Provider keys are write-only: never flashed back as old input after a
@@ -191,8 +206,13 @@ class SocialHqServiceProvider extends ServiceProvider
             }
 
             $workspace = auth()->user() instanceof User ? auth()->user()->currentWorkspace : null;
+            $focus = TryPostPromptFocus::of($view->getData());
 
-            $view->with('brand_knowledge', $workspace === null ? '' : BrandKnowledge::forPrompt($workspace, TryPostPromptFocus::of($view->getData())));
+            $view->with('brand_knowledge', $workspace === null ? '' : BrandKnowledge::forPrompt($workspace, $focus));
+            // The SEO keywords, outside the knowledge budget. A rewrite of the person's caption
+            // (shorten, rephrase, tone) only keeps the ones it has; new text gets the rules.
+            $view->with('seo_keywords', $workspace === null ? [] : BrandKeywords::forPrompt($workspace, $focus));
+            $view->with('seo_keywords_keep_only', data_get($view->getData(), 'writes_new_text') === false);
         });
 
         RateLimiter::for('socialhq-ai-graphics', fn (Request $request): Limit => Limit::perHour(AiGraphics::userHourlyLimit())

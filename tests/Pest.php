@@ -59,6 +59,21 @@ pest()->in('Feature/Social')
 
 /*
 |--------------------------------------------------------------------------
+| Social HQ: our tests run under the production rules
+|--------------------------------------------------------------------------
+|
+| phpunit.xml switches our rules off because TryPost's tests expect TryPost's.
+| Our own tests get them back before each test (see socialHqProductionRules()).
+| A test that needs TryPost's rule sets it back in its own beforeEach or body,
+| with one line saying why: the file's hooks run after this one.
+|
+*/
+
+pest()->in('Feature/SocialHq', 'Unit/SocialHq')
+    ->beforeEach(fn () => socialHqProductionRules());
+
+/*
+|--------------------------------------------------------------------------
 | Test Impact Analysis
 |--------------------------------------------------------------------------
 |
@@ -168,6 +183,29 @@ function fakeChatGptEgressRanges(?array $ranges = []): void
             : Http::response([
                 'prefixes' => collect(config('testing.chatgpt_egress_ranges'))->map(fn (mixed $range): array => ['ipv4Prefix' => $range])->all(),
             ]),
+    ]);
+}
+
+/**
+ * Social HQ's rules as production runs them (self-hosted, config/socialhq.php's
+ * defaults), undoing phpunit.xml's switches for TryPost's tests. Every account a
+ * factory creates then gets an approved company (AccountFactory), as the backfill
+ * gave every real account. Left out: the Horizon pools (applied at boot) and the
+ * AI gateway, which needs a LiteLLM key and fakes; with companies required,
+ * direct routing too serves only a company allowed the platform's AI.
+ */
+function socialHqProductionRules(): void
+{
+    config([
+        'trypost.self_hosted' => true,
+        'socialhq.approvals.members_always_reviewed' => true,
+        'socialhq.approvals.agent_posts_reviewed' => true,
+        'socialhq.publish_now.confirm' => true,
+        'socialhq.calendar.post_list_open' => true,
+        'socialhq.agents.manage_admin_settings' => false,
+        'socialhq.companies.requests' => true,
+        'socialhq.companies.required' => true,
+        'socialhq.channels.require_credentials' => true,
     ]);
 }
 

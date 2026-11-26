@@ -14,6 +14,12 @@ enum AiUsageStatus: string
     /** The provider or LiteLLM answered with an error, or the connection failed. */
     case Failed = 'failed';
 
+    /**
+     * Answered, but stopped at its length limit, so the answer is missing or
+     * incomplete. Often a reasoning model that spent the limit thinking.
+     */
+    case CutOff = 'cut_off';
+
     /** HTTP 429: a provider's or LiteLLM's rate limit, or no deployment free. */
     case RateLimited = 'rate_limited';
 

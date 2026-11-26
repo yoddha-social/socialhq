@@ -15,6 +15,7 @@ import { computed, ref, watch } from 'vue';
 
 import EmptyState from '@/components/EmptyState.vue';
 import { localizedDay } from '@/components/socialhq/localizedDay';
+import ItemPostsChoiceDialog from '@/components/socialhq/plan/ItemPostsChoiceDialog.vue';
 import PlanBrandSettingsDialog from '@/components/socialhq/plan/PlanBrandSettingsDialog.vue';
 import PlanGenerateDialog from '@/components/socialhq/plan/PlanGenerateDialog.vue';
 import PlanGenerationPanel from '@/components/socialhq/plan/PlanGenerationPanel.vue';
@@ -33,6 +34,7 @@ import PlanViewToggle, {
     type PlanView,
 } from '@/components/socialhq/plan/PlanViewToggle.vue';
 import PlanWhatWorkedPanel from '@/components/socialhq/plan/PlanWhatWorkedPanel.vue';
+import { askPostsChoice } from '@/components/socialhq/plan/postsChoice';
 import type {
     PlanAudience,
     PlanChannel,
@@ -128,6 +130,13 @@ const lookups = computed<PlanLookups>(() => ({
 const suggestions = computed(() =>
     props.items.filter((item) => item.status === 'suggested'),
 );
+/**
+ * Suggestions still to decide. One on a day already gone can't be accepted,
+ * so it neither holds back approval nor counts in "Accept all".
+ */
+const openSuggestions = computed(() =>
+    suggestions.value.filter((item) => item.scheduled_on >= props.today),
+);
 const plannedCount = computed(
     () => props.items.filter((item) => item.status === 'planned').length,
 );
@@ -164,7 +173,7 @@ const approveBlockedKey = computed<string | null>(() => {
         return 'socialhq_plan.review.approve_generating';
     }
 
-    return suggestions.value.length > 0
+    return openSuggestions.value.length > 0
         ? 'socialhq_plan.review.approve_blocked'
         : null;
 });
@@ -201,27 +210,39 @@ const writeOptions = {
     onHttpException: toastRequestFailed,
 };
 
-const itemWrite = (item: PlanItem, url: string): void => {
-    router.post(
-        url,
-        {},
-        {
-            ...writeOptions,
-            onStart: () => {
-                busyItemId.value = item.id;
-            },
-            onFinish: () => {
-                busyItemId.value = null;
-            },
+const itemWrite = (
+    item: PlanItem,
+    url: string,
+    data: Record<string, string> = {},
+): void => {
+    router.post(url, data, {
+        ...writeOptions,
+        onStart: () => {
+            busyItemId.value = item.id;
         },
-    );
+        onFinish: () => {
+            busyItemId.value = null;
+        },
+    });
 };
 
 const acceptOne = (item: PlanItem): void =>
     itemWrite(item, acceptItem.url(item.id));
 
-const dropOne = (item: PlanItem): void =>
-    itemWrite(item, dropItem.url(item.id));
+/** An item whose post will still go out asks first what happens to that post. */
+const dropOne = async (item: PlanItem): Promise<void> => {
+    if (item.upcoming_posts.length === 0) {
+        itemWrite(item, dropItem.url(item.id));
+
+        return;
+    }
+
+    const choice = await askPostsChoice('drop', item.upcoming_posts);
+
+    if (choice) {
+        itemWrite(item, dropItem.url(item.id), { posts: choice });
+    }
+};
 
 const restoreOne = (item: PlanItem): void =>
     itemWrite(item, restoreItem.url(item.id));
@@ -552,7 +573,7 @@ const openBrandSettings = (): void => {
                 </div>
 
                 <div
-                    v-if="suggestions.length"
+                    v-if="openSuggestions.length"
                     class="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-primary/50 bg-primary-subtle/40 px-4 py-2.5"
                     data-testid="plan-suggestions-bar"
                 >
@@ -563,7 +584,7 @@ const openBrandSettings = (): void => {
                     <p class="min-w-0 flex-1 text-sm text-foreground">
                         {{
                             $t('socialhq_plan.suggestions.open', {
-                                count: String(suggestions.length),
+                                count: String(openSuggestions.length),
                             })
                         }}
                     </p>
@@ -656,6 +677,8 @@ const openBrandSettings = (): void => {
         :can-work="abilities.canWork"
         :main-timezone="audience.mainTimezone"
     />
+
+    <ItemPostsChoiceDialog />
 
     <PlanGenerateDialog
         v-if="abilities.canGenerate"

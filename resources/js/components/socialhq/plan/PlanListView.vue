@@ -13,6 +13,7 @@ import {
 import { computed, ref, watch } from 'vue';
 
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
+import { channelLabel } from '@/components/socialhq/channelLabel';
 import { localizedDay } from '@/components/socialhq/localizedDay';
 import {
     COPY_STATUS_DOT,
@@ -25,7 +26,9 @@ import {
     type PlanListSort,
     type PlanListSortKey,
 } from '@/components/socialhq/plan/planListSort';
+import { postStatusLabelKey } from '@/components/socialhq/plan/postStatus';
 import type { PlanItem, PlanLookups } from '@/components/socialhq/plan/types';
+import { POST_STATUS_TONES } from '@/components/socialhq/postStatusTone';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useAtLeastBreakpoint } from '@/composables/useBreakpoint';
@@ -135,6 +138,15 @@ const channelName = (item: PlanItem): string =>
         : null) ??
     item.platform ??
     '';
+
+/** The name with its network, for the hover text: the icon says it, the name alone may not. */
+const channelTitle = (item: PlanItem): string =>
+    channelLabel(
+        item.social_account_id
+            ? props.lookups.channels[item.social_account_id]?.name
+            : null,
+        item.platform,
+    );
 
 const ownerOf = (item: PlanItem) =>
     item.owner_id ? (props.lookups.owners[item.owner_id] ?? null) : null;
@@ -373,7 +385,10 @@ const actionClass =
                                 colored
                                 class="size-4 shrink-0"
                             />
-                            <span class="min-w-0 truncate">
+                            <span
+                                class="min-w-0 truncate"
+                                :title="channelTitle(item)"
+                            >
                                 {{ channelName(item) }}
                                 <span
                                     v-if="item.content_type_label"
@@ -441,6 +456,16 @@ const actionClass =
                                         `socialhq_plan.item_status.${item.status}`,
                                     )
                                 }}
+                            </Badge>
+                            <Badge
+                                v-if="item.post_status"
+                                :variant="
+                                    POST_STATUS_TONES[item.post_status].badge
+                                "
+                                class="min-w-0 shrink truncate px-1.5"
+                                :data-testid="`plan-row-post-${item.id}`"
+                            >
+                                {{ $t(postStatusLabelKey(item.post_status)) }}
                             </Badge>
                             <span
                                 v-if="canWork"
@@ -645,9 +670,11 @@ const actionClass =
                                     colored
                                     class="size-3.5 shrink-0"
                                 />
-                                <span class="truncate">{{
-                                    channelName(item)
-                                }}</span>
+                                <span
+                                    class="truncate"
+                                    :title="channelTitle(item)"
+                                    >{{ channelName(item) }}</span
+                                >
                             </span>
                             <span
                                 v-if="item.pillar"
@@ -677,6 +704,16 @@ const actionClass =
                                 />
                                 {{ $t(copyStatusLabelKey(item.copy_status)) }}
                             </span>
+                            <Badge
+                                v-if="item.post_status"
+                                :variant="
+                                    POST_STATUS_TONES[item.post_status].badge
+                                "
+                                class="px-1.5"
+                                :data-testid="`plan-row-post-${item.id}`"
+                            >
+                                {{ $t(postStatusLabelKey(item.post_status)) }}
+                            </Badge>
                         </div>
                         <div
                             v-if="canWork && item.status !== 'planned'"

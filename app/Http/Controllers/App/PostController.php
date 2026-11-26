@@ -18,6 +18,8 @@ use App\Http\Requests\App\Post\StorePostRequest;
 use App\Http\Requests\App\Post\UpdatePostRequest;
 use App\Models\Post;
 use App\SocialHq\Composer\ComposerRepeat;
+use App\SocialHq\Plan\ItemPosts;
+use App\SocialHq\Plan\PlanItem;
 use App\Support\PostStatusRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -128,6 +130,11 @@ class PostController extends Controller
         // Social HQ: the repeat picked in the composer's footer (PATCHES.md row 233).
         if ($request->has('recurrence')) {
             ComposerRepeat::apply($posts, $request->validated('recurrence') ?: null);
+        }
+
+        // Social HQ: posts made from a plan item are linked to it once saved (PATCHES.md row 260).
+        if ($request->filled('plan_item_id')) {
+            ItemPosts::link(PlanItem::query()->findOrFail((int) $request->validated('plan_item_id')), $posts, $request->user());
         }
 
         $tab = match ($request->input('status')) {

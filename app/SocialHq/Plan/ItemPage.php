@@ -36,10 +36,14 @@ final class ItemPage
             'team' => BriefTeam::members($workspace)->map(fn (User $member): ?array => self::person($member))->values()->all(),
             'postReady' => CreatePostFromItem::isReady($item),
             'postBlockers' => CreatePostFromItem::blockers($item),
-            'creativeWaiver' => $item->creative_waived_at === null ? null : [
+            // Whether an approver may let the post go out without its creative (the format allows it).
+            'textOnlyAllowed' => CreatePostFromItem::mayGoTextOnly($item),
+            'creativeWaiver' => $item->creative_waived_at === null || ! CreatePostFromItem::mayGoTextOnly($item) ? null : [
                 'at' => $item->creative_waived_at->toIso8601String(),
                 'by' => self::person($item->creativeWaivedBy),
             ],
+            // The posts made from the item, with where each stands now.
+            'itemPosts' => ItemPosts::forItemPage($item, $user, $workspace),
             'abilities' => PlanAccess::abilities($user, $workspace),
             'aiAvailable' => AiResponses::isUsable(AiTask::Write, $user, $workspace),
         ];
@@ -99,7 +103,8 @@ final class ItemPage
             'owner' => self::person($item->owner),
             'channel' => $account === null ? null : [
                 'id' => $account->id,
-                'name' => $account->display_name ?: $account->username,
+                // The team's name for the channel first (Name in Social HQ), as everywhere else.
+                'name' => $account->display_label,
                 'platform' => $account->platform->value,
                 'avatar_url' => $account->avatar_url,
             ],

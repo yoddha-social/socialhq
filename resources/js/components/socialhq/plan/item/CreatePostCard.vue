@@ -1,25 +1,36 @@
 <script setup lang="ts">
-import { router, useHttp } from '@inertiajs/vue3';
+import { Link, router, useHttp } from '@inertiajs/vue3';
 import {
-    IconCircleCheck,
+    IconAlertTriangle,
     IconCircleDashed,
+    IconExternalLink,
     IconPhotoOff,
     IconSend2,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
+import { channelLabel } from '@/components/socialhq/channelLabel';
+import { localizedDay } from '@/components/socialhq/localizedDay';
 import type {
     CreativeWaiver,
+    ItemPost,
     PlanAbilities,
     PlanItemDetail,
     PostBlocker,
 } from '@/components/socialhq/plan/item/types';
 import {
+    backToApprovalWarning,
+    followPosts,
+} from '@/components/socialhq/plan/planRequests';
+import { postStatusLabelKey } from '@/components/socialhq/plan/postStatus';
+import { POST_STATUS_TONES } from '@/components/socialhq/postStatusTone';
+import {
     firstErrorOf,
     serverMessageOf,
 } from '@/components/socialhq/requestErrors';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import date from '@/date';
@@ -36,6 +47,10 @@ const props = defineProps<{
     /** Everything still in the way, all at once. */
     blockers: PostBlocker[];
     waiver: CreativeWaiver | null;
+    /** Whether the item's format can go out without an image or video. */
+    textOnlyAllowed: boolean;
+    /** The posts saved from this item, with where each stands now. */
+    posts: ItemPost[];
     /** Whether the item has something to make (a graphic or a video). */
     hasCreative: boolean;
     /** Whether that creative is approved (its files go with the post). */
@@ -62,6 +77,35 @@ onBeforeUnmount(() => {
 });
 
 const waiving = ref(false);
+
+/** Dated drafts and scheduled posts that aren't on the item's day. */
+const offDayCount = computed(
+    () => props.posts.filter((post) => post.off_day).length,
+);
+
+const itemDay = computed(() =>
+    localizedDay(props.item.scheduled_on).format('ddd D MMM'),
+);
+
+/** Approved posts that moving to the item's day sends back for approval, named before the move. */
+const followWarning = computed(() =>
+    backToApprovalWarning(
+        props.posts
+            .filter((post) => post.back_to_approval && post.scheduled_at)
+            .map((post) => post.scheduled_at as string),
+    ),
+);
+
+const following = ref(false);
+
+const movePostsToItemDay = (): void => followPosts(props.item.id, following);
+
+/** When the post went out, or when it is due; nothing for a draft without a time. */
+const postTime = (post: ItemPost): string | null => {
+    const at = post.published_at ?? post.scheduled_at;
+
+    return at ? date.formatDateTime(at) : null;
+};
 
 /** An approver lets the post go out without its creative, or takes that back. */
 const setTextOnly = (on: boolean): void => {
@@ -117,8 +161,9 @@ const createPost = async (): Promise<void> => {
                 scheduled_at: null,
                 label_ids: [],
             },
+            // Saving links the post to this item; closing without saving leaves it as it was.
+            planItemId: props.item.id,
         });
-        router.reload({ only: ['item'] });
 
         if (draft.left_out.length > 0) {
             toast.warning(
@@ -195,7 +240,7 @@ const createPost = async (): Promise<void> => {
                 }}
             </span>
             <Button
-                v-if="abilities.canApprove && !item.post_created_at"
+                v-if="abilities.canApprove && posts.length === 0"
                 variant="link"
                 size="sm"
                 class="h-auto p-0 text-xs"
@@ -206,6 +251,23 @@ const createPost = async (): Promise<void> => {
                 {{ $t('socialhq_production.post.text_only_undo') }}
             </Button>
         </div>
+        <p
+            v-else-if="
+                abilities.canApprove &&
+                hasCreative &&
+                blockers.includes('creative') &&
+                !textOnlyAllowed
+            "
+            class="flex items-start gap-1.5 text-xs text-muted-foreground"
+            data-testid="item-text-only-unavailable"
+        >
+            <IconPhotoOff class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            {{
+                $t('socialhq_production.post.text_only_unavailable', {
+                    format: item.content_type_label ?? '',
+                })
+            }}
+        </p>
         <div
             v-else-if="
                 abilities.canApprove &&
@@ -232,22 +294,107 @@ const createPost = async (): Promise<void> => {
                 {{ $t('socialhq_production.post.text_only_hint') }}
             </p>
         </div>
-        <p
-            v-if="item.post_created_at"
-            class="flex items-center gap-1.5 text-xs text-success-text"
-            data-testid="item-post-created"
+        <div
+            v-if="posts.length > 0"
+            class="grid gap-1.5"
+            data-testid="item-posts"
         >
-            <IconCircleCheck class="size-4" />
-            {{
-                $t('socialhq_production.post.created', {
-                    time: date.formatDateTime(item.post_created_at),
-                })
-            }}
-        </p>
+            <p class="text-xs font-medium text-muted-foreground">
+                {{
+                    $tChoice(
+                        'socialhq_production.post.posts_title',
+                        posts.length,
+                    )
+                }}
+            </p>
+            <ul class="grid gap-1.5">
+                <li
+                    v-for="post in posts"
+                    :key="post.id"
+                    class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
+                    :data-testid="`item-post-${post.id}`"
+                >
+                    <Badge
+                        :variant="POST_STATUS_TONES[post.status].badge"
+                        :data-testid="`item-post-status-${post.id}`"
+                        >{{ $t(postStatusLabelKey(post.status)) }}</Badge
+                    >
+                    <Badge
+                        v-if="post.off_day"
+                        variant="warning"
+                        :data-testid="`item-post-off-day-${post.id}`"
+                        >{{ $t('socialhq_production.post.off_day') }}</Badge
+                    >
+                    <Badge
+                        v-if="post.other_channel"
+                        variant="warning"
+                        :data-testid="`item-post-other-channel-${post.id}`"
+                        >{{
+                            $t('socialhq_production.post.other_channel')
+                        }}</Badge
+                    >
+                    <Badge
+                        v-else-if="post.other_format"
+                        variant="warning"
+                        :data-testid="`item-post-other-format-${post.id}`"
+                        >{{
+                            $t('socialhq_production.post.other_format')
+                        }}</Badge
+                    >
+                    <span class="min-w-0 truncate text-muted-foreground">
+                        {{ channelLabel(post.channel, post.platform) }}
+                        <template v-if="postTime(post)">
+                            · {{ postTime(post) }}
+                        </template>
+                    </span>
+                    <Link
+                        :href="post.url"
+                        class="ms-auto text-xs font-medium text-primary-text underline-offset-4 hover:underline"
+                        :data-testid="`item-post-open-${post.id}`"
+                        >{{ $t('socialhq_production.post.open') }}</Link
+                    >
+                    <a
+                        v-if="post.network_url"
+                        :href="post.network_url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-muted-foreground hover:text-foreground"
+                        :aria-label="
+                            $t('socialhq_production.post.open_on_network')
+                        "
+                    >
+                        <IconExternalLink class="size-4" aria-hidden="true" />
+                    </a>
+                </li>
+            </ul>
+            <p
+                v-if="abilities.canWork && offDayCount > 0 && followWarning"
+                class="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-foreground"
+                role="status"
+                data-testid="item-posts-follow-warning"
+            >
+                <IconAlertTriangle
+                    class="size-4 shrink-0 text-warning"
+                    aria-hidden="true"
+                />
+                {{ followWarning }}
+            </p>
+            <Button
+                v-if="abilities.canWork && offDayCount > 0"
+                variant="outline"
+                size="sm"
+                class="w-fit"
+                :loading="following"
+                data-testid="item-posts-follow"
+                @click="movePostsToItemDay"
+            >
+                {{ $t('socialhq_production.post.follow', { date: itemDay }) }}
+            </Button>
+        </div>
         <Button
             v-if="abilities.canWork"
             class="w-full"
-            :variant="ready && !item.post_created_at ? 'default' : 'outline'"
+            :variant="ready && posts.length === 0 ? 'default' : 'outline'"
             :class="ready ? '' : 'text-muted-foreground'"
             :disabled="!ready"
             :aria-describedby="
@@ -260,7 +407,7 @@ const createPost = async (): Promise<void> => {
             <IconSend2 />
             {{
                 $t(
-                    item.post_created_at
+                    posts.length > 0
                         ? 'socialhq_production.post.create_another'
                         : 'socialhq_production.post.create',
                 )

@@ -125,7 +125,27 @@ test('get-brand-knowledge-tool returns what the AI writers read', function () {
 
     TryPostServer::actingAs($this->owner)->tool(GetBrandKnowledgeTool::class, ['topic' => 'Dashain'])
         ->assertHasNoErrors()
-        ->assertSee('A momo shop in Kathmandu.');
+        ->assertSee('A momo shop in Kathmandu.')
+        ->assertStructuredContent(fn (AssertableJson $json) => $json->where('keywords', [])->etc());
+});
+
+test('get-brand-knowledge-tool returns the SEO keywords a topic gets, as the AI writers get them', function () {
+    BrandProfile::query()->create(['workspace_id' => $this->workspace->id, 'about' => 'A momo shop in Kathmandu.', 'keywords' => [
+        ['text' => 'momo kathmandu', 'main' => true],
+        ['text' => 'buff momo', 'main' => false],
+        ['text' => 'dashain offer', 'main' => false],
+    ]]);
+
+    // Main first, then the supporting ones that match the topic.
+    TryPostServer::actingAs($this->owner)->tool(GetBrandKnowledgeTool::class, ['topic' => 'Dashain offer on momos'])
+        ->assertHasNoErrors()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json
+            ->where('keywords', [
+                ['text' => 'momo kathmandu', 'main' => true],
+                ['text' => 'dashain offer', 'main' => false],
+                ['text' => 'buff momo', 'main' => false],
+            ])
+            ->etc());
 });
 
 test('an admin\'s mcp grant writes copy and sends it for review', function () {

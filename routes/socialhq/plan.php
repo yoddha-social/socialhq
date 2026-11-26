@@ -35,6 +35,7 @@ Route::post('items/{item}/comments', [ItemCommentController::class, 'store'])->w
 Route::post('items/{item}/post', [ItemPostController::class, 'store'])->whereNumber('item')->middleware('throttle:media-imports')->name('items.post.store');
 Route::post('items/{item}/post/text-only', [ItemPostController::class, 'waiveCreative'])->whereNumber('item')->name('items.post.text-only.store');
 Route::delete('items/{item}/post/text-only', [ItemPostController::class, 'requireCreative'])->whereNumber('item')->name('items.post.text-only.destroy');
+Route::post('items/{item}/post/follow', [ItemPostController::class, 'follow'])->whereNumber('item')->name('items.post.follow');
 
 Route::put('items/{item}', [PlanItemWriteController::class, 'update'])->whereNumber('item')->name('items.update');
 Route::delete('items/{item}', [PlanItemWriteController::class, 'destroy'])->whereNumber('item')->name('items.destroy');

@@ -81,6 +81,10 @@ php artisan migrate --force
 echo "[entrypoint] syncing the What's New entries"
 php artisan changelog:sync
 
+# Social HQ: companies' AI deployments follow the provider catalogue (PATCHES.md row 281).
+echo "[entrypoint] syncing companies' AI deployments"
+php artisan socialhq:ai-sync || echo "[entrypoint] AI deployments not synced (is LiteLLM up?); run php artisan socialhq:ai-sync"
+
 # 8) storage:link if missing.
 if [ ! -L public/storage ]; then
     echo "[entrypoint] linking storage"

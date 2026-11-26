@@ -15,6 +15,7 @@ use App\SocialHq\Ai\Company\CredentialStatus;
 use App\SocialHq\Ai\Company\CredentialTier;
 use App\SocialHq\Ai\Company\ProviderCredential;
 use App\SocialHq\Companies\Company;
+use Database\Factories\AccountFactory;
 use Illuminate\Http\Client\Request;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\DB;
@@ -199,7 +200,8 @@ test('Mistral with the box ticked is added', function () {
 });
 
 test('only the owner of an approved company manages its AI', function () {
-    $member = User::factory()->create();
+    // An invited admin: their own account is empty, not a company (AccountFactory would make it one).
+    $member = AccountFactory::withoutCompany(fn (): User => User::factory()->create());
     $this->workspace->members()->attach($member->id, membershipPivot('admin'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
     Http::fake();
@@ -426,6 +428,53 @@ test('a free key on a plan that may train is added only with the box ticked', fu
 
     expect($credential->data_confirmed_at)->not->toBeNull()
         ->and(companyAiDeployments()["{$credential->litellm_credential_name}-write"]['model'])->toEndWith(':free');
+});
+
+test('an OpenRouter free key\'s deployments turn reasoning off, other providers\' don\'t', function () {
+    fakeLiteLlmAdmin();
+
+    $this->actingAs($this->owner)->post(route('socialhq.ai-settings.providers.store'), companyAiKey([
+        'provider' => 'openrouter', 'label' => 'OpenRouter free', 'provider_key' => 'sk-or-v1-TestKey000000000000000001', 'confirmed' => true,
+    ]))->assertSessionHasNoErrors();
+    $this->actingAs($this->owner)->post(route('socialhq.ai-settings.providers.store'), companyAiKey())->assertSessionHasNoErrors();
+
+    $openRouter = ProviderCredential::query()->where('provider', 'openrouter')->sole();
+    $groq = ProviderCredential::query()->where('provider', 'groq')->sole();
+    $deployments = companyAiDeployments();
+
+    foreach (['write', 'structured', 'vision'] as $task) {
+        expect(data_get($deployments, "{$openRouter->litellm_credential_name}-{$task}.extra_body.reasoning.enabled"))->toBeFalse()
+            ->and($deployments["{$groq->litellm_credential_name}-{$task}"])->not->toHaveKey('extra_body');
+    }
+});
+
+test('socialhq:ai-sync brings keys added before a catalogue change in line, and then sends nothing', function () {
+    fakeLiteLlmAdmin();
+    $tasks = 'socialhq.company_ai.providers.openrouter.tiers.free.tasks';
+    $catalogue = config($tasks);
+    config(collect($catalogue)->mapWithKeys(fn (array $settings, string $task): array => ["{$tasks}.{$task}.params" => []])->all());
+
+    $this->actingAs($this->owner)->post(route('socialhq.ai-settings.providers.store'), companyAiKey([
+        'provider' => 'openrouter', 'label' => 'OpenRouter free', 'provider_key' => 'sk-or-v1-TestKey000000000000000001', 'confirmed' => true,
+    ]))->assertSessionHasNoErrors();
+    $credential = ProviderCredential::query()->sole();
+
+    expect(companyAiDeployments()["{$credential->litellm_credential_name}-structured"])->not->toHaveKey('extra_body');
+
+    // The release turns reasoning off in the catalogue.
+    config([$tasks => $catalogue]);
+
+    $this->artisan('socialhq:ai-sync')->assertSuccessful();
+
+    $deployments = companyAiDeployments();
+    expect(array_keys($deployments))->toEqualCanonicalizing(array_map(fn (string $task): string => "{$credential->litellm_credential_name}-{$task}", ['write', 'structured', 'vision']))
+        ->and(data_get($deployments, "{$credential->litellm_credential_name}-structured.extra_body.reasoning.enabled"))->toBeFalse();
+    Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/model/delete') && $request['id'] === "{$credential->litellm_credential_name}-structured");
+
+    $before = count(Http::recorded());
+    $this->artisan('socialhq:ai-sync')->assertSuccessful();
+
+    expect(count(Http::recorded()))->toBe($before);
 });
 
 test('a model chosen for a task is tested with the key and used instead of the catalogue\'s', function () {

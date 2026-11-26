@@ -13,6 +13,7 @@ use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Services\PostHogService;
 use App\SocialHq\Access\AiAccess;
 use App\SocialHq\Ai\AiResponses;
+use App\SocialHq\Knowledge\Keywords\BrandKeywords;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
@@ -64,6 +65,7 @@ class PostAiAssistantController extends Controller
             );
         });
 
-        return response()->json(['content' => $content]);
+        // Social HQ: the SEO keywords note, or the keywords the caption says (PATCHES.md row 290).
+        return response()->json(['content' => $content, ...BrandKeywords::forAnswer($request->user(), $workspace, $content, newText: $mode->requiresPrompt())]);
     }
 }

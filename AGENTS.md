@@ -259,7 +259,7 @@ Typing the exact name is the stronger guard for the identity-bound ones, on purp
 
 Text inside the app (popovers, empty states, dialogs, tooltips that ask for an action, errors, toasts) talks to the end user, who is in the middle of doing something. Write it from their side, not from how the system is built. The `copywriting` skill in `.agents/skills` is for marketing pages; it does not apply here.
 
-**Full guide, examples, per-component rules, the review checklist and the sources: the `in-app-copy` skill** (`.claude/skills/in-app-copy/SKILL.md`, mirrored in `.agents/skills` and `.cursor/skills`). Load it before writing or reviewing any user-facing string. The rules below are the minimum.
+**Full guide, examples, per-component rules, the review checklist and the sources: the `in-app-copy` skill** (`.claude/skills/in-app-copy/SKILL.md`, mirrored in `.agents/skills`). Load it before writing or reviewing any user-facing string. The rules below are the minimum.
 
 - **A prompt that asks the user to act follows three steps, in this order** (owner decision October 2026):
     1. **What is missing, in the user's words and addressed to them:** "You haven't set up this channel's queue yet". Not a system state ("Set up the queue first", "No posting times configured").
@@ -424,8 +424,13 @@ history — a post without a channel is a history that no longer exists.
 - Quiet: no `post.deleted` webhook or notification per post.
 - It deletes by `posts.social_account_id`, without a workspace clause: a post
   has one channel, so every post pointing at the account goes.
-- Analytics publications stay and are only unlinked, never dismissed, so
-  reconnecting the same identity re-imports its recent posts once.
+- Its Insights history goes too (Social HQ, `App\SocialHq\Channels\ChannelInsights`,
+  called by `DisconnectSocialAccount`): the analytics publications with their
+  daily numbers, the follower snapshots and the sync states of the channel's
+  identity in its workspace, an earlier connection's included. They stay while
+  another channel of the workspace is the same identity. Reconnecting the same
+  identity reads its posts again from the network as a new channel.
+  `php artisan socialhq:insights:prune` deletes what disconnects left before this.
 
 ## Member permissions and post approvals
 

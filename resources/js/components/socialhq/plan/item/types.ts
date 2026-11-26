@@ -1,3 +1,4 @@
+import type { PostStatus } from '@/components/socialhq/plan/postStatus';
 import type { CopyStatus } from '@/components/socialhq/plan/types';
 
 export interface PlanPerson {
@@ -128,4 +129,26 @@ export interface BriefDetail {
     next_round?: number;
     /** Whether the current round may be sent for review. */
     can_submit?: boolean;
+}
+
+/** A post made from the item, and where it stands now. */
+export interface ItemPost {
+    id: string;
+    status: PostStatus;
+    status_label: string;
+    scheduled_at: string | null;
+    published_at: string | null;
+    channel: string | null;
+    platform: string | null;
+    /** The post in the composer (TryPost's edit page). */
+    url: string;
+    /** The post on the network, once published. */
+    network_url: string | null;
+    /** A dated draft or scheduled post that isn't on the item's day. */
+    off_day: boolean;
+    /** Approved, and moving it to the item's day sends it back for approval. */
+    back_to_approval: boolean;
+    /** The item has another channel or format than the post was made for. */
+    other_channel: boolean;
+    other_format: boolean;
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { router, usePage } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import {
     IconArrowsMaximize,
     IconCircleDashedPlus,
@@ -725,6 +725,20 @@ defineExpose({ openDetails });
                                 when: date.diffForHumans(post.created_at),
                             })
                         }}</span>
+                        <!-- Social HQ: the plan item the post was made from (PATCHES.md row 263). -->
+                        <template v-if="post.plan_item">
+                            ·
+                            <Link
+                                :href="post.plan_item.url"
+                                class="font-medium text-primary-text underline-offset-4 hover:underline"
+                                :data-testid="`post-plan-item-${post.id}`"
+                                >{{
+                                    $t('socialhq.post_card.from_plan', {
+                                        title: post.plan_item.title,
+                                    })
+                                }}</Link
+                            >
+                        </template>
                     </p>
                     <div
                         class="flex max-w-full shrink-0 flex-wrap items-center gap-1 max-sm:ms-auto"

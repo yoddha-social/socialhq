@@ -8,6 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Http\Requests\Plan\DestroyPlanItemRequest;
+use App\SocialHq\Http\Requests\Plan\DropPlanItemRequest;
 use App\SocialHq\Http\Requests\Plan\MovePlanItemRequest;
 use App\SocialHq\Http\Requests\Plan\StorePlanItemRequest;
 use App\SocialHq\Http\Requests\Plan\UpdatePlanItemRequest;
@@ -16,6 +18,7 @@ use App\SocialHq\Plan\Ai\UnsupportedDetails;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\CopyStatus;
 use App\SocialHq\Plan\ItemCopy;
+use App\SocialHq\Plan\ItemPosts;
 use App\SocialHq\Plan\ItemSource;
 use App\SocialHq\Plan\ItemStatus;
 use App\SocialHq\Plan\PlanAccess;
@@ -35,6 +38,12 @@ use Illuminate\Validation\ValidationException;
  * approved plan sends it back for review; editing or moving an AI
  * suggestion accepts it, so a new AI draft never replaces that work. The
  * item page (copy, review, brief) has its own controller.
+ *
+ * Dropping or deleting an item whose post will still go out, or giving it
+ * another channel or format, needs the person's choice for that post
+ * ("posts": back to drafts, or keep it scheduled); without one nothing
+ * changes, so a post scheduled since the page loaded never goes out
+ * silently for an item that no longer matches it.
  */
 class PlanItemWriteController extends Controller
 {
@@ -65,34 +74,42 @@ class PlanItemWriteController extends Controller
     {
         $found = PlanAccess::item($request, $item);
         $channel = SocialAccount::query()->where('workspace_id', $found->workspace_id)->findOrFail($request->validated('social_account_id'));
+        $kept = 0;
 
-        $this->change($found, function () use ($found, $request, $channel): void {
-            $found->update([
-                ...self::withTimeZone($request->validated(), $found, $found->plan->workspace, $request->user()),
+        $this->change($found, function (PlanItem $locked) use ($request, $channel, &$kept): void {
+            // A post made for the old channel or format would still go out as it is.
+            if ($locked->social_account_id !== $channel->id || $locked->content_type?->value !== $request->validated('content_type')) {
+                $kept = $this->settleUpcomingPosts($locked, $request->validated('posts'), $request->user());
+            }
+
+            $locked->update([
+                ...self::withTimeZone(Arr::except($request->validated(), 'posts'), $locked, $locked->plan->workspace, $request->user()),
                 'platform' => $channel->platform->value,
             ]);
 
-            $formatChanged = $found->wasChanged(['social_account_id', 'content_type']);
-            $creativeChanged = $found->wasChanged(['creative', 'social_account_id', 'content_type']);
-            $briefChanged = $found->wasChanged(['objective', 'angle']);
+            $formatChanged = $locked->wasChanged(['social_account_id', 'content_type']);
+            $creativeChanged = $locked->wasChanged(['creative', 'social_account_id', 'content_type']);
+            $briefChanged = $locked->wasChanged(['objective', 'angle']);
 
             // Copy approved (or in review) for one channel and format isn't approved for another.
             if ($formatChanged) {
-                ItemCopy::reopen($found, $request->user(), __('socialhq_production.review.reopened_format'));
+                ItemCopy::reopen($locked, $request->user(), __('socialhq_production.review.reopened_format'));
             }
 
             // A text-only post was allowed for what the item was; a new creative, channel or format waits again.
-            if ($creativeChanged && $found->creative_waived_at !== null) {
-                $found->forceFill(['creative_waived_at' => null, 'creative_waived_by' => null])->save();
+            if ($creativeChanged && $locked->creative_waived_at !== null) {
+                $locked->forceFill(['creative_waived_at' => null, 'creative_waived_by' => null])->save();
             }
 
             // The planner's unchecked details stay flagged while the text still says them.
-            if ($briefChanged && $found->unsupported_details !== null) {
-                $found->update(['unsupported_details' => UnsupportedDetails::stillIn($found->unsupported_details, "{$found->objective}\n{$found->angle}")]);
+            if ($briefChanged && $locked->unsupported_details !== null) {
+                $locked->update(['unsupported_details' => UnsupportedDetails::stillIn($locked->unsupported_details, "{$locked->objective}\n{$locked->angle}")]);
             }
 
-            $found->acceptForWork();
+            $locked->acceptForWork();
         });
+
+        self::sayKeptPosts($kept);
 
         return back();
     }
@@ -100,14 +117,15 @@ class PlanItemWriteController extends Controller
     public function move(MovePlanItemRequest $request, int $item): RedirectResponse
     {
         $found = PlanAccess::item($request, $item);
+        $day = $request->validated('scheduled_on');
 
-        if ($found->scheduled_on->toDateString() !== $request->validated('scheduled_on')) {
-            $this->change($found, function () use ($found, $request): void {
-                $found->update([
-                    'scheduled_on' => $request->validated('scheduled_on'),
-                    'position' => $this->nextPosition($found->plan, $request->validated('scheduled_on')),
+        if ($found->scheduled_on->toDateString() !== $day) {
+            $this->change($found, function (PlanItem $locked) use ($day): void {
+                $locked->update([
+                    'scheduled_on' => $day,
+                    'position' => $this->nextPosition($locked->plan, $day),
                 ]);
-                $found->acceptForWork();
+                $locked->acceptForWork();
             });
         }
 
@@ -115,24 +133,38 @@ class PlanItemWriteController extends Controller
     }
 
     /**
-     * An AI suggestion becomes part of the plan.
+     * An AI suggestion becomes part of the plan, unless its day has passed:
+     * it can be moved to a coming day (which accepts it) or dropped.
      */
     public function accept(Request $request, int $item): RedirectResponse
     {
         $found = PlanAccess::item($request, $item);
-        $this->ensureStatus($found, ItemStatus::Suggested);
 
-        $this->change($found, fn () => $found->update(['status' => ItemStatus::Planned]));
+        $this->change($found, function (PlanItem $locked) use ($request): void {
+            $this->ensureStatus($locked, ItemStatus::Suggested);
+
+            if ($locked->scheduled_on->toDateString() < PlanMonth::today($request->user())) {
+                throw ValidationException::withMessages(['item' => __('socialhq_plan.errors.suggestion_past')]);
+            }
+
+            $locked->update(['status' => ItemStatus::Planned]);
+        });
 
         return back();
     }
 
-    public function drop(Request $request, int $item): RedirectResponse
+    public function drop(DropPlanItemRequest $request, int $item): RedirectResponse
     {
         $found = PlanAccess::item($request, $item);
-        $this->ensureStatus($found, ItemStatus::Suggested, ItemStatus::Planned);
+        $kept = 0;
 
-        $this->change($found, fn () => $found->update(['status' => ItemStatus::Dropped]));
+        $this->change($found, function (PlanItem $locked) use ($request, &$kept): void {
+            $this->ensureStatus($locked, ItemStatus::Suggested, ItemStatus::Planned);
+            $kept = $this->settleUpcomingPosts($locked, $request->validated('posts'), $request->user());
+            $locked->update(['status' => ItemStatus::Dropped]);
+        });
+
+        self::sayKeptPosts($kept);
 
         return back();
     }
@@ -144,41 +176,53 @@ class PlanItemWriteController extends Controller
     public function restore(Request $request, int $item): RedirectResponse
     {
         $found = PlanAccess::item($request, $item);
-        $this->ensureStatus($found, ItemStatus::Dropped);
 
-        $untouchedSuggestion = $found->source === ItemSource::Ai
-            && ! $found->versions()->exists()
-            && ! $found->brief()->exists();
+        $this->change($found, function (PlanItem $locked): void {
+            $this->ensureStatus($locked, ItemStatus::Dropped);
 
-        $this->change($found, fn () => $found->update(['status' => $untouchedSuggestion ? ItemStatus::Suggested : ItemStatus::Planned]));
+            $untouchedSuggestion = $locked->source === ItemSource::Ai
+                && ! $locked->versions()->exists()
+                && ! $locked->brief()->exists();
+
+            $locked->update(['status' => $untouchedSuggestion ? ItemStatus::Suggested : ItemStatus::Planned]);
+        });
 
         return back();
     }
 
     /**
-     * Approved copy, an approved creative or a created post is approved work:
-     * only approvers delete an item that has one. Others drop it instead.
+     * Approved copy, an approved creative or a post made from the item is
+     * approved work: only approvers delete an item that has one. Others drop
+     * it instead. A post counts while it is linked (a deleted post doesn't).
      */
-    public function destroy(Request $request, int $item): RedirectResponse
+    public function destroy(DestroyPlanItemRequest $request, int $item): RedirectResponse
     {
         $found = PlanAccess::item($request, $item);
-        $found->loadMissing('brief');
+        $kept = 0;
 
-        $approvedWork = $found->copy_status === CopyStatus::Approved
-            || $found->brief?->stage === BriefStage::Approved
-            || $found->post_created_at !== null;
+        $this->change($found, function (PlanItem $locked) use ($request, &$kept): void {
+            $locked->loadMissing('brief');
 
-        if ($approvedWork && ! PlanAccess::canApprove($request->user(), $found->plan->workspace)) {
-            throw ValidationException::withMessages(['item' => __('socialhq_plan.errors.delete_approved')]);
-        }
+            $approvedWork = $locked->copy_status === CopyStatus::Approved
+                || $locked->brief?->stage === BriefStage::Approved
+                || $locked->hasPosts();
 
-        $this->change($found, fn () => $found->delete());
+            if ($approvedWork && ! PlanAccess::canApprove($request->user(), $locked->plan->workspace)) {
+                throw ValidationException::withMessages(['item' => __('socialhq_plan.errors.delete_approved')]);
+            }
+
+            $kept = $this->settleUpcomingPosts($locked, $request->validated('posts'), $request->user());
+            $locked->delete();
+        });
+
+        self::sayKeptPosts($kept);
 
         return back();
     }
 
     /**
-     * Every open AI suggestion of the month becomes part of the plan.
+     * Every open AI suggestion of the month on a coming day becomes part of
+     * the plan.
      */
     public function acceptAll(Request $request, string $month): RedirectResponse
     {
@@ -186,8 +230,12 @@ class PlanItemWriteController extends Controller
         $plan = PlanMonth::find($workspace, PlanMonth::parse($month, $request->user()));
 
         if ($plan !== null) {
-            DB::transaction(function () use ($plan): void {
-                $accepted = $plan->items()->where('status', ItemStatus::Suggested)->update(['status' => ItemStatus::Planned, 'updated_at' => now()]);
+            DB::transaction(function () use ($plan, $request): void {
+                // A suggestion on a day already gone stays open: it would add an item to the past.
+                $accepted = $plan->items()
+                    ->where('status', ItemStatus::Suggested)
+                    ->whereDate('scheduled_on', '>=', PlanMonth::today($request->user()))
+                    ->update(['status' => ItemStatus::Planned, 'updated_at' => now()]);
 
                 if ($accepted > 0) {
                     $plan->reopen();
@@ -198,12 +246,54 @@ class PlanItemWriteController extends Controller
         return back();
     }
 
+    /**
+     * One all-or-nothing change to an item, under its row lock: two people
+     * acting on it at once take turns, and the second one's checks see what
+     * the first did. Posts sent back to drafts on the way stay scheduled if
+     * the change fails; their jobs and events go out after the commit
+     * (TryPost's post actions queue them so).
+     *
+     * @param  callable(PlanItem): void  $write
+     */
     private function change(PlanItem $item, callable $write): void
     {
         DB::transaction(function () use ($item, $write): void {
-            $write();
-            $item->plan->reopen();
+            $locked = PlanItem::query()->whereKey($item->id)->lockForUpdate()->firstOrFail();
+
+            $write($locked);
+            $locked->plan->reopen();
         });
+    }
+
+    /**
+     * Before an item is dropped, deleted or given another channel or format: its posts that will still go out
+     * go back to drafts or keep their schedule, as the person chose. No
+     * choice while there are any refuses the change. Returns how many posts
+     * couldn't go back to drafts (another member's request for approval, or
+     * one already going out).
+     */
+    private function settleUpcomingPosts(PlanItem $item, ?string $choice, User $user): int
+    {
+        if (ItemPosts::upcoming($item)->isEmpty()) {
+            return 0;
+        }
+
+        if ($choice === null) {
+            throw ValidationException::withMessages(['posts' => __('socialhq_plan.errors.posts_choice')]);
+        }
+
+        return $choice === ItemPosts::TO_DRAFTS ? ItemPosts::toDrafts($item, $user) : 0;
+    }
+
+    /**
+     * "Move to drafts" that left a post scheduled says so, once the change
+     * is saved: that post can still go out.
+     */
+    private static function sayKeptPosts(int $kept): void
+    {
+        if ($kept > 0) {
+            session()->flash('flash.warning', trans_choice('socialhq_plan.posts_choice.kept', $kept, ['count' => $kept]));
+        }
     }
 
     private function ensureStatus(PlanItem $item, ItemStatus ...$allowed): void

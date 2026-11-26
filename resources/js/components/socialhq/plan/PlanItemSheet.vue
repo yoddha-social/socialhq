@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Page } from '@inertiajs/core';
 import { Link, router, useForm } from '@inertiajs/vue3';
 import { IconArrowBackUp, IconExternalLink, IconX } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
@@ -6,12 +7,18 @@ import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
+import { channelLabel } from '@/components/socialhq/channelLabel';
 import { localizedDay } from '@/components/socialhq/localizedDay';
 import {
+    offerToMovePosts,
     toastFirstError,
     toastRequestFailed,
 } from '@/components/socialhq/plan/planRequests';
 import { placeOfZone } from '@/components/socialhq/plan/postingTime';
+import {
+    askPostsChoice,
+    type PostsChoice,
+} from '@/components/socialhq/plan/postsChoice';
 import type {
     PlanChannel,
     PlanEvent,
@@ -154,11 +161,14 @@ const days = computed(() => {
     });
 });
 
-/** The item's channel stays pickable even when it is no longer connected. */
+/**
+ * The item's channel stays pickable even when it is no longer connected.
+ * Each says its network: a brand's channels usually share its name.
+ */
 const channelOptions = computed(() => {
     const options = props.channels.map((channel) => ({
         value: channel.id,
-        label: channel.name,
+        label: channelLabel(channel.name, channel.platform),
     }));
 
     if (
@@ -169,7 +179,9 @@ const channelOptions = computed(() => {
     ) {
         options.push({
             value: props.item.social_account_id,
-            label: props.item.platform ?? props.item.social_account_id,
+            label:
+                channelLabel(null, props.item.platform) ||
+                props.item.social_account_id,
         });
     }
 
@@ -238,18 +250,85 @@ watch(
     },
 );
 
-const onChannelChange = (): void => {
-    if (!contentTypes.value.some((type) => type.value === form.content_type)) {
-        form.content_type = contentTypes.value[0]?.value ?? '';
-    }
-};
+/**
+ * Another channel keeps the format when it offers it, else takes its first.
+ * A watcher, not the select's change event, which fires before the select's
+ * v-model has updated the form (the format went blank). A channel no longer
+ * connected offers none, and its item keeps the format it has.
+ */
+watch(
+    () => form.social_account_id,
+    () => {
+        if (
+            contentTypes.value.length > 0 &&
+            !contentTypes.value.some((type) => type.value === form.content_type)
+        ) {
+            form.content_type = contentTypes.value[0]?.value ?? '';
+        }
+    },
+);
 
 const close = (): void => {
     open.value = false;
 };
 
-const save = (): void => {
-    const options = { preserveScroll: true, onSuccess: close };
+/**
+ * What a save changes for the item's posts that will still go out: a new
+ * channel or format leaves them made for the old one, so it asks first.
+ */
+const postsChange = (): 'channel' | 'format' | null => {
+    const item = props.item;
+
+    if (editingId.value === null || !item || item.upcoming_posts.length === 0) {
+        return null;
+    }
+
+    if (form.social_account_id !== item.social_account_id) {
+        return 'channel';
+    }
+
+    return form.content_type !== item.content_type ? 'format' : null;
+};
+
+/** Refusals no field shows (the post still set to go out) come back as a toast. */
+const toastFormError = (errors: Record<string, string>): void => {
+    if (errors.posts) {
+        toast.error(errors.posts);
+    }
+};
+
+const save = async (): Promise<void> => {
+    const change = postsChange();
+    let posts: PostsChoice | null = null;
+
+    if (change && props.item) {
+        posts = await askPostsChoice(change, props.item.upcoming_posts);
+
+        if (!posts) {
+            return;
+        }
+    }
+
+    const editedId = editingId.value;
+    const movedDay =
+        editedId !== null &&
+        props.item !== null &&
+        form.scheduled_on !== props.item.scheduled_on;
+    const options = {
+        preserveScroll: true,
+        onSuccess: (page: Page) => {
+            close();
+
+            if (movedDay) {
+                offerToMovePosts(
+                    (page.props.items as PlanItem[] | undefined)?.find(
+                        (item) => item.id === editedId,
+                    ),
+                );
+            }
+        },
+        onError: toastFormError,
+    };
 
     form.transform(({ time_hour, time_minute, ...data }) => ({
         ...data,
@@ -260,6 +339,7 @@ const save = (): void => {
         angle: data.angle || null,
         event_id: data.event_id ? Number(data.event_id) : null,
         owner_id: data.owner_id || null,
+        ...(posts ? { posts } : {}),
     }));
 
     if (editingId.value === null) {
@@ -269,69 +349,95 @@ const save = (): void => {
     }
 };
 
-const toggleDropped = (): void => {
+/** Dropping an item whose post will still go out asks first what happens to that post. */
+const toggleDropped = async (): Promise<void> => {
     if (!props.item) {
         return;
     }
 
-    const route =
-        props.item.status === 'dropped'
-            ? restoreItem.url(props.item.id)
-            : dropItem.url(props.item.id);
+    const restoring = props.item.status === 'dropped';
+    const route = restoring
+        ? restoreItem.url(props.item.id)
+        : dropItem.url(props.item.id);
+    let data: Record<string, string> = {};
 
-    router.post(
-        route,
-        {},
-        {
-            preserveScroll: true,
-            onStart: () => {
-                statusProcessing.value = true;
-            },
-            onFinish: () => {
-                statusProcessing.value = false;
-            },
-            onSuccess: close,
-            onError: toastFirstError,
-            onHttpException: toastRequestFailed,
+    if (!restoring && props.item.upcoming_posts.length > 0) {
+        const choice = await askPostsChoice('drop', props.item.upcoming_posts);
+
+        if (!choice) {
+            return;
+        }
+
+        data = { posts: choice };
+    }
+
+    router.post(route, data, {
+        preserveScroll: true,
+        onStart: () => {
+            statusProcessing.value = true;
         },
-    );
+        onFinish: () => {
+            statusProcessing.value = false;
+        },
+        onSuccess: close,
+        onError: toastFirstError,
+        onHttpException: toastRequestFailed,
+    });
 };
 
 /**
  * Marks the delete so the sheet closes quietly when the item leaves the list.
  * Settles in onFinish, after any outcome.
  */
-const deleteItem = (url: string) => (): Promise<void> =>
-    new Promise((resolve, reject) => {
-        let deleted = false;
-        deleting.value = true;
+const deleteItem =
+    (url: string, data: Record<string, string> = {}) =>
+    (): Promise<void> =>
+        new Promise((resolve, reject) => {
+            let deleted = false;
+            deleting.value = true;
 
-        router.delete(url, {
-            preserveScroll: true,
-            preserveState: true,
-            onSuccess: () => {
-                deleted = true;
-            },
-            onError: toastFirstError,
-            onHttpException: toastRequestFailed,
-            onNetworkError: toastRequestFailed,
-            onFinish: () => {
-                if (deleted) {
-                    resolve();
-                } else {
-                    deleting.value = false;
-                    reject();
-                }
-            },
+            router.delete(url, {
+                data,
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => {
+                    deleted = true;
+                },
+                onError: toastFirstError,
+                onHttpException: toastRequestFailed,
+                onNetworkError: toastRequestFailed,
+                onFinish: () => {
+                    if (deleted) {
+                        resolve();
+                    } else {
+                        deleting.value = false;
+                        reject();
+                    }
+                },
+            });
         });
-    });
 
-/** Deleting an item with approved work is for approvers: the server refuses with a message saying to drop it instead. */
-const askDelete = (): void => {
-    if (props.item) {
-        const url = destroyItem.url(props.item.id);
+/**
+ * Deleting an item with approved work is for approvers: the server refuses with a message saying to drop it instead.
+ * An item whose post will still go out asks what happens to that post, in place of the plain confirmation.
+ */
+const askDelete = async (): Promise<void> => {
+    if (!props.item) {
+        return;
+    }
 
+    const url = destroyItem.url(props.item.id);
+
+    if (props.item.upcoming_posts.length === 0) {
         confirmDelete.value?.open({ url, request: deleteItem(url) });
+
+        return;
+    }
+
+    const choice = await askPostsChoice('delete', props.item.upcoming_posts);
+
+    if (choice) {
+        await deleteItem(url, { posts: choice })().catch(() => undefined);
     }
 };
 </script>
@@ -531,7 +637,6 @@ const askDelete = (): void => {
                                     id="plan-item-channel"
                                     v-model="form.social_account_id"
                                     data-testid="plan-item-channel"
-                                    @change="onChannelChange"
                                 >
                                     <NativeSelectOption
                                         v-for="option in channelOptions"

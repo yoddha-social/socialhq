@@ -10,6 +10,9 @@ import {
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 
+// Social HQ: the six post statuses take their colours from our one table (PATCHES.md row 335).
+import { POST_STATUS_TONES } from '@/components/socialhq/postStatusTone';
+
 type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'destructive-subtle' | 'success' | 'warning' | 'info' | 'outline';
 
 interface StatusConfig {
@@ -21,13 +24,13 @@ interface StatusConfig {
 }
 
 const CONFIGS: Record<string, Pick<StatusConfig, 'variant' | 'icon' | 'iconClass'>> = {
-    draft: { variant: 'info', icon: IconEdit },
-    pending_approval: { variant: 'warning', icon: IconEdit },
-    scheduled: { variant: 'default', icon: IconClock },
-    publishing: { variant: 'warning', icon: IconLoader2, iconClass: 'animate-spin' },
+    draft: { variant: POST_STATUS_TONES.draft.badge, icon: IconEdit },
+    pending_approval: { variant: POST_STATUS_TONES.pending_approval.badge, icon: IconEdit },
+    scheduled: { variant: POST_STATUS_TONES.scheduled.badge, icon: IconClock },
+    publishing: { variant: POST_STATUS_TONES.publishing.badge, icon: IconLoader2, iconClass: 'animate-spin' },
     retrying: { variant: 'warning', icon: IconLoader2, iconClass: 'animate-spin' },
-    published: { variant: 'success', icon: IconCircleCheck },
-    failed: { variant: 'destructive-subtle', icon: IconAlertCircle },
+    published: { variant: POST_STATUS_TONES.published.badge, icon: IconCircleCheck },
+    failed: { variant: POST_STATUS_TONES.failed.badge, icon: IconAlertCircle },
     rejected: { variant: 'destructive-subtle', icon: IconBan },
     pending_review: { variant: 'warning', icon: IconHourglass },
 };

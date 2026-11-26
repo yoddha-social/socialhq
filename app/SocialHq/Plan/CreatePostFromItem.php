@@ -70,22 +70,40 @@ final class CreatePostFromItem
 
     /**
      * Whether the post waits for a creative: the item has something to make
-     * and no approver has let it go out text-only.
+     * and no approver has let it go out text-only (a waiver counts only on a
+     * format that can go out without media).
      */
     public static function needsCreative(PlanItem $item): bool
     {
-        return $item->creative->briefKind() !== null && $item->creative_waived_at === null;
+        return $item->creative->briefKind() !== null
+            && ($item->creative_waived_at === null || ! self::mayGoTextOnly($item));
+    }
+
+    /**
+     * Whether the item's format can be posted without an image or video
+     * (TryPost's own rule, ContentType::requiresMedia: a LinkedIn or X post
+     * can, an Instagram feed post or a reel can't). An item without a format
+     * can.
+     */
+    public static function mayGoTextOnly(PlanItem $item): bool
+    {
+        return $item->content_type === null || ! $item->content_type->requiresMedia();
     }
 
     /**
      * An approver lets the post go out without its creative (or takes that
      * back). The brief stays: when its creative is approved before the post
-     * is created, the post still gets the files.
+     * is created, the post still gets the files. Only on a format that can go
+     * out without media.
      */
     public static function waiveCreative(PlanItem $item, User $user, bool $waive = true): void
     {
         if ($waive && $item->creative->briefKind() === null) {
             throw ValidationException::withMessages(['creative' => __('socialhq_production.post.errors.nothing_to_waive')]);
+        }
+
+        if ($waive && ! self::mayGoTextOnly($item)) {
+            throw ValidationException::withMessages(['creative' => __('socialhq_production.post.errors.needs_media', ['format' => $item->content_type->label()])]);
         }
 
         $item->forceFill([
@@ -101,9 +119,9 @@ final class CreatePostFromItem
      * wins: it is the instant the audience should see the post, which may
      * fall on the day before or after scheduled_on in the user's zone.
      *
-     * post_created_at is set when the composer draft is prepared: TryPost's
-     * composer reports nothing back, so a draft closed without saving still
-     * counts.
+     * Nothing is recorded here: the composer sends the item with the post,
+     * and saving links them (ItemPosts), so a composer closed without saving
+     * leaves the item as it was.
      *
      * @return array{content: string, media: Collection<int, Media>, import_ids: list<string>, left_out: list<string>, scheduled_on: string, scheduled_at: ?string, social_account_id: ?string}
      */
@@ -131,8 +149,6 @@ final class CreatePostFromItem
                 $media->push($row);
             }
         }
-
-        $item->forceFill(['post_created_at' => now()])->save();
 
         $version = $item->latestVersion;
 

@@ -1,3 +1,5 @@
+import type { PostStatus } from '@/components/socialhq/plan/postStatus';
+
 export type PlanStatus = 'draft' | 'in_review' | 'approved';
 export type GenerationStatus = 'idle' | 'running' | 'failed';
 export type ItemStatus = 'suggested' | 'planned' | 'dropped';
@@ -12,6 +14,8 @@ export interface PlanRejection {
     title: string;
     date: string;
     channel: string;
+    /** Missing on drafts made before rejections named the network. */
+    platform?: string | null;
     reason: string;
 }
 
@@ -29,6 +33,15 @@ export interface PlanData {
     submitted_at: string | null;
     approved_at: string | null;
     approver: string | null;
+}
+
+/** A post of an item that will still go out (scheduled, or waiting for approval). */
+export interface UpcomingPost {
+    id: string;
+    status: PostStatus;
+    scheduled_at: string | null;
+    channel: string | null;
+    platform: string | null;
 }
 
 export interface PlanItem {
@@ -55,6 +68,14 @@ export interface PlanItem {
     status: ItemStatus;
     source: 'ai' | 'manual';
     copy_status: CopyStatus;
+    /** Where the item's posts stand, or null before any was saved. */
+    post_status: PostStatus | null;
+    /** Posts that will still go out: the drop and delete dialog names them. */
+    upcoming_posts: UpcomingPost[];
+    /** How many of the item's posts aren't on its day. */
+    posts_off_day: number;
+    /** The times of its approved posts that moving them to its day sends back for approval. */
+    posts_back_to_approval: string[];
     position: number;
 }
 

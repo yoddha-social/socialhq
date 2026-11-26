@@ -380,6 +380,18 @@ class CompanyAiManager
     }
 
     /**
+     * Syncs a company's deployments under its lock, for a change that came
+     * from the catalogue rather than from the owner (socialhq:ai-sync).
+     * Deployments whose settings didn't change are left alone.
+     *
+     * @throws GatewayException
+     */
+    public function resync(Account $account): void
+    {
+        $this->locked($account, fn () => $this->syncDeployments($account, CompanyAi::forAccount($account)));
+    }
+
+    /**
      * Removes everything LiteLLM holds for a company that is gone: its key,
      * deployments, credentials (its provider keys) and team.
      *

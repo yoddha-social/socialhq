@@ -67,6 +67,7 @@ return [
             'save_first' => 'To send the copy for review, save your changes first.',
             'errors' => [
                 'cannot_submit' => 'This copy can\'t be sent for review now. Save a version first, or wait for the current review to finish.',
+                'changes_first' => 'This version was sent back with changes. To send it for review again, save a new version with the changes.',
                 'cannot_approve' => 'This copy isn\'t in review, so it can\'t be approved. Reload the page to see where it stands.',
                 'cannot_request_changes' => 'This copy isn\'t in review, so you can\'t request changes. Reload the page to see where it stands.',
                 'placeholders' => 'Fill in :gaps first. Copy with gaps in square brackets can\'t be approved.',
@@ -184,7 +185,9 @@ return [
 
     'post' => [
         'create' => 'Create post',
-        'created' => 'You started a post from this item on :time. Find it under Drafts or Scheduled.',
+        'posts_title' => 'Post from this item|Posts from this item',
+        'open' => 'Open',
+        'open_on_network' => 'See it on the network',
         'create_another' => 'Create another post',
         'ready' => 'Everything this item needs is approved. The button opens it in the composer, where you schedule it.',
         'waiting' => 'To create the post:',
@@ -199,12 +202,18 @@ return [
         'text_only_on_unknown' => 'This post may go out text-only (allowed on :date).',
         'ready_text_only' => 'The copy is approved, and the post may go out without the creative. The button opens it in the composer, where you schedule it.',
         'text_only_undo' => 'Wait for the creative',
+        'text_only_unavailable' => 'This format (:format) needs an image or video, so the post waits for the creative.',
+        'off_day' => 'Not on the item\'s day',
+        'other_channel' => 'Not on the item\'s channel',
+        'other_format' => 'Not in the item\'s format',
+        'follow' => 'Move to :date',
         'failed' => 'Couldn\'t create the post. Try again.',
         'left_out' => 'Not added to the post: :names. This post\'s format doesn\'t take that type of file.',
         'errors' => [
             'not_ready' => 'To create the post, the copy needs approval first, and the creative too if the item has one.',
             'placeholders' => 'The copy still has gaps to fill: :gaps. Fill them in and get the copy approved, then create the post.',
             'nothing_to_waive' => 'This item has no creative to wait for.',
+            'needs_media' => 'This format (:format) needs an image or video, so the post can\'t go out text-only.',
         ],
     ],
 

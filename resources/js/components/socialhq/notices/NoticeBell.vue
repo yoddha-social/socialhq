@@ -16,6 +16,7 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import dayjs from '@/dayjs';
+import { userTimezone } from '@/preferences';
 import { preferences } from '@/routes/app/notifications';
 
 const { load, markRead } = useNotices();
@@ -50,8 +51,10 @@ watch(open, (isOpen) => {
     }
 });
 
+/** Today in the profile's time zone, like every other date in the app. */
 const isToday = (notice: NoticeItem): boolean =>
-    dayjs(notice.created_at).isSame(dayjs(), 'day');
+    dayjs(notice.created_at).tz(userTimezone.value).format('YYYY-MM-DD') ===
+    dayjs().tz(userTimezone.value).format('YYYY-MM-DD');
 
 const groups = computed(() =>
     [

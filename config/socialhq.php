@@ -252,12 +252,16 @@ return [
                 'params' => [],
                 'tiers' => [
                     // OpenRouter's ":free" models change often: owners pick others per key.
+                    // Reasoning is off: the free reasoning models spent a call's whole output
+                    // limit thinking and answered nothing (QA 2026-11-23: plans, copy and
+                    // briefs all came back empty). OpenRouter ignores it for models that
+                    // don't reason.
                     'free' => [
                         'confirm' => 'may_train',
                         'tasks' => [
-                            'write' => ['model' => 'openrouter/nvidia/nemotron-3.5-super-vl:free', 'timeout' => 45],
-                            'structured' => ['model' => 'openrouter/nvidia/nemotron-3.5-super-vl:free', 'timeout' => 90],
-                            'vision' => ['model' => 'openrouter/nvidia/nemotron-3.5-super-vl:free', 'timeout' => 45],
+                            'write' => ['model' => 'openrouter/nvidia/nemotron-3.5-super-vl:free', 'timeout' => 45, 'params' => ['extra_body' => ['reasoning' => ['enabled' => false]]]],
+                            'structured' => ['model' => 'openrouter/nvidia/nemotron-3.5-super-vl:free', 'timeout' => 90, 'params' => ['extra_body' => ['reasoning' => ['enabled' => false]]]],
+                            'vision' => ['model' => 'openrouter/nvidia/nemotron-3.5-super-vl:free', 'timeout' => 45, 'params' => ['extra_body' => ['reasoning' => ['enabled' => false]]]],
                         ],
                     ],
                     'paid' => [
@@ -366,6 +370,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Billing
+    |--------------------------------------------------------------------------
+    |
+    | Cashier's Stripe webhook route is TryPost Cloud's billing; without a
+    | webhook secret it accepts unsigned messages. A self-hosted install (ours)
+    | doesn't register it unless this is on (TryPost's billing tests turn it on).
+    |
+    */
+
+    'billing' => [
+        'stripe_webhook' => (bool) env('SOCIALHQ_STRIPE_WEBHOOK', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Calendar
     |--------------------------------------------------------------------------
     |
@@ -443,6 +462,18 @@ return [
         'max_entries' => (int) env('SOCIALHQ_KNOWLEDGE_MAX_ENTRIES', 300),
         'search' => [
             'min_relevance' => (float) env('SOCIALHQ_KNOWLEDGE_MIN_RELEVANCE', 0.25),
+        ],
+        // SEO keywords (Strategy tab): up to max_main main and max_supporting supporting ones;
+        // a prompt gets at most `prompt` of them, outside prompt_characters. The check reads the
+        // brand's posts of the last recent_days, flags the claim_words, and never calls a word of
+        // not_places a place (time zone names that are everyday words).
+        'keywords' => [
+            'max_main' => 5,
+            'max_supporting' => 25,
+            'prompt' => 8,
+            'recent_days' => 90,
+            'claim_words' => ['best', 'top', 'cheapest', 'leading', 'guaranteed', 'number one', 'no 1', '#1', 'finest', 'greatest'],
+            'not_places' => ['christmas', 'easter', 'wake', 'midway', 'troll', 'casey', 'davis', 'palmer', 'vostok', 'mawson', 'syowa', 'macquarie', 'rothera', 'mcmurdo', 'currie', 'hope', 'universal', 'factory', 'zulu', 'greenwich'],
         ],
         'documents' => [
             'max_documents' => (int) env('SOCIALHQ_KNOWLEDGE_MAX_DOCUMENTS', 30),

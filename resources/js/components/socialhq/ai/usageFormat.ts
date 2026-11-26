@@ -27,7 +27,7 @@ export const statusVariant = (status: UsageStatus): UsageStatusVariant => {
         return 'success';
     }
 
-    if (status === 'failed') {
+    if (status === 'failed' || status === 'cut_off') {
         return 'destructive-subtle';
     }
 

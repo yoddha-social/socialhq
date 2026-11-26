@@ -223,7 +223,7 @@ watch(
             <div
                 v-for="(column, index) in columns"
                 :key="column.key"
-                class="-mb-px flex flex-col items-center justify-center border-b p-1.5 text-sm font-medium capitalize md:flex-row md:gap-3 md:p-2.5"
+                class="@container -mb-px flex flex-col items-center justify-center border-b p-1.5 text-sm font-medium capitalize md:flex-row md:flex-wrap md:content-center md:gap-x-1 md:gap-y-0.5 md:p-2.5"
                 :class="[
                     index > 0 || !compact
                         ? 'border-l border-l-border-strong'
@@ -234,10 +234,12 @@ watch(
                 ]"
                 :data-testid="`calendar-column-${column.key}`"
             >
-                <span>{{ column.day.format(compact ? 'ddd' : 'dddd') }}</span>
-                <span class="inline-flex max-w-full min-w-0 items-center gap-1">
+                <!-- Social HQ (PATCHES.md row 332): a narrow column says "Wed", and the event marker moves under the date when it no longer fits beside it -->
+                <span :class="{ 'me-2 @max-[7.5rem]:hidden': !compact }">{{ column.day.format(compact ? 'ddd' : 'dddd') }}</span>
+                <span v-if="!compact" class="me-2 hidden @max-[7.5rem]:inline">{{ column.day.format('ddd') }}</span>
+                <span class="inline-flex max-w-full min-w-0 items-center gap-1 md:contents">
                     {{ column.day.format('D') }}
-                    <CalendarEventMarkers :day="column.key" :compact="compact" />
+                    <CalendarEventMarkers :day="column.key" :compact="compact" wraps-under />
                 </span>
             </div>
         </div>

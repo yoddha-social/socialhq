@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\SocialHq\Plan;
 
 use App\Enums\PostPlatform\ContentType;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -16,7 +17,6 @@ use App\SocialHq\Http\Controllers\Plan\PlanGenerationController;
 use App\SocialHq\Inbox\WaitingForYou;
 use App\SocialHq\Knowledge\Audience\Audience;
 use App\SocialHq\Knowledge\Audience\AudienceCountries;
-use App\Support\Timezone;
 use Carbon\CarbonImmutable;
 use Inertia\Inertia;
 
@@ -36,20 +36,28 @@ final class PlanPage
         $channels = PlanOptions::channels($workspace);
         $abilities = PlanAccess::abilities($user, $workspace);
         $aiAvailable = AiRouter::isAvailable(AiTask::Structured) && AiAccess::allows($user, $workspace);
+        $movesNeedApproval = ItemPosts::movesNeedApproval($workspace, $user);
 
         return [
             'month' => PlanMonth::key($month),
             // Months with a plan, copy or creative waiting for this person, marked in the month picker.
             // A closure: the page's 3-second poll asks for plan and items only.
             'waitingMonths' => fn (): array => WaitingForYou::months($user, $workspace),
-            'today' => CarbonImmutable::now(Timezone::normalize($user->timezone))->toDateString(),
+            'today' => PlanMonth::today($user),
             'plan' => $plan === null ? null : self::plan($plan),
             'items' => $plan === null ? [] : $plan->items()
+                ->with('posts:posts.id,posts.workspace_id,posts.status,posts.scheduled_at,posts.social_account_id,posts.platform,posts.platform_name', 'posts.socialAccount')
                 ->orderBy('scheduled_on')
                 ->orderBy('position')
                 ->orderBy('id')
                 ->get()
-                ->map(fn (PlanItem $item): array => self::item($item))
+                ->map(fn (PlanItem $item): array => [
+                    ...self::item($item),
+                    // The times of its approved posts that "Move posts too" would send back for approval (the offer warns first).
+                    'posts_back_to_approval' => ItemPosts::backToApprovalOnMove($item, $user, $movesNeedApproval)
+                        ->map(fn (Post $post): string => $post->scheduled_at->toIso8601String())
+                        ->all(),
+                ])
                 ->all(),
             'events' => PlanOptions::events($workspace, $month, PlanMonth::end($month))
                 ->map(fn (CalendarEvent $event): array => self::event($event))
@@ -104,6 +112,11 @@ final class PlanPage
             'status' => $item->status->value,
             'source' => $item->source->value,
             'copy_status' => $item->copy_status->value,
+            // Where the item's posts stand (ItemPosts::shownStatus), or null without one.
+            'post_status' => $item->relationLoaded('posts') ? ItemPosts::shownStatus($item->posts->pluck('status')) : null,
+            // Posts that will still go out (the drop and delete dialog names them), and how many aren't on the item's day.
+            'upcoming_posts' => $item->relationLoaded('posts') ? ItemPosts::upcomingForPage($item) : [],
+            'posts_off_day' => $item->relationLoaded('posts') ? ItemPosts::offDayCount($item) : 0,
             'position' => $item->position,
         ];
     }

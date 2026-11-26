@@ -728,6 +728,17 @@ admin's too. Besides the approval rules above:
   an agent reading untrusted text could be steered into minting a key or
   sending post events to any URL. `SOCIALHQ_AGENTS_MANAGE_ADMIN_SETTINGS=true`
   allows them again; `manageTeam` itself is unchanged.
+- **Only supported assistants connect over MCP** (audit SEC-04): an
+  assistant registers itself (`POST /oauth/register`) with the addresses a
+  member's grant is sent back to, and only those of the assistants we
+  support are taken (`redirect_domains` in `config/mcp.php`,
+  `SOCIALHQ_MCP_REDIRECT_DOMAINS`): `https://claude.ai` (Claude on the web,
+  Desktop and mobile), `https://chatgpt.com`, and loopback on any port
+  (Claude Code and other tools on the member's own computer, RFC 8252);
+  desktop apps' own schemes (`custom_schemes`) as before. Nobody can
+  register a "Claude" that sends the grant to their own site. Clients
+  registered before keep their addresses. The Authorize screen still shows
+  only the name the assistant chose.
 - **Safe retries**: `create-post-tool` and `create-posts-tool` take an
   `idempotency_key`; the same key and arguments within 24 hours return the
   posts already made (`App\SocialHq\Mcp\IdempotentPostCreation`, cache).

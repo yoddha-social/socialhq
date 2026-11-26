@@ -48,7 +48,7 @@ function mcpNativeAgentSchemes(): array
 test('dynamic oauth client registration is rate limited', function () {
     $payload = [
         'client_name' => 'MCP Client',
-        'redirect_uris' => ['https://client.example/callback'],
+        'redirect_uris' => ['https://claude.ai/api/mcp/auth_callback'],
         'grant_types' => ['authorization_code'],
         'response_types' => ['code'],
         'token_endpoint_auth_method' => 'none',
@@ -66,7 +66,7 @@ test('dynamic oauth client registration is not rate limited from chatgpt or clau
 
     $payload = [
         'client_name' => 'MCP Client',
-        'redirect_uris' => ['https://client.example/callback'],
+        'redirect_uris' => ['https://claude.ai/api/mcp/auth_callback'],
         'grant_types' => ['authorization_code'],
         'response_types' => ['code'],
         'token_endpoint_auth_method' => 'none',
@@ -96,7 +96,7 @@ test('oauth discovery metadata is never rate limited', function (string $routeNa
 test('oauth discovery advertises the authentication method used by public clients', function (string $routeName, array $parameters) {
     $registration = $this->postJson(route('mcp.oauth.register'), [
         'client_name' => 'Discovery Test Client',
-        'redirect_uris' => ['https://client.example/callback'],
+        'redirect_uris' => ['https://claude.ai/api/mcp/auth_callback'],
         'grant_types' => ['authorization_code'],
         'response_types' => ['code'],
         'token_endpoint_auth_method' => 'none',
@@ -145,9 +145,7 @@ test('dynamic oauth registration accepts documented native and loopback callback
     'opencode loopback' => 'http://127.0.0.1:19876/mcp/oauth/callback',
     'hermes loopback' => 'http://127.0.0.1:8765/callback',
     'claude https' => 'https://claude.ai/api/mcp/auth_callback',
-    'chatgpt https' => 'https://chatgpt.com/aip/mcp/oauth/callback',
-    'cursor web' => 'https://www.cursor.com/agents/mcp/oauth/callback',
-    'antigravity https' => 'https://antigravity.google/oauth-callback',
+    'chatgpt https' => 'https://chatgpt.com/connector_platform_oauth_redirect',
 ]);
 
 test('dynamic oauth registration rejects unknown and unsafe callback schemes', function (string $redirectUri) {

@@ -13,12 +13,14 @@ use Laravel\Cashier\Cashier;
  */
 
 /**
- * The config file as it is shipped: the given variables cleared while it is read.
+ * The config file as it is shipped: the given variables cleared while it is
+ * read, or set to the given values.
  *
  * @param  list<string>  $keys
+ * @param  array<string, string>  $values
  * @return array<string, mixed>
  */
-function shippedConfig(string $file, array $keys): array
+function shippedConfig(string $file, array $keys, array $values = []): array
 {
     $saved = collect($keys)->mapWithKeys(fn (string $key): array => [$key => [getenv($key), $_ENV[$key] ?? null, $_SERVER[$key] ?? null]]);
 
@@ -27,10 +29,18 @@ function shippedConfig(string $file, array $keys): array
         unset($_ENV[$key], $_SERVER[$key]);
     }
 
+    foreach ($values as $key => $value) {
+        putenv("{$key}={$value}");
+        $_ENV[$key] = $_SERVER[$key] = $value;
+    }
+
     try {
         return require config_path($file);
     } finally {
         foreach ($saved as $key => [$env, $envArray, $server]) {
+            putenv($key);
+            unset($_ENV[$key], $_SERVER[$key]);
+
             if ($env !== false) {
                 putenv("{$key}={$env}");
             }
@@ -76,4 +86,11 @@ test('a self-hosted install doesn\'t register Cashier\'s Stripe webhook unless i
     } finally {
         Cashier::$registersRoutes = $registers;
     }
+});
+
+test('an AI assistant may register only the return addresses of the assistants we support', function () {
+    expect(shippedConfig('mcp.php', ['SOCIALHQ_MCP_REDIRECT_DOMAINS'])['redirect_domains'])
+        ->toBe(['https://claude.ai', 'https://chatgpt.com', 'http://localhost', 'http://127.0.0.1', 'http://[::1]'])
+        ->and(shippedConfig('mcp.php', ['SOCIALHQ_MCP_REDIRECT_DOMAINS'], ['SOCIALHQ_MCP_REDIRECT_DOMAINS' => ' https://claude.ai , https://vscode.dev,'])['redirect_domains'])
+        ->toBe(['https://claude.ai', 'https://vscode.dev']);
 });

@@ -788,8 +788,16 @@ empty sign-up stays invites only. Code: `app/SocialHq/Signup/`.
 **Companies** (`app/SocialHq/Companies/`). A company is an account a
 platform admin approved; only its owner creates workspaces
 (`SOCIALHQ_COMPANIES_REQUIRED`, default on). Platform admins are granted
-with `php artisan socialhq:platform-admin <email>` only; on a new server the
-first person asks for a company, is granted, and approves it.
+with `php artisan socialhq:platform-admin <email>` only. Company requests
+(below) are the only way a company is made from the app, so
+`php artisan socialhq:company <email> "<name>"` makes one from the server:
+approved at once, no request and no email, on the owner's own account
+(created when the email has none, with the email taken as confirmed and a
+link printed to set a password; an existing account must own itself and
+have confirmed its email). `--platform-ai` lets it use our AI keys. On a
+new server: create the first company with it, make its owner a platform
+admin, and keep `SOCIALHQ_COMPANY_REQUESTS=false` until outsiders may ask
+(audit SEC-06, X11).
 
 1. Anyone off the lists may ask to start a company
    (`SOCIALHQ_COMPANY_REQUESTS`, default on; off brings back "can't sign up

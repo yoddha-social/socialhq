@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
-use App\Actions\AccessToken\RevokeWorkspaceApiKeys;
 use App\Actions\Invite\CreateInvite;
 use App\Actions\Invite\DeleteInvite;
 use App\Actions\Invite\RemoveMember;
@@ -12,6 +11,13 @@ use App\Http\Requests\App\Invite\StoreWorkspaceInviteRequest;
 use App\Http\Requests\App\Invite\UpdateWorkspaceMemberRequest;
 use App\Models\Invite;
 use App\Models\User;
+use App\SocialHq\Access\AccessLog;
+use App\SocialHq\Access\MemberRoles;
+use App\SocialHq\Access\Permission;
+use App\SocialHq\Access\Role;
+use App\SocialHq\Access\RoleResource;
+use App\SocialHq\Access\Roles;
+use App\SocialHq\Access\WorkspaceAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -31,13 +37,26 @@ class WorkspaceInviteController extends Controller
 
         $this->authorize('manageTeam', $workspace);
 
+        // Social HQ: each member's role, and the company's roles with the ones this person may give.
+        $roles = Roles::forAccount($workspace->account_id)->keyBy('id');
+        $assignable = MemberRoles::assignableIds($request->user(), $workspace);
+        // The owner first, then by name: the order stays put when a role changes.
+        $ownerId = $workspace->account?->owner_id;
+        $members = $workspace->members()->with('avatarMedia')->orderBy('users.name')->get()
+            ->sortBy(fn (User $member): int => $member->id === $ownerId ? 0 : 1)
+            ->values();
+        $manageable = MemberRoles::manageableIds($request->user(), $workspace, $members, $roles);
+
         return Inertia::render('settings/workspace/Members', [
             'workspace' => $workspace,
             'invites' => $workspace->invites()
                 ->latest()
-                ->get(),
-            'members' => $workspace->members()
                 ->get()
+                ->map(fn (Invite $invite): array => [
+                    ...$invite->toArray(),
+                    'role' => RoleResource::summary($roles->get($invite->shq_role_id)),
+                ]),
+            'members' => $members
                 ->map(fn (User $member): array => [
                     'id' => $member->id,
                     'name' => $member->name,
@@ -45,7 +64,15 @@ class WorkspaceInviteController extends Controller
                     'photo_url' => $member->photo_url,
                     'is_admin' => (bool) $member->pivot->is_admin,
                     'requires_approval' => (bool) $member->pivot->requires_approval,
+                    'role' => RoleResource::summary($roles->get($member->pivot->shq_role_id)),
+                    'manageable' => in_array($member->id, $manageable, true),
+                    'permissions' => WorkspaceAccess::through($member, $workspace, $member->pivot, $roles)->permissions,
                 ]),
+            'roles' => $roles->values()->map(fn (Role $role): array => [
+                ...RoleResource::make($role),
+                'assignable' => in_array($role->id, $assignable, true),
+            ])->all(),
+            'catalog' => Permission::catalog(),
             'owner' => [
                 'id' => $workspace->account?->owner?->id,
                 'name' => $workspace->account?->owner?->name,
@@ -90,7 +117,16 @@ class WorkspaceInviteController extends Controller
             ]);
         }
 
-        CreateInvite::execute($workspace, [...$request->validated(), ...$request->memberAccess()]);
+        // Social HQ: the invite's role, which the inviter must hold every permission of.
+        $role = $request->memberRole($workspace);
+
+        if (! MemberRoles::mayAssign($request->user(), $workspace, $role)) {
+            return back()->withErrors(['role_id' => __('socialhq_roles.errors.above_your_access')]);
+        }
+
+        // Not in a transaction with the log: CreateInvite queues the email, which must find the invite.
+        CreateInvite::execute($workspace, [...$request->validated(), ...Roles::membershipColumns($role)]);
+        AccessLog::inviteSent($workspace, $request->email, $role);
 
         session()->flash('flash.banner', __('settings.members.flash.invite_sent'));
         session()->flash('flash.bannerStyle', 'success');
@@ -112,6 +148,13 @@ class WorkspaceInviteController extends Controller
             abort(Response::HTTP_NOT_FOUND);
         }
 
+        // Social HQ: only someone who could have sent it cancels an invite.
+        $role = $invite->shq_role_id === null ? null : Role::query()->find($invite->shq_role_id);
+
+        if ($role !== null && ! MemberRoles::mayAssign($request->user(), $workspace, $role)) {
+            return back()->withErrors(['invite' => __('socialhq_roles.errors.above_your_access')]);
+        }
+
         DeleteInvite::execute($invite);
 
         session()->flash('flash.banner', __('settings.members.flash.invite_deleted'));
@@ -122,6 +165,8 @@ class WorkspaceInviteController extends Controller
 
     public function removeMember(Request $request, string $userId): RedirectResponse
     {
+        // Social HQ: ids compare as the database does (a uuid in upper case is the same user).
+        $userId = Str::lower($userId);
         $workspace = $request->user()->currentWorkspace;
 
         if (! $workspace) {
@@ -138,7 +183,19 @@ class WorkspaceInviteController extends Controller
             return back()->withErrors(['member' => __('settings.members.errors.cannot_remove_owner')]);
         }
 
+        // Social HQ: only members are removed here (TryPost would also settle a
+        // non-member of the account, e.g. someone waiting for access, which only
+        // the owner declines), and nobody removes someone with access they don't hold.
+        abort_unless($workspace->members()->whereKey($userId)->exists(), Response::HTTP_NOT_FOUND);
+
+        if (! MemberRoles::mayManage($request->user(), $workspace, $userId)) {
+            return back()->withErrors(['member' => __('socialhq_roles.errors.member_above_your_access')]);
+        }
+
+        // The log entry is read before (removing can delete the user) and written after it.
+        $removal = AccessLog::removalOf($workspace, $userId);
         RemoveMember::execute($workspace, $userId);
+        $removal();
 
         session()->flash('flash.banner', __('settings.members.flash.member_removed'));
         session()->flash('flash.bannerStyle', 'success');
@@ -148,6 +205,7 @@ class WorkspaceInviteController extends Controller
 
     public function updateMember(UpdateWorkspaceMemberRequest $request, string $userId): RedirectResponse
     {
+        $userId = Str::lower($userId);
         $workspace = $request->user()->currentWorkspace;
 
         if (! $workspace) {
@@ -164,11 +222,25 @@ class WorkspaceInviteController extends Controller
 
         $workspace->members()->findOrFail($userId);
 
-        $access = $request->memberAccess();
+        // Social HQ: a role (or TryPost's flags, mapped to a built-in role). Nobody
+        // changes someone with more access than they hold, or gives more than they hold.
+        if (! MemberRoles::mayManage($request->user(), $workspace, $userId)) {
+            return back()->withErrors(['role_id' => __('socialhq_roles.errors.member_above_your_access')]);
+        }
 
-        $workspace->members()->updateExistingPivot($userId, $access);
+        $role = $request->memberRole($workspace);
 
-        RevokeWorkspaceApiKeys::forUserUnlessAdmin($userId, $workspace, $access['is_admin']);
+        if (! MemberRoles::mayAssign($request->user(), $workspace, $role)) {
+            return back()->withErrors(['role_id' => __('socialhq_roles.errors.above_your_access')]);
+        }
+
+        Roles::assign($workspace, $userId, $role);
+
+        session()->flash('flash.banner', __('socialhq_roles.flash.member_changed', [
+            'name' => (string) User::query()->whereKey($userId)->value('name'),
+            'role' => $role->name,
+        ]));
+        session()->flash('flash.bannerStyle', 'success');
 
         return back();
     }

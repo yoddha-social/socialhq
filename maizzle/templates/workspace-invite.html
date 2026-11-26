@@ -13,7 +13,9 @@
     </p>
 
     <p class="m-0 mt-4 leading-6">
-      @if($isAdmin)
+      @if(($roleName ?? '') !== '')
+        {!! __('mail.workspace_invite.role', ['role' => e($roleName)]) !!}
+      @elseif($isAdmin)
         {!! __('mail.workspace_invite.role', ['role' => e(__('mail.workspace_invite.roles.admin'))]) !!}
       @elseif($requiresApproval)
         {!! __('mail.workspace_invite.role', ['role' => e(__('mail.workspace_invite.roles.needs_approval'))]) !!}

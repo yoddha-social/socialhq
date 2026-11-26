@@ -6,6 +6,8 @@ namespace App\Actions\Workspace;
 
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Access\BuiltInRole;
+use App\SocialHq\Access\Roles;
 use Illuminate\Support\Facades\DB;
 
 class CreateWorkspace
@@ -22,7 +24,8 @@ class CreateWorkspace
                 'user_id' => $user->id,
             ]);
 
-            $workspace->members()->attach($user->id, ['is_admin' => true, 'requires_approval' => false]);
+            // Social HQ: the creator gets the Admin role (Roles::membershipColumns()).
+            $workspace->members()->attach($user->id, Roles::membershipColumns(Roles::builtIn($workspace->account_id, BuiltInRole::Admin)));
             $user->switchWorkspace($workspace);
 
             return $workspace;

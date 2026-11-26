@@ -7,11 +7,11 @@ namespace App\Http\Controllers\App;
 use App\Actions\Idea\GenerateIdea;
 use App\Http\Requests\App\Idea\GenerateIdeaRequest;
 use App\Http\Resources\App\GeneratedIdeaResource;
+use App\SocialHq\Access\AiAccess;
 use App\SocialHq\Ai\AiResponses;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Gate;
 use Laravel\Ai\Exceptions\AiException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -19,9 +19,9 @@ class IdeaGenerateController extends Controller
 {
     public function __invoke(GenerateIdeaRequest $request): GeneratedIdeaResource|JsonResponse
     {
-        $gate = Gate::inspect('useAi', $request->user()->currentWorkspace->account);
-        if ($gate->denied()) {
-            return response()->json(['message' => $gate->message()], Response::HTTP_PAYMENT_REQUIRED);
+        // Social HQ: the role's "Use AI" too (AiAccess).
+        if (($refusal = AiAccess::refusal($request->user(), $request->user()->currentWorkspace)) !== null) {
+            return $refusal;
         }
 
         try {

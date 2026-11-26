@@ -22,6 +22,7 @@ class Invite extends Model
         'account_id',
         'invited_by',
         'email',
+        'shq_role_id',
         'is_admin',
         'requires_approval',
         'workspaces',

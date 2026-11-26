@@ -9,10 +9,10 @@ use App\Enums\SocialAccount\Platform;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ContentSanitizer;
+use App\SocialHq\Access\AiAccess;
 use App\SocialHq\Ai\AiTenant;
 use App\SocialHq\Ai\AiUnavailableException;
 use App\Support\Hashtags;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -53,7 +53,7 @@ class CaptionAdapter
 
     private function shorten(Workspace $workspace, ?User $user, string $caption, Platform $platform, int $limit): ?string
     {
-        if ($user === null || Gate::forUser($user)->denies('useAi', $workspace->account)) {
+        if ($user === null || ! AiAccess::allows($user, $workspace)) {
             return null;
         }
 

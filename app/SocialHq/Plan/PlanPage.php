@@ -8,6 +8,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Access\AiAccess;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiTask;
 use App\SocialHq\Events\CalendarEvent;
@@ -17,7 +18,6 @@ use App\SocialHq\Knowledge\Audience\Audience;
 use App\SocialHq\Knowledge\Audience\AudienceCountries;
 use App\Support\Timezone;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 
 /**
@@ -35,7 +35,7 @@ final class PlanPage
         $profile = PlanOptions::profile($workspace);
         $channels = PlanOptions::channels($workspace);
         $abilities = PlanAccess::abilities($user, $workspace);
-        $aiAvailable = AiRouter::isAvailable(AiTask::Structured) && Gate::forUser($user)->allows('useAi', $workspace->account);
+        $aiAvailable = AiRouter::isAvailable(AiTask::Structured) && AiAccess::allows($user, $workspace);
 
         return [
             'month' => PlanMonth::key($month),

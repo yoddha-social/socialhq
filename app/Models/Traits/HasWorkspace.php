@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Models\Traits;
 
 use App\Models\Workspace;
+use App\SocialHq\Access\Permission;
+use App\SocialHq\Access\WorkspaceAccess;
 use App\SocialHq\Approval\ApprovalRules;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -94,23 +96,35 @@ trait HasWorkspace
     }
 
     /**
-     * The user's access to the workspace from one membership read: the owner is
-     * always an admin, and only a member who is not an admin can need approval.
+     * The user's access to the workspace from one membership read.
+     *
+     * Social HQ: what a person may do comes from their role
+     * (App\SocialHq\Access\WorkspaceAccess): the owner holds every
+     * permission, a member their role's. `is_admin` is "may manage members"
+     * and `requires_approval` "may not publish directly" (always for agents).
      * Users outside the workspace get no access and are never gated.
      *
-     * @return array{is_owner: bool, is_admin: bool, requires_approval: bool}
+     * @return array{is_owner: bool, is_admin: bool, requires_approval: bool, role: array{id: string, key: string|null, name: string}|null, permissions: list<string>}
      */
     public function accessIn(Workspace $workspace): array
     {
-        $isOwner = $this->ownsAccountOf($workspace);
-        $pivot = $isOwner ? null : $this->workspacePivot($workspace);
-        $isAdmin = $isOwner || (bool) $pivot?->is_admin;
+        $access = WorkspaceAccess::of($this, $workspace);
 
         return [
-            'is_owner' => $isOwner,
-            'is_admin' => $isAdmin,
-            'requires_approval' => ApprovalRules::requiresApproval($this, $isOwner || $pivot !== null, $isAdmin, (bool) $pivot?->requires_approval),
+            'is_owner' => $access->isOwner,
+            'is_admin' => $access->allows(Permission::TeamManage),
+            'requires_approval' => ApprovalRules::requiresApproval($this, $access->isMember, $access->allows(Permission::PostsPublish)),
+            'role' => $access->roleSummary(),
+            'permissions' => $access->permissions,
         ];
+    }
+
+    /**
+     * Social HQ: what this person's role allows in the workspace.
+     */
+    public function hasPermissionIn(Workspace $workspace, string $permission): bool
+    {
+        return WorkspaceAccess::of($this, $workspace)->allows($permission);
     }
 
     public function isWorkspaceAdmin(Workspace $workspace): bool
@@ -134,29 +148,15 @@ trait HasWorkspace
      */
     public function publishesDirectlyAsPersonIn(Workspace $workspace): bool
     {
-        return $this->publishesDirectlyThrough($workspace, $this->workspacePivot($workspace));
+        return $this->hasPermissionIn($workspace, Permission::PostsPublish);
     }
 
     /**
-     * The direct-publishing rule for an already-loaded membership pivot.
+     * The direct-publishing rule for an already-loaded membership pivot
+     * (Social HQ: its role, through WorkspaceAccess::through()).
      */
     public function publishesDirectlyThrough(Workspace $workspace, ?Pivot $pivot): bool
     {
-        if ($this->ownsAccountOf($workspace)) {
-            return true;
-        }
-
-        return $pivot !== null
-            && $workspace->account_id === $this->account_id
-            && ((bool) $pivot->is_admin || ApprovalRules::memberPublishesDirectly((bool) $pivot->requires_approval));
-    }
-
-    private function workspacePivot(Workspace $workspace): ?Pivot
-    {
-        if ($workspace->account_id !== $this->account_id) {
-            return null;
-        }
-
-        return $workspace->members()->where('users.id', $this->id)->first()?->pivot;
+        return WorkspaceAccess::through($this, $workspace, $pivot)->allows(Permission::PostsPublish);
     }
 }

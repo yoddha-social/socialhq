@@ -6,7 +6,10 @@ namespace App\Policies;
 
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Access\Permission;
+use App\SocialHq\Access\WorkspaceAccess;
 use App\SocialHq\Agents\AdminSettings;
+use App\SocialHq\Approval\ApprovalRules;
 use App\SocialHq\Companies\CompanyAccess;
 use Illuminate\Auth\Access\Response;
 
@@ -30,7 +33,7 @@ class WorkspacePolicy
 
     public function update(User $user, Workspace $workspace): bool
     {
-        return $this->isAdmin($user, $workspace);
+        return $this->allows($user, $workspace, Permission::WorkspaceSettings);
     }
 
     public function delete(User $user, Workspace $workspace): bool
@@ -50,12 +53,12 @@ class WorkspacePolicy
 
     public function manageTeam(User $user, Workspace $workspace): bool
     {
-        return $this->isAdmin($user, $workspace);
+        return $this->allows($user, $workspace, Permission::TeamManage);
     }
 
     public function manageAccounts(User $user, Workspace $workspace): bool
     {
-        return $this->isAdmin($user, $workspace);
+        return $this->allows($user, $workspace, Permission::ChannelsManage);
     }
 
     /**
@@ -63,22 +66,30 @@ class WorkspacePolicy
      */
     public function manageWebhooks(User $user, Workspace $workspace): bool|Response
     {
-        return AdminSettings::refusalFor($user) ?? $this->isAdmin($user, $workspace);
+        return AdminSettings::refusalFor($user) ?? $this->allows($user, $workspace, Permission::WebhooksManage);
     }
 
     /**
-     * Social HQ: managing API keys is manageTeam without agents (AdminSettings).
-     * manageTeam itself stays as it is: every API key request needs it
-     * (LoadWorkspaceFromToken).
+     * Social HQ: managing API keys is the role's "Manage API keys", never for
+     * agents (AdminSettings).
      */
     public function manageApiKeys(User $user, Workspace $workspace): bool|Response
     {
-        return AdminSettings::refusalFor($user) ?? $this->manageTeam($user, $workspace);
+        return AdminSettings::refusalFor($user) ?? $this->useApiKeys($user, $workspace);
+    }
+
+    /**
+     * Social HQ: every REST API key request needs it (LoadWorkspaceFromToken),
+     * so a key stops working when its person's role loses "Manage API keys".
+     */
+    public function useApiKeys(User $user, Workspace $workspace): bool
+    {
+        return $this->allows($user, $workspace, Permission::ApiKeysManage);
     }
 
     public function manageRepurposes(User $user, Workspace $workspace): bool
     {
-        return $this->publishDirectly($user, $workspace);
+        return $this->publishDirectly($user, $workspace) && $this->allows($user, $workspace, Permission::RepurposeManage);
     }
 
     /**
@@ -88,16 +99,16 @@ class WorkspacePolicy
      */
     public function viewRepurposes(User $user, Workspace $workspace): bool
     {
-        return $this->canAccess($user, $workspace) && $user->publishesDirectlyAsPersonIn($workspace);
+        return $this->allows($user, $workspace, Permission::RepurposeManage);
     }
 
     /**
-     * Every member may write posts; whether they reach the queue directly is
-     * decided by `publishDirectly`.
+     * Social HQ: members whose role has "Write posts"; whether they reach the
+     * queue directly is decided by `publishDirectly`.
      */
     public function createPost(User $user, Workspace $workspace): bool
     {
-        return $this->canAccess($user, $workspace);
+        return $this->allows($user, $workspace, Permission::PostsCreate);
     }
 
     public function publishDirectly(User $user, Workspace $workspace): bool
@@ -105,14 +116,17 @@ class WorkspacePolicy
         return $this->canAccess($user, $workspace) && $user->canPublishDirectlyIn($workspace);
     }
 
+    /**
+     * Social HQ: the role's "Approve posts", never through an agent.
+     */
     public function approvePosts(User $user, Workspace $workspace): bool
     {
-        return $this->publishDirectly($user, $workspace);
+        return $this->allows($user, $workspace, Permission::PostsApprove) && ! ApprovalRules::actsAsAgent($user);
     }
 
     public function inviteMember(User $user, Workspace $workspace): bool
     {
-        return $this->isAdmin($user, $workspace);
+        return $this->allows($user, $workspace, Permission::TeamManage);
     }
 
     public function manageBilling(User $user, Workspace $workspace): bool
@@ -125,9 +139,12 @@ class WorkspacePolicy
         return $user->ownsAccountOf($workspace);
     }
 
-    private function isAdmin(User $user, Workspace $workspace): bool
+    /**
+     * Social HQ: what the user's role grants here (App\SocialHq\Access).
+     */
+    private function allows(User $user, Workspace $workspace, string $permission): bool
     {
-        return $user->isWorkspaceAdmin($workspace);
+        return WorkspaceAccess::of($user, $workspace)->allows($permission);
     }
 
     private function canAccess(User $user, Workspace $workspace): bool

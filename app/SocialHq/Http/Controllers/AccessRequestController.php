@@ -25,6 +25,7 @@ class AccessRequestController extends Controller
     {
         $user = $request->user();
         abort_unless(AccessRequests::canDecide($user), 403);
+        $workspaces = AccessRequests::workspacesManagedBy($user);
 
         return Inertia::render('socialhq/AccessRequests', [
             'requests' => AccessRequest::query()
@@ -38,9 +39,11 @@ class AccessRequestController extends Controller
                     'email' => $accessRequest->email,
                     'requested_at' => $accessRequest->created_at?->toIso8601String(),
                 ]),
-            'workspaces' => AccessRequests::workspacesManagedBy($user)
+            'workspaces' => $workspaces
                 ->map(fn (Workspace $workspace): array => ['id' => $workspace->id, 'name' => $workspace->name])
                 ->values(),
+            // Social HQ roles: the company's roles, and the workspaces where this person may give each.
+            'roles' => AccessRequests::rolesFor($user, $workspaces),
             'canDecline' => AccessRequests::canDecline($user),
         ]);
     }
@@ -49,7 +52,7 @@ class AccessRequestController extends Controller
     {
         $found = $this->find($request, $accessRequest);
 
-        if (! AccessRequests::approve($found, $request->user(), $request->validated('workspaces'), $request->boolean('is_admin'))) {
+        if (! AccessRequests::approve($found, $request->user(), $request->validated('workspaces'), $request->role())) {
             return $this->alreadyDecided();
         }
 

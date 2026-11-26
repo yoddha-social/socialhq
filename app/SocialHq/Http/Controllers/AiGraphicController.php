@@ -105,7 +105,7 @@ class AiGraphicController extends Controller
         $user = $request->user();
         $workspace = $user->currentWorkspace;
 
-        abort_unless($workspace !== null && $user->can('createPost', $workspace), Response::HTTP_FORBIDDEN);
+        abort_unless($workspace !== null && AiGraphics::mayMakeGraphics($user, $workspace), Response::HTTP_FORBIDDEN);
 
         $look = BrandLook::of($workspace);
 

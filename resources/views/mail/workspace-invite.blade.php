@@ -72,7 +72,9 @@ $direction = Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr';
                   @endif
                 </p>
                 <p style="margin: 16px 0 0; line-height: 24px">
-                  @if($isAdmin)
+                  @if(($roleName ?? '') !== '')
+                  {!! __('mail.workspace_invite.role', ['role' => e($roleName)]) !!}
+                  @elseif($isAdmin)
                   {!! __('mail.workspace_invite.role', ['role' => e(__('mail.workspace_invite.roles.admin'))]) !!}
                   @elseif($requiresApproval)
                   {!! __('mail.workspace_invite.role', ['role' => e(__('mail.workspace_invite.roles.needs_approval'))]) !!}

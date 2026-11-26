@@ -402,10 +402,10 @@ test('approving a request someone already declined changes nothing, and the reve
     $raviRequest = AccessRequest::query()->where('user_id', $ravi->id)->firstOrFail();
 
     expect(AccessRequests::decline($ashaRequest->fresh(), $this->owner))->toBeTrue()
-        ->and(AccessRequests::approve($ashaRequest, $this->owner, [$this->workspace->id], false))->toBeFalse()
+        ->and(AccessRequests::approve($ashaRequest, $this->owner, [$this->workspace->id], AccessRequests::roleFor($this->workspace->account_id, false)))->toBeFalse()
         ->and($ashaRequest->fresh()->status)->toBe(AccessRequest::DECLINED);
 
-    expect(AccessRequests::approve($raviRequest->fresh(), $this->owner, [$this->workspace->id], false))->toBeTrue()
+    expect(AccessRequests::approve($raviRequest->fresh(), $this->owner, [$this->workspace->id], AccessRequests::roleFor($this->workspace->account_id, false)))->toBeTrue()
         ->and(AccessRequests::decline($raviRequest, $this->owner))->toBeFalse()
         ->and(User::query()->whereKey($ravi->id)->exists())->toBeTrue()
         ->and($raviRequest->fresh()->status)->toBe(AccessRequest::APPROVED);

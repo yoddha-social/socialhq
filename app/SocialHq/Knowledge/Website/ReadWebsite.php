@@ -7,6 +7,7 @@ namespace App\SocialHq\Knowledge\Website;
 use App\Enums\User\Locale;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Access\Permission;
 use App\SocialHq\Ai\AiTenant;
 use App\SocialHq\Ai\AiUnavailableException;
 use App\SocialHq\Knowledge\BrandKnowledge;
@@ -55,7 +56,7 @@ class ReadWebsite implements ShouldQueue
         $workspace = $crawl->workspace;
         $user = User::query()->find($crawl->requested_by);
 
-        if ($user === null || ! BrandKnowledge::canEdit($user, $workspace)) {
+        if ($user === null || ! BrandKnowledge::canEdit($user, $workspace) || ! $user->hasPermissionIn($workspace, Permission::AiUse)) {
             $this->markFailed($crawl, CrawlFailure::NoAccess);
 
             return;

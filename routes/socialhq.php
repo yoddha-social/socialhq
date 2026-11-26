@@ -26,6 +26,7 @@ use App\SocialHq\Http\Controllers\ConnectInviteController;
 use App\SocialHq\Http\Controllers\ConnectInviteLinkController;
 use App\SocialHq\Http\Controllers\DisconnectImpactController;
 use App\SocialHq\Http\Controllers\InboxController;
+use App\SocialHq\Http\Controllers\RoleController;
 use Illuminate\Support\Facades\Route;
 
 // After asking to start a company on the register form: nobody is logged in yet.
@@ -83,6 +84,16 @@ Route::middleware('auth')->prefix('socialhq')->name('socialhq.')->group(function
         require __DIR__.'/socialhq/ai.php';
         require __DIR__.'/socialhq/ai-usage.php';
         require __DIR__.'/socialhq/notices.php';
+        // Roles (Settings › Members › Roles): who gives roles sees them, the
+        // account owner changes what each one grants (App\SocialHq\Access).
+        Route::get('roles', [RoleController::class, 'index'])->name('roles.index');
+        Route::get('roles/compare', [RoleController::class, 'compare'])->name('roles.compare');
+        Route::get('roles/assignable', [RoleController::class, 'assignable'])->name('roles.assignable');
+        Route::get('roles/{role}', [RoleController::class, 'show'])->whereUuid('role')->name('roles.show');
+        Route::post('roles', [RoleController::class, 'store'])->name('roles.store');
+        Route::post('roles/{role}/duplicate', [RoleController::class, 'duplicate'])->whereUuid('role')->name('roles.duplicate');
+        Route::put('roles/{role}', [RoleController::class, 'update'])->whereUuid('role')->name('roles.update');
+        Route::delete('roles/{role}', [RoleController::class, 'destroy'])->whereUuid('role')->name('roles.destroy');
         Route::put('channels/{account}/name', [ChannelNameController::class, 'update'])->name('channels.name.update');
         Route::get('channels/{account}/disconnect-impact', [DisconnectImpactController::class, 'show'])->name('channels.disconnect-impact.show');
         Route::post('channels/{account}/connect-invites', [ConnectInviteLinkController::class, 'store'])

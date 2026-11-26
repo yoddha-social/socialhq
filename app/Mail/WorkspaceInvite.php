@@ -12,6 +12,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use App\SocialHq\Access\Role;
 
 class WorkspaceInvite extends Mailable implements ShouldQueue
 {
@@ -39,6 +40,8 @@ class WorkspaceInvite extends Mailable implements ShouldQueue
                 'previewText' => __('mail.workspace_invite.preview', ['workspace' => $workspaceName]),
                 'workspaceName' => $workspaceName,
                 'inviterName' => (string) $this->invite->invitedBy?->name,
+                // Social HQ: the role the invite joins with, by its name in the company.
+                'roleName' => (string) Role::query()->whereKey($this->invite->shq_role_id)->value('name'),
                 'isAdmin' => (bool) $this->invite->is_admin,
                 'requiresApproval' => (bool) $this->invite->requires_approval,
                 'url' => route('app.invites.show', $this->invite),

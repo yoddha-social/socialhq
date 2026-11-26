@@ -11,13 +11,12 @@ use App\Enums\SocialAccount\Platform;
 use App\Http\Requests\App\Ai\AssistPostContentRequest;
 use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Services\PostHogService;
+use App\SocialHq\Access\AiAccess;
 use App\SocialHq\Ai\AiResponses;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Gate;
 use Laravel\Ai\Exceptions\AiException;
-use Symfony\Component\HttpFoundation\Response;
 
 class PostAiAssistantController extends Controller
 {
@@ -27,9 +26,9 @@ class PostAiAssistantController extends Controller
 
         $this->authorize('createPost', $workspace);
 
-        $gate = Gate::inspect('useAi', $workspace->account);
-        if ($gate->denied()) {
-            return response()->json(['message' => $gate->message()], Response::HTTP_PAYMENT_REQUIRED);
+        // Social HQ: the role's "Use AI" too (AiAccess).
+        if (($refusal = AiAccess::refusal($request->user(), $workspace)) !== null) {
+            return $refusal;
         }
 
         $mode = PostAssistantMode::from($request->string('mode')->toString());

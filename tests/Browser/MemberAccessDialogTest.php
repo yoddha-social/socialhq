@@ -5,30 +5,11 @@ declare(strict_types=1);
 use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Access\BuiltInRole;
+use App\SocialHq\Access\Roles;
 
-function waitForMemberAccessTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForMemberAccessGone(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (!document.querySelector('[data-testid="{$testId}"]')) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
+// Social HQ: members and invites carry a role (PATCHES.md row 301) instead of
+// TryPost's admin switch and publishing choice.
 
 /**
  * @return array{0: User, 1: Workspace}
@@ -44,68 +25,55 @@ function memberAccessOwner(): array
     return [$owner->fresh(), $workspace];
 }
 
-test('the admin switch hides the publishing choice and the invite stores both flags', function () {
-    [$owner] = memberAccessOwner();
+test('the invite picks a role and stores it', function () {
+    [$owner, $workspace] = memberAccessOwner();
+    $designer = Roles::builtIn($workspace->account_id, BuiltInRole::Designer);
     $this->actingAs($owner);
 
     $page = visit(route('app.members'));
-    waitForMemberAccessTestId($page, 'invite-member-button');
+    waitFor($page, '@invite-member-button');
     $page->click('@invite-member-button');
-    waitForMemberAccessTestId($page, 'member-access-publishing');
+    waitFor($page, '@role-choice-editor');
+    $page->assertAttribute('@role-choice-editor', 'aria-checked', 'true')
+        ->click('@role-choice-designer')
+        ->fill('@invite-email', 'designer@example.com')
+        ->click('@invite-member-submit');
 
-    $page->assertScript('(() => { const row = document.querySelector("[data-testid=member-access-admin-row]").getBoundingClientRect(); const toggle = document.querySelector("[data-testid=member-access-admin]").getBoundingClientRect(); return Math.abs((row.top + row.bottom) / 2 - (toggle.top + toggle.bottom) / 2) < 1; })()', true);
-
-    $page->click('@member-access-admin');
-    waitForMemberAccessGone($page, 'member-access-publishing');
-    $page->assertMissing('@member-access-publishing')
-        ->click('@member-access-admin');
-    waitForMemberAccessTestId($page, 'member-access-publishing-trigger');
-
-    $page->click('@member-access-publishing-trigger');
-    waitForMemberAccessTestId($page, 'member-access-publishing-approval');
-    $page->click('@member-access-publishing-approval')
-        ->fill('@invite-email', 'needs-approval@example.com');
-
-    expect($page->script('document.querySelector("[data-testid=invite-member-cancel]").compareDocumentPosition(document.querySelector("[data-testid=invite-member-submit]")) & Node.DOCUMENT_POSITION_FOLLOWING'))->toBeGreaterThan(0);
-
-    $page->click('@invite-member-submit');
-    waitForMemberAccessGone($page, 'invite-member-dialog');
-
-    $invite = Invite::query()->where('email', 'needs-approval@example.com')->sole();
-
-    expect($invite->is_admin)->toBeFalse()
-        ->and($invite->requires_approval)->toBeTrue();
+    waitForGone($page, '@invite-member-dialog');
+    waitForDatabase($page, fn (): bool => Invite::query()->where('email', 'designer@example.com')->exists());
     $page->assertNoJavaScriptErrors();
+
+    $invite = Invite::query()->where('email', 'designer@example.com')->sole();
+
+    expect($invite->shq_role_id)->toBe($designer->id)
+        ->and($invite->is_admin)->toBeFalse()
+        ->and($invite->requires_approval)->toBeTrue();
 });
 
-test('editing a member saves the publishing choice and labels the member', function () {
+test('changing a member’s role shows what changes, then saves it', function () {
     [$owner, $workspace] = memberAccessOwner();
-    $member = workspaceMember($workspace, 'member', ['name' => 'Mia Member']);
+    $member = workspaceMember($workspace, 'approval', ['name' => 'Mia Member']);
+    Roles::assign($workspace, $member->id, Roles::builtIn($workspace->account_id, BuiltInRole::Editor));
+    $manager = Roles::builtIn($workspace->account_id, BuiltInRole::Manager);
     $this->actingAs($owner);
 
     $page = visit(route('app.members'));
-    waitForMemberAccessTestId($page, "member-menu-{$member->id}");
-    $page->assertMissing("@member-menu-{$owner->id}")
-        ->click("@member-menu-{$member->id}");
-    waitForMemberAccessTestId($page, "member-edit-{$member->id}");
-    $page->click("@member-edit-{$member->id}");
-    waitForMemberAccessTestId($page, 'member-access-publishing-trigger');
+    waitFor($page, "@member-role-{$member->id}");
+    // The owner's role is locked, with the reason on hover.
+    $page->assertMissing("@member-role-{$owner->id}")
+        ->assertVisible("@member-badge-{$owner->id}")
+        ->click("@member-role-{$member->id}");
 
-    $page->assertSeeIn('@edit-member-dialog', 'Mia Member')
-        ->click('@member-access-publishing-trigger');
-    waitForMemberAccessTestId($page, 'member-access-publishing-approval');
-    $page->click('@member-access-publishing-approval');
+    waitFor($page, '@member-role-option-manager');
+    $page->click('@member-role-option-manager');
+    waitFor($page, '@change-role-dialog');
+    $page->assertSeeIn('@change-role-gains', 'Publish without approval')
+        ->assertSeeIn('@change-role-losses', 'Nothing')
+        ->click('@change-role-submit');
 
-    expect($page->script('document.querySelector("[data-testid=edit-member-cancel]").compareDocumentPosition(document.querySelector("[data-testid=edit-member-submit]")) & Node.DOCUMENT_POSITION_FOLLOWING'))->toBeGreaterThan(0);
+    waitForGone($page, '@change-role-dialog');
+    waitForText($page, "@member-role-{$member->id}", 'Manager');
+    $page->assertNoJavaScriptErrors();
 
-    $page->click('@edit-member-submit');
-    waitForMemberAccessGone($page, 'edit-member-dialog');
-
-    $pivot = $workspace->members()->where('user_id', $member->id)->first()->pivot;
-
-    expect((bool) $pivot->is_admin)->toBeFalse()
-        ->and((bool) $pivot->requires_approval)->toBeTrue();
-
-    $page->assertSeeIn("@member-badge-{$member->id}", 'Needs approval')
-        ->assertNoJavaScriptErrors();
+    expect($workspace->members()->whereKey($member->id)->value('user_workspace.shq_role_id'))->toBe($manager->id);
 });

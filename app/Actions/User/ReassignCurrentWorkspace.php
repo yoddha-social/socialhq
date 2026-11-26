@@ -7,6 +7,8 @@ namespace App\Actions\User;
 use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Access\BuiltInRole;
+use App\SocialHq\Access\Roles;
 
 class ReassignCurrentWorkspace
 {
@@ -87,7 +89,7 @@ class ReassignCurrentWorkspace
 
         if ($fallback && ! $user->belongsToWorkspace($fallback)) {
             $fallback->members()->syncWithoutDetaching([
-                $user->id => ['is_admin' => true, 'requires_approval' => false],
+                $user->id => Roles::membershipColumns(Roles::builtIn($fallback->account_id, BuiltInRole::Admin)),
             ]);
         }
 

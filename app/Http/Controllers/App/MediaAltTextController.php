@@ -7,11 +7,11 @@ namespace App\Http\Controllers\App;
 use App\Actions\Ai\GenerateMediaAltText;
 use App\Actions\Media\ResolveWorkspaceMedia;
 use App\Http\Requests\App\Ai\GenerateMediaAltTextRequest;
+use App\SocialHq\Access\AiAccess;
 use App\SocialHq\Ai\AiResponses;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Gate;
 use Laravel\Ai\Exceptions\AiException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -27,9 +27,9 @@ class MediaAltTextController extends Controller
         abort_if($asset === null, Response::HTTP_NOT_FOUND);
         abort_unless($asset->isImage(), Response::HTTP_UNPROCESSABLE_ENTITY, __('posts.composer.media_editor.alt_generate_image_only'));
 
-        $gate = Gate::inspect('useAi', $workspace->account);
-        if ($gate->denied()) {
-            return response()->json(['message' => $gate->message()], Response::HTTP_PAYMENT_REQUIRED);
+        // Social HQ: the role's "Use AI" too (AiAccess).
+        if (($refusal = AiAccess::refusal($request->user(), $workspace)) !== null) {
+            return $refusal;
         }
 
         try {

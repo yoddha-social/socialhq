@@ -7,6 +7,9 @@ namespace App\Actions\Invite;
 use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Access\BuiltInRole;
+use App\SocialHq\Access\Role;
+use App\SocialHq\Access\Roles;
 use Illuminate\Support\Collection;
 
 class AttachInviteWorkspaces
@@ -22,10 +25,8 @@ class AttachInviteWorkspaces
                 ->exists();
 
             if (! $alreadyMember) {
-                $workspace->members()->attach($user->id, [
-                    'is_admin' => $invite->is_admin,
-                    'requires_approval' => $invite->requires_approval,
-                ]);
+                // Social HQ: the invite's role, or the built-in role matching its flags.
+                $workspace->members()->attach($user->id, Roles::membershipColumns(self::roleFor($invite, $workspace)));
             }
 
             // Accept often switches account_id while an old personal workspace is
@@ -35,6 +36,21 @@ class AttachInviteWorkspaces
                 $user->refresh();
             }
         }
+    }
+
+    /**
+     * Social HQ: the role an invite joins with in this workspace. An invite
+     * from before roles picks the built-in role its flags match; one whose
+     * role isn't in this company joins as Viewer (fail closed).
+     */
+    private static function roleFor(Invite $invite, Workspace $workspace): Role
+    {
+        if ($invite->shq_role_id === null) {
+            return Roles::forFlags($workspace->account_id, (bool) $invite->is_admin, (bool) $invite->requires_approval);
+        }
+
+        return Role::query()->forAccount($workspace->account_id)->find($invite->shq_role_id)
+            ?? Roles::builtIn($workspace->account_id, BuiltInRole::Viewer);
     }
 
     public static function currentWorkspaceBelongsToAccount(User $user): bool

@@ -6,6 +6,7 @@ namespace App\SocialHq\AiGraphics;
 
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Access\AiAccess;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiTask;
 
@@ -58,7 +59,7 @@ final class AiGraphics
     public static function isOffered(User $user, Workspace $workspace): bool
     {
         return config('socialhq.ai_graphics.enabled')
-            && $user->can('createPost', $workspace)
+            && self::mayMakeGraphics($user, $workspace)
             && AiRouter::anyAvailable();
     }
 
@@ -100,6 +101,16 @@ final class AiGraphics
 
     public static function canUse(User $user, Workspace $workspace): bool
     {
-        return self::isAvailable() && $user->can('createPost', $workspace);
+        return self::isAvailable() && self::mayMakeGraphics($user, $workspace);
+    }
+
+    /**
+     * Social HQ roles: "Use AI" and "Write posts" (the graphic arrives through
+     * the media import, which GenerateAiGraphic and ImportRemoteMedia check
+     * with createPost).
+     */
+    public static function mayMakeGraphics(User $user, Workspace $workspace): bool
+    {
+        return AiAccess::allows($user, $workspace) && $user->can('createPost', $workspace);
     }
 }

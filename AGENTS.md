@@ -429,17 +429,21 @@ history — a post without a channel is a history that no longer exists.
 
 ## Member permissions and post approvals
 
-A workspace membership (`user_workspace`) and an invite carry two flags:
-`is_admin` (manages members, settings, channels) and `requires_approval` (the
-member's posts need approval; always `false` for admins). There are no roles any
-more (Admin / Member / Viewer) — `App\Enums\UserWorkspace\Role` was removed in
-October 2026; do not reintroduce it. The account owner is always an admin and
-publishes directly.
+A workspace membership (`user_workspace`) and an invite carry a Social HQ role
+(`shq_role_id`): a set of permissions the account owner defines
+(`App\SocialHq\Access`, SOCIALHQ.md "Roles and access"). TryPost's old enum
+roles (`App\Enums\UserWorkspace\Role`, removed October 2026) stay gone. The flags
+`is_admin` (may manage members) and `requires_approval` (may not publish
+directly) are kept as mirrors of the role, written by `Roles`; a membership
+without a role falls back to them. The account owner holds every permission.
 
-- Read abilities through `User::isWorkspaceAdmin()`, `requiresApprovalIn()`,
-  `canPublishDirectlyIn()` and the `WorkspacePolicy` abilities (`createPost` =
-  any member, `publishDirectly` / `approvePosts` = owner or member who publishes
-  directly). On the client, `useWorkspaceAbilities()`.
+- Read abilities through the `WorkspacePolicy` abilities (each asks one
+  permission: `createPost` = "Write posts", `publishDirectly` = "Publish without
+  approval" and not an agent, `approvePosts` = "Approve posts" and not an agent,
+  `manageTeam`, `manageAccounts`, `update`, ...), `User::hasPermissionIn()`,
+  `requiresApprovalIn()` and `canPublishDirectlyIn()`. Never test `is_admin` for
+  a new check. On the client, `useWorkspaceAbilities()`, which reads
+  `auth.currentWorkspace.permissions`.
 - `App\Support\PostApproval` is the only approval rule. `CreatePosts`,
   `UpdatePost` and `ProcessRepurposeItem` decide through
   `PostApproval::isRequired()` with the acting user and store

@@ -6,26 +6,28 @@ namespace App\SocialHq\Plan;
 
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Access\Permission;
+use App\SocialHq\Approval\ApprovalRules;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Who may do what in the planning layer (plans, items, copy, briefs, events).
- * Any member who may create posts works on plans; approving (a plan, copy, a
- * final creative, an event date) follows TryPost's approvePosts ability, so
- * it matches who approves posts under the approval rules.
+ * Who may do what in the planning layer (plans, items, copy, briefs, events),
+ * from the person's role (App\SocialHq\Access): "Work on plans" works on
+ * them; "Approve plans" approves a plan, copy, a final creative or an event
+ * date, never through an agent; "Edit brand knowledge" changes the brand's
+ * planning settings.
  */
 final class PlanAccess
 {
     public static function canWork(User $user, Workspace $workspace): bool
     {
-        return Gate::forUser($user)->allows('createPost', $workspace);
+        return $user->hasPermissionIn($workspace, Permission::PlanEdit);
     }
 
     public static function canApprove(User $user, Workspace $workspace): bool
     {
-        return Gate::forUser($user)->allows('approvePosts', $workspace);
+        return $user->hasPermissionIn($workspace, Permission::PlanApprove) && ! ApprovalRules::actsAsAgent($user);
     }
 
     /**
@@ -50,7 +52,7 @@ final class PlanAccess
 
     public static function canManageBrand(User $user, Workspace $workspace): bool
     {
-        return Gate::forUser($user)->allows('update', $workspace);
+        return $user->hasPermissionIn($workspace, Permission::BrandEdit);
     }
 
     /**

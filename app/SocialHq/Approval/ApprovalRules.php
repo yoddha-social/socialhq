@@ -8,10 +8,12 @@ use App\Models\User;
 use Laravel\Passport\AccessToken;
 
 /**
- * Social HQ's stricter approval rules, on top of TryPost's per-member flag:
+ * Social HQ's stricter approval rules. Whether a person publishes directly
+ * is their role's "Publish without approval" (App\SocialHq\Access):
  *
- * - members_always_reviewed: every member who is not an admin needs approval,
- *   whatever their own flag says; only admins (and the owner) approve.
+ * - members_always_reviewed: for a membership without a role (before roles,
+ *   WorkspaceAccess::legacyPermissions()), every member who is not an admin
+ *   needs approval, whatever their own flag says. A role decides by itself.
  * - agent_posts_reviewed: a caller using an API key or an MCP grant needs
  *   approval even when the key belongs to an admin, and cannot approve. The
  *   agent wrote the post, not the admin; a person looks at it in the app.
@@ -33,9 +35,10 @@ final class ApprovalRules
     }
 
     /**
-     * Whether a user with this access needs approval to schedule or publish.
+     * Whether a user with this access needs approval to schedule or publish:
+     * a member whose role can't publish directly, and any agent.
      */
-    public static function requiresApproval(User $user, bool $isMember, bool $isAdmin, bool $flagged): bool
+    public static function requiresApproval(User $user, bool $isMember, bool $publishesDirectly): bool
     {
         if (! $isMember) {
             return false;
@@ -45,12 +48,12 @@ final class ApprovalRules
             return true;
         }
 
-        return ! $isAdmin && ($flagged || self::membersAlwaysReviewed());
+        return ! $publishesDirectly;
     }
 
     /**
-     * Whether a member who is not an admin publishes directly (and so may
-     * approve). Admins always do, outside agent requests.
+     * Whether a membership without a role, not an admin, publishes directly
+     * (and so may approve). Admins always do, outside agent requests.
      */
     public static function memberPublishesDirectly(bool $flagged): bool
     {

@@ -19,7 +19,8 @@ class AuthWorkspaceResource
             'name' => $workspace->name,
             'logo_url' => $workspace->logo_url,
             'created_at' => $workspace->created_at->toIso8601String(),
-            ...($user?->accessIn($workspace) ?? ['is_owner' => false, 'is_admin' => false, 'requires_approval' => false]),
+            // Social HQ: accessIn() also carries the role and its permissions (useWorkspaceAbilities()).
+            ...($user?->accessIn($workspace) ?? ['is_owner' => false, 'is_admin' => false, 'requires_approval' => false, 'role' => null, 'permissions' => []]),
         ];
     }
 

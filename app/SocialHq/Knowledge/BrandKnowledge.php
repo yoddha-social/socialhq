@@ -6,6 +6,7 @@ namespace App\SocialHq\Knowledge;
 
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Access\Permission;
 use App\SocialHq\Knowledge\Documents\KnowledgeChunk;
 use App\SocialHq\Knowledge\Search\KnowledgeMatch;
 use App\SocialHq\Knowledge\Search\KnowledgeSearch;
@@ -40,14 +41,20 @@ final class BrandKnowledge
 
     private const ELLIPSIS = '…';
 
+    /**
+     * The role's "Edit brand knowledge" (App\SocialHq\Access).
+     */
     public static function canEdit(User $user, Workspace $workspace): bool
     {
-        return $user->can('update', $workspace);
+        return $user->hasPermissionIn($workspace, Permission::BrandEdit);
     }
 
+    /**
+     * Every member reads it, whatever their role.
+     */
     public static function canView(User $user, Workspace $workspace): bool
     {
-        return $user->can('createPost', $workspace);
+        return $user->can('view', $workspace);
     }
 
     /**

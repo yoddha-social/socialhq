@@ -22,7 +22,32 @@ export interface Workspace {
     is_owner?: boolean;
     is_admin?: boolean;
     requires_approval?: boolean;
+    /** Social HQ: the member's role here (null for the owner and memberships without one). */
+    role?: WorkspaceRoleSummary | null;
+    /** Social HQ: what the role grants here (App\SocialHq\Access\Permission keys). */
+    permissions?: WorkspacePermission[];
     [key: string]: unknown;
+}
+
+export type WorkspacePermission =
+    | 'posts.create'
+    | 'posts.publish'
+    | 'posts.approve'
+    | 'repurpose.manage'
+    | 'plan.edit'
+    | 'plan.approve'
+    | 'brand.edit'
+    | 'ai.use'
+    | 'channels.manage'
+    | 'team.manage'
+    | 'workspace.settings'
+    | 'api_keys.manage'
+    | 'webhooks.manage';
+
+export interface WorkspaceRoleSummary {
+    id: string;
+    key: string | null;
+    name: string;
 }
 
 export interface AuthAccount {

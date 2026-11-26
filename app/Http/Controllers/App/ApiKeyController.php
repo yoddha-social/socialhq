@@ -25,7 +25,7 @@ class ApiKeyController extends Controller
             return redirect()->route('app.workspaces.create');
         }
 
-        $this->authorize('manageTeam', $workspace);
+        $this->authorize('manageApiKeys', $workspace);
 
         $tokens = AccessToken::where('user_id', $request->user()->id)
             ->where('workspace_id', $workspace->id)
@@ -56,7 +56,7 @@ class ApiKeyController extends Controller
             return redirect()->route('app.workspaces.create');
         }
 
-        $this->authorize('manageTeam', $workspace);
+        $this->authorize('manageApiKeys', $workspace);
 
         $created = CreateApiKey::execute(
             $request->user(),
@@ -75,7 +75,7 @@ class ApiKeyController extends Controller
             return redirect()->route('app.workspaces.create');
         }
 
-        $this->authorize('manageTeam', $workspace);
+        $this->authorize('manageApiKeys', $workspace);
 
         $regenerated = RegenerateApiKey::execute(
             $request->user(),
@@ -94,7 +94,7 @@ class ApiKeyController extends Controller
             return redirect()->route('app.workspaces.create');
         }
 
-        $this->authorize('manageTeam', $workspace);
+        $this->authorize('manageApiKeys', $workspace);
 
         $this->findToken($request, $workspace->id, $tokenId)
             ->forceFill(['revoked' => true])

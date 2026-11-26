@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
+import { channelLabel } from '@/components/socialhq/channelLabel';
 import {
     answerPostsChoice,
     type PostsChoice,
@@ -20,9 +21,10 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import date from '@/date';
 
-// Social HQ: dropping or deleting a plan item whose post will still go out
-// asks what happens to that post (postsChoice.ts). Back to drafts is the
-// default, so the post never goes out for an item that left the plan unless
+// Social HQ: dropping or deleting a plan item whose post will still go out,
+// or saving it with another channel or format, asks what happens to that
+// post (postsChoice.ts). Back to drafts is the default, so the post never
+// goes out for an item that left the plan, or no longer matches it, unless
 // someone says so.
 
 const choice = ref<PostsChoice>('drafts');
@@ -49,6 +51,32 @@ const chooseOption = (value: unknown): void => {
 };
 
 const confirm = (): void => answerPostsChoice(choice.value);
+
+/** A changed item keeps its own wording for what happens to the post. */
+const isChange = computed(
+    () => postsChoice.mode === 'channel' || postsChoice.mode === 'format',
+);
+
+const TITLE_KEYS = {
+    drop: 'socialhq_plan.posts_choice.drop_title',
+    delete: 'socialhq_plan.posts_choice.delete_title',
+    channel: 'socialhq_plan.posts_choice.channel_title',
+    format: 'socialhq_plan.posts_choice.format_title',
+} as const;
+
+const KEEP_NOTE_KEYS = {
+    drop: 'socialhq_plan.posts_choice.keep_note',
+    delete: 'socialhq_plan.posts_choice.keep_note',
+    channel: 'socialhq_plan.posts_choice.keep_channel_note',
+    format: 'socialhq_plan.posts_choice.keep_format_note',
+} as const;
+
+const CONFIRM_KEYS = {
+    drop: 'socialhq_plan.posts_choice.drop',
+    delete: 'socialhq_plan.posts_choice.delete',
+    channel: 'socialhq_plan.posts_choice.save',
+    format: 'socialhq_plan.posts_choice.save',
+} as const;
 </script>
 
 <template>
@@ -64,11 +92,7 @@ const confirm = (): void => answerPostsChoice(choice.value);
         >
             <AlertDialogHeader class="gap-3 px-6 pb-4 text-left">
                 <AlertDialogTitle class="font-sans text-base font-medium">
-                    {{
-                        postsChoice.mode === 'delete'
-                            ? $t('socialhq_plan.posts_choice.delete_title')
-                            : $t('socialhq_plan.posts_choice.drop_title')
-                    }}
+                    {{ $t(TITLE_KEYS[postsChoice.mode]) }}
                 </AlertDialogTitle>
                 <AlertDialogDescription class="text-sm text-foreground">
                     {{
@@ -86,7 +110,9 @@ const confirm = (): void => answerPostsChoice(choice.value);
                         class="flex flex-wrap items-center gap-x-2 gap-y-1"
                         :data-testid="`plan-posts-choice-post-${post.id}`"
                     >
-                        <span class="font-medium">{{ post.channel }}</span>
+                        <span class="font-medium">{{
+                            channelLabel(post.channel, post.platform)
+                        }}</span>
                         <span
                             v-if="post.scheduled_at"
                             class="text-muted-foreground"
@@ -130,7 +156,9 @@ const confirm = (): void => answerPostsChoice(choice.value);
                         <span class="block text-sm text-muted-foreground">
                             {{
                                 $tChoice(
-                                    'socialhq_plan.posts_choice.to_drafts_note',
+                                    isChange
+                                        ? 'socialhq_plan.posts_choice.to_drafts_change_note'
+                                        : 'socialhq_plan.posts_choice.to_drafts_note',
                                     postsChoice.posts.length,
                                 )
                             }}
@@ -155,7 +183,7 @@ const confirm = (): void => answerPostsChoice(choice.value);
                         <span class="block text-sm text-muted-foreground">
                             {{
                                 $tChoice(
-                                    'socialhq_plan.posts_choice.keep_note',
+                                    KEEP_NOTE_KEYS[postsChoice.mode],
                                     postsChoice.posts.length,
                                 )
                             }}
@@ -177,11 +205,7 @@ const confirm = (): void => answerPostsChoice(choice.value);
                     data-testid="plan-posts-choice-confirm"
                     @click="confirm"
                 >
-                    {{
-                        postsChoice.mode === 'delete'
-                            ? $t('socialhq_plan.posts_choice.delete')
-                            : $t('socialhq_plan.posts_choice.drop')
-                    }}
+                    {{ $t(CONFIRM_KEYS[postsChoice.mode]) }}
                 </Button>
             </AlertDialogFooter>
         </AlertDialogContent>

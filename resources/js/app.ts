@@ -7,6 +7,7 @@ import { ConfigProvider } from 'reka-ui';
 import type { DefineComponent } from 'vue';
 import { createApp, h } from 'vue';
 
+import { toastUnshownRefusals } from '@/components/socialhq/unshownRefusals';
 import { initializeDataLayer } from '@/datalayer';
 import { bootLocale, i18nConfig, syncLocale, textDirection } from '@/language';
 import { syncContentTypeMediaRules } from '@/lib/contentTypeMediaRules';
@@ -58,6 +59,8 @@ createInertiaApp({
         });
 
         trackInAppPushes();
+        // Social HQ: a refusal no page shows becomes a toast (PATCHES.md row 320).
+        toastUnshownRefusals();
 
         router.on('navigate', (event) => {
             syncPostHogContext(event.detail.page);

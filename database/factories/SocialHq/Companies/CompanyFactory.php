@@ -28,6 +28,18 @@ class CompanyFactory extends Factory
         ];
     }
 
+    /**
+     * An account has one company. Our tests give every account an approved
+     * one (AccountFactory, while companies are required), so a test that
+     * makes an account's company itself replaces that one.
+     */
+    public function configure(): static
+    {
+        return $this->afterMaking(function (Company $company): void {
+            Company::query()->where('account_id', $company->account_id)->delete();
+        });
+    }
+
     public function pending(): static
     {
         return $this->state(fn (): array => ['status' => CompanyStatus::Pending, 'decided_at' => null]);

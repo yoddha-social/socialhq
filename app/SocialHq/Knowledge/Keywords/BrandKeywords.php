@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\SocialHq\Knowledge\Keywords;
 
+use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Knowledge\Search\Tokens;
 use Illuminate\Support\Str;
@@ -63,6 +65,60 @@ final class BrandKeywords
     }
 
     /**
+     * What an AI endpoint adds to its answer after writing new text: whether
+     * the brand has no keywords (the page shows a light note) and whether
+     * this person may add them, by the rule that guards the keywords card
+     * (BrandKnowledge::canEdit), so the note links only those it lets in.
+     *
+     * @return array{keywords_missing: bool, can_add_keywords: bool}
+     */
+    public static function missingNote(User $user, Workspace $workspace, bool $newText = true): array
+    {
+        $missing = $newText && self::isEmpty($workspace);
+
+        return ['keywords_missing' => $missing, 'can_add_keywords' => $missing && BrandKnowledge::canEdit($user, $workspace)];
+    }
+
+    /**
+     * Everything an AI endpoint adds to its answer about keywords: the note
+     * when the brand has none (missingNote()), else which keywords the text
+     * says (main ones first, then supporting, in the admin's order) and
+     * whether a main one is in the caption's first line. Found by
+     * KeywordMatcher, never asked of the model.
+     *
+     * keywords_used is null when there is no line to show: the brand has no
+     * keywords, or a rewrite of the person's own text (never asked to add
+     * any) says none.
+     *
+     * @param  string  $caption  The caption (its first line is checked), as text or HTML
+     * @param  string  $more  The rest of the text that is posted (hashtags, a video script)
+     * @return array{keywords_missing: bool, can_add_keywords: bool, keywords_used: list<string>|null, main_in_first_line: bool}
+     */
+    public static function forAnswer(User $user, Workspace $workspace, string $caption, string $more = '', bool $newText = true): array
+    {
+        $keywords = self::forWorkspace($workspace);
+        $ordered = [...array_filter($keywords, fn (array $keyword): bool => $keyword['main']), ...array_filter($keywords, fn (array $keyword): bool => ! $keyword['main'])];
+        $caption = self::plain($caption);
+        $used = KeywordMatcher::in(trim("{$caption}\n{$more}"), array_column($ordered, 'text'));
+        $firstLine = Str::before(ltrim($caption), "\n");
+        $mainTexts = array_column(array_filter($keywords, fn (array $keyword): bool => $keyword['main']), 'text');
+
+        return [
+            ...self::missingNote($user, $workspace, $newText),
+            'keywords_used' => $keywords === [] || (! $newText && $used === []) ? null : $used,
+            'main_in_first_line' => KeywordMatcher::in($firstLine, $mainTexts) !== [],
+        ];
+    }
+
+    /**
+     * An editor's HTML as text, a paragraph or break per line.
+     */
+    private static function plain(string $text): string
+    {
+        return html_entity_decode(strip_tags((string) preg_replace('#</p>|<br\s*/?>#i', "\n", $text)));
+    }
+
+    /**
      * What one prompt is given: the main keywords, then the supporting ones
      * that share the most words with the focus (in the admin's order on a
      * tie), at most `knowledge.keywords.prompt` in all.
@@ -110,12 +166,14 @@ final class BrandKeywords
     }
 
     /**
-     * A keyword as stored: one line, lowercased, a leading # dropped, runs of
-     * """ broken up (no text may close the prompt's quoted block).
+     * A keyword as stored: one line, lowercased, commas and semicolons made
+     * spaces (they separate keywords in a list or a CSV, so a quoted CSV cell
+     * can't keep one), a leading # dropped, runs of """ broken up (no text may
+     * close the prompt's quoted block).
      */
     public static function clean(string $text): string
     {
-        $text = Str::lower(Str::squish($text));
+        $text = Str::lower(Str::squish(str_replace([',', ';'], ' ', $text)));
         $text = ltrim($text, '#');
         $text = (string) preg_replace_callback('/"{3,}/', fn (array $quotes): string => implode(' ', mb_str_split($quotes[0])), $text);
 

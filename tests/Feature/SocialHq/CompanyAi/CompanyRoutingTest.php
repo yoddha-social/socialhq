@@ -168,7 +168,9 @@ test('a company\'s gateway entry passes the approved-providers guard; other name
 });
 
 test('direct mode ignores companies', function () {
+    // Companies not required: with them required, direct mode asks the company too (CompanyAiHardeningTest).
     config([
+        'socialhq.companies.required' => false,
         'socialhq.ai.gateway' => 'direct',
         'socialhq.ai.approved_providers' => ['openai'],
         'ai.default' => 'openai',

@@ -15,6 +15,7 @@ use App\SocialHq\Ai\Company\CredentialStatus;
 use App\SocialHq\Ai\Company\CredentialTier;
 use App\SocialHq\Ai\Company\ProviderCredential;
 use App\SocialHq\Companies\Company;
+use Database\Factories\AccountFactory;
 use Illuminate\Http\Client\Request;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\DB;
@@ -199,7 +200,8 @@ test('Mistral with the box ticked is added', function () {
 });
 
 test('only the owner of an approved company manages its AI', function () {
-    $member = User::factory()->create();
+    // An invited admin: their own account is empty, not a company (AccountFactory would make it one).
+    $member = AccountFactory::withoutCompany(fn (): User => User::factory()->create());
     $this->workspace->members()->attach($member->id, membershipPivot('admin'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
     Http::fake();

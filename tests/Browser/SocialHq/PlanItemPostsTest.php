@@ -15,6 +15,7 @@ use App\SocialHq\Plan\ItemStatus;
 use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Plan\PlanMonth;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Str;
 
 /*
  * The plan keeps an item's posts in step (user decision 2026-11-23): dropping
@@ -107,5 +108,32 @@ test('moving an item to another day offers to move its post too', function () {
 
     expect($post->fresh()->scheduled_at->format('Y-m-d H:i'))->toBe("{$newDay} 10:00")
         ->and($post->fresh()->status)->toBe(PostStatus::Scheduled);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a member is warned before moving an approved post, and told it waits for approval', function () {
+    // X13: a member's change to a scheduled post needs approval, so moving the owner's
+    // approved post sends it back; the offer says so first, and the result says it waits.
+    [$owner, $item, $post] = planItemWithScheduledPost();
+    $member = workspaceMember($item->plan->workspace, 'approval');
+    $this->actingAs($member);
+    $newDay = $item->scheduled_on->addDays(2)->toDateString();
+
+    $page = openPlanItemSheet($item);
+    $page->select('@plan-item-day', $newDay);
+    $page->click('@plan-item-save');
+    waitForDatabase($page, fn (): bool => $item->fresh()->scheduled_on->toDateString() === $newDay);
+
+    waitForText($page, '[data-sonner-toast]', trans_choice('socialhq_plan.posts_follow.offer', 1));
+    waitForText($page, '[data-sonner-toast]', Str::after(trans_choice('socialhq_plan.posts_follow.back_to_approval', 1, ['time' => '']), 'approved. '));
+    $page->click('[data-sonner-toast] [data-button]');
+    waitForDatabase($page, fn (): bool => $post->fresh()->status === PostStatus::PendingApproval);
+
+    waitForText($page, '[data-sonner-toast]', trans_choice('socialhq_plan.posts_follow.pending', 1, [
+        'count' => 1,
+        'day' => CarbonImmutable::parse($newDay)->locale('en')->isoFormat('ddd D MMM'),
+    ]));
+    expect($post->fresh()->scheduled_at->format('Y-m-d H:i'))->toBe("{$newDay} 10:00")
+        ->and($post->fresh()->approval_requested_by)->toBe($member->id);
     $page->assertNoJavaScriptErrors();
 });

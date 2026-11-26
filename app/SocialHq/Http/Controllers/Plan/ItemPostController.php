@@ -13,7 +13,6 @@ use App\SocialHq\Plan\PlanAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 
 /**
  * "Create post": prepares the composer draft of an approved item (copy,
@@ -48,14 +47,26 @@ class ItemPostController extends Controller
 
     /**
      * Moves the item's posts that are off its day to it, at the same time of
-     * day. Posts that couldn't move are named in the error; the others moved.
+     * day, and says what happened to each: moved, moved but waiting for
+     * approval (it won't go out until someone approves it), or kept at its
+     * old time. One toast per outcome.
      */
     public function follow(Request $request, int $item): RedirectResponse
     {
-        $kept = ItemPosts::followItem(PlanAccess::item($request, $item), $request->user())['kept'];
+        $found = PlanAccess::item($request, $item);
+        $result = ItemPosts::followItem($found, $request->user());
+        $day = $found->scheduled_on->copy()->locale(app()->getLocale())->isoFormat('ddd D MMM');
 
-        if ($kept > 0) {
-            throw ValidationException::withMessages(['posts' => trans_choice('socialhq_plan.posts_follow.kept', $kept, ['count' => $kept])]);
+        if ($result['moved'] > 0) {
+            session()->flash('flash.success', trans_choice('socialhq_plan.posts_follow.moved', $result['moved'], ['count' => $result['moved']]));
+        }
+
+        if ($result['pending'] > 0) {
+            session()->flash('flash.warning', trans_choice('socialhq_plan.posts_follow.pending', $result['pending'], ['count' => $result['pending'], 'day' => $day]));
+        }
+
+        if ($result['kept'] > 0) {
+            session()->flash('flash.error', trans_choice('socialhq_plan.posts_follow.kept', $result['kept'], ['count' => $result['kept']]));
         }
 
         return back();

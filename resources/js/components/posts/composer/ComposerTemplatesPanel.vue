@@ -248,7 +248,7 @@ const openDelete = (template: PostTemplate): void => {
                 :aria-selected="scope === option"
                 aria-controls="composer-templates-tabpanel"
                 :tabindex="scope === option ? 0 : -1"
-                class="relative inline-flex h-10 items-center px-2 text-sm font-medium transition-control outline-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-primary-text after:opacity-0 focus-visible:outline-2 focus-visible:outline-ring aria-selected:after:opacity-100"
+                class="relative inline-flex h-10 items-center px-2 text-sm font-medium transition-control outline-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-primary-text after:opacity-0 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-solid aria-selected:after:opacity-100"
                 :class="
                     scope === option
                         ? 'text-foreground'

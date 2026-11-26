@@ -27,6 +27,13 @@ beforeEach(function () {
         'ai.providers.anthropic.key' => 'test-anthropic-key',
         'ai.providers.gemini.key' => 'test-gemini-key',
     ]);
+
+    // Calls run for a company, as on the web: this one may use the platform's AI.
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create(['account_id' => $owner->account_id, 'user_id' => $owner->id]);
+    $owner->update(['current_workspace_id' => $workspace->id]);
+    Company::factory()->usingPlatformAi()->create(['account_id' => $owner->account_id]);
+    $this->actingAs($owner);
 });
 
 /**
@@ -66,13 +73,6 @@ function useLiteLlm(): void
     ]);
     AiRouter::registerGateway();
     app(AiManager::class)->forgetInstance([AiRouter::LITELLM, AiRouter::LITELLM_IMAGES]);
-
-    // Gateway calls run for a company: this one may use the platform's AI.
-    $owner = User::factory()->create();
-    $workspace = Workspace::factory()->create(['account_id' => $owner->account_id, 'user_id' => $owner->id]);
-    $owner->update(['current_workspace_id' => $workspace->id]);
-    Company::factory()->usingPlatformAi()->create(['account_id' => $owner->account_id]);
-    test()->actingAs($owner);
 }
 
 test('direct routing uses the SDK default provider for text and Gemini for images', function () {

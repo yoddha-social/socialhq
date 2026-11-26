@@ -75,9 +75,18 @@ final class ItemCopy
         });
     }
 
+    /**
+     * Draft → in review. Copy sent back with changes goes for review again
+     * only as a new version: the one the approver sent back is unchanged
+     * (saving a version sets the copy back to draft).
+     */
     public static function submit(PlanItem $item, User $user): void
     {
-        self::transition($item, [CopyStatus::Draft, CopyStatus::ChangesRequested], CopyStatus::InReview, 'cannot_submit', null, function (PlanItem $locked, ItemVersion $version) use ($user): void {
+        if ($item->fresh()?->copy_status === CopyStatus::ChangesRequested) {
+            throw ValidationException::withMessages(['copy' => __('socialhq_production.item.copy.errors.changes_first')]);
+        }
+
+        self::transition($item, [CopyStatus::Draft], CopyStatus::InReview, 'cannot_submit', null, function (PlanItem $locked, ItemVersion $version) use ($user): void {
             self::note($locked, $user, ReviewKind::Submitted, $version);
         });
     }

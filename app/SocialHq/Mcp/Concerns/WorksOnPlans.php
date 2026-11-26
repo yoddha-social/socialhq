@@ -69,7 +69,7 @@ trait WorksOnPlans
      */
     protected function itemPayload(PlanItem $item): array
     {
-        $item->loadMissing(['plan', 'owner', 'event', 'socialAccount', 'latestVersion.author']);
+        $item->loadMissing(['plan', 'owner', 'event', 'socialAccount', 'latestVersion.author', 'posts.socialAccount']);
         $account = $item->socialAccount;
 
         return [
@@ -77,7 +77,7 @@ trait WorksOnPlans
             'month' => PlanMonth::key($item->plan->month),
             'channel' => $account === null ? null : [
                 'id' => $account->id,
-                'name' => $account->display_name ?: $account->username,
+                'name' => $account->display_label,
                 'platform' => $account->platform->value,
             ],
             'owner' => $item->owner?->name,
@@ -88,7 +88,8 @@ trait WorksOnPlans
                 'ends_on' => $item->event->ends_on->toDateString(),
                 'confirmed' => $item->event->isVerified(),
             ],
-            'post_created_at' => $item->post_created_at?->toIso8601ZuluString(),
+            // From the posts still linked: a deleted post no longer counts.
+            'has_posts' => $item->hasPosts(),
             'latest_copy' => $item->latestVersion === null ? null : $this->versionPayload($item->latestVersion),
         ];
     }

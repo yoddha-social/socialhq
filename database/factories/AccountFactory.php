@@ -6,6 +6,7 @@ namespace Database\Factories;
 
 use App\Models\Account;
 use App\SocialHq\Companies\Company;
+use App\SocialHq\Companies\CompanyAccess;
 use Closure;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -33,15 +34,19 @@ class AccountFactory extends Factory
 
     /**
      * Social HQ: under SOCIALHQ_TEST_ACCOUNTS_APPROVED (set only by the
-     * production-rules job of socialhq-ci.yml), every account a test creates
+     * production-rules job of socialhq-ci.yml), or while the test requires
+     * companies (our own tests, tests/Pest.php), every account a test creates
      * gets an approved company, as the backfill gave every real account.
-     * TryPost's suites then run with companies required, as production does,
+     * The suites then run with companies required, as production does,
      * instead of meeting a company-less account no real install has.
      */
     public function configure(): static
     {
         return $this->afterCreating(function (Account $account): void {
-            if (! self::$withCompany || ! filter_var(env('SOCIALHQ_TEST_ACCOUNTS_APPROVED', false), FILTER_VALIDATE_BOOL)) {
+            $approved = filter_var(env('SOCIALHQ_TEST_ACCOUNTS_APPROVED', false), FILTER_VALIDATE_BOOL)
+                || CompanyAccess::companiesRequired();
+
+            if (! self::$withCompany || ! $approved) {
                 return;
             }
 

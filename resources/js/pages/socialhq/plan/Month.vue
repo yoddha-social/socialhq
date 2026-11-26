@@ -130,6 +130,13 @@ const lookups = computed<PlanLookups>(() => ({
 const suggestions = computed(() =>
     props.items.filter((item) => item.status === 'suggested'),
 );
+/**
+ * Suggestions still to decide. One on a day already gone can't be accepted,
+ * so it neither holds back approval nor counts in "Accept all".
+ */
+const openSuggestions = computed(() =>
+    suggestions.value.filter((item) => item.scheduled_on >= props.today),
+);
 const plannedCount = computed(
     () => props.items.filter((item) => item.status === 'planned').length,
 );
@@ -166,7 +173,7 @@ const approveBlockedKey = computed<string | null>(() => {
         return 'socialhq_plan.review.approve_generating';
     }
 
-    return suggestions.value.length > 0
+    return openSuggestions.value.length > 0
         ? 'socialhq_plan.review.approve_blocked'
         : null;
 });
@@ -566,7 +573,7 @@ const openBrandSettings = (): void => {
                 </div>
 
                 <div
-                    v-if="suggestions.length"
+                    v-if="openSuggestions.length"
                     class="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-primary/50 bg-primary-subtle/40 px-4 py-2.5"
                     data-testid="plan-suggestions-bar"
                 >
@@ -577,7 +584,7 @@ const openBrandSettings = (): void => {
                     <p class="min-w-0 flex-1 text-sm text-foreground">
                         {{
                             $t('socialhq_plan.suggestions.open', {
-                                count: String(suggestions.length),
+                                count: String(openSuggestions.length),
                             })
                         }}
                     </p>

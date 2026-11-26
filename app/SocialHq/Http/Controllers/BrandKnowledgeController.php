@@ -99,7 +99,8 @@ class BrandKnowledgeController extends Controller
                 'items' => BrandKeywords::of($loadProfile()),
                 'limits' => ['main' => BrandKeywords::maxMain(), 'supporting' => BrandKeywords::maxSupporting(), 'prompt' => (int) config('socialhq.knowledge.keywords.prompt', 8)],
             ],
-            'keywordCheck' => Inertia::defer(fn () => KeywordCheck::page($workspace)),
+            // Members get the fixes that say who can act.
+            'keywordCheck' => Inertia::defer(fn () => KeywordCheck::page($workspace, BrandKnowledge::canEdit($user, $workspace))),
         ]);
     }
 

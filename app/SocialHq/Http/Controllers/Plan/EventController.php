@@ -158,7 +158,12 @@ class EventController extends Controller
         $workspace = PlanAccess::workspace($request, approve: true);
         $found = self::find($workspace, $event);
         self::ensureMayChange($request, $workspace, shared: $found->workspace_id === null);
-        $found->delete();
+
+        DB::transaction(function () use ($found): void {
+            $found->delete();
+            // Items planned around the date keep their day, without pointing at a date that is gone.
+            PlanItem::query()->where('event_id', $found->id)->update(['event_id' => null, 'updated_at' => now()]);
+        });
 
         return back();
     }

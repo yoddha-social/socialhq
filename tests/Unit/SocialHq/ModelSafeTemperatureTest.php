@@ -6,6 +6,7 @@ use App\Ai\Agents\IdeaGenerator;
 use App\Ai\Agents\MediaAltTextGenerator;
 use App\Ai\Agents\PostContentShortener;
 use App\Ai\Agents\PostWritingAssistant;
+use App\SocialHq\Ai\AiTenant;
 use App\SocialHq\Ai\ModelCapabilities;
 use Laravel\Ai\Gateway\TextGenerationOptions;
 
@@ -41,11 +42,14 @@ test('the default text model of the configured provider is checked', function ()
 test('agents keep their temperature for models that accept it and send none otherwise', function (string $agent, float $temperature) {
     $instance = (new ReflectionClass($agent))->newInstanceWithoutConstructor();
 
-    useTextModel('claude-sonnet-4-5');
-    expect(TextGenerationOptions::forAgent($instance)->temperature)->toBe($temperature);
+    // The platform's own route: with companies required, a call for nobody has none.
+    AiTenant::run(AiTenant::PLATFORM, function () use ($instance, $temperature): void {
+        useTextModel('claude-sonnet-4-5');
+        expect(TextGenerationOptions::forAgent($instance)->temperature)->toBe($temperature);
 
-    useTextModel('claude-sonnet-5-5');
-    expect(TextGenerationOptions::forAgent($instance)->temperature)->toBeNull();
+        useTextModel('claude-sonnet-5-5');
+        expect(TextGenerationOptions::forAgent($instance)->temperature)->toBeNull();
+    });
 })->with([
     [IdeaGenerator::class, 0.8],
     [MediaAltTextGenerator::class, 0.2],

@@ -160,7 +160,7 @@ const handleEditKeydown = (event: KeyboardEvent) => {
                     ref="editInput"
                     v-model="editBody"
                     rows="1"
-                    class="field-sizing-content max-h-28 min-h-0 w-full resize-none rounded-lg border border-input bg-card px-2.5 py-1.5 text-sm text-foreground outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                    class="field-sizing-content max-h-28 min-h-0 w-full resize-none rounded-lg border border-input bg-card px-2.5 py-1.5 text-sm text-foreground outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring focus-visible:outline-solid"
                     data-testid="note-edit-input"
                     @keydown="handleEditKeydown"
                 />

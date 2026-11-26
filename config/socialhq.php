@@ -370,6 +370,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Billing
+    |--------------------------------------------------------------------------
+    |
+    | Cashier's Stripe webhook route is TryPost Cloud's billing; without a
+    | webhook secret it accepts unsigned messages. A self-hosted install (ours)
+    | doesn't register it unless this is on (TryPost's billing tests turn it on).
+    |
+    */
+
+    'billing' => [
+        'stripe_webhook' => (bool) env('SOCIALHQ_STRIPE_WEBHOOK', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Calendar
     |--------------------------------------------------------------------------
     |

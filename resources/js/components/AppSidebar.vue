@@ -22,7 +22,6 @@ import InviteMemberDialog from '@/components/members/InviteMemberDialog.vue';
 import NavChannels from '@/components/NavChannels.vue';
 import NavMain from '@/components/NavMain.vue';
 import SidebarUserMenu from '@/components/SidebarUserMenu.vue';
-import SourceLink from '@/components/socialhq/SourceLink.vue';
 import WorkspaceSwitcher from '@/components/socialhq/WorkspaceSwitcher.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -263,7 +262,6 @@ const mainNavItems = computed<NavItem[]>(() => [
         <SidebarFooter class="gap-0 p-0">
             <ChangelogCard />
             <SidebarUserMenu />
-            <SourceLink />
         </SidebarFooter>
 
         <InviteMemberDialog

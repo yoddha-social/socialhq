@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useForm } from '@inertiajs/vue3';
+import { Link, useForm } from '@inertiajs/vue3';
 import { IconSparkles } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, watch } from 'vue';
@@ -28,6 +28,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import dayjs from '@/dayjs';
 import { generate } from '@/routes/socialhq/plan';
+import { index as eventsIndex } from '@/routes/socialhq/plan/events';
 
 type SourceSwitch = 'old_calendars' | 'past_posts' | 'audience_events';
 
@@ -40,6 +41,8 @@ const props = defineProps<{
     hourlyLimit: number;
     defaults: PlanGenerateOptions;
     audience: PlanAudience;
+    /** Dates of the month that still need a check: the AI leaves them out (QA 2026-11-18, item 6). */
+    unconfirmedEvents: number;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -202,6 +205,26 @@ const start = (): void => {
                         $t('socialhq_plan.generate.description')
                     }}</DialogDescription>
                 </DialogHeader>
+
+                <p
+                    v-if="unconfirmedEvents > 0"
+                    class="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-dashed border-amber-500/70 px-3 py-2 text-sm text-foreground"
+                    data-testid="plan-generate-unconfirmed"
+                >
+                    <span>{{
+                        $tChoice(
+                            'socialhq_plan.generate.unconfirmed',
+                            unconfirmedEvents,
+                            { count: String(unconfirmedEvents) },
+                        )
+                    }}</span>
+                    <Link
+                        :href="eventsIndex.url({ query: { month } })"
+                        class="font-medium text-primary-text underline-offset-2 hover:underline"
+                        data-testid="plan-generate-check-dates"
+                        >{{ $t('socialhq_plan.generate.check_dates') }}</Link
+                    >
+                </p>
 
                 <fieldset class="flex flex-col gap-2">
                     <legend class="mb-2 text-sm font-medium">

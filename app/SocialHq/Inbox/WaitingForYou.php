@@ -8,6 +8,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Events\EventFlag;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\CopyStatus;
 use App\SocialHq\Plan\ItemStatus;
@@ -39,7 +40,7 @@ final class WaitingForYou
     public const int LIMIT = 50;
 
     /**
-     * @return array{plans: list<array<string, mixed>>, copy: list<array<string, mixed>>, creatives: list<array<string, mixed>>, posts: list<array<string, mixed>>, copy_changes: list<array<string, mixed>>, creative_changes: list<array<string, mixed>>}
+     * @return array{plans: list<array<string, mixed>>, copy: list<array<string, mixed>>, creatives: list<array<string, mixed>>, posts: list<array<string, mixed>>, event_flags: list<array<string, mixed>>, copy_changes: list<array<string, mixed>>, creative_changes: list<array<string, mixed>>}
      */
     public static function sections(User $user, Workspace $workspace): array
     {
@@ -64,6 +65,14 @@ final class WaitingForYou
                     'channel' => $post->socialAccount?->accountDisplayName(),
                     'platform' => $post->socialAccount?->platform?->value,
                 ])->values()->all() : [],
+            'event_flags' => $approver ? self::eventFlags($workspace)->with(['event', 'user:id,name'])->latest()->limit(self::LIMIT)->get()
+                ->map(fn (EventFlag $flag): array => [
+                    'id' => $flag->id,
+                    'name' => $flag->event?->name,
+                    'starts_on' => $flag->event?->starts_on->toDateString(),
+                    'note' => Str::limit(Str::squish($flag->note), 120),
+                    'by' => $flag->user?->name,
+                ])->values()->all() : [],
             'copy_changes' => $worker ? self::itemRows(self::copyChangesFor($workspace, $user)) : [],
             'creative_changes' => $worker ? self::briefRows(self::creativeChangesFor($workspace, $user)) : [],
         ];
@@ -77,7 +86,8 @@ final class WaitingForYou
             $count += self::plans($workspace)->count()
                 + self::copyInReview($workspace)->count()
                 + self::briefs($workspace, BriefStage::InReview)->count()
-                + self::pendingPosts($workspace)->count();
+                + self::pendingPosts($workspace)->count()
+                + self::eventFlags($workspace)->count();
         }
 
         if (PlanAccess::canWork($user, $workspace)) {
@@ -193,6 +203,16 @@ final class WaitingForYou
             ->where('workspace_id', $workspace->id)
             ->where('stage', $stage)
             ->whereHas('item', fn (Builder $item) => $item->where('status', '!=', ItemStatus::Dropped));
+    }
+
+    /**
+     * Dates the team flagged for this brand's approvers (owner decision 2026-11-24).
+     *
+     * @return Builder<EventFlag>
+     */
+    private static function eventFlags(Workspace $workspace): Builder
+    {
+        return EventFlag::query()->where('workspace_id', $workspace->id)->open()->whereHas('event');
     }
 
     /**

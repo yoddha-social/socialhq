@@ -194,6 +194,7 @@ return [
             'description' => 'Accept what fits your brand, edit what needs it, skip the rest.',
             'none' => 'Nothing new to suggest from your website.',
             'done' => 'You\'ve gone through every suggestion.',
+            'reviewed' => 'Reviewed suggestions (:count)',
             'accept' => 'Accept',
             'edit' => 'Edit',
             'skip' => 'Skip',

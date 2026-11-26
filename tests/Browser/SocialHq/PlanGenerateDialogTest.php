@@ -48,7 +48,8 @@ test('generate picks its days on a calendar and its sources on option cards', fu
         ->and($last->month)->toBe($month->month);
 
     $plan = ContentPlan::factory()->create(['workspace_id' => $workspace->id, 'month' => $month->toDateString()]);
-    $day = fn (CarbonImmutable $date): string => "@plan-generate-range-calendar [data-value=\"{$date->toDateString()}\"]";
+    // Plain CSS, not "@id …": Pest's own click() reads "@" only as a whole selector.
+    $day = fn (CarbonImmutable $date): string => "[data-testid=\"plan-generate-range-calendar\"] [data-value=\"{$date->toDateString()}\"]";
     $days = fn (CarbonImmutable $from, CarbonImmutable $to): string => "{$from->format('D j')} – {$to->format('D j M')}";
     $pressed = fn (string $state): string => "element.getAttribute('aria-pressed') === '{$state}'";
 
@@ -71,9 +72,9 @@ test('generate picks its days on a calendar and its sources on option cards', fu
     // The last day of the month before is shown greyed out, and clicking it picks nothing.
     $page->click('@plan-generate-range');
     waitForState($page, $day($before), "element.hasAttribute('data-disabled')");
-    $page->script("(() => { document.querySelector('[data-testid=\"plan-generate-range-calendar\"] [data-value=\"{$before->toDateString()}\"]').click(); return true; })()");
+    $page->script('(() => { document.querySelector('.json_encode($day($before)).').click(); return true; })()');
     waitForState($page, $day($month), "element.hasAttribute('data-selection-start')");
-    expect($page->script("document.querySelector('[data-testid=\"plan-generate-range-calendar\"] [data-value=\"{$before->toDateString()}\"]').hasAttribute('data-selected')"))->toBeFalse();
+    expect($page->script('document.querySelector('.json_encode($day($before)).').hasAttribute("data-selected")'))->toBeFalse();
     waitForText($page, '@plan-generate-range-status', __('socialhq_plan.generate.range_pick'));
 
     // Two clicks pick the first and the last day.

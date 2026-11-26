@@ -8,7 +8,7 @@ use App\Models\Workspace;
 use App\SocialHq\Access\BuiltInRole;
 use App\SocialHq\Access\Roles;
 
-// Social HQ: members and invites carry a role (PATCHES.md row 301) instead of
+// Social HQ: members and invites carry a role (App\SocialHq\Access) instead of
 // TryPost's admin switch and publishing choice.
 
 /**

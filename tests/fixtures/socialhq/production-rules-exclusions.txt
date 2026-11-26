@@ -8,7 +8,7 @@
 # A test removed upstream can be dropped from here; one that starts failing in
 # that job is a regression to look at, not a line to add without a reason.
 
-# AcceptInviteControllerTest: an invite without a role joins with the built-in role its flags match (Social HQ roles, PATCHES row 301); with members always reviewed (SOCIALHQ_MEMBERS_ALWAYS_REVIEWED) TryPost's "member who publishes directly" is an Editor, whose stored flag says it needs approval. What the member may do is the same as before.
+# AcceptInviteControllerTest: an invite without a role joins with the built-in role its flags match (Social HQ roles, `Roles::forFlags()`); with members always reviewed (SOCIALHQ_MEMBERS_ALWAYS_REVIEWED) TryPost's "member who publishes directly" is an Editor, whose stored flag says it needs approval. What the member may do is the same as before.
 AcceptInviteControllerTest::accept invite assigns the exact access from the invite with data set "('member')"
 
 # AccountLimitAndAccessParityTest: agents: an API key or MCP grant, admins' too, sends posts for approval and can neither approve nor manage repurposes (SOCIALHQ_AGENT_POSTS_REVIEWED); and members who are not admins always need approval and never approve (SOCIALHQ_MEMBERS_ALWAYS_REVIEWED): TryPost's "member who publishes directly" no longer exists.

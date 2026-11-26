@@ -188,6 +188,8 @@ return [
     'sidebar.settings' => 13,
     'sidebar.support.menu' => 20,
     'sidebar.support.changelog' => 15,
+    'socialhq.source_code' => 22,
+    'socialhq.channels.invite.cancel' => 11,
     'sidebar.theme' => 26,
     'signatures.description' => 43,
     'socialhq.approvals.reject.cancel' => 6,

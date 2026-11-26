@@ -17,9 +17,11 @@ use Laravel\Ai\Contracts\HasStructuredOutput;
 use Laravel\Ai\Promptable;
 
 /**
- * Drafts a month of planned items from the PlannerContext JSON. What it
- * returns is only a proposal: GeneratePlanSuggestions checks every item
- * before saving it as a suggestion.
+ * Drafts the planned items of a few days (one week of a run) from the
+ * PlannerContext JSON. What it returns is only a proposal:
+ * GeneratePlanSuggestions checks every item before saving it as a
+ * suggestion. With $retry it is the week's second try: the JSON also lists
+ * the first answer's refused items and why.
  *
  * MaxTokens: room for 80 items (some providers default to a few hundred
  * output tokens and stop mid-answer).
@@ -36,7 +38,7 @@ class ContentPlanner implements Agent, HasProviderOptions, HasStructuredOutput
 
     public const MAX_OUTPUT_TOKENS = 12000;
 
-    public function __construct(public Locale $locale) {}
+    public function __construct(public Locale $locale, public bool $retry = false) {}
 
     public function aiTask(): AiTask
     {
@@ -57,6 +59,7 @@ class ContentPlanner implements Agent, HasProviderOptions, HasStructuredOutput
             'language' => $this->locale->promptLanguage(),
             'max_items' => self::MAX_ITEMS,
             'event_lead_days' => GeneratePlanSuggestions::EVENT_LEAD_DAYS,
+            'retry' => $this->retry,
         ])->render();
     }
 

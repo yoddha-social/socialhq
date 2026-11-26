@@ -3,6 +3,7 @@ import { Head, Link } from '@inertiajs/vue3';
 import {
     IconCalendarStats,
     IconChevronRight,
+    IconFlag,
     IconInbox,
     IconMessageReport,
     IconPalette,
@@ -19,6 +20,7 @@ import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { index as postsIndex } from '@/routes/app/posts';
 import { show as planShow } from '@/routes/socialhq/plan';
+import { index as eventsIndex } from '@/routes/socialhq/plan/events';
 import { show as itemShow } from '@/routes/socialhq/plan/items';
 
 interface PlanRow {
@@ -54,12 +56,21 @@ interface PostRow {
     platform: string | null;
 }
 
+interface EventFlagRow {
+    id: number;
+    name: string | null;
+    starts_on: string | null;
+    note: string;
+    by: string | null;
+}
+
 const props = defineProps<{
     sections: {
         plans: PlanRow[];
         copy: ItemRow[];
         creatives: BriefRow[];
         posts: PostRow[];
+        event_flags: EventFlagRow[];
         copy_changes: ItemRow[];
         creative_changes: BriefRow[];
     };
@@ -146,6 +157,27 @@ const sections = computed<Section[]>(() =>
                 ]
                     .filter(Boolean)
                     .join(' · '),
+            })),
+        },
+        {
+            key: 'event_flags',
+            icon: IconFlag,
+            rows: props.sections.event_flags.map((flag) => ({
+                key: `event-flag-${flag.id}`,
+                href: eventsIndex.url({
+                    query: flag.starts_on
+                        ? { month: flag.starts_on.slice(0, 7) }
+                        : {},
+                }),
+                title: [flag.name, flag.starts_on ? day(flag.starts_on) : '']
+                    .filter(Boolean)
+                    .join(' · '),
+                meta: flag.by
+                    ? trans('socialhq.inbox.flagged_by', {
+                          name: flag.by,
+                          note: flag.note,
+                      })
+                    : flag.note,
             })),
         },
         {

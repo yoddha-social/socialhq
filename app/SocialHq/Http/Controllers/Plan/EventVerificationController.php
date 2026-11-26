@@ -6,11 +6,15 @@ namespace App\SocialHq\Http\Controllers\Plan;
 
 use App\Http\Controllers\Controller;
 use App\SocialHq\Events\CalendarEvent;
+use App\SocialHq\Events\EventFlag;
 use App\SocialHq\Events\EventRegion;
+use App\SocialHq\Events\EventsForMonth;
 use App\SocialHq\Http\Requests\Plan\ConfirmShownEventsRequest;
+use App\SocialHq\Http\Requests\Plan\UndoConfirmShownEventsRequest;
 use App\SocialHq\Http\Requests\Plan\VerifyCalendarEventRequest;
 use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Plan\PlanMonth;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -52,8 +56,9 @@ class EventVerificationController extends Controller
                 self::saveQuietly($locked, ['verified_at' => now(), 'verified_by' => $request->user()->id]);
             }
         });
+        EventFlag::resolveFor($found->id, $workspace->id, $request->user()->id);
 
-        return back();
+        return back()->with('flash.success', __('socialhq_events.confirm.done'));
     }
 
     /**
@@ -73,27 +78,61 @@ class EventVerificationController extends Controller
         $canManageShared = PlanAccess::canManageSharedEvents($request->user(), $workspace);
 
         // A plain update: no model events and no updated_at, like a single confirmation.
-        $confirmed = CalendarEvent::query()
-            ->visibleTo($workspace)
-            ->forCountries($country === null ? null : [$country])
-            ->overlapping($from->toDateString(), $to->toDateString())
-            ->whereNull('verified_at')
-            // A date its source no longer lists can't be confirmed (store() says why).
-            ->whereNull('delisted_at')
-            ->when(! $canManageShared, fn (Builder $query) => $query->where('workspace_id', $workspace->id))
-            ->when($request->validated('filter'), fn (Builder $query, string $filter) => match ($filter) {
-                'nepal' => $query->where('region', EventRegion::Nepal),
-                'international' => $query->where('region', EventRegion::International),
-                'brand' => $query->whereNotNull('workspace_id'),
-                default => $query,
-            })
-            ->toBase()
-            ->update(['verified_at' => now(), 'verified_by' => $request->user()->id]);
+        $at = now()->startOfSecond();
+        // Only what the page lists: a holiday folded into the international day of the same name stays as it is.
+        $listed = EventsForMonth::forWorkspace($workspace, $from, $to)->modelKeys();
+        $ids = DB::transaction(function () use ($request, $workspace, $from, $to, $country, $canManageShared, $at, $listed): array {
+            $ids = CalendarEvent::query()
+                ->forBrand($workspace)
+                ->whereKey($listed)
+                ->overlapping($from->toDateString(), $to->toDateString())
+                ->whereNull('verified_at')
+                // A date its source no longer lists can't be confirmed (store() says why).
+                ->whereNull('delisted_at')
+                ->when(! $canManageShared, fn (Builder $query) => $query->where('workspace_id', $workspace->id))
+                ->when($request->validated('filter'), fn (Builder $query, string $filter) => match ($filter) {
+                    'country' => $query->where('country_code', $country),
+                    'international' => $query->where('region', EventRegion::International),
+                    'brand' => $query->whereNotNull('workspace_id'),
+                    'flagged' => $query->whereHas('flags', fn (Builder $flags) => $flags->where('workspace_id', $workspace->id)->open()),
+                    default => $query,
+                })
+                ->lockForUpdate()
+                ->pluck('id')
+                ->all();
 
-        session()->flash('flash.banner', trans_choice('socialhq_events.confirm_shown.done', $confirmed, ['count' => $confirmed]));
-        session()->flash('flash.bannerStyle', 'success');
+            CalendarEvent::query()->whereKey($ids)->toBase()->update(['verified_at' => $at, 'verified_by' => $request->user()->id]);
+
+            return $ids;
+        });
+
+        // The page offers Undo with what was confirmed (QA 2026-11-18, item 6).
+        session()->flash('flash.eventsConfirmed', [
+            'message' => trans_choice('socialhq_events.confirm_shown.done', count($ids), ['count' => count($ids)]),
+            'ids' => $ids,
+            'at' => $at->toIso8601String(),
+        ]);
 
         return back();
+    }
+
+    /**
+     * Undo for "Confirm all shown": takes back the confirmations of that
+     * batch that are still the person's own, as they made them.
+     */
+    public function destroyShown(UndoConfirmShownEventsRequest $request): RedirectResponse
+    {
+        $workspace = PlanAccess::workspace($request, approve: true);
+
+        $undone = CalendarEvent::query()
+            ->visibleTo($workspace)
+            ->whereKey($request->validated('ids'))
+            ->where('verified_by', $request->user()->id)
+            ->where('verified_at', CarbonImmutable::parse($request->validated('at')))
+            ->toBase()
+            ->update(['verified_at' => null, 'verified_by' => null]);
+
+        return back()->with('flash.success', trans_choice('socialhq_events.confirm_shown.undone', $undone, ['count' => $undone]));
     }
 
     public function destroy(Request $request, int $event): RedirectResponse

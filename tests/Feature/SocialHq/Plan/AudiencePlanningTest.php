@@ -7,6 +7,7 @@ use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Events\BrandEventCountries;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Knowledge\Calendars\CalendarImport;
@@ -160,6 +161,8 @@ test('events for the audience keep its countries\' and international ones', func
     $this->plan->update(['generation_options' => ['audience_events' => true]]);
     $filtered = PlannerContext::build($this->plan->fresh(), CarbonImmutable::now('UTC')->startOfDay());
 
+    // Switched off, the planner gets every country the brand follows.
+    BrandEventCountries::save($this->workspace, ['NP', 'AU', 'US']);
     $this->plan->update(['generation_options' => ['audience_events' => false]]);
     $all = PlannerContext::build($this->plan->fresh(), CarbonImmutable::now('UTC')->startOfDay());
 

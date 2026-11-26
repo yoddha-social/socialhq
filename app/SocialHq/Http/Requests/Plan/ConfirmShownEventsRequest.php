@@ -15,7 +15,7 @@ use Illuminate\Validation\Rule;
 class ConfirmShownEventsRequest extends FormRequest
 {
     /** The filters of the events page. */
-    public const FILTERS = ['all', 'nepal', 'international', 'brand', 'unverified'];
+    public const FILTERS = ['all', 'country', 'international', 'brand', 'unverified', 'flagged'];
 
     /**
      * @return array<string, ValidationRule|array<mixed>|string>
@@ -25,7 +25,7 @@ class ConfirmShownEventsRequest extends FormRequest
         return [
             'view' => ['required', Rule::in(['month', 'upcoming'])],
             'month' => ['required_if:view,month', 'nullable', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
-            'country' => ['nullable', 'string', 'regex:/^[A-Za-z]{2}$/'],
+            'country' => ['nullable', 'required_if:filter,country', 'string', 'regex:/^[A-Za-z]{2}$/'],
             'filter' => ['required', Rule::in(self::FILTERS)],
         ];
     }

@@ -203,6 +203,8 @@ return [
         'goals' => 'What should this month focus on?',
         'goals_placeholder' => 'For example: launch the winter menu, more reels, nothing on Saturdays.',
         'replaces' => 'This replaces the AI suggestions you haven\'t accepted yet on these days. Planned items stay.',
+        'unconfirmed' => '{1} 1 date this month still needs a check. The AI plans only around confirmed dates, so it leaves this one out.|[2,*] :count dates this month still need a check. The AI plans only around confirmed dates, so it leaves these out.',
+        'check_dates' => 'Check dates',
         'start' => 'Generate',
         'too_many' => 'You can start up to :limit AI drafts an hour. Try again later.',
         'from' => 'From',

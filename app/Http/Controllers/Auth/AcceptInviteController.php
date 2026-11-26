@@ -11,12 +11,12 @@ use App\Actions\Invite\SettleAfterInvite;
 use App\Enums\Invite\Result;
 use App\Http\Controllers\Controller;
 use App\Models\Invite;
+use App\SocialHq\Access\Role;
+use App\SocialHq\Access\RoleResource;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use App\SocialHq\Access\Role;
-use App\SocialHq\Access\RoleResource;
 
 class AcceptInviteController extends Controller
 {

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 use App\Models\Account;
 use App\Models\Invite;
-use App\SocialHq\Access\BuiltInRole;
-use App\SocialHq\Access\Roles;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Access\BuiltInRole;
+use App\SocialHq\Access\Roles;
 use Database\Factories\AccountFactory;
 
 /**

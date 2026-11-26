@@ -6,13 +6,13 @@ namespace App\Mail;
 
 use App\Actions\Invite\ResolveInviteWorkspaces;
 use App\Models\Invite;
+use App\SocialHq\Access\Role;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use App\SocialHq\Access\Role;
 
 class WorkspaceInvite extends Mailable implements ShouldQueue
 {

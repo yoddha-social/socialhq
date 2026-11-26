@@ -49,7 +49,7 @@ test('workspace settings, members and invitations have no api route', function (
 
     expect($apiRoutes)->toEqual(['api.workspace.show']);
 
-    foreach (['app.workspace.settings.update', 'app.workspace.upload-logo', 'app.workspaces.store', 'app.workspaces.destroy', 'app.workspaces.switch', 'app.members', 'app.members.update', 'app.members.remove', 'app.invites.store', 'app.invites.destroy', 'app.invites.accept', 'app.invites.decline'] as $name) {
+    foreach (['app.workspace.settings.update', 'app.workspace.upload-logo', 'app.workspaces.store', 'app.workspaces.destroy', 'app.workspaces.switch', 'app.members', 'app.members.update', 'app.members.remove', 'app.invites.store', 'app.invites.update', 'app.invites.destroy', 'app.invites.accept', 'app.invites.decline'] as $name) {
         expect(Route::has($name))->toBeTrue();
     }
 });

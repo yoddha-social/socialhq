@@ -418,6 +418,27 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   per country. Nepal never comes from Nager.Date. The country filter and
   `EventsForMonth`'s `$countries` keep the chosen countries' dates plus every
   date without a country.
+  **Each brand follows its own countries** (owner decision 2026-11-24,
+  `Events\BrandEventCountries`, `shq_brand_profiles.event_countries`): the
+  admins' choice ("Change countries" on the events page), else the audience's
+  countries, else Nepal. A brand sees, plans and gets planned around only those
+  countries' dates, international days and its own dates
+  (`CalendarEvent::scopeForBrand`, used by `EventsForMonth`, so the events page,
+  the plan, the planner, the publish calendar markers and MCP all follow it);
+  a brand abroad never sees Nepal's. "Import official dates" brings Nepal's list
+  only for a brand that follows Nepal; "Add a country" adds the country to the
+  brand. The page has a chip per followed country and, when the audience is in
+  a country the brand doesn't follow, offers to add its holidays. A brand's
+  approvers **hide** a shared date for that brand only (`shq_event_hides`,
+  "Hidden for this brand" lists them with "Show again"); a brand's own date is
+  deleted instead. Anyone working on the plan **flags** a date with a note
+  (`shq_event_flags`): it shows on the date and in "Waiting for you" for the
+  brand's approvers, and confirming, editing or hiding the date, or "Mark
+  handled", closes it. One day under one name is one event: a country's
+  holiday that is also the international day (New Year) shows once, naming
+  the country. "Confirm all shown" offers Undo (the batch's ids and time, for
+  that person's confirmations only); a single confirmation says so. "Generate
+  with AI" says how many dates of the month still need a check.
 - **Content plan** (`/socialhq/plan/{YYYY-MM}`). Items with a date, channel,
   format (TryPost's content type), what to make, pillar, owner, event, objective
   and angle. "Generate with AI" (`ContentPlanner`, a queued job) drafts the
@@ -465,8 +486,11 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   each item a `suggested_time` ("HH:MM", checked in code; an unreadable one is
   dropped, not the item) with `suggested_timezone` set by the code. Cards, the
   list and the side sheet show it in that zone and the viewer's ("9:00 in
-  Sydney · 4:45 in Kathmandu"); "Create post" hands the composer that instant
-  as a wall clock in the user's zone (`SuggestedTime`), else 09:00 of the day.
+  Sydney · 4:45 in Kathmandu"); the item page and its "Create post" card say it
+  in the channel's zone too, the one the composer shows ("9:00 in Sydney · 4:45
+  PM in Kathmandu, the channel's time zone"). "Create post" hands the composer
+  that instant as a wall clock in the user's zone (`SuggestedTime`), else 09:00
+  of the day in the main audience zone (QA 2026-11-18, item 13).
 - **List view**: grouped by week (the user's start of week) with sticky week
   headers, sortable by day, channel, pillar, owner and status (kept per
   browser), inline accept, drop and restore, time and event columns; stacked
@@ -544,6 +568,19 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
 - **Production** (`/socialhq/plan/production`). Every brief by stage, with drag
   and drop or a keyboard "Move to" menu. Only approvers move a card into or out
   of Changes requested and Approved.
+- **Feedback and fresh screens** (QA 2026-11-18, items 7–9 and 12). Saving
+  copy, sending copy or a creative for review, approving or asking for
+  changes, sending or approving the plan and saving drafts or approval
+  requests in the composer each end with a toast (`flash.success`, and
+  `Composer\ComposerSaved`); an upload says how many files went up. A change
+  to a month (an item, its copy or brief, the plan) broadcasts
+  `Plan\PlanChanged` (`shq.plan.changed`, once per plan per request or job,
+  through `defer()`) on `workspace.{id}`, and open plan pages of that month
+  reload; after Back the month asks the server again. The item sheet is not
+  modal: another card or day opens in it, and unsaved changes wait behind a
+  toast that offers to discard them. The item page asks before an in-app
+  visit or a tab close drops typed copy, a brief, a comment or a reviewer's
+  note (`plan/item/unsavedWork.ts`; the browser's back button isn't held).
 - **AI output** must list every key as required (strict providers such as Groq
   refuse a schema with optional keys, and models drop them); `""` means none.
 
@@ -717,7 +754,10 @@ Everything about when a post goes out sits in one bar (PATCHES.md rows 232–233
 labels and "Repeat" on the left; the "when" button (a set time shows its weekday
 and time zone), "Save draft" and the primary button on the right. The primary
 button counts the posts it saves ("Schedule 4 posts", "Request approval for 4
-posts").
+posts"); an approver editing a post that waits for approval sees "Approve and
+schedule" (or "…add to queue", "…publish now"), since saving approves it
+(`approveAction` in `PostComposerDialog.vue`). Below `lg` the time's zone shows as its place
+("Kathmandu").
 
 - **Repeat** (`components/socialhq/composer/ComposerRepeat.vue`) is the post card's
   "Make Recurring" rule, picked before saving. Only people who publish directly see
@@ -727,6 +767,17 @@ posts").
   applies it after the save. Saving a post of a series with its rule unchanged keeps
   its place in the series; "Don't repeat" (`null`) stops it; a save without the key
   changes nothing.
+
+## Members
+
+Settings › Members (workspace admins) is also in the workspace switcher
+("Members"). A pending invite's access (admin, or a member who needs
+approval) can change until it is accepted: "Edit access" in its ⋯ menu, with
+the same rules as inviting (`app.invites.update`).
+After an invite is sent, the dialog stays open and says who got it, with
+"Invite another" and "Done". Workspace settings keep "Delete this
+workspace" closed until it is opened. An invite has no name field:
+the person types their name when they sign up (owner decision 2026-11-24).
 
 ## Approvals
 
@@ -756,6 +807,17 @@ admin's too. Besides the approval rules above:
   an agent reading untrusted text could be steered into minting a key or
   sending post events to any URL. `SOCIALHQ_AGENTS_MANAGE_ADMIN_SETTINGS=true`
   allows them again; `manageTeam` itself is unchanged.
+- **Only supported assistants connect over MCP** (audit SEC-04): an
+  assistant registers itself (`POST /oauth/register`) with the addresses a
+  member's grant is sent back to, and only those of the assistants we
+  support are taken (`redirect_domains` in `config/mcp.php`,
+  `SOCIALHQ_MCP_REDIRECT_DOMAINS`): `https://claude.ai` (Claude on the web,
+  Desktop and mobile), `https://chatgpt.com`, and loopback on any port
+  (Claude Code and other tools on the member's own computer, RFC 8252);
+  desktop apps' own schemes (`custom_schemes`) as before. Nobody can
+  register a "Claude" that sends the grant to their own site. Clients
+  registered before keep their addresses. The Authorize screen still shows
+  only the name the assistant chose.
 - **Safe retries**: `create-post-tool` and `create-posts-tool` take an
   `idempotency_key`; the same key and arguments within 24 hours return the
   posts already made (`App\SocialHq\Mcp\IdempotentPostCreation`, cache).
@@ -805,8 +867,16 @@ empty sign-up stays invites only. Code: `app/SocialHq/Signup/`.
 **Companies** (`app/SocialHq/Companies/`). A company is an account a
 platform admin approved; only its owner creates workspaces
 (`SOCIALHQ_COMPANIES_REQUIRED`, default on). Platform admins are granted
-with `php artisan socialhq:platform-admin <email>` only; on a new server the
-first person asks for a company, is granted, and approves it.
+with `php artisan socialhq:platform-admin <email>` only. Company requests
+(below) are the only way a company is made from the app, so
+`php artisan socialhq:company <email> "<name>"` makes one from the server:
+approved at once, no request and no email, on the owner's own account
+(created when the email has none, with the email taken as confirmed and a
+link printed to set a password; an existing account must own itself and
+have confirmed its email). `--platform-ai` lets it use our AI keys. On a
+new server: create the first company with it, make its owner a platform
+admin, and keep `SOCIALHQ_COMPANY_REQUESTS=false` until outsiders may ask
+(audit SEC-06, X11).
 
 1. Anyone off the lists may ask to start a company
    (`SOCIALHQ_COMPANY_REQUESTS`, default on; off brings back "can't sign up
@@ -885,6 +955,26 @@ ARC-08; PATCHES.md rows 350–353):
   `*_ENABLED=true`.
 - A missing `MAIL_MAILER` logs mail instead of using TryPost's hosted mailer.
 - PostHog's library is loaded only when PostHog is enabled with a key.
+
+## Browser safety
+
+Audit 2026-11-24, SEC-09 (the app's side; HTTPS-only is switched on at
+Cloudflare, and a script allow-list, CSP, is later work, report-only first).
+
+- Every response carries `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: strict-origin-when-cross-origin` and
+  `X-Frame-Options: SAMEORIGIN` (`Http\Middleware\SecurityHeaders`, global,
+  first, so errors and the maintenance page too). SAMEORIGIN, not DENY: the
+  composer previews a PDF in an iframe from our own media route; nothing
+  outside frames the app (sign-ins are full-page redirects). A response that
+  sets one of them keeps its own (the connect link's `no-referrer`). nginx
+  adds the same three to files it serves from disk.
+- Live updates: Reverb accepts connections only from pages on `APP_URL`'s
+  host (`REVERB_ALLOWED_ORIGINS` adds hosts, `*` as a wildcard, e.g. a
+  tunnel's). The app publishes to Reverb inside the container
+  (`REVERB_HOST=localhost`, `REVERB_PORT=8080`, `REVERB_SCHEME=http`); nginx
+  proxies only the WebSocket (`/app/`), not Reverb's control API (`/apps/`),
+  so its secret can't be tried from outside.
 
 ## Interface copy
 

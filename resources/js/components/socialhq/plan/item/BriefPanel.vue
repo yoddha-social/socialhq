@@ -18,6 +18,7 @@ import type {
     PlanAbilities,
     PlanPerson,
 } from '@/components/socialhq/plan/item/types';
+import { trackUnsavedWork } from '@/components/socialhq/plan/item/unsavedWork';
 import {
     toastFirstError,
     toastRequestFailed,
@@ -79,6 +80,7 @@ const fieldsOf = (brief: BriefDetail | null): BriefFields => ({
 });
 
 const form = useForm<BriefFields>(fieldsOf(props.brief));
+trackUnsavedWork(() => form.isDirty);
 
 watch(
     () => props.brief,

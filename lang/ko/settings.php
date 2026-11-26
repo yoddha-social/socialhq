@@ -201,6 +201,9 @@ return [
             'email' => '이메일',
             'email_placeholder' => 'collaborator@email.com',
             'submit' => '초대 보내기',
+            'sent' => ':email 주소로 초대를 보냈습니다',
+            'another' => '다른 사람 초대',
+            'done' => '완료',
         ],
 
         'pending' => [
@@ -244,6 +247,10 @@ return [
             'description' => '이 워크스페이스에서 이 멤버가 할 수 있는 일을 선택하세요.',
             'submit' => '저장',
             'action' => '접근 권한 편집',
+        ],
+        'edit_invite' => [
+            'title' => '초대 편집',
+            'description' => '초대를 수락한 후 이 사람이 이 워크스페이스에서 할 수 있는 일을 선택하세요.',
         ],
 
         'errors' => [

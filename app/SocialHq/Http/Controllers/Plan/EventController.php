@@ -7,8 +7,10 @@ namespace App\SocialHq\Http\Controllers\Plan;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\Workspace;
+use App\SocialHq\Events\BrandEventCountries;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Events\EventCategory;
+use App\SocialHq\Events\EventFlag;
 use App\SocialHq\Events\EventRegion;
 use App\SocialHq\Events\EventsForMonth;
 use App\SocialHq\Events\ImportOfficialEvents;
@@ -16,9 +18,12 @@ use App\SocialHq\Events\Nager\NagerDate;
 use App\SocialHq\Events\Nager\NagerDateUnavailable;
 use App\SocialHq\Http\Requests\Plan\StoreCalendarEventRequest;
 use App\SocialHq\Http\Requests\Plan\UpdateCalendarEventRequest;
+use App\SocialHq\Knowledge\Audience\Audience;
+use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Plan\PlanMonth;
+use App\SocialHq\Plan\PlanOptions;
 use App\Support\Timezone;
 use Carbon\CarbonImmutable;
 use Closure;
@@ -47,6 +52,11 @@ class EventController extends Controller
         [$from, $to] = self::period($today, $upcoming, $month);
         $country = self::country($request->query('country'));
         $canManageShared = PlanAccess::canApprove($request->user(), $workspace) && PlanAccess::canManageSharedEvents($request->user(), $workspace);
+        $canApprove = PlanAccess::canApprove($request->user(), $workspace);
+        $profile = PlanOptions::profile($workspace);
+        $brandCountries = BrandEventCountries::for($workspace, $profile);
+        $events = EventsForMonth::forWorkspace($workspace, $from, $to, $country === null ? null : [$country]);
+        $events->load(['flags' => fn ($query) => $query->where('workspace_id', $workspace->id)->open()->with('user:id,name')->oldest()]);
 
         return Inertia::render('socialhq/plan/Events', [
             'view' => $upcoming ? 'upcoming' : 'month',
@@ -55,16 +65,31 @@ class EventController extends Controller
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
             'country' => $country,
-            'events' => EventsForMonth::forWorkspace($workspace, $from, $to, $country === null ? null : [$country])->map(fn (CalendarEvent $event): array => self::row($event))->values(),
+            'events' => $events->map(fn (CalendarEvent $event): array => self::row($event))->values(),
             'hasEvents' => CalendarEvent::query()->visibleTo($workspace)->exists(),
-            // The countries the brand has dates for, for the country filter.
-            'countries' => CalendarEvent::query()->visibleTo($workspace)->whereNotNull('country_code')->distinct()->orderBy('country_code')->pluck('country_code')->values(),
+            // The countries whose dates this brand plans around (owner decision 2026-11-24), and whether the brand chose them.
+            'brandCountries' => [
+                'codes' => $brandCountries,
+                'chosen' => BrandEventCountries::chosen($profile) !== null,
+            ],
+            // The countries the account has dates for, plus Nepal (the official list): what a brand can follow.
+            'countries' => CalendarEvent::query()->visibleTo($workspace)->whereNotNull('country_code')->distinct()->pluck('country_code')
+                ->push(CalendarEvent::NEPAL)->unique()->sort()->values(),
+            // The audience's countries this brand doesn't follow yet (QA 2026-11-18, item 6).
+            'audienceCountries' => array_values(array_diff(Audience::countries($profile), $brandCountries)),
+            // Shared dates of the period this brand hid, for approvers to show again.
+            'hidden' => $canApprove
+                ? CalendarEvent::query()->hiddenBy($workspace)->overlapping($from->toDateString(), $to->toDateString())->orderBy('starts_on')->get()->map(fn (CalendarEvent $event): array => self::row($event))->values()
+                : [],
             // "Add a country": the countries Nager.Date covers, read when the dialog opens (null when it can't be reached).
             'holidayCountries' => Inertia::optional(fn (): ?array => self::holidayCountries($canManageShared)),
             'holidayYears' => [$today->year, $today->year + 1],
             'maxHolidayCountries' => (int) config('socialhq.events.nager.max_countries', 5),
             'categories' => array_map(fn (EventCategory $category): string => $category->value, EventCategory::cases()),
-            'abilities' => PlanAccess::abilities($request->user(), $workspace),
+            'abilities' => [
+                ...PlanAccess::abilities($request->user(), $workspace),
+                'canChooseCountries' => BrandKnowledge::canEdit($request->user(), $workspace),
+            ],
         ]);
     }
 
@@ -75,8 +100,7 @@ class EventController extends Controller
         self::ensureMayChange($request, $workspace, shared: ! $brandOnly);
         $key = ImportOfficialEvents::keyFor($request->validated('name'));
 
-        $region = self::region($brandOnly, EventCategory::from($request->validated('category')), null, null);
-        $country = self::countryFor($region, null);
+        [$region, $country] = self::place($brandOnly, EventCategory::from($request->validated('category')), null, null, BrandEventCountries::for($workspace));
 
         self::whileLocked($workspace, function () use ($request, $workspace, $brandOnly, $key, $region, $country): void {
             self::ensureUnique($workspace, $brandOnly, $key, $request->validated('starts_on'), $country);
@@ -105,8 +129,7 @@ class EventController extends Controller
         $brandOnly = $request->boolean('brand_only');
         self::ensureMayChange($request, $workspace, shared: $found->workspace_id === null || ! $brandOnly);
 
-        $region = self::region($brandOnly, EventCategory::from($request->validated('category')), $found->region, $found->country_code);
-        $country = self::countryFor($region, $found->country_code);
+        [$region, $country] = self::place($brandOnly, EventCategory::from($request->validated('category')), $found->region, $found->country_code, BrandEventCountries::for($workspace));
 
         self::whileLocked($workspace, function () use ($request, $workspace, $found, $brandOnly, $region, $country): void {
             self::ensureUnique($workspace, $brandOnly, $found->key, $request->validated('starts_on'), $country, $found->id);
@@ -124,6 +147,7 @@ class EventController extends Controller
                 'country_code' => $country,
                 'delisted_at' => null,
             ]);
+            EventFlag::resolveFor($found->id, $workspace->id, $request->user()->id);
         });
 
         return back();
@@ -186,6 +210,15 @@ class EventController extends Controller
             'verified_by' => $event->verifier?->name,
             'verified_at' => $event->verified_at?->toIso8601String(),
             'delisted' => $event->isDelisted(),
+            // Countries whose holiday on the same day is this international day.
+            'also_countries' => data_get($event->getAttributes(), 'also_countries', []),
+            // The brand's open notes that the date looks wrong.
+            'flags' => $event->relationLoaded('flags') ? $event->flags->map(fn (EventFlag $flag): array => [
+                'id' => $flag->id,
+                'note' => $flag->note,
+                'by' => $flag->user?->name,
+                'at' => $flag->created_at?->toIso8601String(),
+            ])->values()->all() : [],
         ];
     }
 
@@ -209,39 +242,40 @@ class EventController extends Controller
     }
 
     /**
-     * A brand-only date belongs to the brand; a shared one keeps its region,
-     * or its country's, or takes the one its category suggests.
+     * The region and country of a date. A brand-only date belongs to the
+     * brand; a shared one keeps its region and country, or takes what its
+     * category suggests: international days and shopping days have no
+     * country, other dates are of the first country the brand follows
+     * (Nepal's only for a brand that follows Nepal).
+     *
+     * @param  list<string>  $brandCountries
+     * @return array{0: EventRegion, 1: ?string}
      */
-    private static function region(bool $brandOnly, EventCategory $category, ?EventRegion $current, ?string $country): EventRegion
+    private static function place(bool $brandOnly, EventCategory $category, ?EventRegion $current, ?string $country, array $brandCountries): array
     {
         if ($brandOnly) {
-            return EventRegion::Brand;
+            return [EventRegion::Brand, $country];
         }
 
         if ($current !== null && $current !== EventRegion::Brand) {
-            return $current;
+            return [$current, match ($current) {
+                EventRegion::Nepal => CalendarEvent::NEPAL,
+                EventRegion::International => null,
+                default => $country,
+            }];
         }
 
-        if ($country !== null && $country !== CalendarEvent::NEPAL) {
-            return EventRegion::Country;
+        if ($country !== null) {
+            return [$country === CalendarEvent::NEPAL ? EventRegion::Nepal : EventRegion::Country, $country];
         }
 
         // A shared date is never of the brand kind (the requests refuse it).
-        return in_array($category, [EventCategory::InternationalDay, EventCategory::Commercial], true)
-            ? EventRegion::International
-            : EventRegion::Nepal;
-    }
+        $first = $brandCountries[0] ?? null;
 
-    /**
-     * The country of a date in this region: Nepal's are NP, international
-     * days have none, and a country's or a brand's date keeps the one it has.
-     */
-    private static function countryFor(EventRegion $region, ?string $current): ?string
-    {
-        return match ($region) {
-            EventRegion::Nepal => CalendarEvent::NEPAL,
-            EventRegion::International => null,
-            EventRegion::Country, EventRegion::Brand => $current,
+        return match (true) {
+            in_array($category, [EventCategory::InternationalDay, EventCategory::Commercial], true), $first === null => [EventRegion::International, null],
+            $first === CalendarEvent::NEPAL => [EventRegion::Nepal, CalendarEvent::NEPAL],
+            default => [EventRegion::Country, $first],
         };
     }
 

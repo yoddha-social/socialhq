@@ -8,6 +8,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Companies\Company;
+use App\SocialHq\Events\BrandEventCountries;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Knowledge\Calendars\CalendarImport;
@@ -163,6 +164,8 @@ test('events for the audience keep its countries\' and international ones', func
     $this->plan->update(['generation_options' => ['audience_events' => true]]);
     $filtered = PlannerContext::build($this->plan->fresh(), CarbonImmutable::now('UTC')->startOfDay());
 
+    // Switched off, the planner gets every country the brand follows.
+    BrandEventCountries::save($this->workspace, ['NP', 'AU', 'US']);
     $this->plan->update(['generation_options' => ['audience_events' => false]]);
     $all = PlannerContext::build($this->plan->fresh(), CarbonImmutable::now('UTC')->startOfDay());
 
@@ -285,10 +288,38 @@ test('create post hands the composer the item\'s time as a wall clock in the use
         ->assertOk()
         ->assertJsonPath('scheduled_at', $expected);
 
+    // Without a time: 09:00 where most of the audience is (QA 2026-11-18, item 13).
     $item->update(['suggested_time' => null, 'suggested_timezone' => null]);
+    $this->profile->update(['audience_locations' => ($this->audience)()]);
 
     $this->actingAs($this->member)
         ->postJson(route('socialhq.plan.items.post.store', $item->id))
         ->assertOk()
-        ->assertJsonPath('scheduled_at', null);
+        ->assertJsonPath('scheduled_at', $expected);
+
+    // Without an audience either: 09:00 in the person's own zone.
+    $this->profile->update(['audience_locations' => null]);
+
+    $this->actingAs($this->member)
+        ->postJson(route('socialhq.plan.items.post.store', $item->id))
+        ->assertOk()
+        ->assertJsonPath('scheduled_at', ($this->day)(4).'T09:00');
+});
+
+test('the item page has the item\'s time and the zone its channel posts in', function () {
+    $this->instagram->update(['timezone' => 'Asia/Kathmandu']);
+    $item = PlanItem::factory()->for($this->plan, 'plan')->create([
+        'social_account_id' => $this->instagram->id,
+        'scheduled_on' => ($this->day)(4),
+        'suggested_time' => '09:00',
+        'suggested_timezone' => 'Australia/Sydney',
+    ]);
+
+    $this->actingAs($this->member)
+        ->get(route('socialhq.plan.items.show', $item->id))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('item.suggested_at', CarbonImmutable::createFromFormat('!Y-m-d H:i', ($this->day)(4).' 09:00', 'Australia/Sydney')->utc()->toIso8601ZuluString())
+            ->where('item.suggested_timezone', 'Australia/Sydney')
+            ->where('item.channel.timezone', 'Asia/Kathmandu'));
 });

@@ -28,7 +28,35 @@ final class EventsForMonth
      */
     public static function forWorkspace(Workspace $workspace, CarbonImmutable $from, CarbonImmutable $to, ?array $countries = null): Collection
     {
-        return self::query($workspace, $from, $to, $countries)->with('verifier:id,name')->get();
+        return self::withoutRepeats(self::query($workspace, $from, $to, $countries)->with('verifier:id,name')->get());
+    }
+
+    /**
+     * One day under one name is one event (QA 2026-11-18): a country's
+     * holiday that is also an international day ("New Year's Day", key and
+     * start date the same) shows once, as the international day, and names
+     * the countries in `also_countries`.
+     *
+     * @param  Collection<int, CalendarEvent>  $events
+     * @return Collection<int, CalendarEvent>
+     */
+    public static function withoutRepeats(Collection $events): Collection
+    {
+        $repeated = [];
+
+        foreach ($events->groupBy(fn (CalendarEvent $event): string => "{$event->key}|{$event->starts_on->toDateString()}") as $same) {
+            $kept = $same->first(fn (CalendarEvent $event): bool => $event->country_code === null);
+
+            if ($same->count() < 2 || $kept === null) {
+                continue;
+            }
+
+            $others = $same->reject(fn (CalendarEvent $event): bool => $event->is($kept));
+            $kept->setAttribute('also_countries', $others->pluck('country_code')->filter()->unique()->sort()->values()->all());
+            array_push($repeated, ...$others->modelKeys());
+        }
+
+        return $events->reject(fn (CalendarEvent $event): bool => in_array($event->getKey(), $repeated, true))->values();
     }
 
     /**
@@ -45,7 +73,7 @@ final class EventsForMonth
         $last = CarbonImmutable::parse($to->toDateString());
         $days = [];
 
-        foreach (self::query($workspace, $first, $last, $countries)->get(['id', 'name', 'category', 'starts_on', 'ends_on', 'verified_at']) as $event) {
+        foreach (self::withoutRepeats(self::query($workspace, $first, $last, $countries)->get(['id', 'key', 'name', 'category', 'country_code', 'starts_on', 'ends_on', 'verified_at'])) as $event) {
             $day = $event->starts_on->max($first);
             $end = $event->ends_on->min($last);
 
@@ -69,7 +97,7 @@ final class EventsForMonth
     private static function query(Workspace $workspace, CarbonImmutable $from, CarbonImmutable $to, ?array $countries): Builder
     {
         return CalendarEvent::query()
-            ->visibleTo($workspace)
+            ->forBrand($workspace)
             ->forCountries($countries)
             ->overlapping($from->toDateString(), $to->toDateString())
             ->orderBy('starts_on')

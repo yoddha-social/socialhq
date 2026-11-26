@@ -6,10 +6,12 @@ declare(strict_types=1);
 
 return [
     'item' => [
+        'unsaved_description' => 'What you typed on this item isn\'t saved yet. If you leave now, it\'ll be lost.',
         'back' => 'Back to :month',
         'no_channel' => 'No channel',
         'event' => 'Event: :name',
         'event_unverified' => 'Needs check',
+        'time_channel' => ':time in :place · :channel_time in :channel_place, the channel’s time zone',
         'owner' => 'Owner',
         'no_owner' => 'No owner',
         'objective' => 'Objective',
@@ -189,6 +191,7 @@ return [
         'open' => 'Open',
         'open_on_network' => 'See it on the network',
         'create_another' => 'Create another post',
+        'time_in_composer' => 'The composer shows the channel’s time zone: :channel_time in :channel_place is :time in :place.',
         'ready' => 'Everything this item needs is approved. The button opens it in the composer, where you schedule it.',
         'waiting' => 'To create the post:',
         'blockers' => [
@@ -245,6 +248,16 @@ return [
             'approvers_only' => 'Only :names can take cards out of In review, or move them into or out of Approved and Changes requested.',
             'review_needs_files' => 'To send this creative for review, upload the files for a new round first.',
         ],
+    ],
+
+    'flash' => [
+        'copy_saved' => 'Copy saved as version :number.',
+        'copy_submitted' => 'Copy sent for review.',
+        'copy_approved' => 'Copy approved.',
+        'creative_submitted' => 'Creative sent for review.',
+        'creative_approved' => 'Creative approved.',
+        'changes_requested' => 'Changes requested. Your note is in the review thread.',
+        'files_uploaded' => '{0} No files uploaded.|{1} File uploaded.|[2,*] :count files uploaded.',
     ],
 
     'review' => [

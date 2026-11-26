@@ -19,8 +19,8 @@ class ItemVersionController extends Controller
     {
         $planItem = PlanAccess::item($request, $item);
 
-        ItemCopy::saveVersion($planItem, $request->user(), $request->validated());
+        $version = ItemCopy::saveVersion($planItem, $request->user(), $request->validated());
 
-        return back();
+        return back()->with('flash.success', __('socialhq_production.flash.copy_saved', ['number' => $version->number]));
     }
 }

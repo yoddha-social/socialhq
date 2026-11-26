@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\SocialHq\Http\Controllers\Plan;
 
 use App\Http\Controllers\Controller;
+use App\SocialHq\Events\BrandEventCountries;
+use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Events\ImportOfficialEvents;
 use App\SocialHq\Plan\PlanAccess;
 use Illuminate\Contracts\Cache\LockTimeoutException;
@@ -24,8 +26,13 @@ class EventImportController extends Controller
         // The official dates are shared by every brand of the account.
         EventController::ensureMayChange($request, $workspace, shared: true);
 
+        // Nepal's dates only for a brand that follows Nepal (owner decision 2026-11-24); the international days always.
+        $files = BrandEventCountries::follows($workspace, CalendarEvent::NEPAL)
+            ? null
+            : [database_path(ImportOfficialEvents::DIRECTORY.'/international.csv')];
+
         try {
-            $counts = ImportOfficialEvents::handle($workspace->account);
+            $counts = ImportOfficialEvents::handle($workspace->account, $files);
         } catch (LockTimeoutException) {
             // Another import for the account is still writing.
             session()->flash('flash.banner', __('socialhq_events.import.busy'));

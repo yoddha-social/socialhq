@@ -41,7 +41,21 @@ const emit = defineEmits<{
     go: [month: string];
 }>();
 
-const current = computed(() => localizedDay(`${props.month}-01`));
+/**
+ * The month the arrows count from: the one asked for, before its page lands,
+ * so a quick second click goes one month further instead of repeating the
+ * first (QA 2026-11-18, item 8).
+ */
+const shownMonth = ref(props.month);
+
+watch(
+    () => props.month,
+    (month) => {
+        shownMonth.value = month;
+    },
+);
+
+const current = computed(() => localizedDay(`${shownMonth.value}-01`));
 const todayMonth = computed(() => props.today.slice(0, 7));
 
 const title = computed(() => current.value.format('MMMM YYYY'));
@@ -69,7 +83,8 @@ const monthsOfPickerYear = computed(() =>
 const go = (month: string): void => {
     pickerOpen.value = false;
 
-    if (month !== props.month) {
+    if (month !== shownMonth.value) {
+        shownMonth.value = month;
         emit('go', month);
     }
 };

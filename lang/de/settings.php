@@ -201,6 +201,9 @@ return [
             'email' => 'E-Mail',
             'email_placeholder' => 'mitarbeiter@email.com',
             'submit' => 'Einladung senden',
+            'sent' => 'Einladung an :email gesendet',
+            'another' => 'Weitere Person einladen',
+            'done' => 'Fertig',
         ],
 
         'pending' => [
@@ -244,6 +247,10 @@ return [
             'description' => 'Lege fest, was dieses Mitglied in diesem Workspace tun darf.',
             'submit' => 'Speichern',
             'action' => 'Zugriff bearbeiten',
+        ],
+        'edit_invite' => [
+            'title' => 'Einladung bearbeiten',
+            'description' => 'Lege fest, was diese Person in diesem Workspace tun darf, sobald sie die Einladung annimmt.',
         ],
 
         'errors' => [

@@ -201,6 +201,9 @@ return [
             'email' => 'Correo electrónico',
             'email_placeholder' => 'colaborador@email.com',
             'submit' => 'Enviar invitación',
+            'sent' => 'Invitación enviada a :email',
+            'another' => 'Invitar a otra persona',
+            'done' => 'Listo',
         ],
 
         'pending' => [
@@ -244,6 +247,10 @@ return [
             'description' => 'Elige qué puede hacer este miembro en este workspace.',
             'submit' => 'Guardar',
             'action' => 'Editar acceso',
+        ],
+        'edit_invite' => [
+            'title' => 'Editar invitación',
+            'description' => 'Elige qué podrá hacer esta persona en este workspace cuando acepte la invitación.',
         ],
 
         'errors' => [

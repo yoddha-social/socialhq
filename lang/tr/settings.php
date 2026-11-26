@@ -201,6 +201,9 @@ return [
             'email' => 'E-posta',
             'email_placeholder' => 'isbirlikci@email.com',
             'submit' => 'Davet Gönder',
+            'sent' => 'Davet :email adresine gönderildi',
+            'another' => 'Başka birini davet et',
+            'done' => 'Tamam',
         ],
 
         'pending' => [
@@ -244,6 +247,10 @@ return [
             'description' => 'Bu üyenin bu çalışma alanında neler yapabileceğini seçin.',
             'submit' => 'Kaydet',
             'action' => 'Erişimi düzenle',
+        ],
+        'edit_invite' => [
+            'title' => 'Daveti düzenle',
+            'description' => 'Bu kişinin daveti kabul ettikten sonra bu çalışma alanında neler yapabileceğini seçin.',
         ],
 
         'errors' => [

@@ -11,10 +11,12 @@ import {
     IconSend,
     IconSparkles,
 } from '@tabler/icons-vue';
-import { computed, ref, watch } from 'vue';
+import { useDebounceFn } from '@vueuse/core';
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import EmptyState from '@/components/EmptyState.vue';
 import { localizedDay } from '@/components/socialhq/localizedDay';
+import { takeHistoryRestore } from '@/components/socialhq/plan/historyRestore';
 import ItemPostsChoiceDialog from '@/components/socialhq/plan/ItemPostsChoiceDialog.vue';
 import PlanBrandSettingsDialog from '@/components/socialhq/plan/PlanBrandSettingsDialog.vue';
 import PlanGenerateDialog from '@/components/socialhq/plan/PlanGenerateDialog.vue';
@@ -54,6 +56,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
 import { useAtLeastBreakpoint } from '@/composables/useBreakpoint';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { channels as channelsSettings } from '@/routes/app/workspace';
@@ -198,6 +201,32 @@ watch(
     { immediate: true },
 );
 
+/*
+ * Fresh plan (QA 2026-11-18, item 8): after Back the page asks the server
+ * again, and a change made elsewhere (another person, another tab, a post
+ * saved from an item) reloads the month.
+ */
+const refreshPlan = (): void => {
+    router.reload({ only: ['plan', 'items', 'waitingMonths'] });
+};
+const refreshPlanSoon = useDebounceFn(refreshPlan, 500);
+
+onMounted(() => {
+    if (takeHistoryRestore()) {
+        refreshPlan();
+    }
+});
+
+useWorkspaceEcho<{ month: string }>('.shq.plan.changed', ({ month }) => {
+    if (month === props.month) {
+        refreshPlanSoon();
+    }
+});
+useWorkspaceEcho(
+    ['.post.created', '.post.deleted', '.post.platform.status.updated'],
+    refreshPlanSoon,
+);
+
 /* Writes. */
 const busyItemId = ref<number | null>(null);
 const reviewProcessing = ref(false);
@@ -299,17 +328,26 @@ const sheetItem = computed(
     () => props.items.find((item) => item.id === sheetItemId.value) ?? null,
 );
 
-const openItem = (item: PlanItem): void => {
-    sheetItemId.value = item.id;
-    sheetDay.value = null;
-    sheetOpen.value = true;
+const sheet = useTemplateRef<InstanceType<typeof PlanItemSheet>>('sheet');
+
+/** Another card or day while the sheet is open waits for its unsaved changes. */
+const showInSheet = (itemId: number | null, day: string | null): void => {
+    const apply = (): void => {
+        sheetItemId.value = itemId;
+        sheetDay.value = day;
+        sheetOpen.value = true;
+    };
+
+    if (sheet.value) {
+        sheet.value.switchTo(apply);
+    } else {
+        apply();
+    }
 };
 
-const addItemOn = (day: string | null): void => {
-    sheetItemId.value = null;
-    sheetDay.value = day;
-    sheetOpen.value = true;
-};
+const openItem = (item: PlanItem): void => showInSheet(item.id, null);
+
+const addItemOn = (day: string | null): void => showInSheet(null, day);
 
 const addItem = (): void =>
     addItemOn(props.today.startsWith(props.month) ? props.today : null);
@@ -372,6 +410,7 @@ const openBrandSettings = (): void => {
                     class="max-sm:w-8 max-sm:px-0"
                     :aria-label="$t('socialhq_plan.actions.add_item')"
                     data-testid="plan-add-item"
+                    data-plan-board
                     @click="addItem"
                 >
                     <IconPlus class="size-4" />
@@ -556,6 +595,7 @@ const openBrandSettings = (): void => {
                         <Button
                             variant="outline"
                             data-testid="plan-empty-add"
+                            data-plan-board
                             @click="addItem"
                         >
                             <IconPlus class="size-4" />
@@ -622,6 +662,7 @@ const openBrandSettings = (): void => {
                 <div
                     class="flex min-h-[28rem] shrink-0 grow flex-col overflow-clip rounded-xl border border-border-strong bg-card"
                     :aria-busy="isGenerating || undefined"
+                    data-plan-board
                 >
                     <PlanMonthGrid
                         v-if="view === 'grid'"
@@ -665,8 +706,10 @@ const openBrandSettings = (): void => {
     </AppLayout>
 
     <PlanItemSheet
+        ref="sheet"
         v-model:open="sheetOpen"
         :item="sheetItem"
+        :item-id="sheetItemId"
         :default-day="sheetDay"
         :month="month"
         :channels="planChannels"
@@ -691,6 +734,7 @@ const openBrandSettings = (): void => {
         :hourly-limit="ai.hourlyLimit"
         :defaults="generateDefaults"
         :audience="audience"
+        :unconfirmed-events="events.filter((event) => !event.confirmed).length"
     />
 
     <PlanBrandSettingsDialog

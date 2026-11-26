@@ -11,6 +11,7 @@ return [
         'label' => 'Workspace',
         'all' => 'All workspaces',
         'settings' => 'Workspace settings',
+        'members' => 'Members',
         'switch_to' => 'Switch workspace',
     ],
     'auth_panel' => [
@@ -609,6 +610,10 @@ return [
         'publish_count' => 'Publish :count posts',
         'request_approval' => 'Request approval',
         'request_approval_count' => 'Request approval for :count posts',
+        'saved' => [
+            'draft' => '{1} Draft saved.|[0,*] :count drafts saved.',
+            'pending_approval' => '{1} Sent for approval. An approver will review it.|[0,*] :count posts sent for approval.',
+        ],
         'repeat' => [
             'none' => 'Doesn’t repeat',
             'rule' => [
@@ -836,6 +841,7 @@ return [
         ],
         'approve_and_schedule' => 'Approve and schedule',
         'approve_and_queue' => 'Approve and add to queue',
+        'approve_and_publish' => 'Approve and publish now',
     ],
     'post_card' => [
         'from_plan' => 'From plan: :title',
@@ -858,6 +864,7 @@ return [
             'copy' => 'Copy to review',
             'creatives' => 'Creatives to review',
             'posts' => 'Posts to approve',
+            'event_flags' => 'Dates the team flagged',
             'copy_changes' => 'Copy sent back to you',
             'creative_changes' => 'Creatives sent back to you',
         ],
@@ -865,6 +872,7 @@ return [
         'round' => 'round :round',
         'no_text' => 'Post without text',
         'month_waiting' => 'Something here is waiting for you',
+        'flagged_by' => ':name: :note',
     ],
     'agents' => [
         'repurposes_read_only' => 'An API key or MCP connection can read repurposes but can\'t create or change them, because their posts publish without review. A person who publishes directly does this in the Social HQ app.',

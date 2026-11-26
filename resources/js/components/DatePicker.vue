@@ -216,7 +216,7 @@ const displayText = computed(() => {
                 :disabled="disabled"
                 :class="
                     cn(
-                        'flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-card px-2 py-1 text-start text-sm text-foreground transition-[color,box-shadow] outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:border-ring dark:bg-input/30',
+                        'flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-card px-2 py-1 text-start text-sm text-foreground transition-[color,box-shadow] outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring focus-visible:outline-solid disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:border-ring dark:bg-input/30',
                         !displayText && 'text-subtle-foreground',
                         $attrs.class as string,
                     )

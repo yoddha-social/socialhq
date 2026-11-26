@@ -13,6 +13,8 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
+import type { KeywordAnswer } from '@/components/socialhq/keywords/keywords';
+import KeywordsAfterAnswer from '@/components/socialhq/keywords/KeywordsAfterAnswer.vue';
 import ReviewDecisionDialog from '@/components/socialhq/plan/item/ReviewDecisionDialog.vue';
 import type {
     CopyVersion,
@@ -119,12 +121,12 @@ const overBy = computed(() =>
         : Math.max(0, captionLength.value - props.item.max_length),
 );
 
+/** Copy sent back with changes goes for review again only as a new version (saving one makes it a draft). */
 const canSubmit = computed(
     () =>
         props.latest !== null &&
         !hasChanges.value &&
-        (props.item.copy_status === 'draft' ||
-            props.item.copy_status === 'changes_requested'),
+        props.item.copy_status === 'draft',
 );
 
 const copyError = computed(
@@ -163,10 +165,15 @@ const loadVersion = (version: CopyVersion): void => {
 
 defineExpose({ loadVersion });
 
-const aiHttp = useHttp<{ instruction: string }, { number: number }>({
+const aiHttp = useHttp<
+    { instruction: string },
+    { number: number } & KeywordAnswer
+>({
     instruction: '',
 });
 const aiError = ref('');
+/** Under the copy the AI just wrote: the SEO keywords note, or the keywords it says. */
+const keywordAnswer = ref<({ number: number } & KeywordAnswer) | null>(null);
 
 /** AI writes from the saved copy, so it waits for unsaved edits to be saved or discarded. */
 const showAi = computed(
@@ -202,6 +209,7 @@ const writeCopyWithAi = async (): Promise<void> => {
         }
 
         aiHttp.instruction = '';
+        keywordAnswer.value = result;
         router.reload({
             only: ['item', 'versions', 'thread', 'postReady', 'postBlockers'],
         });
@@ -561,6 +569,13 @@ const confirmDecision = (note: string): void => {
             :title="$t('socialhq_production.item.copy.unsupported_title')"
             :body="$t('socialhq_production.item.copy.unsupported_body')"
             data-testid="item-copy-unsupported"
+        />
+        <KeywordsAfterAnswer
+            v-if="
+                latest && !hasChanges && keywordAnswer?.number === latest.number
+            "
+            :answer="keywordAnswer"
+            class="mx-5 mb-4"
         />
 
         <div

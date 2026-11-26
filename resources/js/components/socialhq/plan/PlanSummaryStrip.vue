@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
+import { channelLabel } from '@/components/socialhq/channelLabel';
 import { pillarColor } from '@/components/socialhq/plan/pillarColors';
 import type {
     PlanChannel,
@@ -98,9 +99,13 @@ const countTone = (count: number, target: number | null): string => {
                         colored
                         class="size-4 shrink-0"
                     />
-                    <span class="max-w-36 truncate text-muted-foreground">{{
-                        row.channel.name
-                    }}</span>
+                    <span
+                        class="max-w-36 truncate text-muted-foreground"
+                        :title="
+                            channelLabel(row.channel.name, row.channel.platform)
+                        "
+                        >{{ row.channel.name }}</span
+                    >
                     <span
                         class="font-medium tabular-nums"
                         :class="countTone(row.count, row.target)"

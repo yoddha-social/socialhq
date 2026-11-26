@@ -146,4 +146,9 @@ export interface ItemPost {
     network_url: string | null;
     /** A dated draft or scheduled post that isn't on the item's day. */
     off_day: boolean;
+    /** Approved, and moving it to the item's day sends it back for approval. */
+    back_to_approval: boolean;
+    /** The item has another channel or format than the post was made for. */
+    other_channel: boolean;
+    other_format: boolean;
 }

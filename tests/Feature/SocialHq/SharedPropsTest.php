@@ -17,7 +17,7 @@ test('every request shares the socialhq props, even after a server flushed the s
         ->has('socialhq.companyAi')
         ->has('socialhq.signup')
         ->has('socialhq.platform')
-        ->where('socialhq.publishNow.confirm', false)
+        ->where('socialhq.publishNow.confirm', true)
         ->has('socialhq.inbox.count');
 
     $this->actingAs($owner->fresh())->get(route('app.profile.edit'))->assertInertia($sharesEverything);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Companies\Company;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Plan\Ai\CopyWriter;
 use App\SocialHq\Plan\ContentPlan;
@@ -27,6 +28,8 @@ beforeEach(function () {
 
     $this->owner = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['account_id' => $this->owner->account_id, 'user_id' => $this->owner->id]);
+    // AI runs for a company a platform admin allowed Social HQ's AI keys.
+    Company::factory()->usingPlatformAi()->create(['account_id' => $this->owner->account_id]);
     $this->workspace->members()->attach($this->owner->id, membershipPivot('admin'));
     $this->owner->update(['current_workspace_id' => $this->workspace->id]);
     $this->owner = $this->owner->fresh();
@@ -39,7 +42,7 @@ function copyWriterAnswer(array $overrides = []): array
 {
     return [
         'caption' => "Dashain is home.\n\nFresh momos at your door.",
-        'hashtags' => '#Dashain #momo momo #kathmandu, #food #nepal #festival #family',
+        'hashtags' => '#Dashain #momo #Momo #kathmandu, #food #nepal #festival #family',
         'script' => 'Hook: steam rising.',
         'notes' => 'Check the delivery area.',
         ...$overrides,
@@ -68,6 +71,72 @@ test('write with AI saves the answer as a new AI version, within the channel\'s 
     CopyWriter::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->agent->instructions(), 'Dashain momo offer')
         && str_contains($prompt->agent->instructions(), 'Write the first version')
         && str_contains($prompt->agent->instructions(), 'English (en)'));
+});
+
+// Answers the free model gave in the 2026-11-24 audit (3 of 3 pasted the hashtags into the caption too).
+test('hashtags the AI also pasted at the end of the caption stay in the hashtag list only', function () {
+    $tags = '#GundrukGoods #NepaliPickles #Achar #Timur #GharKoSwad #SmallBatch #KathmanduValley #NepaliDiaspora';
+    CopyWriter::fake([copyWriterAnswer([
+        'caption' => "Monday craving that ghar ko swad? 🏔️\n\nSmall batch achar, timur pepper and spice blends made by women's cooperatives.\n\nWhich flavor takes you straight back home? Tell us in the comments. 👇\n\n{$tags}",
+        'hashtags' => $tags,
+    ])]);
+
+    $this->actingAs($this->owner)->postJson(route('socialhq.plan.items.copy.ai', $this->item->id))->assertCreated();
+
+    $version = ItemVersion::query()->sole();
+
+    expect($version->caption)->toEndWith('Tell us in the comments. 👇')
+        ->and($version->caption)->not->toContain('#')
+        ->and($version->hashtags)->toBe('#GundrukGoods #NepaliPickles #Achar #Timur #GharKoSwad');
+});
+
+test('hashtags only in the caption move to the list, and a tag written with spaces stays one tag', function () {
+    CopyWriter::fake([
+        copyWriterAnswer([
+            'caption' => "Happy Holi! 🌈 Wishing you bright colours and the taste of home.\n\n#GundrukGoods #NepaliPickles #Achar",
+            'hashtags' => '',
+        ]),
+        copyWriterAnswer([
+            'caption' => "Our small batch pickles are made by women's cooperatives.\n\nWhich flavor takes you home? 🌿\n\n#achar #ghar ko swad #timur #small batch #GundrukGoods",
+            'hashtags' => '#achar #ghar ko swad #timur #small-batch #GundrukGoods',
+        ]),
+    ]);
+
+    $this->actingAs($this->owner)->postJson(route('socialhq.plan.items.copy.ai', $this->item->id))->assertCreated();
+    $this->actingAs($this->owner)->postJson(route('socialhq.plan.items.copy.ai', $this->item->id))->assertCreated();
+
+    [$holi, $pickles] = ItemVersion::query()->orderBy('number')->get()->all();
+
+    expect($holi->caption)->toBe('Happy Holi! 🌈 Wishing you bright colours and the taste of home.')
+        ->and($holi->hashtags)->toBe('#GundrukGoods #NepaliPickles #Achar')
+        ->and($pickles->caption)->toEndWith('Which flavor takes you home? 🌿')
+        ->and($pickles->hashtags)->toBe('#achar #GharKoSwad #timur #SmallBatch #GundrukGoods');
+});
+
+test('hashtags closing the last line go when the list has them, and hashtags inside a sentence stay', function () {
+    CopyWriter::fake([copyWriterAnswer([
+        'caption' => "Celebrate #Dashain with momos at home.\n\nOrder before Friday. #Dashain #momo",
+        'hashtags' => '#Dashain #momo',
+    ])]);
+
+    $this->actingAs($this->owner)->postJson(route('socialhq.plan.items.copy.ai', $this->item->id))->assertCreated();
+
+    expect(ItemVersion::query()->sole())
+        ->caption->toBe("Celebrate #Dashain with momos at home.\n\nOrder before Friday.")
+        ->hashtags->toBe('#Dashain #momo');
+});
+
+test('a closing line that starts with a hashtag but reads as a sentence stays in the caption', function () {
+    CopyWriter::fake([copyWriterAnswer([
+        'caption' => "Fresh momos at your door.\n\n#Dashain greetings from all of us at the shop",
+        'hashtags' => '#momo',
+    ])]);
+
+    $this->actingAs($this->owner)->postJson(route('socialhq.plan.items.copy.ai', $this->item->id))->assertCreated();
+
+    expect(ItemVersion::query()->sole())
+        ->caption->toEndWith('#Dashain greetings from all of us at the shop')
+        ->hashtags->toBe('#momo');
 });
 
 test('a rewrite gets the latest version, the open change requests and the event, and keeps the script for video', function () {

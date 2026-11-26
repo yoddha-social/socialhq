@@ -160,4 +160,13 @@ class PlanItem extends Model
     {
         return $this->belongsToMany(Post::class, ItemPosts::TABLE, 'plan_item_id', 'post_id');
     }
+
+    /**
+     * Whether a post made from the item still exists. `post_created_at` only
+     * says when the first one was saved: it stays when that post is deleted.
+     */
+    public function hasPosts(): bool
+    {
+        return $this->relationLoaded('posts') ? $this->posts->isNotEmpty() : $this->posts()->exists();
+    }
 }

@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Models\User;
 use App\SocialHq\Ai\AiTenant;
 use App\SocialHq\Knowledge\BrandKnowledge;
+use App\SocialHq\Knowledge\Keywords\BrandKeywords;
 use App\SocialHq\Knowledge\Look\BrandLook;
 use App\SocialHq\Plan\CreativeKind;
 use App\SocialHq\Plan\ItemCopy;
@@ -44,11 +45,13 @@ final class WriteItemCopy
 
         $context = self::context($item);
         $brandKnowledge = '';
+        $focus = trim(self::focus($item)."\n{$instruction}");
+        $keywords = BrandKeywords::forPrompt($item->workspace, $focus);
 
         // The item's workspace decides whose AI it uses, whatever workspace the user has open.
         // The brand knowledge is read there too: its search may use the company's AI one day.
-        $response = AiTenant::run($item->workspace, function () use ($item, $user, $context, $instruction, $isVideo, $latest, $maxLength, $maxHashtags, &$brandKnowledge) {
-            $brandKnowledge = BrandKnowledge::forPrompt($item->workspace, trim(self::focus($item)."\n{$instruction}"));
+        $response = AiTenant::run($item->workspace, function () use ($item, $user, $context, $instruction, $isVideo, $latest, $maxLength, $maxHashtags, $focus, $keywords, &$brandKnowledge) {
+            $brandKnowledge = BrandKnowledge::forPrompt($item->workspace, $focus);
 
             return (new CopyWriter(
                 language: $user->locale->promptLanguage(),
@@ -60,6 +63,7 @@ final class WriteItemCopy
                 maxHashtags: $maxHashtags,
                 visualStyle: BrandLook::of($item->workspace)?->copyLine() ?? '',
                 instruction: $instruction,
+                seoKeywords: $keywords,
             ))->prompt($latest === null ? 'Write the copy for this post.' : 'Rewrite the copy for this post.');
         });
 
@@ -69,9 +73,14 @@ final class WriteItemCopy
             return null;
         }
 
+        // Models often paste the hashtags into the caption as well, though the prompt says not to:
+        // the app keeps them in the hashtag list only, or the post would carry them twice.
+        $listed = self::tagsIn((string) data_get($response, 'hashtags'));
+        [$caption, $trailing] = self::withoutTrailingHashtags($caption, $listed);
+
         [$caption, $hashtags, $trimmed] = self::fit(
             Str::substr($caption, 0, Post::CONTENT_MAX_LENGTH),
-            self::hashtags((string) data_get($response, 'hashtags'), $maxHashtags),
+            self::hashtags([...$listed, ...$trailing], $maxHashtags),
             $maxLength,
         );
 
@@ -90,26 +99,27 @@ final class WriteItemCopy
             'notes' => Str::substr($notes, 0, 5000),
             'unsupported_details' => UnsupportedDetails::find(
                 trim("{$caption}\n\n{$script}"),
-                self::sources($item, $context, $brandKnowledge, $instruction),
+                self::sources($item, $context, $brandKnowledge, $instruction, BrandKeywords::sourceText($keywords)),
             ) ?: null,
         ], ItemSource::Ai);
     }
 
     /**
      * What the writer was given to write from, as one text: the item, its
-     * event, the open change requests, the brand knowledge and the team's
-     * request. The latest version counts only when a person wrote it: what an
-     * earlier AI version invented isn't a source.
+     * event, the open change requests, the brand knowledge, the team's
+     * request and the SEO keywords (a place in a keyword is not invented).
+     * The latest version counts only when a person wrote it: what an earlier
+     * AI version invented isn't a source.
      *
      * @param  array<string, mixed>  $context
      */
-    public static function sources(PlanItem $item, array $context, string $brandKnowledge, string $instruction): string
+    public static function sources(PlanItem $item, array $context, string $brandKnowledge, string $instruction, string $keywords = ''): string
     {
         if ($item->latestVersion?->source === ItemSource::Ai) {
             unset($context['latest_version']);
         }
 
-        return UnsupportedDetails::sourceText($context, $brandKnowledge, $instruction);
+        return UnsupportedDetails::sourceText($context, $brandKnowledge, $instruction, $keywords);
     }
 
     /**
@@ -209,18 +219,112 @@ final class WriteItemCopy
 
     /**
      * Hashtags as "#one #two", without duplicates and at most $max of them.
+     *
+     * @param  string|list<string>  $tags  the model's hashtags as written, or tags already read by tagsIn()
      */
-    public static function hashtags(string $raw, int $max): ?string
+    public static function hashtags(string|array $tags, int $max): ?string
     {
-        $tags = collect(preg_split('/[\s,]+/u', $raw) ?: [])
+        $joined = collect(is_string($tags) ? self::tagsIn($tags) : $tags)
             ->map(fn (string $tag): string => ltrim(trim($tag), '#'))
-            ->filter(fn (string $tag): bool => $tag !== '' && preg_match('/^[\p{L}\p{N}_]+$/u', $tag) === 1)
+            ->filter(fn (string $tag): bool => $tag !== '' && preg_match('/^[\p{L}\p{M}\p{N}_]+$/u', $tag) === 1)
             ->unique(fn (string $tag): string => Str::lower($tag))
             ->take($max)
-            ->map(fn (string $tag): string => "#{$tag}");
+            ->map(fn (string $tag): string => "#{$tag}")
+            ->implode(' ');
 
-        $joined = Str::substr($tags->implode(' '), 0, 500);
+        $joined = Str::substr($joined, 0, 500);
 
         return $joined === '' ? null : $joined;
+    }
+
+    /**
+     * The tags in the model's hashtags, without "#". A "#" starts each tag,
+     * so a tag written with spaces ("#ghar ko swad") becomes one word
+     * ("GharKoSwad") instead of three tags; without any "#", commas or
+     * spaces separate them.
+     *
+     * @return list<string>
+     */
+    public static function tagsIn(string $raw): array
+    {
+        $parts = str_contains($raw, '#')
+            ? preg_split('/[#,\n]+/u', $raw)
+            : preg_split(str_contains($raw, ',') ? '/[,\n]+/u' : '/\s+/u', $raw);
+
+        return collect($parts ?: [])
+            ->map(fn (string $part): string => self::joinWords($part))
+            ->filter(fn (string $tag): bool => $tag !== '')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * The caption without the hashtags the model also wrote at its end: a
+     * closing paragraph of hashtags only (its tags join the list), and then
+     * hashtags ending the last line that the list already has. Hashtags
+     * inside a sentence stay, and a caption of hashtags only is kept as it is.
+     *
+     * @param  list<string>  $listed  the tags of the hashtag list (tagsIn())
+     * @return array{0: string, 1: list<string>} the caption, and the tags taken from it
+     */
+    public static function withoutTrailingHashtags(string $caption, array $listed): array
+    {
+        $lines = preg_split('/\R/u', rtrim($caption)) ?: [];
+        $known = collect($listed)->map(fn (string $tag): string => Str::lower($tag));
+        $block = [];
+
+        // A closing paragraph of hashtag lines ("#one #two", "#ghar ko swad #three").
+        while ($lines !== [] && preg_match('/^#[\p{L}\p{M}\p{N}_][\p{L}\p{M}\p{N}_#\h,.\-]*$/u', trim((string) end($lines))) === 1) {
+            array_unshift($block, trim((string) array_pop($lines)));
+        }
+
+        $text = implode(' ', $block);
+        $taken = self::tagsIn($text);
+        // Tags, not a sentence that starts with one: no "tag" longer than three words.
+        $shortTags = collect(preg_split('/#/u', $text) ?: [])
+            ->every(fn (string $part): bool => count(preg_split('/[\s\-]+/u', trim($part), -1, PREG_SPLIT_NO_EMPTY) ?: []) <= 3);
+        $isTags = $shortTags && (substr_count($text, '#') >= 2
+            || ($taken !== [] && collect($taken)->every(fn (string $tag): bool => $known->contains(Str::lower($tag)))));
+
+        if ($block === [] || ! $isTags || trim(implode("\n", $lines)) === '') {
+            $lines = [...$lines, ...$block];
+            $taken = [];
+        }
+
+        $known = $known->merge(collect($taken)->map(fn (string $tag): string => Str::lower($tag)));
+
+        while ($lines !== [] && trim((string) end($lines)) === '') {
+            array_pop($lines);
+        }
+
+        // Hashtags closing the last line, when the list has every one of them.
+        $last = (string) array_pop($lines);
+
+        if (preg_match('/^(.*?\S)((?:\h+#[\p{L}\p{M}\p{N}_]+)+)\h*$/u', $last, $match) === 1) {
+            $tail = self::tagsIn($match[2]);
+
+            if (collect($tail)->every(fn (string $tag): bool => $known->contains(Str::lower($tag)))) {
+                $last = $match[1];
+            }
+        }
+
+        return [rtrim(implode("\n", [...$lines, $last])), $taken];
+    }
+
+    /**
+     * One tag from words: "ghar ko swad" or "small-batch" becomes
+     * "GharKoSwad" or "SmallBatch"; a single word stays as written.
+     * Punctuation around a word goes ("#Holi." is "Holi").
+     */
+    private static function joinWords(string $part): string
+    {
+        $words = collect(preg_split('/[\s\-]+/u', $part) ?: [])
+            ->map(fn (string $word): string => (string) preg_replace('/^[^\p{L}\p{M}\p{N}_]+|[^\p{L}\p{M}\p{N}_]+$/u', '', $word))
+            ->filter(fn (string $word): bool => $word !== '')
+            ->values();
+
+        return $words->count() > 1
+            ? $words->map(fn (string $word): string => Str::ucfirst($word))->implode('')
+            : (string) $words->first();
     }
 }

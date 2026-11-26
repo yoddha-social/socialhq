@@ -43,7 +43,7 @@ final class ItemPage
                 'by' => self::person($item->creativeWaivedBy),
             ],
             // The posts made from the item, with where each stands now.
-            'itemPosts' => ItemPosts::forItemPage($item),
+            'itemPosts' => ItemPosts::forItemPage($item, $user, $workspace),
             'abilities' => PlanAccess::abilities($user, $workspace),
             'aiAvailable' => AiResponses::isUsable(AiTask::Write, $user, $workspace),
         ];
@@ -103,7 +103,8 @@ final class ItemPage
             'owner' => self::person($item->owner),
             'channel' => $account === null ? null : [
                 'id' => $account->id,
-                'name' => $account->display_name ?: $account->username,
+                // The team's name for the channel first (Name in Social HQ), as everywhere else.
+                'name' => $account->display_label,
                 'platform' => $account->platform->value,
                 'avatar_url' => $account->avatar_url,
             ],

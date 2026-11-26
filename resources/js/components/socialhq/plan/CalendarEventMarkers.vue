@@ -29,13 +29,19 @@ import { index as eventsIndex } from '@/routes/socialhq/plan/events';
  * `compact`), the chip becomes a coloured dot with the number of events, its
  * ring dashed when any is unconfirmed. The width is measured here, against the
  * day cell, so TryPost's calendar files don't change for it.
+ *
+ * `wrapsUnder` is for the week's column heads, whose items wrap from `md` up:
+ * the chip stays beside the date while it gets at least 2rem there, and moves
+ * to its own line under the date otherwise, so it never runs into the next
+ * column (UX-03).
  */
 const props = withDefaults(
     defineProps<{
         day: string;
         compact?: boolean;
+        wrapsUnder?: boolean;
     }>(),
-    { compact: false },
+    { compact: false, wrapsUnder: false },
 );
 
 /** Below this many pixels of visible name, the chip turns into a dot. */
@@ -129,9 +135,12 @@ const label = computed(() =>
             <TooltipTrigger as-child>
                 <Link
                     :href="href"
-                    class="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full text-[11px] leading-none font-medium transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                    class="inline-flex items-center gap-1 rounded-full text-[11px] leading-none font-medium transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
                     :class="[
                         compact ? 'h-4 px-1' : 'h-5 px-1.5',
+                        wrapsUnder && !compact
+                            ? 'max-w-max min-w-[min(100%,2rem)] flex-1'
+                            : 'max-w-full min-w-0',
                         asDot
                             ? 'shrink-0 text-muted-foreground tabular-nums'
                             : allConfirmed

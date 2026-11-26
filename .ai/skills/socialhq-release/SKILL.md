@@ -7,8 +7,7 @@ argument-hint: "<version, e.g. 0.2.0>"
 
 # Release Social HQ $ARGUMENTS
 
-The `/release` and `/changelog` commands in `.claude/commands/` are TryPost's ritual (v* tags,
-customer emails). Don't use them here. Our tags are `shq-v*`.
+Our tags are `shq-v*` (TryPost's `v*` release ritual and its commands were removed).
 
 Last Social HQ release: !`git describe --tags --match 'shq-v*' --abbrev=0 2>/dev/null || echo none`
 

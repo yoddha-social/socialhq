@@ -138,7 +138,7 @@ class PostController extends Controller
             ItemPosts::link(PlanItem::query()->findOrFail((int) $request->validated('plan_item_id')), $posts, $request->user());
         }
 
-        // Social HQ: a toast for drafts and approval requests (PATCHES.md row 250).
+        // Social HQ: a toast for drafts and approval requests.
         ComposerSaved::flash($posts, $request->filled('queue'));
 
         $tab = match ($request->input('status')) {
@@ -204,7 +204,7 @@ class PostController extends Controller
             ComposerRepeat::apply([data_get($result, 'post')], $request->validated('recurrence') ?: null);
         }
 
-        // Social HQ: a toast for drafts and approval requests (PATCHES.md row 250).
+        // Social HQ: a toast for drafts and approval requests.
         ComposerSaved::flash([data_get($result, 'post')], $request->filled('queue'));
 
         $tab = match (true) {

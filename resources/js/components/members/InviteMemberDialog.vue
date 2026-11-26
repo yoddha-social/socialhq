@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { IconCircleCheck } from '@tabler/icons-vue';
+import { nextTick, ref, useTemplateRef, watch } from 'vue';
 
 import InputError from '@/components/InputError.vue';
 import MemberAccessFields from '@/components/members/MemberAccessFields.vue';
+import TransSlots from '@/components/TransSlots.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -23,13 +25,39 @@ const closeDialog = (): void => {
     open.value = false;
 };
 
+const email = ref('');
 const isAdmin = ref(false);
 const requiresApproval = ref(false);
 
-const onSuccess = (): void => {
+// Social HQ: after sending, the dialog stays open and says who got the
+// invite, with "Invite another" and "Done" (the toast was easy to miss).
+const sentTo = ref<string | null>(null);
+const doneButton = useTemplateRef<{ $el: HTMLElement }>('doneButton');
+const emailInput = useTemplateRef<{ $el: HTMLElement }>('emailInput');
+
+const resetForm = (): void => {
+    email.value = '';
     isAdmin.value = false;
     requiresApproval.value = false;
-    open.value = false;
+    sentTo.value = null;
+};
+
+watch(open, (isOpen) => {
+    if (isOpen) {
+        resetForm();
+    }
+});
+
+const onSuccess = async (): Promise<void> => {
+    sentTo.value = email.value.trim();
+    await nextTick();
+    doneButton.value?.$el.focus();
+};
+
+const inviteAnother = async (): Promise<void> => {
+    resetForm();
+    await nextTick();
+    emailInput.value?.$el.focus();
 };
 </script>
 
@@ -44,7 +72,47 @@ const onSuccess = (): void => {
                     {{ $t('settings.members.invite.description') }}
                 </DialogDescription>
             </DialogHeader>
+            <div v-if="sentTo !== null" class="grid gap-4">
+                <p
+                    class="flex items-start gap-2 rounded-xl bg-success-subtle p-4 text-sm text-foreground"
+                    role="status"
+                    data-testid="invite-member-sent"
+                >
+                    <IconCircleCheck
+                        class="mt-0.5 size-4 shrink-0 text-success"
+                        aria-hidden="true"
+                    />
+                    <TransSlots
+                        class="min-w-0 break-words"
+                        :message="$t('settings.members.invite.sent')"
+                    >
+                        <template #email>
+                            <strong class="font-emphasis">{{ sentTo }}</strong>
+                        </template>
+                    </TransSlots>
+                </p>
+
+                <DialogFooter>
+                    <Button
+                        variant="outline"
+                        type="button"
+                        data-testid="invite-member-another"
+                        @click="inviteAnother"
+                    >
+                        {{ $t('settings.members.invite.another') }}
+                    </Button>
+                    <Button
+                        ref="doneButton"
+                        type="button"
+                        data-testid="invite-member-done"
+                        @click="closeDialog"
+                    >
+                        {{ $t('settings.members.invite.done') }}
+                    </Button>
+                </DialogFooter>
+            </div>
             <Form
+                v-else
                 v-bind="storeInvite.form()"
                 class="space-y-4"
                 v-slot="{ errors, processing }"
@@ -56,6 +124,8 @@ const onSuccess = (): void => {
                     }}</Label>
                     <Input
                         id="invite-email"
+                        ref="emailInput"
+                        v-model="email"
                         name="email"
                         type="email"
                         data-testid="invite-email"
@@ -85,7 +155,7 @@ const onSuccess = (): void => {
                     </Button>
                     <Button
                         type="submit"
-                        :disabled="processing"
+                        :loading="processing"
                         data-testid="invite-member-submit"
                     >
                         {{ $t('settings.members.invite.submit') }}

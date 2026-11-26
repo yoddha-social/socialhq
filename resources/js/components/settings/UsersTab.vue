@@ -11,6 +11,7 @@ import { computed, ref } from 'vue';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import EditMemberDialog from '@/components/members/EditMemberDialog.vue';
 import InviteMemberDialog from '@/components/members/InviteMemberDialog.vue';
+import EditInviteDialog from '@/components/socialhq/members/EditInviteDialog.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -55,6 +56,22 @@ const isManageable = (member: WorkspaceMember): boolean =>
 const editMember = (member: WorkspaceMember): void => {
     editing.value = member;
     editOpen.value = true;
+};
+
+// Social HQ: a pending invite's access can change before it is accepted.
+const editInviteOpen = ref(false);
+const editingInvitation = ref<WorkspaceInvitation | null>(null);
+
+const editInvitation = (invitation: WorkspaceInvitation): void => {
+    editingInvitation.value = invitation;
+    editInviteOpen.value = true;
+};
+
+const cancelInvitation = (invitation: WorkspaceInvitation): void => {
+    cancelInvitationModal.value?.open({
+        url: destroyInvite.url(invitation.id),
+        confirmText: invitation.email,
+    });
 };
 </script>
 
@@ -131,6 +148,7 @@ const editMember = (member: WorkspaceMember): void => {
                 v-for="invitation in invitations"
                 :key="`inv-${invitation.id}`"
                 class="flex items-center gap-4 rounded-xl border border-border bg-card p-4"
+                :data-testid="`invite-row-${invitation.id}`"
             >
                 <span
                     class="inline-flex size-12 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"
@@ -144,7 +162,10 @@ const editMember = (member: WorkspaceMember): void => {
                         >
                             {{ invitation.email }}
                         </p>
-                        <Badge variant="secondary">
+                        <Badge
+                            variant="secondary"
+                            :data-testid="`invite-badge-${invitation.id}`"
+                        >
                             {{ $t(memberAccessLabelKey(invitation)) }}
                         </Badge>
                     </div>
@@ -152,26 +173,50 @@ const editMember = (member: WorkspaceMember): void => {
                         {{ $t('settings.members.pending.title') }}
                     </p>
                 </div>
-                <Button
-                    v-if="canManageTeam"
-                    variant="ghost"
-                    size="icon"
-                    class="shrink-0 text-destructive-text"
-                    :aria-label="$t('settings.members.cancel_invite_modal.action')"
-                    @click="
-                        cancelInvitationModal?.open({
-                            url: destroyInvite.url(invitation.id),
-                            confirmText: invitation.email,
-                        })
-                    "
-                >
-                    <IconTrash class="size-4" />
-                </Button>
+                <DropdownMenu v-if="canManageTeam">
+                    <DropdownMenuTrigger as-child>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            class="shrink-0 text-muted-foreground data-[state=open]:bg-accent"
+                            :aria-label="invitation.email"
+                            :data-testid="`invite-menu-${invitation.id}`"
+                        >
+                            <IconDotsVertical class="size-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                            :data-testid="`invite-edit-${invitation.id}`"
+                            @click="editInvitation(invitation)"
+                        >
+                            <IconShield class="size-4" />
+                            {{ $t('settings.members.edit.action') }}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                            variant="destructive"
+                            :data-testid="`invite-cancel-${invitation.id}`"
+                            @click="cancelInvitation(invitation)"
+                        >
+                            <IconTrash class="size-4" />
+                            {{
+                                $t(
+                                    'settings.members.cancel_invite_modal.action',
+                                )
+                            }}
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </li>
         </ul>
 
         <InviteMemberDialog v-model:open="inviteOpen" />
         <EditMemberDialog v-model:open="editOpen" :member="editing" />
+        <EditInviteDialog
+            v-model:open="editInviteOpen"
+            :invitation="editingInvitation"
+        />
 
         <ConfirmDeleteModal
             ref="removeMemberModal"

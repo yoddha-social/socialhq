@@ -11,6 +11,7 @@ import { computed, ref, watch } from 'vue';
 import { channelLabel } from '@/components/socialhq/channelLabel';
 import type { PlanData } from '@/components/socialhq/plan/types';
 import { Button } from '@/components/ui/button';
+import date from '@/date';
 
 const props = defineProps<{
     plan: PlanData | null;
@@ -57,6 +58,47 @@ const showResult = computed(
 
 const rejectionsOpen = ref(false);
 
+/** Weeks of the running draft already done, out of all its weeks (one AI call each). */
+const progress = computed(() => {
+    const weeks = generation.value?.weeks ?? [];
+
+    return weeks.length > 1
+        ? {
+              done: weeks.filter((week) => week.status !== 'pending').length,
+              total: weeks.length,
+          }
+        : null;
+});
+
+/** The reason most suggestions were not added for, with how many. */
+const topReason = computed(() => {
+    const counts = new Map<string, number>();
+
+    for (const rejection of generation.value?.rejections ?? []) {
+        counts.set(rejection.reason, (counts.get(rejection.reason) ?? 0) + 1);
+    }
+
+    const [reason, count] = [...counts.entries()].sort(
+        (a, b) => b[1] - a[1],
+    )[0] ?? [null, 0];
+
+    return reason && count > 1 ? { reason, count: String(count) } : null;
+});
+
+/** Weeks the AI didn't draft, with the days and why. */
+const failedWeeks = computed(() =>
+    (generation.value?.weeks ?? [])
+        .filter((week) => week.status === 'failed')
+        .map((week) => ({
+            key: week.from,
+            days: date.formatDayMonthYearRange({
+                start: week.from,
+                end: week.to,
+            }),
+            error: week.error,
+        })),
+);
+
 const dismiss = (): void => {
     const runAt = generation.value?.generated_at ?? null;
     dismissedRun.value = runAt;
@@ -100,6 +142,18 @@ const retry = (): void => emit('retry');
             </p>
             <p class="text-sm text-muted-foreground">
                 {{ $t('socialhq_plan.generation.running_body') }}
+            </p>
+            <p
+                v-if="progress"
+                class="text-sm text-muted-foreground"
+                data-testid="plan-generation-progress"
+            >
+                {{
+                    $t('socialhq_plan.generation.progress', {
+                        done: String(progress.done),
+                        total: String(progress.total),
+                    })
+                }}
             </p>
         </div>
     </div>
@@ -167,6 +221,18 @@ const retry = (): void => emit('retry');
             </Button>
         </div>
 
+        <p
+            v-if="generation.added !== null"
+            class="ps-8 text-sm text-foreground"
+            data-testid="plan-generation-added"
+        >
+            {{
+                $t('socialhq_plan.generation.added', {
+                    count: String(generation.added),
+                })
+            }}
+        </p>
+
         <div v-if="generation.rejections.length" class="ps-8">
             <button
                 type="button"
@@ -186,6 +252,20 @@ const retry = (): void => emit('retry');
                     aria-hidden="true"
                 />
             </button>
+            <p
+                v-if="topReason"
+                class="text-xs text-muted-foreground"
+                data-testid="plan-generation-top-reason"
+            >
+                {{
+                    $t('socialhq_plan.generation.top_reason', {
+                        reason: $t(
+                            `socialhq_plan.generation.reasons.${topReason.reason}`,
+                        ),
+                        count: topReason.count,
+                    })
+                }}
+            </p>
             <ul
                 v-if="rejectionsOpen"
                 class="mt-2 flex flex-col divide-y divide-border rounded-lg border border-border"
@@ -222,6 +302,39 @@ const retry = (): void => emit('retry');
                     </span>
                 </li>
             </ul>
+        </div>
+
+        <div
+            v-if="failedWeeks.length"
+            class="flex flex-col gap-2 ps-8 sm:flex-row sm:items-start sm:justify-between"
+            data-testid="plan-generation-not-drafted"
+        >
+            <ul class="flex flex-col gap-1">
+                <li
+                    v-for="week in failedWeeks"
+                    :key="week.key"
+                    class="text-sm text-muted-foreground"
+                >
+                    <span class="font-medium text-foreground">
+                        {{
+                            $t('socialhq_plan.generation.not_drafted', {
+                                days: week.days,
+                            })
+                        }}
+                    </span>
+                    {{ week.error }}
+                </li>
+            </ul>
+            <Button
+                v-if="canGenerate"
+                variant="outline"
+                size="sm"
+                class="shrink-0 self-start"
+                data-testid="plan-generation-retry-weeks"
+                @click="retry"
+            >
+                {{ $t('socialhq_plan.generation.retry') }}
+            </Button>
         </div>
     </div>
 </template>

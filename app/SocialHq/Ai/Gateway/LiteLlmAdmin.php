@@ -68,11 +68,15 @@ class LiteLlmAdmin
         $this->expectSuccess($this->send('post', '/team/update', ['team_id' => $teamId, ...$changes]), '/team/update');
     }
 
+    /**
+     * A team already gone counts as deleted: LiteLLM answers 404 for it. Its 400
+     * means the request was refused (no team named), so that one fails.
+     */
     public function deleteTeam(string $teamId): void
     {
         $response = $this->send('post', '/team/delete', ['team_ids' => [$teamId]]);
 
-        if ($response->successful() || in_array($response->status(), [HttpStatus::HTTP_NOT_FOUND, HttpStatus::HTTP_BAD_REQUEST], true)) {
+        if ($response->successful() || $response->status() === HttpStatus::HTTP_NOT_FOUND) {
             return;
         }
 
@@ -167,11 +171,16 @@ class LiteLlmAdmin
         ]), '/model/new');
     }
 
+    /**
+     * A deployment already gone counts as deleted. LiteLLM answers that with a
+     * 400 saying "Model with id=… not found in db"; any other 400 is a refusal
+     * and fails, so a delete that didn't happen is never recorded as done.
+     */
     public function deleteDeployment(string $id): void
     {
         $response = $this->send('post', '/model/delete', ['id' => $id]);
 
-        if ($response->successful() || in_array($response->status(), [HttpStatus::HTTP_NOT_FOUND, HttpStatus::HTTP_BAD_REQUEST], true)) {
+        if ($response->successful() || $response->status() === HttpStatus::HTTP_NOT_FOUND || $this->saysNotFound($response)) {
             return;
         }
 
@@ -265,6 +274,11 @@ class LiteLlmAdmin
         if (! $response->successful()) {
             $this->fail($response, $route);
         }
+    }
+
+    private function saysNotFound(Response $response): bool
+    {
+        return $response->status() === HttpStatus::HTTP_BAD_REQUEST && str_contains(mb_strtolower($response->body()), 'not found');
     }
 
     private function fail(Response $response, string $route): never

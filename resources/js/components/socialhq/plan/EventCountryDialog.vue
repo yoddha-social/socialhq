@@ -31,6 +31,8 @@ const props = defineProps<{
     /** This year and the next. */
     years: number[];
     max: number;
+    /** Countries ticked when the dialog opens (the audience's, from the page's hint). */
+    preselected?: string[];
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -85,6 +87,7 @@ watch(open, (isOpen) => {
     form.reset();
     form.clearErrors();
     form.years = [...props.years];
+    form.countries = (props.preselected ?? []).slice(0, props.max);
     search.value = '';
 
     if (!loadedCountries.value) {

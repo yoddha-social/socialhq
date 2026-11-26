@@ -7,7 +7,7 @@ declare(strict_types=1);
 return [
     'title' => 'Events',
     'description' => 'Festivals, holidays and other days your brands can post about. The AI plans only around dates someone on your team has confirmed.',
-    'read_only' => 'Workspace admins add, change and confirm dates. If a date looks wrong, tell one of them.',
+    'read_only' => 'Workspace admins add, change and confirm dates. If a date looks wrong, flag it and say what\'s right.',
     'shared_read_only' => 'You can add and change this brand\'s own dates. Only the account owner can change dates shared by every brand.',
 
     'view' => [
@@ -28,6 +28,7 @@ return [
         'international' => 'International',
         'brand' => 'This brand only',
         'unverified' => 'Needs check',
+        'flagged' => 'Flagged',
         'country' => 'Country',
         'all_countries' => 'All countries',
         'country_hint' => 'Dates for :country, plus international days and your brands\' own dates.',
@@ -104,6 +105,56 @@ return [
         'confirm' => 'Confirm dates',
         'cancel' => 'Cancel',
         'done' => '{0} There were no dates left to confirm.|{1} 1 date confirmed.|[2,*] :count dates confirmed.',
+        'undo' => 'Undo',
+        'undone' => '{0} Nothing to undo: those dates changed since.|{1} 1 confirmation undone.|[2,*] :count confirmations undone.',
+    ],
+
+    'confirm' => [
+        'done' => 'Date confirmed.',
+    ],
+
+    'brand_countries' => [
+        'label' => 'Dates for',
+        'international' => 'international days',
+        'change' => 'Change countries',
+        'title' => 'Countries this brand follows',
+        'description' => 'Their festivals and holidays show here and in the plan, and the AI plans around them. International days and this brand\'s own dates always show.',
+        'none' => 'No countries: international days and this brand\'s own dates only.',
+        'add_hint' => 'To follow a country that isn\'t listed, add its holidays with Add a country.',
+        'save' => 'Save countries',
+        'cancel' => 'Cancel',
+        'saved' => 'Countries saved.',
+        'audience_hint' => 'Your audience is in :countries, but this brand doesn\'t follow their dates yet. To plan around their holidays, add them.',
+        'audience_hint_member' => 'Your audience is in :countries, but this brand doesn\'t follow their dates yet. To plan around their holidays, a workspace admin needs to add them.',
+        'audience_add' => 'Add their holidays',
+        'audience_follow' => 'Follow their dates',
+    ],
+
+    'also_in' => 'Also a holiday in :countries',
+
+    'hide' => [
+        'action' => 'Hide for this brand',
+        'done' => ':name is hidden for this brand.',
+        'undone' => ':name shows again for this brand.',
+        'own_date' => 'This date is this brand\'s own. To remove it, delete it.',
+        'hidden_title' => 'Hidden for this brand',
+        'hidden_description' => 'Other brands still see these dates. This brand\'s plan and the AI leave them out.',
+        'show' => 'Show again',
+    ],
+
+    'flag' => [
+        'action' => 'Flag this date',
+        'title' => 'Flag this date',
+        'description' => 'Tell the approvers what looks wrong, for example the right day. They see your note on the date and in Waiting for you.',
+        'note' => 'What looks wrong?',
+        'note_placeholder' => 'Tihar is on 1 November, not 2 November.',
+        'send' => 'Send flag',
+        'cancel' => 'Cancel',
+        'sent' => 'Flag sent. An approver will check the date.',
+        'resolve' => 'Mark handled',
+        'resolved' => 'Flag marked as handled.',
+        'by' => ':name: :note',
+        'badge' => 'Flagged',
     ],
 
     'delete' => [

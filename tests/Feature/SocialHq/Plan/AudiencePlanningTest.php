@@ -8,6 +8,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Companies\Company;
+use App\SocialHq\Events\BrandEventCountries;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Knowledge\Calendars\CalendarImport;
@@ -163,6 +164,8 @@ test('events for the audience keep its countries\' and international ones', func
     $this->plan->update(['generation_options' => ['audience_events' => true]]);
     $filtered = PlannerContext::build($this->plan->fresh(), CarbonImmutable::now('UTC')->startOfDay());
 
+    // Switched off, the planner gets every country the brand follows.
+    BrandEventCountries::save($this->workspace, ['NP', 'AU', 'US']);
     $this->plan->update(['generation_options' => ['audience_events' => false]]);
     $all = PlannerContext::build($this->plan->fresh(), CarbonImmutable::now('UTC')->startOfDay());
 
@@ -176,16 +179,14 @@ test('a run keeps to its days and the audience\'s events, gives items a time in 
     $outside = PlanItem::factory()->for($this->plan, 'plan')->suggested()->create(['social_account_id' => $this->instagram->id, 'scheduled_on' => ($this->day)(20), 'title' => 'Later suggestion']);
     $inside = PlanItem::factory()->for($this->plan, 'plan')->suggested()->create(['social_account_id' => $this->instagram->id, 'scheduled_on' => ($this->day)(8), 'title' => 'Earlier draft']);
 
-    ContentPlanner::fake([[
-        'summary' => 'A week of momos.',
-        'items' => [
-            ($this->suggestion)(),
-            ($this->suggestion)(['date' => ($this->day)(7), 'title' => 'No usable time', 'suggested_time' => '25:00']),
-            ($this->suggestion)(['date' => ($this->day)(20), 'title' => 'Outside the days']),
-            ($this->suggestion)(['date' => ($this->day)(9), 'title' => 'Thanksgiving special', 'event_key' => 'thanksgiving']),
-            ($this->suggestion)(['date' => ($this->day)(10), 'title' => 'Later suggestion']),
-        ],
-    ]]);
+    // Each week of the run gets the items of its days; the one outside them goes to the first call.
+    fakePlannerWeeks([
+        ($this->suggestion)(),
+        ($this->suggestion)(['date' => ($this->day)(7), 'title' => 'No usable time', 'suggested_time' => '25:00']),
+        ($this->suggestion)(['date' => ($this->day)(20), 'title' => 'Outside the days', 'week' => 0]),
+        ($this->suggestion)(['date' => ($this->day)(9), 'title' => 'Thanksgiving special', 'event_key' => 'thanksgiving']),
+        ($this->suggestion)(['date' => ($this->day)(10), 'title' => 'Later suggestion']),
+    ], summary: 'A week of momos.');
 
     $this->actingAs($this->member)
         ->post(route('socialhq.plan.generate', $this->monthKey), [

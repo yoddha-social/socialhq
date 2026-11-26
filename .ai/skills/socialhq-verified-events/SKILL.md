@@ -39,6 +39,12 @@ porting" are the original notes from the Rails reference.
   "Add a country"), matched within their country; the CSV importer only matches
   and counts NP and null rows (`fromOfficialList`). Both share `WriteImportedEvent`.
   `EventsForMonth::forWorkspace(..., $countries)` keeps those countries plus null.
+- A brand sees only the countries it follows (`BrandEventCountries`: the admins'
+  choice, else the audience's countries, else NP), plus null-country rows and its
+  own dates, less what it hid (`shq_event_hides`). Read events through
+  `CalendarEvent::scopeForBrand` / `EventsForMonth`, never `visibleTo` alone, or a
+  brand abroad gets Nepal's festivals. Members flag dates (`shq_event_flags`);
+  approvers' confirm, edit or hide closes the brand's flags.
 
 ## The one rule
 

@@ -119,7 +119,7 @@ class WorkspaceInviteController extends Controller
     }
 
     /**
-     * Social HQ (PATCHES.md row 270): a pending invite to the current
+     * Social HQ: a pending invite to the current
      * workspace whose every workspace the person manages, so an admin of
      * one brand never changes or cancels another brand's invite.
      */

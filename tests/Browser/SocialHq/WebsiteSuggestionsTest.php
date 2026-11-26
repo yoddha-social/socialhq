@@ -99,8 +99,8 @@ test('website keyword suggestions show in their groups with tags and why; an edi
     $page = visit(route('socialhq.brand.index', ['tab' => 'sources']))->resize(1440, 900);
     waitFor($page, '@socialhq-website-keywords-features @socialhq-website-suggestion-keyword-1');
     waitFor($page, '@socialhq-website-keywords-seasonal @socialhq-website-suggestion-keyword-2');
-    $page->assertVisible('@socialhq-website-suggestion-keyword-1 @socialhq-keyword-tag-pillar')
-        ->assertVisible('@socialhq-website-suggestion-main-keyword-1')
+    waitFor($page, '@socialhq-website-suggestion-keyword-1 @socialhq-keyword-tag-pillar');
+    $page->assertVisible('@socialhq-website-suggestion-main-keyword-1')
         ->assertSeeIn('@socialhq-website-suggestion-why-keyword-1', 'Products, Home');
 
     $page->click('@socialhq-website-suggestion-edit-keyword-1');

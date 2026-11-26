@@ -364,6 +364,18 @@ nothing is saved until accepted (`WebsiteReview`). Each run is logged in
 `shq_website_crawls` (who, status, reason, provider, model). Code:
 `app/SocialHq/Knowledge/Website/`.
 
+**Preview** (every document, for whoever reads brand knowledge; the "Website
+text" suggestion, for admins, with Accept and Skip in the preview). It shows
+the app's own copy and never fetches anything (`DocumentPreview`): a PDF in the
+browser's own viewer, framed from our origin (`brand.documents.view`: PDFs only,
+`application/pdf`, inline, nosniff; no sandbox policy, since Chrome won't show
+a PDF in a sandboxed document); a text file, a Google file and the website's
+pages as text (the pages as Accept would keep them); Markdown rendered by
+`SafeMarkdown` (the file's HTML escaped, a picture or a non-web link reduced to
+its text, web links opening in a new tab with `noopener noreferrer`); Word and
+PowerPoint as the text `DocumentText` reads. Text stops at 100 KB
+(`preview_kilobytes`). 60 previews a minute per person.
+
 **Focus and search.** Every caller passes what it writes about as `$focus`:
 the planner the month's goals, pillars, confirmed events and networks; the
 copy writer the item (title, objective, angle, pillar, event, format) and open

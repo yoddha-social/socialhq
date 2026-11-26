@@ -5,6 +5,7 @@ import {
     IconDots,
     IconDownload,
     IconExternalLink,
+    IconEye,
     IconFileText,
     IconFileTypeDocx,
     IconFileTypePdf,
@@ -22,6 +23,7 @@ import KnowledgeDocumentDialog, {
     type KnowledgeDocumentRow,
 } from '@/components/socialhq/KnowledgeDocumentDialog.vue';
 import KnowledgeLinkDialog from '@/components/socialhq/KnowledgeLinkDialog.vue';
+import KnowledgePreviewDialog from '@/components/socialhq/KnowledgePreviewDialog.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -44,6 +46,7 @@ import { formatFullNumber } from '@/lib/utils';
 import {
     destroy as destroyDocument,
     show as downloadDocument,
+    preview as previewDocumentRoute,
     refresh as refreshDocument,
 } from '@/routes/socialhq/brand/documents';
 
@@ -60,8 +63,8 @@ export interface KnowledgeDocumentsProp {
  * whose matching parts the AI reads, uploaded or linked from Google Docs,
  * Sheets and Slides (read again on request), and the website's text kept
  * from "Read our website". Admins add, edit and delete them; everyone who
- * reads brand knowledge downloads them. While a document is being read,
- * the list reloads every few seconds.
+ * reads brand knowledge previews and downloads them. While a document is
+ * being read, the list reloads every few seconds.
  */
 const props = defineProps<{
     documents: KnowledgeDocumentsProp;
@@ -176,6 +179,8 @@ const isDeleteOpen = ref(false);
 const isDeleting = ref(false);
 
 const isLinkDialogOpen = ref(false);
+const previewingDocument = ref<KnowledgeDocumentRow | null>(null);
+const isPreviewOpen = ref(false);
 const refreshing = ref<number | null>(null);
 
 const openUpload = (): void => {
@@ -201,6 +206,15 @@ const readAgain = (document: KnowledgeDocumentRow): void => {
             },
         },
     );
+};
+
+/** A document with a file to show or download (a link not read yet has none). */
+const hasFile = (document: KnowledgeDocumentRow): boolean =>
+    document.source === 'upload' || document.status === 'ready';
+
+const openPreview = (document: KnowledgeDocumentRow): void => {
+    previewingDocument.value = document;
+    isPreviewOpen.value = true;
 };
 
 const openEdit = (document: KnowledgeDocumentRow): void => {
@@ -439,10 +453,21 @@ const confirmDelete = (): void => {
                             <IconExternalLink class="size-4" />
                         </Button>
                         <Button
-                            v-if="
-                                document.source === 'upload' ||
-                                document.status === 'ready'
+                            v-if="hasFile(document)"
+                            variant="ghost"
+                            size="icon-sm"
+                            :aria-label="
+                                $t('socialhq_knowledge.preview.label', {
+                                    title: document.title,
+                                })
                             "
+                            :data-testid="`socialhq-document-preview-${document.id}`"
+                            @click="openPreview(document)"
+                        >
+                            <IconEye class="size-4" />
+                        </Button>
+                        <Button
+                            v-if="hasFile(document)"
                             variant="ghost"
                             size="icon-sm"
                             as="a"
@@ -525,6 +550,22 @@ const confirmDelete = (): void => {
         />
 
         <KnowledgeLinkDialog v-model:open="isLinkDialogOpen" />
+
+        <KnowledgePreviewDialog
+            v-model:open="isPreviewOpen"
+            :url="
+                previewingDocument
+                    ? previewDocumentRoute.url(previewingDocument.id)
+                    : null
+            "
+            :title="previewingDocument?.title ?? ''"
+            :description="previewingDocument?.file_name ?? ''"
+            :download-url="
+                previewingDocument
+                    ? downloadDocument.url(previewingDocument.id)
+                    : null
+            "
+        />
 
         <Dialog v-model:open="isDeleteOpen">
             <DialogContent class="sm:max-w-md">

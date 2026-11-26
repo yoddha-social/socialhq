@@ -19,6 +19,15 @@ Route::post('brand/documents', [KnowledgeDocumentController::class, 'store'])
     ->middleware('throttle:socialhq-knowledge-uploads')
     ->name('brand.documents.store');
 Route::get('brand/documents/{document}', [KnowledgeDocumentController::class, 'show'])->whereNumber('document')->name('brand.documents.show');
+// Preview: what the dialog shows, and a PDF inline for its frame.
+Route::get('brand/documents/{document}/preview', [KnowledgeDocumentController::class, 'preview'])
+    ->whereNumber('document')
+    ->middleware('throttle:socialhq-knowledge-previews')
+    ->name('brand.documents.preview');
+Route::get('brand/documents/{document}/view', [KnowledgeDocumentController::class, 'view'])
+    ->whereNumber('document')
+    ->middleware('throttle:socialhq-knowledge-previews')
+    ->name('brand.documents.view');
 Route::put('brand/documents/{document}', [KnowledgeDocumentController::class, 'update'])->whereNumber('document')->name('brand.documents.update');
 Route::delete('brand/documents/{document}', [KnowledgeDocumentController::class, 'destroy'])->whereNumber('document')->name('brand.documents.destroy');
 
@@ -57,6 +66,11 @@ Route::post('brand/website/{crawl}/suggestions/{suggestion}/accept', [WebsiteCra
     ->whereNumber('crawl')
     ->where('suggestion', '[a-z0-9_-]{1,40}')
     ->name('brand.website.accept');
+Route::get('brand/website/{crawl}/suggestions/{suggestion}/preview', [WebsiteCrawlController::class, 'preview'])
+    ->whereNumber('crawl')
+    ->where('suggestion', '[a-z0-9_-]{1,40}')
+    ->middleware('throttle:socialhq-knowledge-previews')
+    ->name('brand.website.preview');
 Route::post('brand/website/{crawl}/suggestions/{suggestion}/skip', [WebsiteCrawlController::class, 'skip'])
     ->whereNumber('crawl')
     ->where('suggestion', '[a-z0-9_-]{1,40}')

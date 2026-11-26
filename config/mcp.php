@@ -15,11 +15,22 @@ return [
     |
     | An "*" may be used to allow all domains.
     |
+    | Social HQ: only the assistants we support, so nobody can register an
+    | "assistant" that sends a member's grant to their own site (audit
+    | SEC-04). Claude's hosted apps (claude.ai, Desktop, mobile) return to
+    | https://claude.ai/api/mcp/auth_callback, ChatGPT to a path on
+    | https://chatgpt.com. Any loopback entry allows http callbacks to
+    | localhost, 127.0.0.1 and [::1] on any port (RFC 8252): Claude Code and
+    | other tools on the member's own computer listen there, and no other
+    | computer can. Desktop apps with their own scheme are listed below.
+    | SOCIALHQ_MCP_REDIRECT_DOMAINS (comma separated) replaces the list.
+    |
     */
 
-    'redirect_domains' => [
-        '*',
-    ],
+    'redirect_domains' => array_values(array_filter(array_map('trim', explode(',', (string) env(
+        'SOCIALHQ_MCP_REDIRECT_DOMAINS',
+        'https://claude.ai,https://chatgpt.com,http://localhost,http://127.0.0.1,http://[::1]',
+    ))))),
 
     /*
     |--------------------------------------------------------------------------

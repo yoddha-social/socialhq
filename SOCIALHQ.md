@@ -794,6 +794,17 @@ admin's too. Besides the approval rules above:
   an agent reading untrusted text could be steered into minting a key or
   sending post events to any URL. `SOCIALHQ_AGENTS_MANAGE_ADMIN_SETTINGS=true`
   allows them again; `manageTeam` itself is unchanged.
+- **Only supported assistants connect over MCP** (audit SEC-04): an
+  assistant registers itself (`POST /oauth/register`) with the addresses a
+  member's grant is sent back to, and only those of the assistants we
+  support are taken (`redirect_domains` in `config/mcp.php`,
+  `SOCIALHQ_MCP_REDIRECT_DOMAINS`): `https://claude.ai` (Claude on the web,
+  Desktop and mobile), `https://chatgpt.com`, and loopback on any port
+  (Claude Code and other tools on the member's own computer, RFC 8252);
+  desktop apps' own schemes (`custom_schemes`) as before. Nobody can
+  register a "Claude" that sends the grant to their own site. Clients
+  registered before keep their addresses. The Authorize screen still shows
+  only the name the assistant chose.
 - **Safe retries**: `create-post-tool` and `create-posts-tool` take an
   `idempotency_key`; the same key and arguments within 24 hours return the
   posts already made (`App\SocialHq\Mcp\IdempotentPostCreation`, cache).
@@ -843,8 +854,16 @@ empty sign-up stays invites only. Code: `app/SocialHq/Signup/`.
 **Companies** (`app/SocialHq/Companies/`). A company is an account a
 platform admin approved; only its owner creates workspaces
 (`SOCIALHQ_COMPANIES_REQUIRED`, default on). Platform admins are granted
-with `php artisan socialhq:platform-admin <email>` only; on a new server the
-first person asks for a company, is granted, and approves it.
+with `php artisan socialhq:platform-admin <email>` only. Company requests
+(below) are the only way a company is made from the app, so
+`php artisan socialhq:company <email> "<name>"` makes one from the server:
+approved at once, no request and no email, on the owner's own account
+(created when the email has none, with the email taken as confirmed and a
+link printed to set a password; an existing account must own itself and
+have confirmed its email). `--platform-ai` lets it use our AI keys. On a
+new server: create the first company with it, make its owner a platform
+admin, and keep `SOCIALHQ_COMPANY_REQUESTS=false` until outsiders may ask
+(audit SEC-06, X11).
 
 1. Anyone off the lists may ask to start a company
    (`SOCIALHQ_COMPANY_REQUESTS`, default on; off brings back "can't sign up
@@ -923,6 +942,26 @@ ARC-08; PATCHES.md rows 350–353):
   `*_ENABLED=true`.
 - A missing `MAIL_MAILER` logs mail instead of using TryPost's hosted mailer.
 - PostHog's library is loaded only when PostHog is enabled with a key.
+
+## Browser safety
+
+Audit 2026-11-24, SEC-09 (the app's side; HTTPS-only is switched on at
+Cloudflare, and a script allow-list, CSP, is later work, report-only first).
+
+- Every response carries `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: strict-origin-when-cross-origin` and
+  `X-Frame-Options: SAMEORIGIN` (`Http\Middleware\SecurityHeaders`, global,
+  first, so errors and the maintenance page too). SAMEORIGIN, not DENY: the
+  composer previews a PDF in an iframe from our own media route; nothing
+  outside frames the app (sign-ins are full-page redirects). A response that
+  sets one of them keeps its own (the connect link's `no-referrer`). nginx
+  adds the same three to files it serves from disk.
+- Live updates: Reverb accepts connections only from pages on `APP_URL`'s
+  host (`REVERB_ALLOWED_ORIGINS` adds hosts, `*` as a wildcard, e.g. a
+  tunnel's). The app publishes to Reverb inside the container
+  (`REVERB_HOST=localhost`, `REVERB_PORT=8080`, `REVERB_SCHEME=http`); nginx
+  proxies only the WebSocket (`/app/`), not Reverb's control API (`/apps/`),
+  so its secret can't be tried from outside.
 
 ## Interface copy
 

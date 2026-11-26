@@ -45,12 +45,8 @@ const { canManageTeam } = useWorkspaceAbilities();
 const inviteOpen = defineModel<boolean>('inviteOpen', { default: false });
 const editOpen = ref(false);
 const editing = ref<WorkspaceMember | null>(null);
-const removeMemberModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(
-    null,
-);
-const cancelInvitationModal = ref<InstanceType<
-    typeof ConfirmDeleteModal
-> | null>(null);
+const removeMemberModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
+const cancelInvitationModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
 const isManageable = (member: WorkspaceMember): boolean =>
     canManageTeam.value &&
@@ -105,14 +101,7 @@ const cancelInvitation = (invitation: WorkspaceInvitation): void => {
                             variant="secondary"
                             :data-testid="`member-badge-${member.id}`"
                         >
-                            {{
-                                $t(
-                                    memberAccessLabelKey(
-                                        member,
-                                        member.id === ownerId,
-                                    ),
-                                )
-                            }}
+                            {{ $t(memberAccessLabelKey(member, member.id === ownerId)) }}
                         </Badge>
                     </div>
                     <p class="truncate text-sm text-muted-foreground">
@@ -239,9 +228,7 @@ const cancelInvitation = (invitation: WorkspaceInvitation): void => {
         <ConfirmDeleteModal
             ref="cancelInvitationModal"
             :title="$t('settings.members.cancel_invite_modal.title')"
-            :description="
-                $t('settings.members.cancel_invite_modal.description')
-            "
+            :description="$t('settings.members.cancel_invite_modal.description')"
             :action="$t('settings.members.cancel_invite_modal.action')"
         />
     </div>

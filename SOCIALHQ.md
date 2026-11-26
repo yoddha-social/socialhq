@@ -626,7 +626,7 @@ and time zone), "Save draft" and the primary button on the right. The primary
 button counts the posts it saves ("Schedule 4 posts", "Request approval for 4
 posts"); an approver editing a post that waits for approval sees "Approve and
 schedule" (or "…add to queue", "…publish now"), since saving approves it
-(PATCHES.md row 264). Below `lg` the time's zone shows as its place
+(`approveAction` in `PostComposerDialog.vue`). Below `lg` the time's zone shows as its place
 ("Kathmandu").
 
 - **Repeat** (`components/socialhq/composer/ComposerRepeat.vue`) is the post card's

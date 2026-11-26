@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\SocialHq\Plan;
 
+use App\Enums\User\WeekStart;
 use App\SocialHq\Knowledge\Audience\Audience;
 use App\SocialHq\Knowledge\BrandProfile;
 use Carbon\CarbonImmutable;
@@ -17,6 +18,9 @@ use Carbon\CarbonImmutable;
  */
 final readonly class PlannerOptions
 {
+    /** A week of the run shorter than this joins the week next to it. */
+    public const MIN_WEEK_DAYS = 3;
+
     public function __construct(
         public CarbonImmutable $from,
         public CarbonImmutable $to,
@@ -83,6 +87,46 @@ final readonly class PlannerOptions
             (bool) data_get($values, 'past_posts', true),
             (bool) data_get($values, 'audience_events', false),
         );
+    }
+
+    /**
+     * The same options for other days (a week of the run).
+     */
+    public function between(CarbonImmutable $from, CarbonImmutable $to): self
+    {
+        return new self($from, $to, $this->oldCalendars, $this->pastPosts, $this->audienceEvents);
+    }
+
+    /**
+     * The run's days as the weeks the AI is asked for one at a time: calendar
+     * weeks from the requester's first day of the week, where a piece shorter
+     * than MIN_WEEK_DAYS at either end joins the week next to it (so 1 to 3
+     * January makes no call of its own).
+     *
+     * @return list<self>
+     */
+    public function weeks(WeekStart $weekStart): array
+    {
+        $pieces = [];
+
+        for ($start = $this->from; $start->lessThanOrEqualTo($this->to); $start = $end->addDay()) {
+            $end = $start->startOfWeek($weekStart->firstDay())->addDays(6)->min($this->to);
+            $pieces[] = [$start, $end];
+        }
+
+        $days = fn (array $piece): int => (int) $piece[0]->diffInDays($piece[1]) + 1;
+
+        if (count($pieces) > 1 && $days($pieces[0]) < self::MIN_WEEK_DAYS) {
+            $first = array_shift($pieces);
+            $pieces[0][0] = $first[0];
+        }
+
+        if (count($pieces) > 1 && $days($pieces[count($pieces) - 1]) < self::MIN_WEEK_DAYS) {
+            $last = array_pop($pieces);
+            $pieces[count($pieces) - 1][1] = $last[1];
+        }
+
+        return array_map(fn (array $piece): self => $this->between($piece[0], $piece[1]), $pieces);
     }
 
     /**

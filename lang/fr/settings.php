@@ -201,6 +201,9 @@ return [
             'email' => 'E-mail',
             'email_placeholder' => 'collaborateur@email.com',
             'submit' => 'Envoyer l\'invitation',
+            'sent' => 'Invitation envoyée à :email',
+            'another' => 'Nouvelle invitation',
+            'done' => 'Terminé',
         ],
 
         'pending' => [
@@ -244,6 +247,10 @@ return [
             'description' => 'Choisissez ce que ce membre peut faire dans cet espace de travail.',
             'submit' => 'Enregistrer',
             'action' => 'Modifier l\'accès',
+        ],
+        'edit_invite' => [
+            'title' => 'Modifier l\'invitation',
+            'description' => 'Choisissez ce que cette personne pourra faire dans cet espace de travail une fois l\'invitation acceptée.',
         ],
 
         'errors' => [

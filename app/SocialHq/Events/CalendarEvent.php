@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -92,6 +93,16 @@ class CalendarEvent extends Model
     }
 
     /**
+     * Team members' notes that the date looks wrong.
+     *
+     * @return HasMany<EventFlag, $this>
+     */
+    public function flags(): HasMany
+    {
+        return $this->hasMany(EventFlag::class, 'event_id');
+    }
+
+    /**
      * @return BelongsTo<User, $this>
      */
     public function verifier(): BelongsTo
@@ -108,6 +119,36 @@ class CalendarEvent extends Model
     {
         $query->where('account_id', $workspace->account_id)
             ->where(fn (Builder $query) => $query->whereNull('workspace_id')->orWhere('workspace_id', $workspace->id));
+    }
+
+    /**
+     * Events a brand plans around: of those it sees (`visibleTo`), its own
+     * dates, international days and the dates of the countries it follows
+     * (`BrandEventCountries`), less the shared dates it hid.
+     *
+     * @param  Builder<CalendarEvent>  $query
+     * @param  list<string>|null  $countries  the brand's countries, when the caller already has them
+     */
+    public function scopeForBrand(Builder $query, Workspace $workspace, ?array $countries = null): void
+    {
+        $countries ??= BrandEventCountries::for($workspace);
+
+        $query->visibleTo($workspace)
+            ->where(fn (Builder $query) => $query->where('workspace_id', $workspace->id)
+                ->orWhereNull('country_code')
+                ->when($countries !== [], fn (Builder $query) => $query->orWhereIn('country_code', $countries)))
+            ->whereNotIn('id', EventHide::query()->where('workspace_id', $workspace->id)->select('event_id'));
+    }
+
+    /**
+     * Shared dates this brand hid.
+     *
+     * @param  Builder<CalendarEvent>  $query
+     */
+    public function scopeHiddenBy(Builder $query, Workspace $workspace): void
+    {
+        $query->visibleTo($workspace)
+            ->whereIn('id', EventHide::query()->where('workspace_id', $workspace->id)->select('event_id'));
     }
 
     /**

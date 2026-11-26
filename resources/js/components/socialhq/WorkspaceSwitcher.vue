@@ -7,6 +7,7 @@ import {
     IconSelector,
     IconSettings,
     IconUserPlus,
+    IconUsers,
 } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
@@ -25,6 +26,7 @@ import {
 import WorkspaceUpgradeDialog from '@/components/workspaces/WorkspaceUpgradeDialog.vue';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
+import { members } from '@/routes/app';
 import { settings as workspaceSettings } from '@/routes/app/workspace';
 import {
     switchMethod,
@@ -39,7 +41,8 @@ const page = usePage();
 const currentWorkspace = computed(() => page.props.auth.currentWorkspace);
 const workspaces = computed(() => page.props.auth.workspaces ?? []);
 
-const { canCreateWorkspace, canManageWorkspace } = useWorkspaceAbilities();
+const { canCreateWorkspace, canManageTeam, canManageWorkspace } =
+    useWorkspaceAbilities();
 const { createOrUpgrade } = useWorkspaceLimit(() => workspaces.value.length);
 
 const upgradeDialogOpen = ref(false);
@@ -154,6 +157,19 @@ const createWorkspace = (): void => {
                     >
                         <IconSettings class="size-4" />
                         {{ $t('socialhq.workspace_switcher.settings') }}
+                    </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    v-if="currentWorkspace && canManageTeam"
+                    :as-child="true"
+                >
+                    <Link
+                        class="block w-full cursor-pointer"
+                        :href="members.url()"
+                        data-testid="socialhq-workspace-members"
+                    >
+                        <IconUsers class="size-4" />
+                        {{ $t('socialhq.workspace_switcher.members') }}
                     </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem

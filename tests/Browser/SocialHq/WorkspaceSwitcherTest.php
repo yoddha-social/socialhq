@@ -52,7 +52,23 @@ test('the switcher links to the list of all workspaces', function () use ($owner
     $page->assertSee('Brand One')->assertSee('Brand Two')->assertNoJavaScriptErrors();
 });
 
-test('members who cannot manage the workspace see no settings link', function () {
+test('the switcher opens the members page', function () use ($ownerWithTwoWorkspaces) {
+    [$user] = $ownerWithTwoWorkspaces();
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index'));
+    waitFor($page, '@socialhq-workspace-switcher');
+    $page->click('@socialhq-workspace-switcher');
+    waitFor($page, '@socialhq-workspace-members');
+    $page->assertSeeIn('@socialhq-workspace-members', 'Members')
+        ->click('@socialhq-workspace-members');
+
+    waitForPath($page, parse_url(route('app.members'), PHP_URL_PATH));
+    waitFor($page, '@invite-member-button');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('members who cannot manage the workspace see no settings or members link', function () {
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['account_id' => $owner->account_id, 'user_id' => $owner->id]);
     $this->actingAs(workspaceMember($workspace));
@@ -61,5 +77,7 @@ test('members who cannot manage the workspace see no settings link', function ()
     waitFor($page, '@socialhq-workspace-switcher');
     $page->click('@socialhq-workspace-switcher');
     waitFor($page, '@socialhq-workspace-all');
-    $page->assertMissing('@socialhq-workspace-settings')->assertNoJavaScriptErrors();
+    $page->assertMissing('@socialhq-workspace-settings')
+        ->assertMissing('@socialhq-workspace-members')
+        ->assertNoJavaScriptErrors();
 });

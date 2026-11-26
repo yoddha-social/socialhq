@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\SocialHq\Http\Controllers\Plan;
 
 use App\Http\Controllers\Controller;
+use App\SocialHq\Events\BrandEventCountries;
 use App\SocialHq\Events\ImportPublicHolidays;
 use App\SocialHq\Events\Nager\NagerDate;
 use App\SocialHq\Events\Nager\NagerDateUnavailable;
@@ -52,6 +53,9 @@ class EventCountryImportController extends Controller
 
             return back();
         }
+
+        // Holidays added from this brand's page are holidays it follows (owner decision 2026-11-24).
+        BrandEventCountries::add($workspace, $countries);
 
         $message = __('socialhq_events.countries.done', [
             'countries' => self::names($countries),

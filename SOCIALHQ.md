@@ -24,7 +24,8 @@ adds the planning and AI layer:
 | Routes | `routes/socialhq.php`, which loads `routes/socialhq/*.php` (all under `/socialhq/*`) |
 | Configuration | `config/socialhq.php` |
 | Inertia pages and components | `resources/js/pages/socialhq/`, `resources/js/components/socialhq/` |
-| Tests (Pest) | `tests/Feature/SocialHq/`, `tests/Unit/SocialHq/`, `tests/Browser/SocialHq/`. The feature and unit ones run under the production rules (`socialHqProductionRules()` in `tests/Pest.php`, undoing `phpunit.xml`'s switches), and every account they create has an approved company; a test that needs TryPost's rule sets it back and says why |
+| Tests (Pest) | `tests/Feature/SocialHq/`, `tests/Unit/SocialHq/`, `tests/Browser/SocialHq/`. The feature and unit ones run under the production rules (`socialHqProductionRules()` in `tests/Pest.php`, undoing `phpunit.xml`'s switches), and every account they create has an approved company; a test that needs TryPost's rule sets it back and says why. Every screen change ships one click-through check and every reported bug a failing check before its fix (AGENTS.md, "Browser Tests"); until most screens have one, `docs/socialhq/click-through-before-deploy.md` runs by hand before each deploy |
+| What our code relies on in TryPost's | `docs/socialhq/what-we-rely-on-trypost-for.md`: the guest connect flow's route names and session pieces, model and sign-up events, the prompts our brand knowledge joins, the routes the access gates let through. Check it before changing any of them |
 | Interface copy | `lang/en/socialhq.php` (see below) |
 | Image build | `.github/workflows/socialhq-image.yml` (tags `shq-v*`) |
 | Dependency audit | `.github/workflows/socialhq-audit.yml` (PRs and weekly) |
@@ -417,18 +418,59 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   per country. Nepal never comes from Nager.Date. The country filter and
   `EventsForMonth`'s `$countries` keep the chosen countries' dates plus every
   date without a country.
+  **Each brand follows its own countries** (owner decision 2026-11-24,
+  `Events\BrandEventCountries`, `shq_brand_profiles.event_countries`): the
+  admins' choice ("Change countries" on the events page), else the audience's
+  countries, else Nepal. A brand sees, plans and gets planned around only those
+  countries' dates, international days and its own dates
+  (`CalendarEvent::scopeForBrand`, used by `EventsForMonth`, so the events page,
+  the plan, the planner, the publish calendar markers and MCP all follow it);
+  a brand abroad never sees Nepal's. "Import official dates" brings Nepal's list
+  only for a brand that follows Nepal; "Add a country" adds the country to the
+  brand. The page has a chip per followed country and, when the audience is in
+  a country the brand doesn't follow, offers to add its holidays. A brand's
+  approvers **hide** a shared date for that brand only (`shq_event_hides`,
+  "Hidden for this brand" lists them with "Show again"); a brand's own date is
+  deleted instead. Anyone working on the plan **flags** a date with a note
+  (`shq_event_flags`): it shows on the date and in "Waiting for you" for the
+  brand's approvers, and confirming, editing or hiding the date, or "Mark
+  handled", closes it. One day under one name is one event: a country's
+  holiday that is also the international day (New Year) shows once, naming
+  the country. "Confirm all shown" offers Undo (the batch's ids and time, for
+  that person's confirmations only); a single confirmation says so. "Generate
+  with AI" says how many dates of the month still need a check.
 - **Content plan** (`/socialhq/plan/{YYYY-MM}`). Items with a date, channel,
   format (TryPost's content type), what to make, pillar, owner, event, objective
   and angle. "Generate with AI" (`ContentPlanner`, a queued job) drafts the
   month from confirmed events, `BrandKnowledge`, pillars and posts per week
   (brand settings), the last 90 days of posts with metrics and the team's focus.
-  Its suggestions are checked in code (date in the month and not past, channel,
-  format, confirmed event around its dates, paused channels, duplicates) before
-  they show, dashed, to accept or drop. "Approve plan" waits until no
+  It asks the AI one week per call (`PlannerOptions::weeks()`: calendar weeks
+  from the requester's first day of the week, a piece under 3 days at either
+  end joined to its neighbour; days already gone get no call), each told how
+  many posts every channel still needs that week and its free days, worked out
+  in code (`posts_to_plan`, `free_days`). The hard rules live in code
+  (`Plan\Ai\SuggestionChecks`), not in the hope that the model obeys: what is
+  certain is repaired (a channel key with a typo, or the channel's name or
+  network, or the only channel that takes the format; a format of another
+  network becomes the same kind here; what to make follows the format; an
+  event named instead of keyed; a pillar's case; a day that is taken, too far
+  from its event or switched off in the channel's posting times moves to the
+  nearest free day of the same calendar week), the rest is refused with a
+  reason (outside the days, past, unknown or paused channel, unconfirmed or
+  unknown event, duplicate title, over the week's posts, no free day). A week
+  with room left after that gets one more call with the refused items and
+  their reasons; a failed call is tried once more. Each week is saved when
+  checked, replacing only its own days' untouched suggestions, so a week that
+  still fails keeps its earlier ones and shows as "Not drafted" with why, and
+  the others go on (the run fails only when no week was drafted). No call
+  starts after 9 minutes (`BUDGET_SECONDS`, job timeout 15). How each week
+  went is kept on the plan (`generation_weeks`: proposed, added, refused,
+  repaired, calls). Suggestions show, dashed, to accept or drop; the panel says
+  how many were added, the main reason for the rest, and the weeks not
+  drafted. "Approve plan" waits until no
   suggestion on a coming day is open (one on a day already gone can't be
   accepted, alone or by "Accept all"; move it or drop it); any change sends
-  an approved plan back to review. The dialog plans a week by default: the
-  free models keep far more of a week's suggestions than of a month's.
+  an approved plan back to review. The dialog plans a week by default.
   The dialog's options (`PlannerOptions`, saved on the plan as
   `generation_options`; the switches remembered per brand in the profile's
   `planner_options`): the days to plan, any range inside the plan's month (a
@@ -444,8 +486,11 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   each item a `suggested_time` ("HH:MM", checked in code; an unreadable one is
   dropped, not the item) with `suggested_timezone` set by the code. Cards, the
   list and the side sheet show it in that zone and the viewer's ("9:00 in
-  Sydney · 4:45 in Kathmandu"); "Create post" hands the composer that instant
-  as a wall clock in the user's zone (`SuggestedTime`), else 09:00 of the day.
+  Sydney · 4:45 in Kathmandu"); the item page and its "Create post" card say it
+  in the channel's zone too, the one the composer shows ("9:00 in Sydney · 4:45
+  PM in Kathmandu, the channel's time zone"). "Create post" hands the composer
+  that instant as a wall clock in the user's zone (`SuggestedTime`), else 09:00
+  of the day in the main audience zone (QA 2026-11-18, item 13).
 - **List view**: grouped by week (the user's start of week) with sticky week
   headers, sortable by day, channel, pillar, owner and status (kept per
   browser), inline accept, drop and restore, time and event columns; stacked
@@ -676,9 +721,16 @@ picks the account, and the channel lands in the workspace.
 - Limits: 30 requests a minute per IP on the guest pages, 30 steps run as the admin a
   minute per IP, 10 links a minute per admin. Telescope, when on, ignores
   `socialhq/connect-invite*`, since the token is in the address.
-- Not done: a link cannot be cancelled before its hour ends, and it is not tied to
-  the first browser that opens it (two people holding it can each start; only one
-  finishes).
+- **Cancelling** (audit 2026-11-24, SEC-17): the channel page lists the workspace's
+  links that still work ("Links still open": network, who made it, until when),
+  each with "Cancel link" (`DELETE socialhq/connect-invites/{invite}`, admins of the
+  link's workspace). Cancelling stops the link like a use does (`used_at`) and
+  records `cancelled_at` and `cancelled_by`; a guest midway lands on "This link no
+  longer works". It takes the lock "Finish connection" holds, so a link is either
+  cancelled or used: while a guest is finishing, the admin is told to check the
+  channel list.
+- Not done: a link is not tied to the first browser that opens it (two people
+  holding it can each start; only one finishes).
 - Every rule above has a test in `tests/Feature/SocialHq/Channels/ConnectInviteTest.php`.
   Changing the middleware, the routes it covers or the link's lifetime needs a
   security review.
@@ -689,7 +741,10 @@ Everything about when a post goes out sits in one bar (PATCHES.md rows 232–233
 labels and "Repeat" on the left; the "when" button (a set time shows its weekday
 and time zone), "Save draft" and the primary button on the right. The primary
 button counts the posts it saves ("Schedule 4 posts", "Request approval for 4
-posts").
+posts"); an approver editing a post that waits for approval sees "Approve and
+schedule" (or "…add to queue", "…publish now"), since saving approves it
+(`approveAction` in `PostComposerDialog.vue`). Below `lg` the time's zone shows as its place
+("Kathmandu").
 
 - **Repeat** (`components/socialhq/composer/ComposerRepeat.vue`) is the post card's
   "Make Recurring" rule, picked before saving. Only people who publish directly see
@@ -699,6 +754,17 @@ posts").
   applies it after the save. Saving a post of a series with its rule unchanged keeps
   its place in the series; "Don't repeat" (`null`) stops it; a save without the key
   changes nothing.
+
+## Members
+
+Settings › Members (workspace admins) is also in the workspace switcher
+("Members"). A pending invite's access (admin, or a member who needs
+approval) can change until it is accepted: "Edit access" in its ⋯ menu, with
+the same rules as inviting (`app.invites.update`).
+After an invite is sent, the dialog stays open and says who got it, with
+"Invite another" and "Done". Workspace settings keep "Delete this
+workspace" closed until it is opened. An invite has no name field:
+the person types their name when they sign up (owner decision 2026-11-24).
 
 ## Approvals
 
@@ -928,8 +994,12 @@ which we don't take.
 
 ## License
 
-AGPL-3.0, as upstream. The app links to this repository in the sidebar
-(`SOCIALHQ_SOURCE_URL`, `VITE_SOCIALHQ_SOURCE_URL`). Keep TryPost's license
+AGPL-3.0, as upstream. Everyone signed in finds "Source code (AGPL-3.0)" in
+the user menu's Help, linking to this repository (`VITE_SOCIALHQ_SOURCE_URL`;
+`SOCIALHQ_SOURCE_URL` for the server). It is never on the sidebar, the login
+page or another public page (owner decision, audit 2026-11-24 ARC-14), and it
+can't be removed: the licence asks that users be offered the source. When the
+first image is built, point it at the release that runs. Keep TryPost's license
 and copyright notices intact. Don't present the app as "TryPost": the AGPL
 doesn't license the name.
 

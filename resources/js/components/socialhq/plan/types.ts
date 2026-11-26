@@ -19,6 +19,15 @@ export interface PlanRejection {
     reason: string;
 }
 
+/** One week of the latest AI draft (one AI call each). */
+export interface PlanGenerationWeek {
+    from: string;
+    to: string;
+    status: 'pending' | 'done' | 'failed';
+    /** Why the week wasn't drafted, when it failed. */
+    error: string | null;
+}
+
 export interface PlanData {
     id: number;
     status: PlanStatus;
@@ -28,6 +37,9 @@ export interface PlanData {
         error: string | null;
         summary: string | null;
         rejections: PlanRejection[];
+        weeks: PlanGenerationWeek[];
+        /** Suggestions the draft added; null for drafts made before weekly calls. */
+        added: number | null;
         generated_at: string | null;
     };
     submitted_at: string | null;

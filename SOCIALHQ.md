@@ -24,7 +24,8 @@ adds the planning and AI layer:
 | Routes | `routes/socialhq.php`, which loads `routes/socialhq/*.php` (all under `/socialhq/*`) |
 | Configuration | `config/socialhq.php` |
 | Inertia pages and components | `resources/js/pages/socialhq/`, `resources/js/components/socialhq/` |
-| Tests (Pest) | `tests/Feature/SocialHq/`, `tests/Unit/SocialHq/`, `tests/Browser/SocialHq/`. The feature and unit ones run under the production rules (`socialHqProductionRules()` in `tests/Pest.php`, undoing `phpunit.xml`'s switches), and every account they create has an approved company; a test that needs TryPost's rule sets it back and says why |
+| Tests (Pest) | `tests/Feature/SocialHq/`, `tests/Unit/SocialHq/`, `tests/Browser/SocialHq/`. The feature and unit ones run under the production rules (`socialHqProductionRules()` in `tests/Pest.php`, undoing `phpunit.xml`'s switches), and every account they create has an approved company; a test that needs TryPost's rule sets it back and says why. Every screen change ships one click-through check and every reported bug a failing check before its fix (AGENTS.md, "Browser Tests"); until most screens have one, `docs/socialhq/click-through-before-deploy.md` runs by hand before each deploy |
+| What our code relies on in TryPost's | `docs/socialhq/what-we-rely-on-trypost-for.md`: the guest connect flow's route names and session pieces, model and sign-up events, the prompts our brand knowledge joins, the routes the access gates let through. Check it before changing any of them |
 | Interface copy | `lang/en/socialhq.php` (see below) |
 | Image build | `.github/workflows/socialhq-image.yml` (tags `shq-v*`) |
 | Dependency audit | `.github/workflows/socialhq-audit.yml` (PRs and weekly) |

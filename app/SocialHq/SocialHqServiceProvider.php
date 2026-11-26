@@ -32,6 +32,7 @@ use App\SocialHq\Http\Controllers\Plan\PlanGenerationController;
 use App\SocialHq\Http\Middleware\ActAsConnectInviter;
 use App\SocialHq\Http\Middleware\EnsureCompanyApproved;
 use App\SocialHq\Http\Middleware\RedirectWhileAwaitingAccess;
+use App\SocialHq\Http\Middleware\SecurityHeaders;
 use App\SocialHq\Http\Middleware\ShareSocialHqProps;
 use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\Calendars\CalendarStorage;
@@ -162,6 +163,9 @@ class SocialHqServiceProvider extends ServiceProvider
         $this->app->make(Kernel::class)->addToMiddlewarePriorityBefore(AuthenticatesRequests::class, ActAsConnectInviter::class);
         RateLimiter::for('socialhq-connect-invite', fn (Request $request): Limit => Limit::perMinute(30)->by((string) $request->ip()));
         RateLimiter::for('socialhq-connect-invite-links', fn (Request $request): Limit => Limit::perMinute(10)->by((string) $request->user()?->id));
+
+        // Browser safety headers on every response, errors and the maintenance page included.
+        $this->app->make(Kernel::class)->prependMiddleware(SecurityHeaders::class);
 
         // People who signed up wait on one page until an admin lets them in.
         $this->app->make(Kernel::class)->appendMiddlewareToGroup('web', RedirectWhileAwaitingAccess::class);

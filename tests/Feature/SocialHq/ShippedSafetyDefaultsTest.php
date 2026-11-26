@@ -94,3 +94,10 @@ test('an AI assistant may register only the return addresses of the assistants w
         ->and(shippedConfig('mcp.php', ['SOCIALHQ_MCP_REDIRECT_DOMAINS'], ['SOCIALHQ_MCP_REDIRECT_DOMAINS' => ' https://claude.ai , https://vscode.dev,'])['redirect_domains'])
         ->toBe(['https://claude.ai', 'https://vscode.dev']);
 });
+
+test('live updates are open only to pages on the app\'s own address', function () {
+    $origins = fn (array $values): array => shippedConfig('reverb.php', ['REVERB_ALLOWED_ORIGINS', 'APP_URL'], $values)['apps']['apps'][0]['allowed_origins'];
+
+    expect($origins(['APP_URL' => 'https://social.example.com']))->toBe(['social.example.com'])
+        ->and($origins(['APP_URL' => 'https://social.example.com', 'REVERB_ALLOWED_ORIGINS' => 'social.example.com, *.trycloudflare.com']))->toBe(['social.example.com', '*.trycloudflare.com']);
+});

@@ -877,6 +877,26 @@ ARC-08; PATCHES.md rows 350–353):
 - A missing `MAIL_MAILER` logs mail instead of using TryPost's hosted mailer.
 - PostHog's library is loaded only when PostHog is enabled with a key.
 
+## Browser safety
+
+Audit 2026-11-24, SEC-09 (the app's side; HTTPS-only is switched on at
+Cloudflare, and a script allow-list, CSP, is later work, report-only first).
+
+- Every response carries `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: strict-origin-when-cross-origin` and
+  `X-Frame-Options: SAMEORIGIN` (`Http\Middleware\SecurityHeaders`, global,
+  first, so errors and the maintenance page too). SAMEORIGIN, not DENY: the
+  composer previews a PDF in an iframe from our own media route; nothing
+  outside frames the app (sign-ins are full-page redirects). A response that
+  sets one of them keeps its own (the connect link's `no-referrer`). nginx
+  adds the same three to files it serves from disk.
+- Live updates: Reverb accepts connections only from pages on `APP_URL`'s
+  host (`REVERB_ALLOWED_ORIGINS` adds hosts, `*` as a wildcard, e.g. a
+  tunnel's). The app publishes to Reverb inside the container
+  (`REVERB_HOST=localhost`, `REVERB_PORT=8080`, `REVERB_SCHEME=http`); nginx
+  proxies only the WebSocket (`/app/`), not Reverb's control API (`/apps/`),
+  so its secret can't be tried from outside.
+
 ## Interface copy
 
 Our screens use the `socialhq.*` keys in `lang/en/socialhq.php`, in English

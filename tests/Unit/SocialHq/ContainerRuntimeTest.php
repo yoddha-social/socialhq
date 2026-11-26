@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\SocialHq\Http\Middleware\SecurityHeaders;
+
 /**
  * Reads a supervisord config into [program => [key => value]].
  *
@@ -61,4 +63,21 @@ test('only php-fpm and nginx keep root, to drop it themselves', function (string
 test('the production entrypoint hands storage to the web user on every start', function () {
     expect(file_get_contents(base_path('docker/entrypoint.sh')))
         ->toContain('chown -R www-data:www-data storage bootstrap/cache');
+});
+
+// Browsers reach Reverb's WebSocket through nginx; its control API, guarded only
+// by the app secret, stays inside the container (audit SEC-09).
+test('nginx routes the live-update WebSocket but not Reverb\'s control API', function () {
+    $nginx = file_get_contents(base_path('docker/nginx.conf'));
+
+    expect($nginx)->toContain('location /app/ {')
+        ->and($nginx)->not->toMatch('#location\s+[^{]*/apps#');
+});
+
+test('files nginx serves from disk get the same safety headers as the app\'s responses', function () {
+    $nginx = file_get_contents(base_path('docker/nginx.conf'));
+
+    foreach (SecurityHeaders::HEADERS as $name => $value) {
+        expect($nginx)->toContain("add_header {$name} \"{$value}\" always;");
+    }
 });

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Events\BrandEventCountries;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Events\EventCategory;
 use App\SocialHq\Events\EventRegion;
@@ -24,6 +25,8 @@ beforeEach(function () {
     $this->workspace->members()->attach($this->owner->id, membershipPivot('admin'));
     $this->owner->update(['current_workspace_id' => $this->workspace->id]);
     $this->owner = $this->owner->fresh();
+    // These tests are about the countries' dates themselves: the brand follows all of them.
+    BrandEventCountries::save($this->workspace, ['NP', 'US', 'DE']);
     $this->year = CarbonImmutable::now('UTC')->year;
     $this->host = config('socialhq.events.nager.host');
 

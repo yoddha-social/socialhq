@@ -764,13 +764,23 @@ const onComposerOpenChange = (open: boolean): void => {
 /**
  * After a save, steps back to the page the composer was opened from, so the
  * edit leaves no history entry behind, and refreshes that page's posts.
+ * The save's toast went with the page the save landed on, so it is shown
+ * again there (Social HQ: QA 2026-11-18 item 12, saving gave no sign).
  */
-const returnToOpeningPage = (): void => {
+const returnToOpeningPage = (savedMessage: string | null = null): void => {
     void nextTick(() =>
         afterHistorySettles(() => {
             const stop = router.on('navigate', () => {
                 stop();
-                router.reload();
+                router.reload({
+                    onSuccess: () => {
+                        if (savedMessage) {
+                            toast.success(savedMessage, {
+                                id: 'flash-success',
+                            });
+                        }
+                    },
+                });
             });
             window.history.back();
         }),
@@ -786,12 +796,16 @@ const submitComposition = (
     if (!editPost) return;
     const returnsBack = cameFromAppPage();
     let saved = false;
+    let savedMessage: string | null = null;
     composerSubmitting.value = true;
     const options = {
         preserveScroll: true,
         replace: true,
         onSuccess: () => {
             saved = true;
+            savedMessage =
+                (page.props.flash as { success?: string } | undefined)
+                    ?.success ?? null;
             composerOpen.value = false;
             onSaved?.();
         },
@@ -799,7 +813,7 @@ const submitComposition = (
             composerSubmitting.value = false;
 
             if (saved && returnsBack) {
-                returnToOpeningPage();
+                returnToOpeningPage(savedMessage);
             }
         },
     };

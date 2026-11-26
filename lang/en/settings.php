@@ -201,6 +201,9 @@ return [
             'email' => 'Email',
             'email_placeholder' => 'collaborator@email.com',
             'submit' => 'Send Invite',
+            'sent' => 'Invite sent to :email',
+            'another' => 'Invite another',
+            'done' => 'Done',
         ],
 
         'pending' => [
@@ -244,6 +247,10 @@ return [
             'description' => 'Choose what this member can do in this workspace.',
             'submit' => 'Save',
             'action' => 'Edit access',
+        ],
+        'edit_invite' => [
+            'title' => 'Edit invite',
+            'description' => 'Choose what they can do in this workspace once they accept.',
         ],
 
         'errors' => [

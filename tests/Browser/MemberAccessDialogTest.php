@@ -39,8 +39,9 @@ test('the invite picks a role and stores it', function () {
         ->fill('@invite-email', 'designer@example.com')
         ->click('@invite-member-submit');
 
-    waitForGone($page, '@invite-member-dialog');
-    waitForDatabase($page, fn (): bool => Invite::query()->where('email', 'designer@example.com')->exists());
+    // The dialog stays open and says who got the invite.
+    waitFor($page, '@invite-member-sent');
+    $page->assertSeeIn('@invite-member-sent', 'designer@example.com');
     $page->assertNoJavaScriptErrors();
 
     $invite = Invite::query()->where('email', 'designer@example.com')->sole();

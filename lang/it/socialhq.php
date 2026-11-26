@@ -11,6 +11,7 @@ return [
         'label' => 'Workspace',
         'all' => 'All workspaces',
         'settings' => 'Workspace settings',
+        'members' => 'Members',
         'switch_to' => 'Switch workspace',
     ],
     'auth_panel' => [
@@ -118,9 +119,23 @@ return [
             'health' => [
                 'ready' => 'Looking good',
                 'ready_hint' => 'Your brand context is ready',
+                'ready_hint_optional' => 'Ready for plans and captions. :count extra left to add|Ready for plans and captions. :count extras left to add',
                 'attention' => 'Needs a look',
+                'setup' => ':done of :total set up',
                 'empty' => 'Not set up yet',
                 'empty_hint' => 'Start with your website or profile',
+                'next' => [
+                    'profile' => 'Fill in your brand profile so the AI knows who it writes for.',
+                    'strategy' => 'Set your content pillars and posts per week so the AI can plan your month.',
+                    'knowledge' => 'Add products and facts so the AI can be specific.',
+                    'sources' => 'Add your website, documents or old calendars so the AI writes from what you already have.',
+                ],
+                'next_member' => [
+                    'profile' => 'A workspace admin can fill in the brand profile, so the AI knows who it writes for.',
+                    'strategy' => 'A workspace admin can set the content pillars and posts per week, so the AI can plan your month.',
+                    'knowledge' => 'A workspace admin can add products and facts, so the AI can be specific.',
+                    'sources' => 'A workspace admin can add the website, documents or old calendars, so the AI writes from what you already have.',
+                ],
             ],
             'issues' => [
                 'trimmed' => 'Your profile is shortened for the AI',
@@ -595,6 +610,10 @@ return [
         'publish_count' => 'Publish :count posts',
         'request_approval' => 'Request approval',
         'request_approval_count' => 'Request approval for :count posts',
+        'saved' => [
+            'draft' => '{1} Draft saved.|[0,*] :count drafts saved.',
+            'pending_approval' => '{1} Sent for approval. An approver will review it.|[0,*] :count posts sent for approval.',
+        ],
         'repeat' => [
             'none' => 'Doesn’t repeat',
             'rule' => [
@@ -711,6 +730,16 @@ return [
             'dialog_description' => 'It works once, for one hour. Whoever opens it can connect an account to this workspace, so send it only to the owner.',
             'copy' => 'Copy',
             'done' => 'Done',
+            'open_title' => 'Links still open',
+            'open_description' => 'Sent a link to the wrong person? Cancel it and it stops working at once.',
+            'open_network' => ':network link',
+            'open_reconnect' => 'Reconnects :channel',
+            'open_meta' => 'Made by :name · works until :time',
+            'open_meta_unknown' => 'Works until :time',
+            'cancel' => 'Cancel link',
+            'cancelled' => 'Link cancelled. It no longer works.',
+            'not_open' => 'This link already stopped working: it was used, cancelled or its hour ran out.',
+            'in_use' => 'Someone is connecting with this link right now. Check the channel list in a minute.',
         ],
         'disconnect' => [
             'title' => 'Disconnect',
@@ -812,6 +841,7 @@ return [
         ],
         'approve_and_schedule' => 'Approve and schedule',
         'approve_and_queue' => 'Approve and add to queue',
+        'approve_and_publish' => 'Approve and publish now',
     ],
     'post_card' => [
         'from_plan' => 'From plan: :title',
@@ -834,6 +864,7 @@ return [
             'copy' => 'Copy to review',
             'creatives' => 'Creatives to review',
             'posts' => 'Posts to approve',
+            'event_flags' => 'Dates the team flagged',
             'copy_changes' => 'Copy sent back to you',
             'creative_changes' => 'Creatives sent back to you',
         ],
@@ -841,6 +872,7 @@ return [
         'round' => 'round :round',
         'no_text' => 'Post without text',
         'month_waiting' => 'Something here is waiting for you',
+        'flagged_by' => ':name: :note',
     ],
     'agents' => [
         'repurposes_read_only' => 'An API key or MCP connection can read repurposes but can\'t create or change them, because their posts publish without review. A person who publishes directly does this in the Social HQ app.',
@@ -851,6 +883,8 @@ return [
         'idempotency_key_busy' => 'A call with this idempotency_key is still running. Try again in a moment.',
     ],
     'skip_to_content' => 'Skip to content',
+    // The AGPL source offer, in the user menu's Help (ARC-14).
+    'source_code' => 'Source code (AGPL-3.0)',
     'refusals' => [
         'rate_limited' => 'Too many tries in a short time. Wait a minute, then try again.',
         'request_failed' => 'Couldn\'t reach Social HQ. Check your connection and try again.',

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\SocialHq\Plan\Ai;
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\User\WeekStart;
 use App\Models\SocialAccount;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Knowledge\Audience\Audience;
@@ -22,10 +23,11 @@ use Carbon\CarbonPeriod;
 use Illuminate\Support\Collection;
 
 /**
- * Everything the AI planner is told about a month, as one JSON-ready array:
- * the days to plan (the run's range), the team's goals, the brand, where its
- * audience is, its pillars, its channels with their cadence and formats, the
- * range's events (confirmed or not, flagged; only the audience's countries'
+ * Everything the AI planner is told for one call, as one JSON-ready array:
+ * the days to plan (a week of the run), the team's goals, the brand, where
+ * its audience is, its pillars, its channels with their cadence, formats,
+ * the posts each still needs in these days and the days it has free, the
+ * days' events (confirmed or not, flagged; only the audience's countries'
  * and international ones when asked), what is already planned, and, when
  * the run asks for them, how recent posts did and the team's old calendars.
  * What a run leaves out is not sent at all, to keep the prompt small.
@@ -51,19 +53,26 @@ final class PlannerContext
      *     brand: string,
      *     audience: array{main_timezone: string, locations: list<array<string, mixed>>},
      *     pillars: list<string>,
-     *     channels: list<array{key: string, platform: string, name: string, posts_per_week: int|null, content_types: list<string>}>,
+     *     channels: list<array{key: string, platform: string, name: string, posts_per_week: int|null, content_types: list<string>, posts_to_plan: int, free_days: list<string>}>,
      *     events: list<array{key: string, name: string, category: string, starts_on: string, ends_on: string, confirmed: bool}>,
-     *     already_planned: list<array{title: string, date: string, channel: string|null}>,
+     *     already_planned: list<array{title: string, date: string, channel: string|null, pillar: string}>,
      *     past_posts?: list<array<string, mixed>>,
      *     old_calendar?: list<array<string, mixed>>,
      * }
      */
-    public static function build(ContentPlan $plan, CarbonImmutable $today, ?string $fallbackZone = null): array
+    public static function build(ContentPlan $plan, CarbonImmutable $today, ?string $fallbackZone = null, ?SuggestionChecks $checks = null): array
     {
         $workspace = $plan->workspace;
         $month = CarbonImmutable::createFromFormat('!Y-m-d', $plan->month->toDateString(), 'UTC');
         $profile = PlanOptions::profile($workspace);
-        $options = PlannerOptions::forPlan($plan, $profile);
+        if ($checks === null) {
+            // No week given: the run's days as one call.
+            $run = PlannerOptions::forPlan($plan, $profile);
+            $checks = new SuggestionChecks($plan, $run, $today, WeekStart::DEFAULT, $fallbackZone, GeneratePlanSuggestions::replaceableSuggestions($plan, $run)->pluck('id')->all());
+        }
+
+        $options = $checks->week;
+        $open = $checks->openSlots();
         $channels = PlanOptions::channels($workspace);
         $cadence = PlanOptions::cadence($profile, $channels);
         // Events up to EVENT_LEAD_DAYS after the range too: their posts may go out in it.
@@ -90,6 +99,9 @@ final class PlannerContext
                 'name' => $channel->display_label,
                 'posts_per_week' => data_get($cadence, $channel->id),
                 'content_types' => array_map(fn (ContentType $type): string => $type->value, PlanOptions::contentTypesFor($channel->platform)),
+                // Worked out in code: what the channel still needs in these days, and where it fits.
+                'posts_to_plan' => (int) data_get($open, "{$channel->id}.posts", 0),
+                'free_days' => data_get($open, "{$channel->id}.days", []),
             ])->values()->all(),
             'events' => $events->map(fn (CalendarEvent $event): array => [
                 'key' => $event->key,
@@ -102,7 +114,7 @@ final class PlannerContext
             // Everything this draft keeps: planned items and the suggestions it won't replace.
             'already_planned' => $plan->items()
                 ->where('status', '!=', ItemStatus::Dropped)
-                ->whereKeyNot(GeneratePlanSuggestions::replaceableSuggestions($plan, $options)->pluck('id'))
+                ->whereKeyNot($checks->replaceable)
                 ->orderBy('scheduled_on')
                 ->orderBy('position')
                 ->get()
@@ -110,6 +122,8 @@ final class PlannerContext
                     'title' => $item->title,
                     'date' => $item->scheduled_on->toDateString(),
                     'channel' => $item->social_account_id,
+                    // So a week's call can keep the month's pillars balanced.
+                    'pillar' => $item->pillar ?? '',
                 ])
                 ->values()
                 ->all(),

@@ -24,20 +24,3 @@ export interface WorkspaceInvitation extends MemberAccess {
     /** Social HQ: the role the invite joins with. */
     role?: WorkspaceRoleSummary | null;
 }
-
-export const memberAccessLabelKey = (
-    access: MemberAccess,
-    isOwner = false,
-): string => {
-    if (isOwner) {
-        return 'settings.members.roles.owner';
-    }
-
-    if (access.is_admin) {
-        return 'settings.members.roles.admin';
-    }
-
-    return access.requires_approval
-        ? 'settings.members.access.needs_approval'
-        : 'settings.members.roles.member';
-};

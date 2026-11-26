@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { Form, Link, useHttp } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
+import { IconCircleCheck } from '@tabler/icons-vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
 import InputError from '@/components/InputError.vue';
 import RoleChoiceList from '@/components/socialhq/roles/RoleChoiceList.vue';
 import type { CompanyRole } from '@/components/socialhq/roles/roles';
+import TransSlots from '@/components/TransSlots.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -35,6 +37,13 @@ const loadFailed = ref(false);
 const rolesHttp = useHttp<Record<string, never>, { roles: CompanyRole[] }>({});
 const roles = computed(() => props.roles ?? loadedRoles.value);
 const roleId = ref<string | null>(null);
+const email = ref('');
+
+// Social HQ: after sending, the dialog stays open and says who got the
+// invite, with "Invite another" and "Done" (the toast was easy to miss).
+const sentTo = ref<string | null>(null);
+const doneButton = useTemplateRef<{ $el: HTMLElement }>('doneButton');
+const emailInput = useTemplateRef<{ $el: HTMLElement }>('emailInput');
 
 const isAvailable = (role: CompanyRole): boolean => role.assignable === true;
 
@@ -46,6 +55,12 @@ const pickDefault = (): void => {
     );
 
     roleId.value = (editor ?? list.find(isAvailable))?.id ?? null;
+};
+
+const resetForm = (): void => {
+    email.value = '';
+    sentTo.value = null;
+    pickDefault();
 };
 
 const loadRoles = async (): Promise<void> => {
@@ -65,11 +80,12 @@ watch(
             return;
         }
 
+        resetForm();
+
         if (props.roles === undefined) {
             await loadRoles();
+            pickDefault();
         }
-
-        pickDefault();
     },
     { immediate: true },
 );
@@ -78,8 +94,16 @@ const closeDialog = (): void => {
     open.value = false;
 };
 
-const onSuccess = (): void => {
-    open.value = false;
+const onSuccess = async (): Promise<void> => {
+    sentTo.value = email.value.trim();
+    await nextTick();
+    doneButton.value?.$el.focus();
+};
+
+const inviteAnother = async (): Promise<void> => {
+    resetForm();
+    await nextTick();
+    emailInput.value?.$el.focus();
 };
 </script>
 
@@ -94,7 +118,47 @@ const onSuccess = (): void => {
                     {{ $t('settings.members.invite.description') }}
                 </DialogDescription>
             </DialogHeader>
+            <div v-if="sentTo !== null" class="grid gap-4">
+                <p
+                    class="flex items-start gap-2 rounded-xl bg-success-subtle p-4 text-sm text-foreground"
+                    role="status"
+                    data-testid="invite-member-sent"
+                >
+                    <IconCircleCheck
+                        class="mt-0.5 size-4 shrink-0 text-success"
+                        aria-hidden="true"
+                    />
+                    <TransSlots
+                        class="min-w-0 break-words"
+                        :message="$t('settings.members.invite.sent')"
+                    >
+                        <template #email>
+                            <strong class="font-emphasis">{{ sentTo }}</strong>
+                        </template>
+                    </TransSlots>
+                </p>
+
+                <DialogFooter>
+                    <Button
+                        variant="outline"
+                        type="button"
+                        data-testid="invite-member-another"
+                        @click="inviteAnother"
+                    >
+                        {{ $t('settings.members.invite.another') }}
+                    </Button>
+                    <Button
+                        ref="doneButton"
+                        type="button"
+                        data-testid="invite-member-done"
+                        @click="closeDialog"
+                    >
+                        {{ $t('settings.members.invite.done') }}
+                    </Button>
+                </DialogFooter>
+            </div>
             <Form
+                v-else
                 v-bind="storeInvite.form()"
                 class="space-y-4"
                 v-slot="{ errors, processing }"
@@ -106,6 +170,8 @@ const onSuccess = (): void => {
                     }}</Label>
                     <Input
                         id="invite-email"
+                        ref="emailInput"
+                        v-model="email"
                         name="email"
                         type="email"
                         data-testid="invite-email"

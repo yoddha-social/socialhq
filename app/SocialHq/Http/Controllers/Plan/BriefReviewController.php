@@ -23,21 +23,21 @@ class BriefReviewController extends Controller
     {
         BriefRounds::submit($this->brief($request, $item), $request->user());
 
-        return back();
+        return back()->with('flash.success', __('socialhq_production.flash.creative_submitted'));
     }
 
     public function approve(ReviewDecisionRequest $request, int $item): RedirectResponse
     {
         BriefRounds::approve($this->brief($request, $item, approve: true), $request->user(), $request->validated('note'), (int) $request->validated('round'));
 
-        return back();
+        return back()->with('flash.success', __('socialhq_production.flash.creative_approved'));
     }
 
     public function requestChanges(ReviewDecisionRequest $request, int $item): RedirectResponse
     {
         BriefRounds::requestChanges($this->brief($request, $item, approve: true), $request->user(), (string) $request->validated('note'), (int) $request->validated('round'));
 
-        return back();
+        return back()->with('flash.success', __('socialhq_production.flash.changes_requested'));
     }
 
     private function brief(Request $request, int $item, bool $approve = false): Brief

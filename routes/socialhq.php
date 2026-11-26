@@ -99,6 +99,9 @@ Route::middleware('auth')->prefix('socialhq')->name('socialhq.')->group(function
         Route::post('channels/{account}/connect-invites', [ConnectInviteLinkController::class, 'store'])
             ->middleware('throttle:socialhq-connect-invite-links')
             ->name('channels.connect-invites.store');
+        Route::delete('connect-invites/{invite}', [ConnectInviteLinkController::class, 'destroy'])
+            ->whereNumber('invite')
+            ->name('connect-invites.destroy');
     });
 });
 

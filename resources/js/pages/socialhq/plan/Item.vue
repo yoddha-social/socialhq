@@ -2,6 +2,7 @@
 import { Head } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
+import ComposerDiscardDialog from '@/components/posts/composer/ComposerDiscardDialog.vue';
 import BriefPanel from '@/components/socialhq/plan/item/BriefPanel.vue';
 import CopyEditor from '@/components/socialhq/plan/item/CopyEditor.vue';
 import CreatePostCard from '@/components/socialhq/plan/item/CreatePostCard.vue';
@@ -19,6 +20,7 @@ import type {
     PostBlocker,
     ReviewEntry,
 } from '@/components/socialhq/plan/item/types';
+import { useItemPageGuard } from '@/components/socialhq/plan/item/unsavedWork';
 import VersionHistory from '@/components/socialhq/plan/item/VersionHistory.vue';
 import PlanHeader from '@/components/socialhq/plan/PlanHeader.vue';
 import PlanTabs from '@/components/socialhq/plan/PlanTabs.vue';
@@ -46,6 +48,8 @@ const latest = computed(
 );
 
 const copyEditor = ref<InstanceType<typeof CopyEditor> | null>(null);
+
+const unsavedWork = useItemPageGuard();
 
 const useVersion = (version: CopyVersion): void => {
     copyEditor.value?.loadVersion(version);
@@ -122,4 +126,16 @@ const useVersion = (version: CopyVersion): void => {
             </div>
         </div>
     </AppLayout>
+
+    <ComposerDiscardDialog
+        v-model:open="unsavedWork.confirming.value"
+        :title="$t('common.unsaved_changes.title')"
+        :description="$t('socialhq_production.item.unsaved_description')"
+        :action="$t('common.unsaved_changes.discard')"
+        test-id="item-unsaved-dialog"
+        cancel-test-id="item-unsaved-keep"
+        action-test-id="item-unsaved-discard"
+        @confirm="unsavedWork.discard"
+        @cancel="unsavedWork.keepEditing"
+    />
 </template>

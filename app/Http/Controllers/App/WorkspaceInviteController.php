@@ -8,9 +8,11 @@ use App\Actions\Invite\CreateInvite;
 use App\Actions\Invite\DeleteInvite;
 use App\Actions\Invite\RemoveMember;
 use App\Http\Requests\App\Invite\StoreWorkspaceInviteRequest;
+use App\Http\Requests\App\Invite\UpdateWorkspaceInviteRequest;
 use App\Http\Requests\App\Invite\UpdateWorkspaceMemberRequest;
 use App\Models\Invite;
 use App\Models\User;
+use App\Models\Workspace;
 use App\SocialHq\Access\AccessLog;
 use App\SocialHq\Access\MemberRoles;
 use App\SocialHq\Access\Permission;
@@ -134,6 +136,67 @@ class WorkspaceInviteController extends Controller
         return back();
     }
 
+    /**
+     * Social HQ: changes a pending invite's role (or TryPost's flags, mapped
+     * to a built-in role). Only an invite still waiting for this workspace
+     * can change: an accepted one, or one for another workspace, is not
+     * found. The rules of inviting hold: only someone who could have sent the
+     * invite changes it, and only to a role they could give.
+     */
+    public function update(UpdateWorkspaceInviteRequest $request, Invite $invite): RedirectResponse
+    {
+        $workspace = $request->user()->currentWorkspace;
+
+        if (! $workspace) {
+            return redirect()->route('app.workspaces.create');
+        }
+
+        $found = $this->manageableInvite($request, $workspace, $invite);
+        $from = $this->inviteRole($found);
+
+        if ($from !== null && ! MemberRoles::mayAssign($request->user(), $workspace, $from)) {
+            return back()->withErrors(['role_id' => __('socialhq_roles.errors.above_your_access')]);
+        }
+
+        $role = $request->memberRole($workspace);
+
+        if (! MemberRoles::mayAssign($request->user(), $workspace, $role)) {
+            return back()->withErrors(['role_id' => __('socialhq_roles.errors.above_your_access')]);
+        }
+
+        $found->update(Roles::membershipColumns($role));
+
+        if ($from?->id !== $role->id) {
+            AccessLog::inviteRoleChanged($workspace, $found->email, $from, $role);
+        }
+
+        return back();
+    }
+
+    /**
+     * Social HQ: the role a pending invite carries, null for one from before roles.
+     */
+    private function inviteRole(Invite $invite): ?Role
+    {
+        return $invite->shq_role_id === null ? null : Role::query()->find($invite->shq_role_id);
+    }
+
+    /**
+     * Social HQ: a pending invite to the current
+     * workspace whose every workspace the person manages, so an admin of
+     * one brand never changes or cancels another brand's invite.
+     */
+    private function manageableInvite(Request $request, Workspace $workspace, Invite $invite): Invite
+    {
+        $found = $workspace->invites()->whereKey($invite->id)->firstOrFail();
+        $manages = Workspace::query()->whereKey($found->workspaces ?? [])->get()
+            ->every(fn (Workspace $listed): bool => $request->user()->can('manageTeam', $listed));
+
+        abort_unless($manages, Response::HTTP_NOT_FOUND);
+
+        return $found;
+    }
+
     public function destroy(Request $request, Invite $invite): RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
@@ -144,18 +207,16 @@ class WorkspaceInviteController extends Controller
 
         $this->authorize('manageTeam', $workspace);
 
-        if ($invite->account_id !== $workspace->account_id) {
-            abort(Response::HTTP_NOT_FOUND);
-        }
+        $found = $this->manageableInvite($request, $workspace, $invite);
 
         // Social HQ: only someone who could have sent it cancels an invite.
-        $role = $invite->shq_role_id === null ? null : Role::query()->find($invite->shq_role_id);
+        $role = $this->inviteRole($found);
 
         if ($role !== null && ! MemberRoles::mayAssign($request->user(), $workspace, $role)) {
             return back()->withErrors(['invite' => __('socialhq_roles.errors.above_your_access')]);
         }
 
-        DeleteInvite::execute($invite);
+        DeleteInvite::execute($found);
 
         session()->flash('flash.banner', __('settings.members.flash.invite_deleted'));
         session()->flash('flash.bannerStyle', 'success');

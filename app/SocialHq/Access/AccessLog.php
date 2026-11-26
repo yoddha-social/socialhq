@@ -57,6 +57,15 @@ final class AccessLog
         ]);
     }
 
+    public static function inviteRoleChanged(Workspace $workspace, string $email, ?Role $from, Role $to): void
+    {
+        self::record($workspace->account_id, AccessEventAction::InviteRoleChanged, $workspace, $to->id, data: [
+            'email' => $email,
+            'from' => RoleResource::summary($from),
+            'to' => RoleResource::summary($to),
+        ]);
+    }
+
     public static function accessGranted(Workspace $workspace, User $member, Role $role): void
     {
         self::record($workspace->account_id, AccessEventAction::AccessGranted, $workspace, $role->id, $member->id, [

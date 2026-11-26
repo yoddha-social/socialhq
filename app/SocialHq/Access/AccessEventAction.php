@@ -11,6 +11,7 @@ enum AccessEventAction: string
     case RoleDeleted = 'role_deleted';
     case MemberRoleChanged = 'member_role_changed';
     case InviteSent = 'invite_sent';
+    case InviteRoleChanged = 'invite_role_changed';
     case AccessGranted = 'access_granted';
     case MemberRemoved = 'member_removed';
 }

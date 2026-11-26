@@ -19,6 +19,9 @@ export interface PlanItemDetail {
     id: number;
     title: string;
     scheduled_on: string;
+    /** The posting time as a UTC instant, and the zone it was written in (the main audience zone). */
+    suggested_at: string | null;
+    suggested_timezone: string | null;
     month: string;
     platform: string | null;
     platform_label: string | null;
@@ -40,6 +43,8 @@ export interface PlanItemDetail {
         name: string;
         platform: string;
         avatar_url: string | null;
+        /** The zone the composer shows the post's time in. */
+        timezone: string;
     } | null;
     event: { name: string; starts_on: string; verified: boolean } | null;
 }

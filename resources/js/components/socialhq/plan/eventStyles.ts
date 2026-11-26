@@ -35,6 +35,18 @@ export interface CalendarEventRow {
     verified_at: string | null;
     /** Its source no longer lists it: it needs a check and stays out of planning. */
     delisted: boolean;
+    /** Countries whose holiday on the same day is this international day. */
+    also_countries: string[];
+    /** The brand's open notes that the date looks wrong. */
+    flags: EventFlagRow[];
+}
+
+/** A team member's note that a date looks wrong. */
+export interface EventFlagRow {
+    id: number;
+    note: string;
+    by: string | null;
+    at: string | null;
 }
 
 /** A country "Add a country" offers (Nager.Date's list). */

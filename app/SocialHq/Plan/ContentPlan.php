@@ -19,12 +19,20 @@ class ContentPlan extends Model
 {
     use HasFactory;
 
-    /** A running AI draft older than this is treated as dead: keep it above GeneratePlanSuggestions::$timeout (6 minutes). */
-    public const STALE_MINUTES = 10;
+    /** A running AI draft older than this is treated as dead: keep it above GeneratePlanSuggestions::$timeout (15 minutes). */
+    public const STALE_MINUTES = 20;
 
     protected $table = 'shq_content_plans';
 
     protected $guarded = ['id'];
+
+    /**
+     * Open plan pages reload the month when the plan changes (`PlanChanged`).
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn (self $plan) => PlanChanged::dispatchFor($plan->id));
+    }
 
     protected function casts(): array
     {
@@ -34,6 +42,7 @@ class ContentPlan extends Model
             'generation_status' => GenerationStatus::class,
             'generation_rejections' => 'array',
             'generation_options' => 'array',
+            'generation_weeks' => 'array',
             'generated_at' => 'immutable_datetime',
             'generation_started_at' => 'immutable_datetime',
             'submitted_at' => 'immutable_datetime',

@@ -968,6 +968,7 @@ What a post can carry on Instagram depends on how the account is connected: thro
 
 Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` driving Playwright. **Laravel Dusk is not installed** — there is no `DuskTestCase`, no `$browser` object, and no `browse()`. Do not add `dusk="..."` attributes; they select nothing.
 
+- **Every screen change ships one click-through check, and every reported bug gets a check before its fix** (owner decision 2026-11-26, audit CQ-02). A change to what a screen shows or does adds, or extends, one happy-path browser test that clicks through it and asserts what sticks (the database, or the page after a reload). A bug someone reports first gets a test that fails on it, a feature test when the server can show it and a browser test when only the browser can; then the fix. The first screen under this rule was the Production board (`tests/Browser/SocialHq/ProductionBoardTest.php`). Until most screens have one, the manual list in `docs/socialhq/click-through-before-deploy.md` runs before each deploy.
 - ALWAYS use named routes via `route()`. NEVER hardcode URLs like `'https://trypost.test/login'`.
     - Example: `visit(route('login'))`.
 - ALWAYS target elements by `data-testid`. NEVER use CSS classes (`.text-red-600`), tag names, or text strings.

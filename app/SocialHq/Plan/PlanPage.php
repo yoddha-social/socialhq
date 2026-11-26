@@ -140,12 +140,36 @@ final class PlanPage
                 'error' => $status === GenerationStatus::Failed && filled($error) ? __("socialhq_plan.generation.errors.{$error}") : null,
                 'summary' => $plan->generation_summary,
                 'rejections' => array_values((array) ($plan->generation_rejections ?? [])),
+                'weeks' => self::generationWeeks($plan),
+                // Suggestions the latest draft added (null for drafts made before it planned week by week).
+                'added' => $plan->generation_weeks === null ? null : (int) collect($plan->generation_weeks)->sum('added'),
                 'generated_at' => $plan->generated_at?->toIso8601String(),
             ],
             'submitted_at' => $plan->submitted_at?->toIso8601String(),
             'approved_at' => $plan->approved_at?->toIso8601String(),
             'approver' => $plan->approver?->name,
         ];
+    }
+
+    /**
+     * The latest draft's weeks (one AI call each) as the panel shows them:
+     * the days, how far the run got, and why a week wasn't drafted.
+     *
+     * @return list<array{from: string, to: string, status: string, error: string|null}>
+     */
+    private static function generationWeeks(ContentPlan $plan): array
+    {
+        return collect((array) ($plan->generation_weeks ?? []))
+            ->map(fn (array $week): array => [
+                'from' => (string) data_get($week, 'from'),
+                'to' => (string) data_get($week, 'to'),
+                'status' => (string) data_get($week, 'status'),
+                'error' => data_get($week, 'status') === 'failed'
+                    ? __('socialhq_plan.generation.week_errors.'.(data_get($week, 'error') ?: 'ai_failed'))
+                    : null,
+            ])
+            ->values()
+            ->all();
     }
 
     /**

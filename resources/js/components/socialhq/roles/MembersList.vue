@@ -3,12 +3,14 @@ import { Link, usePage } from '@inertiajs/vue3';
 import {
     IconClock,
     IconLock,
+    IconPencil,
     IconTrash,
     IconUserMinus,
 } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
+import EditInviteDialog from '@/components/socialhq/members/EditInviteDialog.vue';
 import ChangeRoleDialog from '@/components/socialhq/roles/ChangeRoleDialog.vue';
 import RolePicker from '@/components/socialhq/roles/RolePicker.vue';
 import type {
@@ -99,6 +101,22 @@ const openRemoveMember = (member: WorkspaceMember): void => {
         url: removeMemberRoute.url(member.id),
         confirmText: member.email,
     });
+};
+
+// A pending invite's role changes until it is accepted, by whoever could
+// have sent it: an invite joining with access above yours shows no button.
+const editingInvitation = ref<WorkspaceInvitation | null>(null);
+const editInviteOpen = ref(false);
+
+const mayEditInvitation = (invitation: WorkspaceInvitation): boolean =>
+    !invitation.role ||
+    props.roles.some(
+        (role) => role.id === invitation.role?.id && role.assignable === true,
+    );
+
+const openEditInvitation = (invitation: WorkspaceInvitation): void => {
+    editingInvitation.value = invitation;
+    editInviteOpen.value = true;
 };
 
 const openCancelInvitation = (invitation: WorkspaceInvitation): void => {
@@ -243,9 +261,11 @@ const openCancelInvitation = (invitation: WorkspaceInvitation): void => {
                             "
                         >
                             <template #role>
-                                <strong class="font-medium text-foreground">{{
-                                    invitation.role.name
-                                }}</strong>
+                                <strong
+                                    class="font-medium text-foreground"
+                                    :data-testid="`invite-badge-${invitation.id}`"
+                                    >{{ invitation.role.name }}</strong
+                                >
                             </template>
                         </TransSlots>
                         <template v-else>{{
@@ -253,6 +273,18 @@ const openCancelInvitation = (invitation: WorkspaceInvitation): void => {
                         }}</template>
                     </p>
                 </div>
+                <Button
+                    v-if="canManageTeam && mayEditInvitation(invitation)"
+                    variant="ghost"
+                    size="icon"
+                    class="shrink-0 text-muted-foreground"
+                    :title="$t('settings.members.edit.action')"
+                    :aria-label="$t('settings.members.edit.action')"
+                    :data-testid="`invite-edit-${invitation.id}`"
+                    @click="openEditInvitation(invitation)"
+                >
+                    <IconPencil class="size-4" />
+                </Button>
                 <Button
                     v-if="canManageTeam"
                     variant="ghost"
@@ -287,6 +319,12 @@ const openCancelInvitation = (invitation: WorkspaceInvitation): void => {
             :to="changing?.to ?? null"
             :catalog="catalog"
             :workspace-name="workspaceName"
+        />
+
+        <EditInviteDialog
+            v-model:open="editInviteOpen"
+            :invitation="editingInvitation"
+            :roles="roles"
         />
 
         <ConfirmDeleteModal

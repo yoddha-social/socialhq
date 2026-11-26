@@ -153,6 +153,8 @@ const statusTheme = computed(() =>
         : 'light',
 );
 
+// AGPL-3.0 section 13: everyone signed in can get the source of the app they
+// use. Here in Help, not on the sidebar or any public page (audit 2026-11-24, ARC-14).
 const sourceUrl =
     import.meta.env.VITE_SOCIALHQ_SOURCE_URL ||
     'https://github.com/yoddha-social/socialhq';
@@ -172,7 +174,7 @@ const supportLinks = [
     },
     {
         key: 'github',
-        label: 'sidebar.support.github',
+        label: 'socialhq.source_code',
         href: sourceUrl,
         icon: IconBrandGithub,
     },

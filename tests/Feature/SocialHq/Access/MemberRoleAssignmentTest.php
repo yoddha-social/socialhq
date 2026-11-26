@@ -7,6 +7,8 @@ use App\Models\AccessToken;
 use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Access\AccessEvent;
+use App\SocialHq\Access\AccessEventAction;
 use App\SocialHq\Access\MemberRoles;
 use App\SocialHq\Access\Permission;
 use App\SocialHq\Access\Role;
@@ -181,6 +183,72 @@ test('an invite with a role above the inviter’s access is refused', function (
         ->assertSessionHasErrors(['role_id' => __('socialhq_roles.errors.above_your_access')]);
 
     expect(Invite::query()->where('email', 'boss@example.com')->exists())->toBeFalse();
+});
+
+test('a pending invite changes role, and its flags follow', function () {
+    $invite = Invite::factory()->create([
+        'account_id' => $this->workspace->account_id,
+        'invited_by' => $this->owner->id,
+        'workspaces' => [$this->workspace->id],
+        ...Roles::membershipColumns($this->roles['editor']),
+    ]);
+
+    $this->actingAs($this->owner)
+        ->put(route('app.invites.update', $invite), ['role_id' => $this->roles['manager']->id])
+        ->assertSessionHasNoErrors();
+
+    expect($invite->fresh()->shq_role_id)->toBe($this->roles['manager']->id)
+        ->and($invite->fresh()->is_admin)->toBeFalse()
+        ->and($invite->fresh()->requires_approval)->toBeFalse();
+
+    $event = AccessEvent::query()->where('action', AccessEventAction::InviteRoleChanged)->sole();
+
+    expect($event->role_id)->toBe($this->roles['manager']->id)
+        ->and($event->actor_id)->toBe($this->owner->id)
+        ->and(data_get($event->data, 'email'))->toBe($invite->email)
+        ->and(data_get($event->data, 'from.name'))->toBe('Editor')
+        ->and(data_get($event->data, 'to.name'))->toBe('Manager');
+});
+
+test('nobody raises a pending invite above their own access, or changes one that is', function () {
+    $lead = memberRolesTestMember($this->workspace, $this->teamLead);
+    $theirs = Invite::factory()->create([
+        'account_id' => $this->workspace->account_id,
+        'invited_by' => $lead->id,
+        'workspaces' => [$this->workspace->id],
+        ...Roles::membershipColumns($this->roles['editor']),
+    ]);
+    $above = Invite::factory()->create([
+        'account_id' => $this->workspace->account_id,
+        'invited_by' => $this->owner->id,
+        'workspaces' => [$this->workspace->id],
+        ...Roles::membershipColumns($this->roles['admin']),
+    ]);
+
+    // To Admin, by role or by TryPost's flag: both are more than a team lead holds.
+    $this->actingAs($lead)
+        ->put(route('app.invites.update', $theirs), ['role_id' => $this->roles['admin']->id])
+        ->assertSessionHasErrors(['role_id' => __('socialhq_roles.errors.above_your_access')]);
+    $this->actingAs($lead)
+        ->put(route('app.invites.update', $theirs), ['is_admin' => '1', 'requires_approval' => '0'])
+        ->assertSessionHasErrors(['role_id' => __('socialhq_roles.errors.above_your_access')]);
+
+    // An Admin invite is not theirs to lower either.
+    $this->actingAs($lead)
+        ->put(route('app.invites.update', $above), ['role_id' => $this->roles['viewer']->id])
+        ->assertSessionHasErrors(['role_id' => __('socialhq_roles.errors.above_your_access')]);
+
+    expect($theirs->fresh()->shq_role_id)->toBe($this->roles['editor']->id)
+        ->and($theirs->fresh()->is_admin)->toBeFalse()
+        ->and($above->fresh()->shq_role_id)->toBe($this->roles['admin']->id)
+        ->and(AccessEvent::query()->where('action', AccessEventAction::InviteRoleChanged)->exists())->toBeFalse();
+
+    // Within their access it works.
+    $this->actingAs($lead)
+        ->put(route('app.invites.update', $theirs), ['role_id' => $this->roles['viewer']->id])
+        ->assertSessionHasNoErrors();
+
+    expect($theirs->fresh()->shq_role_id)->toBe($this->roles['viewer']->id);
 });
 
 test('the members page lists each member’s role and the roles one may give', function () {

@@ -418,7 +418,7 @@ test('the composer assistant shows the keywords for the post and writes with the
     $page->click('@composer-ai-assistant');
     waitForCount($page, '@writing-assistant-panel @socialhq-keywords-for-post-keyword', 3);
 
-    $page->click('@writing-assistant-panel @socialhq-keywords-for-post-change');
+    $page->click('@socialhq-keywords-for-post-change');
     waitFor($page, '@socialhq-keywords-for-post-option-oat-milk-latte');
     $page->click('@socialhq-keywords-for-post-option-oat-milk-latte');
     waitForCount($page, '@writing-assistant-panel @socialhq-keywords-for-post-keyword', 2);

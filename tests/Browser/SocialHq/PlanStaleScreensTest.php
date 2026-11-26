@@ -54,7 +54,7 @@ function visitStalePlan(ContentPlan $plan): mixed
     return $page;
 }
 
-test('with an item open, another card opens that item and Add item opens a new one', function () {
+test('with an item open, another card opens that item and a day\'s + opens a new one', function () {
     [$user, $plan, $first, $second] = staleScreensPlan();
     $this->actingAs($user);
 
@@ -65,7 +65,10 @@ test('with an item open, another card opens that item and Add item opens a new o
     $page->click("@plan-item-open-{$second->id}");
     waitForState($page, '@plan-item-title', "element.value === 'Tihar lights'");
 
-    $page->click('@plan-add-item');
+    // At this width the open sheet covers the header's "Add item"; a day's +
+    // on the left of the grid (the month's first Monday) is in reach.
+    $monday = $plan->month->toImmutable()->next(CarbonImmutable::MONDAY)->toDateString();
+    $page->click("@plan-add-{$monday}");
     waitForState($page, '@plan-item-title', "element.value === ''");
     $page->assertVisible('@plan-item-sheet')->assertNoJavaScriptErrors();
 });

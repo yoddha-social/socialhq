@@ -93,6 +93,13 @@ const selectTab = (value: string | number): void => {
     }
 };
 
+/** The products and services keywords can be tagged with. */
+const keywordProducts = computed(() =>
+    props.entries
+        .filter((entry) => entry.kind === 'product')
+        .map((entry) => ({ id: entry.id, title: entry.title })),
+);
+
 /** Opens the Strategy tab at the SEO keywords card, with the cursor in its field for admins. */
 const openKeywords = (): void => {
     tab.value = 'strategy';
@@ -530,6 +537,8 @@ const openCheck = (): void => {
                                 :keywords="keywords"
                                 :check="keywordCheck"
                                 :can-edit="canEdit"
+                                :pillars="pillars"
+                                :products="keywordProducts"
                                 @add-entry="openAddEntryFor"
                             />
                         </TabsContent>

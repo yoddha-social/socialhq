@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Knowledge\Keywords\BrandKeywords;
+use App\SocialHq\Knowledge\Keywords\Keyword;
 use App\SocialHq\Plan\Ai\CopyWriter;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\PlanItem;
@@ -17,10 +18,11 @@ use App\SocialHq\Plan\PlanItem;
  * its admin signed in. "cold brew kathmandu" is a good fit for it and "cheap
  * coffee" a conflict.
  *
- * @param  list<array{text: string, main: bool}>  $keywords
+ * @param  list<array{text: string, main: bool, tags?: list<array<string, mixed>>}>  $keywords
+ * @param  array<string, mixed>  $profile  More of the brand profile (pillars)
  * @return array{0: User, 1: Workspace}
  */
-function seoKeywordsBrand(array $keywords = []): array
+function seoKeywordsBrand(array $keywords = [], array $profile = []): array
 {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
@@ -33,8 +35,9 @@ function seoKeywordsBrand(array $keywords = []): array
         'about' => 'Himal Brew makes cold brew in Kathmandu.',
         'audience' => 'Coffee lovers in Kathmandu',
         'words_to_avoid' => 'cheap',
-        'keywords' => $keywords,
+        ...$profile,
     ]);
+    BrandKeywords::save($workspace, $keywords);
 
     test()->actingAs($user = $user->fresh());
 
@@ -297,4 +300,137 @@ test('after AI writes an item\'s copy for a brand with keywords, the line lists 
         ->assertMissing('@socialhq-keywords-missing-note')
         ->assertNoJavaScriptErrors();
     expect($page->script("document.querySelectorAll('[data-testid=\"socialhq-keywords-used-keyword\"]').length"))->toBe(1);
+});
+
+test('an admin tags a keyword, filters the list by the tag, and a keyword added under the filter gets it', function () {
+    [, $workspace] = seoKeywordsBrand(
+        [['text' => 'cold brew kathmandu', 'main' => true], ['text' => 'iced latte', 'main' => false]],
+        ['pillars' => ['Menu', 'Behind the scenes']],
+    );
+
+    $page = visit(route('socialhq.brand.index', ['tab' => 'strategy', 'focus' => 'keywords']))->resize(1440, 900);
+    waitFor($page, '@socialhq-keyword-iced-latte @socialhq-keyword-general-iced-latte');
+
+    seoKeywordsMenu($page, 'iced-latte', 'tags');
+    waitFor($page, '@socialhq-keyword-tags-dialog');
+    $page->click('@socialhq-keyword-tags-pillar-0')
+        ->select('@socialhq-keyword-tags-from', '3')
+        ->select('@socialhq-keyword-tags-to', '5')
+        ->click('@socialhq-keyword-tags-add-months');
+    waitFor($page, '@socialhq-keyword-tags-remove-0');
+    $page->click('@socialhq-keyword-tags-save');
+    waitForGone($page, '@socialhq-keyword-tags-dialog');
+
+    $tagsOf = fn (string $text): array => collect(collect(BrandKeywords::catalogue($workspace))->firstWhere('text', $text)['tags'] ?? [])
+        ->map(fn (array $tag): string => $tag['kind'] === 'months' ? "months:{$tag['from']}-{$tag['to']}" : "{$tag['kind']}:{$tag['value']}")
+        ->all();
+    waitForDatabase($page, fn (): bool => $tagsOf('iced latte') === ['pillar:Menu', 'months:3-5']);
+    waitFor($page, '@socialhq-keyword-iced-latte @socialhq-keyword-tag-pillar');
+    waitFor($page, '@socialhq-keyword-iced-latte @socialhq-keyword-tag-months');
+
+    // The pillar's filter leaves only its keywords; a keyword added while it is on gets the tag.
+    $page->click('@socialhq-keywords-filter-tag-0');
+    waitForGone($page, '@socialhq-keyword-cold-brew-kathmandu');
+    waitFor($page, '@socialhq-keywords-hint-tag');
+    $page->fill('@socialhq-keywords-input', 'oat milk latte')
+        ->select('@socialhq-keywords-group', 'supporting')
+        ->click('@socialhq-keywords-add');
+    waitForDatabase($page, fn (): bool => $tagsOf('oat milk latte') === ['pillar:Menu']);
+    waitFor($page, '@socialhq-keyword-oat-milk-latte');
+
+    $page->click('@socialhq-keywords-filter-all');
+    waitFor($page, '@socialhq-keyword-cold-brew-kathmandu');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a keyword no post said for 60 days is flagged, and "Show them" filters the list to those', function () {
+    [, $workspace] = seoKeywordsBrand([['text' => 'cold brew kathmandu', 'main' => true], ['text' => 'iced latte', 'main' => false]]);
+    Keyword::query()->where('workspace_id', $workspace->id)->where('text', 'iced latte')->update(['created_at' => now()->subDays(70)]);
+
+    $page = visit(route('socialhq.brand.index', ['tab' => 'strategy', 'focus' => 'keywords']))->resize(1440, 900);
+    waitFor($page, '@socialhq-keyword-stale-iced-latte');
+    $page->assertMissing('@socialhq-keyword-stale-cold-brew-kathmandu');
+
+    $page->click('@socialhq-keywords-stale-show');
+    waitForState($page, '@socialhq-keywords-filter-stale', "element.getAttribute('aria-pressed') === 'true'");
+    waitForGone($page, '@socialhq-keyword-cold-brew-kathmandu');
+    $page->assertVisible('@socialhq-keyword-iced-latte')
+        ->assertNoJavaScriptErrors();
+});
+
+test('an item shows the keywords picked for it; a person changes them for that post, and goes back to the app\'s pick', function () {
+    config([
+        'socialhq.ai.gateway' => 'direct',
+        'socialhq.ai.approved_providers' => ['anthropic'],
+        'socialhq.ai.routes.write' => 'anthropic',
+    ]);
+    [, $workspace] = seoKeywordsBrand([
+        ['text' => 'cold brew kathmandu', 'main' => true],
+        ['text' => 'iced latte', 'main' => false],
+        ['text' => 'oat milk latte', 'main' => false],
+    ]);
+    $item = PlanItem::factory()->create([
+        'plan_id' => ContentPlan::factory()->create(['workspace_id' => $workspace->id])->id,
+        'title' => 'Iced latte for summer',
+        'objective' => 'Show the iced latte.',
+    ]);
+
+    $page = visit(route('socialhq.plan.items.show', $item->id))->resize(1440, 900);
+    waitForCount($page, '@socialhq-keywords-for-post-keyword', 3);
+
+    $page->click('@socialhq-keywords-for-post-change');
+    waitFor($page, '@socialhq-keywords-for-post-option-oat-milk-latte');
+    $page->click('@socialhq-keywords-for-post-option-oat-milk-latte');
+    waitForDatabase($page, fn (): bool => $item->fresh()->seo_keywords === ['cold brew kathmandu', 'iced latte']);
+    waitFor($page, '@socialhq-keywords-for-post-chosen');
+
+    // The choice is the item's: it is there after a reload.
+    $page = visit(route('socialhq.plan.items.show', $item->id))->resize(1440, 900);
+    waitFor($page, '@socialhq-keywords-for-post-chosen');
+    waitForCount($page, '@socialhq-keywords-for-post-keyword', 2);
+
+    $page->click('@socialhq-keywords-for-post-change');
+    waitFor($page, '@socialhq-keywords-for-post-reset');
+    $page->click('@socialhq-keywords-for-post-reset');
+    waitForDatabase($page, fn (): bool => $item->fresh()->seo_keywords === null);
+    waitForGone($page, '@socialhq-keywords-for-post-chosen');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the composer assistant shows the keywords for the post and writes with the ones the person leaves', function () {
+    config()->set('trypost.self_hosted', true);
+    [, $workspace] = seoKeywordsBrand([
+        ['text' => 'cold brew kathmandu', 'main' => true],
+        ['text' => 'iced latte', 'main' => false],
+        ['text' => 'oat milk latte', 'main' => false],
+    ]);
+    $channel = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    PostWritingAssistant::fake(['Cold brew, poured slow.']);
+
+    $page = visit(route('app.posts.create'))->resize(1440, 900);
+    // A click that lands while the composer still animates open is swallowed.
+    waitForState($page, '@post-composer-dialog', "element.getAttribute('data-state') === 'open' && element.getAnimations().every((animation) => animation.playState !== 'running')");
+    waitFor($page, '@composer-add-account');
+    $page->click('@composer-add-account');
+    waitFor($page, "@composer-account-option-{$channel->id}");
+    $page->click("@composer-account-option-{$channel->id}");
+    waitFor($page, '@composer-ai-assistant');
+    $page->click('@composer-ai-assistant');
+    waitForCount($page, '@writing-assistant-panel @socialhq-keywords-for-post-keyword', 3);
+
+    $page->click('@writing-assistant-panel @socialhq-keywords-for-post-change');
+    waitFor($page, '@socialhq-keywords-for-post-option-oat-milk-latte');
+    $page->click('@socialhq-keywords-for-post-option-oat-milk-latte');
+    waitForCount($page, '@writing-assistant-panel @socialhq-keywords-for-post-keyword', 2);
+    $page->keys('@socialhq-keywords-for-post-search', 'Escape');
+    waitForGone($page, '@socialhq-keywords-for-post-popover');
+
+    $page->click('@writing-assistant-mode-generate')
+        ->fill('@writing-assistant-prompt', 'our new cold brew launch')
+        ->click('@writing-assistant-generate');
+    waitForText($page, '@writing-assistant-suggestion', 'Cold brew, poured slow.');
+
+    PostWritingAssistant::assertPrompted(fn ($prompt): bool => str_contains($prompt->agent->instructions(), '- iced latte')
+        && ! str_contains($prompt->agent->instructions(), 'oat milk latte'));
+    $page->assertNoJavaScriptErrors();
 });

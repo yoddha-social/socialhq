@@ -25,10 +25,7 @@ import {
     IconWand,
     IconX,
 } from '@tabler/icons-vue';
-import {
-    createReusableTemplate,
-    useResizeObserver,
-} from '@vueuse/core';
+import { createReusableTemplate, useResizeObserver } from '@vueuse/core';
 import { trans, transChoice } from 'laravel-vue-i18n';
 import {
     computed,
@@ -81,11 +78,7 @@ import SharedCounterChip from '@/components/socialhq/composer/SharedCounterChip.
 import { confirmPublishNow } from '@/components/socialhq/publishNow';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-    Dialog,
-    DialogContent,
-    DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import {
     Popover,
     PopoverAnchor,
@@ -102,7 +95,10 @@ import { useComposerTimezone } from '@/composables/composer/useComposerTimezone'
 import { useComposerUnsavedChanges } from '@/composables/composer/useComposerUnsavedChanges';
 import { useLastUsedAccounts } from '@/composables/composer/useLastUsedAccounts';
 import { useSaveAndLinkFacebook } from '@/composables/composer/useSaveAndLinkFacebook';
-import { useAtLeastBreakpoint, useBelowBreakpoint } from '@/composables/useBreakpoint';
+import {
+    useAtLeastBreakpoint,
+    useBelowBreakpoint,
+} from '@/composables/useBreakpoint';
 import { useCanHover } from '@/composables/useCanHover';
 import {
     type AutosaveMediaRef,
@@ -116,14 +112,20 @@ import {
 } from '@/composables/useComposerAutosave';
 import { useComposerLiveState } from '@/composables/useComposerData';
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
-import { trackPostComposerOpen } from '@/composables/useGlobalPostComposer';
+import {
+    postComposerRequest,
+    trackPostComposerOpen,
+} from '@/composables/useGlobalPostComposer';
 import { useLinkCard } from '@/composables/useLinkCard';
 import {
     getMediaValidationWarning,
-    mediaWarningParams,
     type MediaValidationWarning,
+    mediaWarningParams,
 } from '@/composables/useMedia';
-import { useMediaEditSwap, withMediaAdded } from '@/composables/useMediaEditSwap';
+import {
+    useMediaEditSwap,
+    withMediaAdded,
+} from '@/composables/useMediaEditSwap';
 import {
     type MediaImportStarted,
     useMediaImport,
@@ -143,22 +145,18 @@ import {
 } from '@/composables/usePlatformLogo';
 import {
     ACCOUNT_SCOPED_SETTINGS,
-    usePostComposition,
     type ComposerAccount,
     type ComposerInitialDraft,
     type ComposerInitialPost,
     type NetworkGroup,
     type PostComposition,
+    usePostComposition,
 } from '@/composables/usePostComposition';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import date from '@/date';
 import dayjs from '@/dayjs';
-import {
-    characterCount,
-    displayLength,
-    isBlankText,
-} from '@/lib/characters';
+import { characterCount, displayLength, isBlankText } from '@/lib/characters';
 import {
     googleBusinessTopicMeta,
     resolveGoogleBusinessTopicType,
@@ -167,33 +165,22 @@ import { countHashtags } from '@/lib/hashtags';
 import { extractErrorMessage } from '@/lib/httpError';
 import { getInstagramImageAspectIssues } from '@/lib/instagramImageAspect';
 import { linkPreviewDroppable, linkPreviewUrl } from '@/lib/linkPreview';
-import {
-    editorTabsFor,
-    type EditorTab,
-    rulesFor,
-} from '@/lib/mediaEditor';
+import { type EditorTab, editorTabsFor, rulesFor } from '@/lib/mediaEditor';
 import { isGooglePickerOpen } from '@/lib/mediaSources/googleDrive';
 import { acceptAttribute, mediaKey } from '@/lib/mediaType';
 import { evaluatePlatformMeta } from '@/lib/platformMeta';
 import {
     newThreadReply,
-    type ThreadReply,
     threadRepliesOf,
+    type ThreadReply,
 } from '@/lib/threadReplies';
 import { htmlToPlainText } from '@/lib/utils';
 import { userTimezone } from '@/preferences';
 import { settings as channelSettings } from '@/routes/app/channels';
 import { linkPreviewMedia } from '@/routes/app/posts';
 import { update as updatePreferences } from '@/routes/app/settings/preferences';
-import type {
-    PinterestBoardsPayload,
-    SharedData,
-    User,
-} from '@/types';
-import {
-    CAPTIONLESS_CONTENT_TYPES,
-    ContentType,
-} from '@/types/content-type';
+import type { PinterestBoardsPayload, SharedData, User } from '@/types';
+import { CAPTIONLESS_CONTENT_TYPES, ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import {
     THREAD_MAX_REPLIES,
@@ -203,8 +190,8 @@ import {
 import { Platform } from '@/types/platform';
 import {
     PostStatus,
-    ScheduleMode,
     type QueuePositionValue,
+    ScheduleMode,
 } from '@/types/post';
 import type { TikTokPrivacyLevelValue } from '@/types/tiktok-privacy';
 
@@ -275,7 +262,9 @@ const composition = usePostComposition(
 if (!props.initialPost && props.initialDate) {
     if (/^\d{4}-\d{2}-\d{2}$/.test(props.initialDate)) {
         composition.scheduledAt.value = `${props.initialDate}T09:00`;
-    } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(props.initialDate)) {
+    } else if (
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(props.initialDate)
+    ) {
         composition.scheduledAt.value = props.initialDate;
     }
 }
@@ -395,8 +384,8 @@ const updateAccountStripFade = (): void => {
     const strip = accountStrip.value;
     accountStripOverflows.value = Boolean(
         strip &&
-            Math.ceil(Math.abs(strip.scrollLeft) + strip.clientWidth) <
-                strip.scrollWidth,
+        Math.ceil(Math.abs(strip.scrollLeft) + strip.clientWidth) <
+            strip.scrollWidth,
     );
 };
 
@@ -468,7 +457,8 @@ const contentTypeOptionsFor = (group: NetworkGroup): ContentTypeOption[] => {
         option.value === ContentType.ThreadsGhostPost && attached
             ? {
                   ...option,
-                  disabledReasonKey: 'posts.form.threads.ghost_post_attachments',
+                  disabledReasonKey:
+                      'posts.form.threads.ghost_post_attachments',
               }
             : option,
     );
@@ -761,7 +751,11 @@ const ownsMediaOverride = (accountId: string): boolean =>
     Object.hasOwn(composition.overrides.value[accountId] ?? {}, 'media');
 type SubmittedMedia = {
     shared: MediaItem[];
-    destinations: { groupKey: string; overridden: boolean; media: MediaItem[] }[];
+    destinations: {
+        groupKey: string;
+        overridden: boolean;
+        media: MediaItem[];
+    }[];
 };
 const snapshotMedia = (): SubmittedMedia => ({
     shared: [...composition.media.value],
@@ -813,7 +807,9 @@ const mediaErrorsFor = (groupKey: string | null): Record<number, string> => {
     const group = findGroup(groupKey);
     const target = group && ownsMediaOverride(group.anchor.id) ? group.key : '';
     const keyed = mediaErrorKeys.value[target] ?? {};
-    const items = group ? groupDestination(group).media : composition.media.value;
+    const items = group
+        ? groupDestination(group).media
+        : composition.media.value;
 
     return Object.fromEntries(
         items.flatMap((item, index) => {
@@ -880,7 +876,9 @@ watch(
  */
 const fallBackToCustomTime = (): void => {
     if (!composition.scheduledAt.value) {
-        composition.scheduledAt.value = date.nextFullHour(composerTimezone.value);
+        composition.scheduledAt.value = date.nextFullHour(
+            composerTimezone.value,
+        );
     }
     scheduleMode.value = 'custom';
 };
@@ -907,8 +905,7 @@ watch(
     { immediate: true },
 );
 const currentDefaultPostAction = computed(
-    () =>
-        (page.props.auth?.user as User | null)?.default_post_action ?? 'next',
+    () => (page.props.auth?.user as User | null)?.default_post_action ?? 'next',
 );
 const preferenceHttp = useHttp<{ default_post_action: string }>({
     default_post_action: '',
@@ -971,11 +968,7 @@ const selectedLabels = computed(() =>
         composition.labelIds.value.includes(label.id),
     ),
 );
-const addLabel = (label: {
-    id: string;
-    name: string;
-    color: string;
-}): void => {
+const addLabel = (label: { id: string; name: string; color: string }): void => {
     if (!availableLabels.value.some(({ id }) => id === label.id)) {
         availableLabels.value = [...availableLabels.value, label];
     }
@@ -1017,6 +1010,18 @@ const assistantContent = computed(() =>
 );
 const accountLimit = (account: ComposerAccount): number =>
     props.platformConfigs[account.id]?.maxContentLength ?? Infinity;
+/**
+ * Social HQ: what "Keywords for this post" picks for: the plan item the
+ * composer was opened from, else the day the post is set for (today when
+ * none).
+ */
+const assistantSeo = computed(() => ({
+    planItemId: postComposerRequest.value?.planItemId ?? null,
+    date: composition.scheduledAt.value
+        ? composition.scheduledAt.value.slice(0, 10)
+        : null,
+}));
+
 const assistantChannel = computed<AssistantChannel | null>(() => {
     const account = sharedStep.value
         ? undefined
@@ -1051,8 +1056,8 @@ const contentWarningLength = (account: ComposerAccount): number =>
     account.platform === Platform.Mastodon
         ? characterCount(
               String(
-                  composition.resolvedDestination(account).meta
-                      ?.spoiler_text ?? '',
+                  composition.resolvedDestination(account).meta?.spoiler_text ??
+                      '',
               ).trim(),
           )
         : 0;
@@ -1169,8 +1174,7 @@ const activeRemaining = (group: NetworkGroup): number | null => {
 
     return limit === null
         ? null
-        : limit -
-          displayLength(contentFor(reply.text, group.platform));
+        : limit - displayLength(contentFor(reply.text, group.platform));
 };
 const threadReplyErrors = (group: NetworkGroup): Record<number, string> => {
     const found: Record<number, string> = {};
@@ -1278,16 +1282,13 @@ const onReplyImportStarted = (
     const uploader = replyUploaderFor(group, reply);
     if (uploader) mediaImport.track(uploader, started);
 };
-const replyHasActivity = (
-    group: NetworkGroup,
-    reply: ThreadReply,
-): boolean => {
+const replyHasActivity = (group: NetworkGroup, reply: ThreadReply): boolean => {
     const uploader = replyUploaderFor(group, reply);
 
     return Boolean(
         uploader &&
-            (uploader.entries.value.length > 0 ||
-                uploader.imports.value.length > 0),
+        (uploader.entries.value.length > 0 ||
+            uploader.imports.value.length > 0),
     );
 };
 const mediaFileInput = ref<HTMLInputElement | null>(null);
@@ -1649,23 +1650,25 @@ watch(scheduleMenuOpen, (open) => {
                 : 'menu';
     }
 });
-const scheduleOptions = computed(() => [
-    ...(['next', 'top'] as const).map((mode) => ({
-        mode,
-        titleKey: `posts.composer.queue.${mode}`,
-        descriptionKey: `posts.composer.queue.${mode}_description`,
-    })),
-    {
-        mode: 'now' as const,
-        titleKey: 'posts.composer.now',
-        descriptionKey: 'posts.composer.now_description',
-    },
-    {
-        mode: 'custom' as const,
-        titleKey: 'posts.composer.set_date_time',
-        descriptionKey: 'posts.composer.set_date_time_description',
-    },
-].filter((option) => !requiresApproval.value || option.mode !== 'now'));
+const scheduleOptions = computed(() =>
+    [
+        ...(['next', 'top'] as const).map((mode) => ({
+            mode,
+            titleKey: `posts.composer.queue.${mode}`,
+            descriptionKey: `posts.composer.queue.${mode}_description`,
+        })),
+        {
+            mode: 'now' as const,
+            titleKey: 'posts.composer.now',
+            descriptionKey: 'posts.composer.now_description',
+        },
+        {
+            mode: 'custom' as const,
+            titleKey: 'posts.composer.set_date_time',
+            descriptionKey: 'posts.composer.set_date_time_description',
+        },
+    ].filter((option) => !requiresApproval.value || option.mode !== 'now'),
+);
 
 const selectAccount = (account: ComposerAccount): void => {
     composition.toggleAccount(account.id);
@@ -2006,8 +2009,8 @@ const resumeOpen = ref(
     autosaveEnabled &&
         Boolean(
             resumePreview.value ||
-                resumeAccounts.value.length ||
-                resumeMediaCount.value,
+            resumeAccounts.value.length ||
+            resumeMediaCount.value,
         ),
 );
 const autosaveSnapshot = (): AutosaveSnapshot => ({
@@ -2159,6 +2162,7 @@ const onDialogOpenChange = (value: boolean): void => {
             :key="openGroupKey ? `group-${openGroupKey}` : 'shared'"
             :content="assistantContent"
             :channel="assistantChannel"
+            :seo="assistantSeo"
             @insert="insertAssistantText"
             @replace="writeAssistantTarget"
         />
@@ -2176,174 +2180,124 @@ const onDialogOpenChange = (value: boolean): void => {
             @confirm="confirmScheduledAt"
         />
         <template v-else>
-        <TooltipProvider :delay-duration="150" :disabled="!canHover">
-            <div
-                v-for="option in scheduleOptions"
-                :key="option.mode"
-                class="group/option relative"
-                :data-testid="`composer-schedule-row-${option.mode}`"
-            >
-                <Tooltip
-                    :disabled="
-                        !canHover ||
-                        !isScheduleModeDisabled(option.mode)
-                    "
+            <TooltipProvider :delay-duration="150" :disabled="!canHover">
+                <div
+                    v-for="option in scheduleOptions"
+                    :key="option.mode"
+                    class="group/option relative"
+                    :data-testid="`composer-schedule-row-${option.mode}`"
                 >
-                    <TooltipTrigger as-child>
-                        <span class="block">
+                    <Tooltip
+                        :disabled="
+                            !canHover || !isScheduleModeDisabled(option.mode)
+                        "
+                    >
+                        <TooltipTrigger as-child>
+                            <span class="block">
                                 <button
                                     type="button"
                                     :data-testid="`composer-schedule-${option.mode}`"
-                                    :aria-pressed="
-                                        scheduleMode ===
-                                        option.mode
-                                    "
+                                    :aria-pressed="scheduleMode === option.mode"
                                     :disabled="
-                                        isScheduleModeDisabled(
-                                            option.mode,
-                                        )
+                                        isScheduleModeDisabled(option.mode)
                                     "
                                     class="w-full space-y-1.5 rounded-md py-2 ps-3 pe-11 text-left text-sm transition-control outline-none disabled:cursor-not-allowed disabled:opacity-50"
                                     :class="
-                                        scheduleMode ===
-                                        option.mode
+                                        scheduleMode === option.mode
                                             ? 'bg-primary-subtle text-primary-text'
-                                            : 'text-foreground enabled:hover:bg-accent focus-visible:bg-accent'
+                                            : 'text-foreground focus-visible:bg-accent enabled:hover:bg-accent'
                                     "
-                                    @click="
-                                        selectScheduleMode(
-                                            option.mode,
-                                        )
-                                    "
+                                    @click="selectScheduleMode(option.mode)"
                                 >
                                     <span
                                         class="flex items-center gap-1 leading-[17.5px] font-emphasis"
                                         ><IconCheck
-                                            v-if="
-                                                scheduleMode ===
-                                                option.mode
-                                            "
+                                            v-if="scheduleMode === option.mode"
                                             class="size-4 shrink-0"
                                         /><span
                                             v-else
                                             class="size-4 shrink-0"
                                             aria-hidden="true"
-                                        />{{
-                                            $t(option.titleKey)
-                                        }}</span
+                                        />{{ $t(option.titleKey) }}</span
                                     >
-                                    <span
-                                        class="block ps-5 leading-[21px]"
-                                        >{{
-                                            $t(
-                                                option.descriptionKey,
-                                            )
-                                        }}</span
-                                    >
+                                    <span class="block ps-5 leading-[21px]">{{
+                                        $t(option.descriptionKey)
+                                    }}</span>
                                 </button>
-                        </span>
-                    </TooltipTrigger>
-                    <TooltipContent
-                        side="left"
-                        :data-testid="`composer-schedule-blocked-${option.mode}`"
-                    >
-                        {{
-                            $t(
-                                'posts.composer.queue.no_slots_tooltip',
-                                {
-                                    channels:
-                                        accountsWithoutSlotsLabel,
-                                },
-                            )
-                        }}
-                    </TooltipContent>
-                </Tooltip>
-                <Tooltip :disabled="!canHover">
-                    <TooltipTrigger as-child>
-                        <button
-                            type="button"
-                            :data-testid="`composer-schedule-default-${option.mode}`"
-                            :aria-pressed="
-                                currentDefaultPostAction ===
-                                option.mode
-                            "
-                            :aria-label="
-                                $t(
-                                    'posts.composer.queue.set_default',
-                                    {
-                                        option: $t(
-                                            option.titleKey,
-                                        ),
-                                    },
-                                )
-                            "
-                            class="absolute top-2 right-2 flex size-6 items-center justify-center rounded-md text-muted-foreground transition-[opacity,background-color,color] duration-150 outline-none hover:bg-sidebar-action-hover focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-solid"
-                            :class="
-                                currentDefaultPostAction ===
-                                option.mode
-                                    ? 'opacity-100'
-                                    : 'opacity-0 group-hover/option:opacity-100 [@media(hover:none)]:opacity-100'
-                            "
-                            @click.stop="
-                                setDefaultPostAction(
-                                    option.mode,
-                                )
-                            "
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent
+                            side="left"
+                            :data-testid="`composer-schedule-blocked-${option.mode}`"
                         >
-                            <IconStarFilled
-                                v-if="
-                                    currentDefaultPostAction ===
-                                    option.mode
+                            {{
+                                $t('posts.composer.queue.no_slots_tooltip', {
+                                    channels: accountsWithoutSlotsLabel,
+                                })
+                            }}
+                        </TooltipContent>
+                    </Tooltip>
+                    <Tooltip :disabled="!canHover">
+                        <TooltipTrigger as-child>
+                            <button
+                                type="button"
+                                :data-testid="`composer-schedule-default-${option.mode}`"
+                                :aria-pressed="
+                                    currentDefaultPostAction === option.mode
                                 "
-                                class="size-4"
-                                :stroke-width="2.2"
-                            />
-                            <IconStar
-                                v-else
-                                class="size-4"
-                                :stroke-width="2.2"
-                            />
-                        </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">
-                        {{
-                            $t(
-                                'posts.composer.queue.set_default',
-                                {
-                                    option: $t(
-                                        option.titleKey,
-                                    ),
-                                },
-                            )
-                        }}
-                    </TooltipContent>
-                </Tooltip>
-            </div>
-        </TooltipProvider>
-        <div
-            v-if="queueBlocked"
-            data-testid="composer-queue-hint"
-            class="mt-2 space-y-1 border-t border-border-strong px-3 pt-3 pb-1 text-xs text-muted-foreground"
-        >
-            <p>{{ $t('posts.composer.queue.no_slots_hint') }}</p>
-            <Link
-                v-if="accountsWithoutSlots.length === 1"
-                :href="
-                    channelSettings.url(
-                        accountsWithoutSlots[0].id,
-                    )
-                "
-                data-testid="composer-queue-manage-slots"
-                class="font-medium text-foreground underline underline-offset-2"
-                >{{
-                    $t('posts.composer.queue.manage_slots')
-                }}</Link
+                                :aria-label="
+                                    $t('posts.composer.queue.set_default', {
+                                        option: $t(option.titleKey),
+                                    })
+                                "
+                                class="absolute top-2 right-2 flex size-6 items-center justify-center rounded-md text-muted-foreground transition-[opacity,background-color,color] duration-150 outline-none hover:bg-sidebar-action-hover focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-solid"
+                                :class="
+                                    currentDefaultPostAction === option.mode
+                                        ? 'opacity-100'
+                                        : 'opacity-0 group-hover/option:opacity-100 [@media(hover:none)]:opacity-100'
+                                "
+                                @click.stop="setDefaultPostAction(option.mode)"
+                            >
+                                <IconStarFilled
+                                    v-if="
+                                        currentDefaultPostAction === option.mode
+                                    "
+                                    class="size-4"
+                                    :stroke-width="2.2"
+                                />
+                                <IconStar
+                                    v-else
+                                    class="size-4"
+                                    :stroke-width="2.2"
+                                />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                            {{
+                                $t('posts.composer.queue.set_default', {
+                                    option: $t(option.titleKey),
+                                })
+                            }}
+                        </TooltipContent>
+                    </Tooltip>
+                </div>
+            </TooltipProvider>
+            <div
+                v-if="queueBlocked"
+                data-testid="composer-queue-hint"
+                class="mt-2 space-y-1 border-t border-border-strong px-3 pt-3 pb-1 text-xs text-muted-foreground"
             >
-            <p v-else>
-                {{
-                    $t(
-                        'posts.composer.queue.no_slots_channels',
-                        {
+                <p>{{ $t('posts.composer.queue.no_slots_hint') }}</p>
+                <Link
+                    v-if="accountsWithoutSlots.length === 1"
+                    :href="channelSettings.url(accountsWithoutSlots[0].id)"
+                    data-testid="composer-queue-manage-slots"
+                    class="font-medium text-foreground underline underline-offset-2"
+                    >{{ $t('posts.composer.queue.manage_slots') }}</Link
+                >
+                <p v-else>
+                    {{
+                        $t('posts.composer.queue.no_slots_channels', {
                             channels: accountsWithoutSlots
                                 .map(
                                     (account) =>
@@ -2351,11 +2305,10 @@ const onDialogOpenChange = (value: boolean): void => {
                                         account.display_name,
                                 )
                                 .join(', '),
-                        },
-                    )
-                }}
-            </p>
-        </div>
+                        })
+                    }}
+                </p>
+            </div>
         </template>
     </DefineScheduleMenu>
     <Dialog :open="open" @update:open="onDialogOpenChange">
@@ -2422,9 +2375,10 @@ const onDialogOpenChange = (value: boolean): void => {
                                 : 'text-muted-foreground'
                         "
                         @click="showSidePanel('templates')"
-                        ><IconTemplate class="size-4" /><span class="max-lg:sr-only">{{
-                            $t('create.templates.panel.title')
-                        }}</span></Button
+                        ><IconTemplate class="size-4" /><span
+                            class="max-lg:sr-only"
+                            >{{ $t('create.templates.panel.title') }}</span
+                        ></Button
                     >
                     <Button
                         v-if="canUseAssistant"
@@ -2439,9 +2393,10 @@ const onDialogOpenChange = (value: boolean): void => {
                                 : 'text-muted-foreground'
                         "
                         @click="showSidePanel('assistant')"
-                        ><IconWand class="size-4" /><span class="max-lg:sr-only">{{
-                            $t('posts.composer.assistant_title')
-                        }}</span></Button
+                        ><IconWand class="size-4" /><span
+                            class="max-lg:sr-only"
+                            >{{ $t('posts.composer.assistant_title') }}</span
+                        ></Button
                     >
                     <Button
                         type="button"
@@ -2455,9 +2410,10 @@ const onDialogOpenChange = (value: boolean): void => {
                                 : 'text-muted-foreground'
                         "
                         @click="showSidePanel('preview')"
-                        ><IconEye class="size-4" /><span class="max-lg:sr-only">{{
-                            $t('posts.edit.tabs.preview')
-                        }}</span></Button
+                        ><IconEye class="size-4" /><span
+                            class="max-lg:sr-only"
+                            >{{ $t('posts.edit.tabs.preview') }}</span
+                        ></Button
                     >
                     <Button
                         type="button"
@@ -2502,7 +2458,7 @@ const onDialogOpenChange = (value: boolean): void => {
                         data-testid="composer-view-switch"
                     >
                         <button
-                            v-for="view in (['edit', 'preview'] as const)"
+                            v-for="view in ['edit', 'preview'] as const"
                             :key="view"
                             type="button"
                             :aria-pressed="mobileView === view"
@@ -2567,7 +2523,9 @@ const onDialogOpenChange = (value: boolean): void => {
                                     ? '[mask-image:linear-gradient(to_right,black_calc(100%-2.5rem),transparent)] rtl:[mask-image:linear-gradient(to_left,black_calc(100%-2.5rem),transparent)]'
                                     : ''
                             "
-                            :data-overflowing="accountStripOverflows ? '' : undefined"
+                            :data-overflowing="
+                                accountStripOverflows ? '' : undefined
+                            "
                             data-testid="composer-accounts"
                             @scroll.passive="updateAccountStripFade"
                         >
@@ -2577,7 +2535,9 @@ const onDialogOpenChange = (value: boolean): void => {
                                 :account="account"
                                 :active="previewAccountId === account.id"
                                 :removable="!initialPost"
-                                @focus="openNetwork(account.platform, account.id)"
+                                @focus="
+                                    openNetwork(account.platform, account.id)
+                                "
                                 @remove="selectAccount(account)"
                             />
                         </div>
@@ -2602,9 +2562,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                     "
                                     class="shrink-0"
                                     :aria-label="
-                                        $t(
-                                            'posts.edit.platforms_dialog.title',
-                                        )
+                                        $t('posts.edit.platforms_dialog.title')
                                     "
                                     data-testid="composer-add-account"
                                 >
@@ -2661,9 +2619,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                 size="lg"
                                 class="shrink-0 border-dashed ps-4 pe-2"
                                 data-testid="composer-last-used"
-                                @click="
-                                    selectAccounts(recentlyUsedAccounts)
-                                "
+                                @click="selectAccounts(recentlyUsedAccounts)"
                                 >{{ $t('posts.composer.last_used') }}
                                 <ComposerAccountStack
                                     :accounts="recentlyUsedAccounts"
@@ -2700,7 +2656,10 @@ const onDialogOpenChange = (value: boolean): void => {
                         >
                             <template #media>
                                 <MediaTray
-                                    v-if="acceptsMedia(null) || composition.media.value.length > 0"
+                                    v-if="
+                                        acceptsMedia(null) ||
+                                        composition.media.value.length > 0
+                                    "
                                     test-id-prefix="composer"
                                     :items="composition.media.value"
                                     :limits="mediaUploadLimits()"
@@ -2709,9 +2668,13 @@ const onDialogOpenChange = (value: boolean): void => {
                                     :item-errors="mediaErrorsFor(null)"
                                     :content-types="editorContentTypes(null)"
                                     :disabled="cropUploading"
-                                    @update:suggested="setSuggestions(null, $event)"
+                                    @update:suggested="
+                                        setSuggestions(null, $event)
+                                    "
                                     @update:items="updateMedia"
-                                    @import-started="onImportStarted($event, null)"
+                                    @import-started="
+                                        onImportStarted($event, null)
+                                    "
                                     @edit="
                                         openEditor(
                                             { groupKey: null },
@@ -2725,7 +2688,9 @@ const onDialogOpenChange = (value: boolean): void => {
                                     class="mt-2 text-sm text-destructive"
                                     data-testid="composer-crop-error"
                                 >
-                                    {{ $t('posts.composer.crop_upload_failed') }}
+                                    {{
+                                        $t('posts.composer.crop_upload_failed')
+                                    }}
                                 </p>
                             </template>
                             <template #toolbar>
@@ -2733,11 +2698,15 @@ const onDialogOpenChange = (value: boolean): void => {
                                     test-id-prefix="composer-base"
                                     :signatures="availableSignatures"
                                     :media-disabled="!acceptsMedia(null)"
-                                    @import-started="onImportStarted($event, null)"
+                                    @import-started="
+                                        onImportStarted($event, null)
+                                    "
                                     @open-unsplash="openUnsplash(null)"
                                     @upload="pickBaseFiles"
                                     @select-emoji="appendEmoji($event, null)"
-                                    @select-signature="appendSignature($event, null)"
+                                    @select-signature="
+                                        appendSignature($event, null)
+                                    "
                                     @save-signature="saveSignature"
                                 >
                                     <SharedCounterChip
@@ -2766,11 +2735,16 @@ const onDialogOpenChange = (value: boolean): void => {
                                 :content-type-options="
                                     contentTypeOptionsFor(group)
                                 "
-                                :has-media="groupDestination(group).media.length > 0"
-                                :content-type="groupDestination(group).content_type"
+                                :has-media="
+                                    groupDestination(group).media.length > 0
+                                "
+                                :content-type="
+                                    groupDestination(group).content_type
+                                "
                                 :disabled="cropUploading"
                                 :caption-collapsed="
-                                    threadReplies(group)[threadActive] !== undefined
+                                    threadReplies(group)[threadActive] !==
+                                    undefined
                                 "
                                 :active-reply="threadActive"
                                 :threadable="supportsThread(group)"
@@ -2797,7 +2771,10 @@ const onDialogOpenChange = (value: boolean): void => {
                                 @open-templates="showSidePanel('templates')"
                             >
                                 <template
-                                    v-if="group.platform === Platform.GoogleBusiness"
+                                    v-if="
+                                        group.platform ===
+                                        Platform.GoogleBusiness
+                                    "
                                     #header
                                 >
                                     <GoogleBusinessTopicTypeRadios
@@ -2813,7 +2790,8 @@ const onDialogOpenChange = (value: boolean): void => {
                                                 group.key,
                                                 'meta',
                                                 googleBusinessTopicMeta(
-                                                    groupDestination(group).meta,
+                                                    groupDestination(group)
+                                                        .meta,
                                                     $event,
                                                 ),
                                             )
@@ -2844,13 +2822,16 @@ const onDialogOpenChange = (value: boolean): void => {
                                         {{
                                             $t(
                                                 `posts.form.warnings.${setMediaWarning(group.anchor)!.key}`,
-                                                setMediaWarning(group.anchor)!.params,
+                                                setMediaWarning(group.anchor)!
+                                                    .params,
                                             )
                                         }}
                                     </div>
                                     <div
                                         v-if="
-                                            destinationIssues(group.anchor).some(
+                                            destinationIssues(
+                                                group.anchor,
+                                            ).some(
                                                 (issue) =>
                                                     issue.key ===
                                                     'posts.form.warnings.text_only',
@@ -2863,10 +2844,15 @@ const onDialogOpenChange = (value: boolean): void => {
                                         <IconAlertTriangle
                                             class="size-4 shrink-0 text-warning"
                                         />
-                                        {{ $t('posts.form.warnings.text_only') }}
+                                        {{
+                                            $t('posts.form.warnings.text_only')
+                                        }}
                                     </div>
                                     <div
-                                        v-if="(groupHashtagsRemaining(group) ?? 0) < 0"
+                                        v-if="
+                                            (groupHashtagsRemaining(group) ??
+                                                0) < 0
+                                        "
                                         role="status"
                                         class="flex items-center gap-2 rounded-md bg-warning/15 px-3 py-1.5 text-sm"
                                         :data-testid="`composer-hashtag-warning-${group.anchor.id}`"
@@ -2916,17 +2902,23 @@ const onDialogOpenChange = (value: boolean): void => {
                                         :removable="
                                             linkPreviewDroppable(group.platform)
                                         "
-                                        :replacing="linkCardMediaHttp.processing"
+                                        :replacing="
+                                            linkCardMediaHttp.processing
+                                        "
                                         :disabled="cropUploading"
                                         @remove="dropLinkCard(group)"
-                                        @replace="replaceLinkCardWithMedia(group)"
+                                        @replace="
+                                            replaceLinkCardWithMedia(group)
+                                        "
                                     />
                                     <MediaTray
                                         v-if="!threadReplies(group).length"
                                         v-show="
                                             (acceptsMedia(group.key) ||
-                                                groupDestination(group).media.length > 0) &&
-                                            (!openLinkCard || trayHasActivity(group.key))
+                                                groupDestination(group).media
+                                                    .length > 0) &&
+                                            (!openLinkCard ||
+                                                trayHasActivity(group.key))
                                         "
                                         :test-id-prefix="`composer-${group.anchor.id}`"
                                         :items="groupDestination(group).media"
@@ -2971,7 +2963,8 @@ const onDialogOpenChange = (value: boolean): void => {
                                     <MediaTray
                                         v-if="
                                             threadActive === -1 ||
-                                            groupDestination(group).media.length ||
+                                            groupDestination(group).media
+                                                .length ||
                                             trayHasActivity(group.key)
                                         "
                                         class="px-[9px] pt-1"
@@ -3010,20 +3003,27 @@ const onDialogOpenChange = (value: boolean): void => {
                                         :max="THREAD_MAX_REPLIES"
                                         :model-value="threadReplies(group)"
                                         :platform="group.platform"
-                                        :limit="threadReplyLimit(group) ?? Infinity"
+                                        :limit="
+                                            threadReplyLimit(group) ?? Infinity
+                                        "
                                         :errors="threadReplyErrors(group)"
                                         :disabled="cropUploading"
                                         @update:model-value="
                                             setThreadReplies(group, $event)
                                         "
-                                        @paste="onReplyMediaPasted($event, group)"
+                                        @paste="
+                                            onReplyMediaPasted($event, group)
+                                        "
                                     >
                                         <template #media="{ reply, index }">
                                             <div
                                                 v-if="
                                                     threadActive === index ||
                                                     reply.media.length ||
-                                                    replyHasActivity(group, reply)
+                                                    replyHasActivity(
+                                                        group,
+                                                        reply,
+                                                    )
                                                 "
                                                 class="flex flex-col gap-2 px-[9px] pt-1"
                                             >
@@ -3040,8 +3040,10 @@ const onDialogOpenChange = (value: boolean): void => {
                                                     @edit:media="
                                                         openEditor(
                                                             {
-                                                                groupKey: group.key,
-                                                                replyKey: reply.key,
+                                                                groupKey:
+                                                                    group.key,
+                                                                replyKey:
+                                                                    reply.key,
                                                             },
                                                             $event,
                                                             'edit',
@@ -3049,12 +3051,19 @@ const onDialogOpenChange = (value: boolean): void => {
                                                     "
                                                 />
                                                 <MediaTray
-                                                    :items-only="threadActive !== index"
+                                                    :items-only="
+                                                        threadActive !== index
+                                                    "
                                                     :test-id-prefix="`composer-${group.anchor.id}-reply-${index}`"
                                                     :items="reply.media"
-                                                    :limits="mediaUploadLimits()"
+                                                    :limits="
+                                                        mediaUploadLimits()
+                                                    "
                                                     :uploader="
-                                                        replyUploaderFor(group, reply)
+                                                        replyUploaderFor(
+                                                            group,
+                                                            reply,
+                                                        )
                                                     "
                                                     :content-types="
                                                         editorContentTypes(
@@ -3073,8 +3082,10 @@ const onDialogOpenChange = (value: boolean): void => {
                                                     @edit="
                                                         openEditor(
                                                             {
-                                                                groupKey: group.key,
-                                                                replyKey: reply.key,
+                                                                groupKey:
+                                                                    group.key,
+                                                                replyKey:
+                                                                    reply.key,
                                                             },
                                                             $event.index,
                                                             $event.tab,
@@ -3096,11 +3107,15 @@ const onDialogOpenChange = (value: boolean): void => {
                                     <ComposerEditorToolbar
                                         :test-id-prefix="`composer-${group.anchor.id}`"
                                         :signatures="availableSignatures"
-                                        :media-disabled="!groupAcceptsMedia(group)"
+                                        :media-disabled="
+                                            !groupAcceptsMedia(group)
+                                        "
                                         @import-started="
                                             onGroupImportStarted($event, group)
                                         "
-                                        @open-unsplash="openGroupUnsplash(group)"
+                                        @open-unsplash="
+                                            openGroupUnsplash(group)
+                                        "
                                         @upload="pickGroupFiles(group)"
                                         @select-emoji="
                                             appendEmoji($event, group.key)
@@ -3111,15 +3126,22 @@ const onDialogOpenChange = (value: boolean): void => {
                                         @save-signature="saveSignature"
                                     >
                                         <CharacterCounter
-                                            v-if="activeRemaining(group) !== null"
+                                            v-if="
+                                                activeRemaining(group) !== null
+                                            "
                                             :data-testid="`composer-char-count-${group.anchor.id}`"
-                                            :exceeded="(activeRemaining(group) ?? 0) < 0"
+                                            :exceeded="
+                                                (activeRemaining(group) ?? 0) <
+                                                0
+                                            "
                                         >
                                             {{ activeRemaining(group) }}
                                         </CharacterCounter>
                                         <template v-if="supportsThread(group)">
                                             <Button
-                                                v-if="!threadReplies(group).length"
+                                                v-if="
+                                                    !threadReplies(group).length
+                                                "
                                                 type="button"
                                                 variant="ghost"
                                                 size="sm"
@@ -3128,14 +3150,19 @@ const onDialogOpenChange = (value: boolean): void => {
                                                 :disabled="cropUploading"
                                                 @click="addThreadReply(group)"
                                             >
-                                                <IconCirclePlus class="size-4" />
+                                                <IconCirclePlus
+                                                    class="size-4"
+                                                />
                                                 <span data-single-line>{{
-                                                    $t('posts.form.thread.start')
+                                                    $t(
+                                                        'posts.form.thread.start',
+                                                    )
                                                 }}</span>
                                             </Button>
                                             <Button
                                                 v-else-if="
-                                                    threadReplies(group).length <
+                                                    threadReplies(group)
+                                                        .length <
                                                     THREAD_MAX_REPLIES
                                                 "
                                                 type="button"
@@ -3149,11 +3176,17 @@ const onDialogOpenChange = (value: boolean): void => {
                                                 :disabled="cropUploading"
                                                 @click="addThreadReply(group)"
                                             >
-                                                <IconCirclePlus class="size-4" />
+                                                <IconCirclePlus
+                                                    class="size-4"
+                                                />
                                             </Button>
                                         </template>
                                         <CharacterCounter
-                                            v-if="(groupHashtagsRemaining(group) ?? -1) >= 0"
+                                            v-if="
+                                                (groupHashtagsRemaining(
+                                                    group,
+                                                ) ?? -1) >= 0
+                                            "
                                             :data-testid="`composer-hashtags-remaining-${group.anchor.id}`"
                                             data-single-line
                                         >
@@ -3203,15 +3236,19 @@ const onDialogOpenChange = (value: boolean): void => {
                                                     )
                                                 "
                                                 :platform-index="
-                                                    selectedAccounts.indexOf(account)
+                                                    selectedAccounts.indexOf(
+                                                        account,
+                                                    )
                                                 "
                                                 :platform-config="
-                                                    platformConfigs[account.id] ??
-                                                    null
+                                                    platformConfigs[
+                                                        account.id
+                                                    ] ?? null
                                                 "
                                                 :pinterest-boards="
-                                                    pinterestBoards[account.id] ??
-                                                    null
+                                                    pinterestBoards[
+                                                        account.id
+                                                    ] ?? null
                                                 "
                                                 :tiktok-creator-info="
                                                     tiktokCreatorInfos[
@@ -3234,7 +3271,9 @@ const onDialogOpenChange = (value: boolean): void => {
                                         :account="group.anchor"
                                         :destination="groupDestination(group)"
                                         :platform-index="
-                                            selectedAccounts.indexOf(group.anchor)
+                                            selectedAccounts.indexOf(
+                                                group.anchor,
+                                            )
                                         "
                                         :platform-config="
                                             platformConfigs[group.anchor.id] ??
@@ -3248,9 +3287,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                             )
                                         "
                                         @link-facebook="
-                                            saveAndLinkFacebook(
-                                                group.anchor.id,
-                                            )
+                                            saveAndLinkFacebook(group.anchor.id)
                                         "
                                     />
                                 </template>
@@ -3284,7 +3321,9 @@ const onDialogOpenChange = (value: boolean): void => {
                         v-if="isDesktop && sidePanel === 'templates'"
                         @select="insertAssistantText"
                     />
-                    <template v-else-if="isDesktop && sidePanel === 'assistant'">
+                    <template
+                        v-else-if="isDesktop && sidePanel === 'assistant'"
+                    >
                         <h3
                             class="shrink-0 px-8 pt-[22px] pb-[18px] text-base leading-5 font-medium"
                         >
@@ -3336,7 +3375,9 @@ const onDialogOpenChange = (value: boolean): void => {
                                         data-testid="composer-preview-frame"
                                         :platform="group.platform"
                                         :social-account="group.anchor"
-                                        :content="groupDestination(group).content"
+                                        :content="
+                                            groupDestination(group).content
+                                        "
                                         :media="groupDestination(group).media"
                                         :content-type="
                                             groupDestination(group).content_type
@@ -3416,9 +3457,8 @@ const onDialogOpenChange = (value: boolean): void => {
                                 <span
                                     v-if="!selectedLabels.length"
                                     class="max-sm:sr-only"
-                                    >{{
-                                    $t('posts.edit.labels')
-                                }}</span>
+                                    >{{ $t('posts.edit.labels') }}</span
+                                >
                                 <span
                                     v-else
                                     class="flex min-w-0 items-center gap-1.5 overflow-hidden"
@@ -3710,10 +3750,7 @@ const onDialogOpenChange = (value: boolean): void => {
         :aspect-bounds="cropAspectBounds"
         @apply="onMediaEdited"
     />
-    <UnsplashDialog
-        v-model:open="unsplashOpen"
-        @picked="onUnsplashPicked"
-    />
+    <UnsplashDialog v-model:open="unsplashOpen" @picked="onUnsplashPicked" />
     <ComposerDiscardDialog
         v-model:open="unsavedChanges.confirming.value"
         :title="$t('common.unsaved_changes.title')"

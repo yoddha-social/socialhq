@@ -54,6 +54,7 @@ test('dragging a card to another column moves the brief there, and it stays afte
 });
 
 test('a card\'s "Move to" menu moves it without dragging', function () {
+    // In review needs a round with files (ProductionBoard::assertMayMove), so the menu moves it to In progress.
     [$user, $brief] = productionBoardSetup();
     $this->actingAs($user);
 
@@ -61,12 +62,12 @@ test('a card\'s "Move to" menu moves it without dragging', function () {
     waitFor($page, "@board-card-menu-{$brief->id}");
 
     $page->click("@board-card-menu-{$brief->id}");
-    waitFor($page, "@board-card-move-{$brief->id}-in_review");
-    $page->click("@board-card-move-{$brief->id}-in_review");
+    waitFor($page, "@board-card-move-{$brief->id}-in_progress");
+    $page->click("@board-card-move-{$brief->id}-in_progress");
 
-    waitForDatabase($page, fn (): bool => $brief->refresh()->stage === BriefStage::InReview);
-    waitFor($page, "@board-column-in_review @board-card-{$brief->id}");
+    waitForDatabase($page, fn (): bool => $brief->refresh()->stage === BriefStage::InProgress);
+    waitFor($page, "@board-column-in_progress @board-card-{$brief->id}");
 
-    expect($brief->refresh()->stage)->toBe(BriefStage::InReview);
+    expect($brief->refresh()->stage)->toBe(BriefStage::InProgress);
     $page->assertNoJavaScriptErrors();
 });

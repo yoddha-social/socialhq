@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { Link, useForm } from '@inertiajs/vue3';
-import { IconSparkles } from '@tabler/icons-vue';
+import { IconCheck, IconSparkles } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
-import { localizedDay } from '@/components/socialhq/localizedDay';
+import PlanRangePicker from '@/components/socialhq/plan/PlanRangePicker.vue';
 import type {
     PlanAudience,
     PlanGenerateOptions,
@@ -20,17 +20,12 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import {
-    NativeSelect,
-    NativeSelectOption,
-} from '@/components/ui/native-select';
-import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import dayjs from '@/dayjs';
 import { generate } from '@/routes/socialhq/plan';
 import { index as eventsIndex } from '@/routes/socialhq/plan/events';
 
-type SourceSwitch = 'old_calendars' | 'past_posts' | 'audience_events';
+type SourceOption = 'old_calendars' | 'past_posts' | 'audience_events';
 
 const props = defineProps<{
     month: string;
@@ -61,27 +56,14 @@ const generateError = computed(
     () => (form.errors as Record<string, string | undefined>).generate,
 );
 
-const days = computed(() => {
-    const start = localizedDay(`${props.month}-01`);
-
-    return Array.from({ length: start.daysInMonth() }, (_, index) => {
-        const day = start.add(index, 'day');
-
-        return {
-            value: day.format('YYYY-MM-DD'),
-            label: day.format('ddd D MMMM'),
-        };
-    });
-});
-
 const hasAudience = computed(() => props.audience.countries.length > 0);
 
 const audienceCountries = computed(() =>
     props.audience.countries.map((country) => country.name).join(', '),
 );
 
-const switches = computed<
-    { key: SourceSwitch; label: string; help: string; disabled: boolean }[]
+const sources = computed<
+    { key: SourceOption; label: string; help: string; disabled: boolean }[]
 >(() => [
     {
         key: 'old_calendars',
@@ -138,23 +120,17 @@ watch(open, (isOpen) => {
     }
 });
 
-const setSwitch = (key: SourceSwitch, value: boolean): void => {
-    form[key] = value;
+const toggleSource = (key: SourceOption): void => {
+    form[key] = !form[key];
 };
 
-/**
- * The last day never comes before the first: moving the first day past it
- * moves it along. A watcher, not the select's change event, which fires
- * before the select's v-model has updated the form.
- */
-watch(
-    () => form.from,
-    (from) => {
-        if (from !== '' && form.to < from) {
-            form.to = from;
-        }
-    },
-);
+/** An option card: accent tint, border and check when on, a plain outline when off. */
+const sourceClass = (on: boolean): string[] => [
+    'relative flex h-full w-full flex-col items-start gap-1 rounded-lg border p-3 pe-9 text-start transition-control outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring focus-visible:outline-solid disabled:cursor-not-allowed disabled:opacity-60',
+    on
+        ? 'border-primary-strong bg-primary-subtle'
+        : 'border-border-strong bg-card hover:bg-accent disabled:hover:bg-card',
+];
 
 const close = (): void => {
     open.value = false;
@@ -226,58 +202,24 @@ const start = (): void => {
                     >
                 </p>
 
-                <fieldset class="flex flex-col gap-2">
-                    <legend class="mb-2 text-sm font-medium">
-                        {{ $t('socialhq_plan.generate.range') }}
-                    </legend>
-                    <div
-                        class="grid grid-cols-2 gap-3 [&_[data-slot=native-select-wrapper]]:w-full"
+                <div class="flex flex-col gap-2">
+                    <Label
+                        id="plan-generate-range-label"
+                        for="plan-generate-range-trigger"
+                        >{{ $t('socialhq_plan.generate.range') }}</Label
                     >
-                        <div class="flex flex-col gap-1.5">
-                            <Label
-                                for="plan-generate-from"
-                                class="text-xs text-muted-foreground"
-                                >{{ $t('socialhq_plan.generate.from') }}</Label
-                            >
-                            <NativeSelect
-                                id="plan-generate-from"
-                                v-model="form.from"
-                                class="capitalize"
-                                data-testid="plan-generate-from"
-                            >
-                                <NativeSelectOption
-                                    v-for="day in days"
-                                    :key="day.value"
-                                    :value="day.value"
-                                >
-                                    {{ day.label }}
-                                </NativeSelectOption>
-                            </NativeSelect>
-                        </div>
-                        <div class="flex flex-col gap-1.5">
-                            <Label
-                                for="plan-generate-to"
-                                class="text-xs text-muted-foreground"
-                                >{{ $t('socialhq_plan.generate.to') }}</Label
-                            >
-                            <NativeSelect
-                                id="plan-generate-to"
-                                v-model="form.to"
-                                class="capitalize"
-                                data-testid="plan-generate-to"
-                            >
-                                <NativeSelectOption
-                                    v-for="day in days"
-                                    :key="day.value"
-                                    :value="day.value"
-                                    :disabled="day.value < form.from"
-                                >
-                                    {{ day.label }}
-                                </NativeSelectOption>
-                            </NativeSelect>
-                        </div>
-                    </div>
-                    <p class="text-xs text-muted-foreground">
+                    <PlanRangePicker
+                        v-model:from="form.from"
+                        v-model:to="form.to"
+                        :month="month"
+                        :today="today"
+                        labelledby="plan-generate-range-label"
+                        describedby="plan-generate-range-help"
+                    />
+                    <p
+                        id="plan-generate-range-help"
+                        class="text-xs text-muted-foreground"
+                    >
                         {{
                             $t('socialhq_plan.generate.range_help', {
                                 month: monthLabel,
@@ -290,26 +232,31 @@ const start = (): void => {
                     >
                         {{ form.errors.from ?? form.errors.to }}
                     </p>
-                </fieldset>
+                </div>
 
-                <fieldset class="flex flex-col gap-3">
-                    <legend class="mb-1 text-sm font-medium">
+                <fieldset class="flex flex-col gap-2">
+                    <legend class="mb-2 text-sm font-medium">
                         {{ $t('socialhq_plan.generate.sources') }}
                     </legend>
-                    <div
-                        v-for="option in switches"
-                        :key="option.key"
-                        class="flex items-start justify-between gap-4"
-                    >
-                        <div class="flex min-w-0 flex-col gap-0.5">
-                            <Label
-                                :for="`plan-generate-${option.key}`"
-                                :class="{
-                                    'text-muted-foreground': option.disabled,
-                                }"
-                                >{{ $t(option.label) }}</Label
+                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        <button
+                            v-for="option in sources"
+                            :key="option.key"
+                            type="button"
+                            :class="sourceClass(form[option.key])"
+                            :disabled="option.disabled"
+                            :aria-pressed="form[option.key]"
+                            :aria-labelledby="`plan-generate-${option.key}-label`"
+                            :aria-describedby="`plan-generate-${option.key}-help`"
+                            :data-testid="`plan-generate-${option.key}`"
+                            @click="toggleSource(option.key)"
+                        >
+                            <span
+                                :id="`plan-generate-${option.key}-label`"
+                                class="text-sm font-medium text-foreground"
+                                >{{ $t(option.label) }}</span
                             >
-                            <p
+                            <span
                                 :id="`plan-generate-${option.key}-help`"
                                 class="text-xs text-muted-foreground"
                             >
@@ -318,19 +265,15 @@ const start = (): void => {
                                         countries: audienceCountries,
                                     })
                                 }}
-                            </p>
-                        </div>
-                        <Switch
-                            :id="`plan-generate-${option.key}`"
-                            class="mt-0.5 shrink-0"
-                            :model-value="form[option.key]"
-                            :disabled="option.disabled"
-                            :aria-describedby="`plan-generate-${option.key}-help`"
-                            :data-testid="`plan-generate-${option.key}`"
-                            @update:model-value="
-                                setSwitch(option.key, Boolean($event))
-                            "
-                        />
+                            </span>
+                            <span
+                                v-if="form[option.key]"
+                                class="absolute end-2.5 top-2.5 flex size-5 items-center justify-center rounded-full bg-primary-strong text-primary-strong-foreground"
+                                aria-hidden="true"
+                            >
+                                <IconCheck class="size-3.5" stroke-width="3" />
+                            </span>
+                        </button>
                     </div>
                 </fieldset>
 

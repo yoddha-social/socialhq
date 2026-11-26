@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\AiGraphics\AiGraphic;
 use App\SocialHq\AiGraphics\GraphicSafetyReviewer;
+use App\SocialHq\Companies\Company;
 use App\SocialHq\Knowledge\Look\BrandLook;
 use App\SocialHq\Knowledge\Look\LogoStorage;
 use App\SocialHq\Plan\Ai\CopyWriter;
@@ -188,6 +189,8 @@ test('the brief writer gets the brand look, and the copy writer the style line',
         'socialhq.ai.routes.write' => 'anthropic',
         'ai.providers.anthropic.key' => 'test-anthropic-key',
     ]);
+    // AI runs for a company a platform admin allowed Social HQ's AI keys.
+    Company::factory()->usingPlatformAi()->create(['account_id' => $this->owner->account_id]);
     saveLook($this->owner);
     $plan = ContentPlan::factory()->create(['workspace_id' => $this->workspace->id]);
     $item = PlanItem::factory()->create(['plan_id' => $plan->id, 'title' => 'Dashain offer']);
@@ -218,6 +221,8 @@ test('AI graphics can add the brand logo as the first reference and follow the b
         'ai.providers.gemini.key' => 'test-gemini-key',
         'ai.providers.anthropic.key' => 'test-anthropic-key',
     ]);
+    // AI runs for a company a platform admin allowed Social HQ's AI keys.
+    Company::factory()->usingPlatformAi()->create(['account_id' => $this->owner->account_id]);
     saveLook($this->owner);
     $this->post(route('socialhq.brand.look.logo.store'), ['logo' => UploadedFile::fake()->image('logo.png', 120, 120)]);
     GraphicSafetyReviewer::fake(array_fill(0, 2, ['allowed' => true, 'reason' => '']));

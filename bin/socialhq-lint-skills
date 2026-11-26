@@ -17,7 +17,7 @@ BANNED=(
   'trypost-app|the shallow upstream clone is retired; read upstream code in this repo'
   'socialhq/(api|web)\b|the Rails + React app is retired (socialhq-rails-reference)'
   'REST API only|only through (its|the) REST|Social HQ is the fork; it calls TryPost code directly'
-  '\bunmodified\b|TryPost is forked and modified (PATCHES.md)'
+  '\bunmodified\b|Social HQ is a hard fork; the TryPost files are ours to change'
   '-confidential|LiteLLM uses task groups shq-*; there is no confidential split'
   '\bRSpec\b|\bDusk\b|tests are Pest (browser tests via pest-plugin-browser)'
   '\bSidekiq\b|queues run on Horizon'

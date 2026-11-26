@@ -363,6 +363,7 @@ return [
             ],
             'fit' => ':good of :total keyword fits your brand.|:good of :total keywords fit your brand.',
             'all_to_ai' => 'It goes to the AI: the verdict is a warning, the call is yours.|All :count go to the AI: the verdicts are warnings, the call is yours.',
+            'all_to_ai_member' => 'It goes to the AI: the verdict is a warning.|All :count go to the AI: the verdicts are warnings.',
             'checked' => 'Checked against your profile, :entries, :documents, your words to avoid, your audience places and :posts from the last :days days. It checks fit with your brand, not search demand: Social HQ can’t see how many people search for a word.',
             'entries' => ':count knowledge entry|:count knowledge entries',
             'documents' => ':count document|:count documents',
@@ -376,6 +377,10 @@ return [
                 'your_profile' => 'your profile',
                 'entries' => ':count entry|:count entries',
                 'documents' => ':count document|:count documents',
+                'entry_named' => 'your entry “:title”',
+                'entries_named' => 'your entries “:first” and “:second”',
+                'document_named' => 'the document “:title”',
+                'documents_named' => 'the documents “:first” and “:second”',
             ],
             'reasons' => [
                 'conflict' => '“:word” is in your words to avoid.',
@@ -388,13 +393,30 @@ return [
                 'twin' => 'Almost the same as “:other”.',
                 'good' => 'Found in :places.',
                 'good_plain' => 'Fits your brand.',
+                'audience_place' => ':place is one of your audience places.',
+                'audience_place_part' => ':place is in :parent, one of your audience places.',
             ],
             'fixes' => [
                 'conflict' => 'Your keyword wins: the AI uses it as written. Remove or reword it if that’s not what you want.',
-                'weak' => 'Add an entry that backs it up. The AI still uses it, only as a search phrase.',
+                'weak_none' => 'If it’s true, add an entry about it. The AI still uses it, only as a search phrase.',
+                'weak_some' => 'If it’s true, add an entry about :missing. The AI still uses it, only as a search phrase.',
+                'weak_apart' => 'Add an entry that says it in one place. The AI still uses it, only as a search phrase.',
                 'one_word' => 'Add what makes you different, like a place or a product.',
+                'one_word_example' => 'Pair it with what makes you different, like “:example”.',
+                'claim_other' => '“:other” says the same without the claim.',
                 'place' => 'If you post for people there, add it under Where your audience is.',
                 'twin' => 'Keep one of the two.',
+            ],
+            // The same fixes for someone who can't change the keywords: they say who can.
+            'member_fixes' => [
+                'conflict' => 'The AI uses it as written. If that’s not what you want, a workspace admin can remove or reword it.',
+                'weak_none' => 'The AI uses it only as a search phrase. If it’s true, a workspace admin can add an entry about it.',
+                'weak_some' => 'The AI uses it only as a search phrase. If it’s true, a workspace admin can add an entry about :missing.',
+                'weak_apart' => 'The AI uses it only as a search phrase. A workspace admin can add an entry that says it in one place.',
+                'one_word' => 'A workspace admin can add what makes you different, like a place or a product.',
+                'one_word_example' => 'A workspace admin can pair it with what makes you different, like “:example”.',
+                'place' => 'If you post for people there, a workspace admin can add it under Where your audience is.',
+                'twin' => 'One of the two is enough; a workspace admin can remove the other.',
             ],
         ],
         'groups' => [
@@ -428,6 +450,8 @@ return [
         'toasts' => [
             'added' => 'Added “:keyword”.',
             'added_many' => 'Added :count keywords.',
+            'added_supporting' => 'Added “:keyword” as supporting: you already have :max main keywords.',
+            'added_many_supporting' => 'Added :count keywords. You already have :max main keywords, so :moved went to supporting.',
             'duplicate' => '“:keyword” is already in your keywords.',
             'removed' => 'Removed “:keyword”.',
             'main_full' => 'You already have :max main keywords. Make one supporting first.',
@@ -456,6 +480,7 @@ return [
                 'too_short' => 'Too short',
                 'too_long' => 'Over 60 characters',
                 'duplicate' => 'Already added',
+                'repeated' => 'Already in this file',
                 'over_limit' => 'Over the limit of :max',
             ],
             'errors' => [
@@ -483,6 +508,13 @@ return [
             'action' => 'Add SEO keywords',
             'hide' => 'Hide for 7 days',
             'hidden' => 'Hidden for 7 days for this brand, in this browser. It comes back after that until keywords are added.',
+        ],
+        // Under AI text once the brand has keywords: the ones it says.
+        'used' => [
+            'label' => 'Keywords used:',
+            'main_first_line' => 'main keyword in the first line',
+            'none' => 'No keyword fits this post. That’s fine: the AI skips them rather than force one in.',
+            'link' => 'Keywords',
         ],
         'errors' => [
             'too_many' => 'A brand can have up to :max SEO keywords.',
@@ -820,6 +852,10 @@ return [
         'idempotency_key_busy' => 'A call with this idempotency_key is still running. Try again in a moment.',
     ],
     'skip_to_content' => 'Skip to content',
+    'refusals' => [
+        'rate_limited' => 'Too many tries in a short time. Wait a minute, then try again.',
+        'request_failed' => 'Couldn\'t reach Social HQ. Check your connection and try again.',
+    ],
     'errors' => [
         'back' => 'Back to Social HQ',
         'code' => 'Error :status',

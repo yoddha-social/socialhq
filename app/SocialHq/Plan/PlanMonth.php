@@ -43,6 +43,14 @@ final class PlanMonth
         return CarbonImmutable::createFromFormat('!Y-m-d', "{$month}-01", 'UTC');
     }
 
+    /**
+     * Today's date (Y-m-d) in the person's time zone.
+     */
+    public static function today(User $user): string
+    {
+        return CarbonImmutable::now(Timezone::normalize($user->timezone))->toDateString();
+    }
+
     public static function current(User $user): CarbonImmutable
     {
         $today = CarbonImmutable::now(Timezone::normalize($user->timezone));

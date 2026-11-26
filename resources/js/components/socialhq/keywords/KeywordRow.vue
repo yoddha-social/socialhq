@@ -7,7 +7,7 @@ import {
     IconDots,
     IconTrash,
 } from '@tabler/icons-vue';
-import { computed, useId } from 'vue';
+import { computed, ref, useId } from 'vue';
 
 import type {
     Keyword,
@@ -72,6 +72,15 @@ const remove = (): void => {
 const addEntry = (): void => {
     emit('addEntry');
 };
+
+const toggleButton = ref<HTMLButtonElement | null>(null);
+
+/** Puts the keyboard on this row (the card does after removing the row next to it). */
+const focus = (): void => {
+    toggleButton.value?.focus();
+};
+
+defineExpose({ focus });
 </script>
 
 <template>
@@ -79,10 +88,14 @@ const addEntry = (): void => {
         class="border-b border-border last:border-b-0"
         :data-testid="`socialhq-keyword-${slug}`"
     >
-        <div class="flex items-start gap-1 px-3 py-2.5 hover:bg-muted/60">
+        <!-- On a phone the recent-posts count goes under the text, so the reason keeps the width. -->
+        <div
+            class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-1 px-3 py-2.5 hover:bg-muted/60 sm:grid-cols-[minmax(0,1fr)_auto_auto]"
+        >
             <button
+                ref="toggleButton"
                 type="button"
-                class="flex min-w-0 flex-1 flex-col gap-1 text-start"
+                class="col-start-1 row-start-1 flex min-w-0 flex-col gap-1 text-start"
                 :aria-expanded="open"
                 :aria-controls="detailsId"
                 :aria-label="
@@ -116,29 +129,27 @@ const addEntry = (): void => {
                     </span>
                 </span>
             </button>
-            <span class="flex shrink-0 items-center gap-1 pt-0.5">
-                <span
-                    v-if="row && checked"
-                    class="me-1 text-xs text-muted-foreground tabular-nums"
-                    :title="
-                        $t('socialhq.keywords.row.posts_title', {
-                            days: String(checked.days),
-                        })
-                    "
-                    :data-testid="`socialhq-keyword-posts-${slug}`"
-                >
-                    {{
-                        row.posts > 0
-                            ? $tChoice(
-                                  'socialhq.keywords.row.posts',
-                                  row.posts,
-                                  {
-                                      count: formatFullNumber(row.posts),
-                                  },
-                              )
-                            : $t('socialhq.keywords.row.no_posts')
-                    }}
-                </span>
+            <span
+                v-if="row && checked"
+                class="col-start-1 row-start-2 pt-1 text-xs text-muted-foreground tabular-nums sm:col-start-2 sm:row-start-1 sm:me-1 sm:pt-1.5 sm:whitespace-nowrap"
+                :title="
+                    $t('socialhq.keywords.row.posts_title', {
+                        days: String(checked.days),
+                    })
+                "
+                :data-testid="`socialhq-keyword-posts-${slug}`"
+            >
+                {{
+                    row.posts > 0
+                        ? $tChoice('socialhq.keywords.row.posts', row.posts, {
+                              count: formatFullNumber(row.posts),
+                          })
+                        : $t('socialhq.keywords.row.no_posts')
+                }}
+            </span>
+            <span
+                class="col-start-2 row-start-1 flex shrink-0 items-center gap-1 pt-0.5 sm:col-start-3"
+            >
                 <DropdownMenu v-if="canEdit">
                     <DropdownMenuTrigger as-child>
                         <Button

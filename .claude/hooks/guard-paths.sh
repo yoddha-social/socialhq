@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # PreToolUse (Edit|Write|MultiEdit).
 #   1. Denies edits to built, generated and secret files, saying what to edit instead.
-#   2. Notes TryPost base files missing from PATCHES.md, and Boost skill copies.
+#   2. Notes Boost skill copies.
 #   3. Hands Claude every .ai/rules file whose globs (.ai/rules/index.md) cover the
 #      path, once per session. AGENTS.md says to read them; this makes it happen.
 
@@ -40,13 +40,6 @@ case "$REL" in
   .claude/skills/*|.agents/skills/*)
     NOTES+="$REL is a Boost skill: a manual boost:update copies it again. To keep a change, put it in .ai/skills/<same-name>/SKILL.md, which overrides the Boost copy."$'\n' ;;
 esac
-
-# A file from the TryPost base: fine to edit, but log it so security
-# cherry-picks from TryPost know where they may conflict.
-if ! is_module_path "$REL" && (cd "$ROOT" && git ls-files --error-unmatch -- "$REL" >/dev/null 2>&1) \
-   && ! in_patches "$REL"; then
-  NOTES+="$REL comes from the TryPost base and is not in PATCHES.md yet. Add a row (file, change, why) in the same change."$'\n'
-fi
 
 # Matching .ai/rules files, once per session each.
 INDEX="$ROOT/.ai/rules/index.md"

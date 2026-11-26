@@ -41,7 +41,7 @@ import { clearAllComposerAutosaves } from '@/composables/useComposerAutosave';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { openSupportChat } from '@/lib/supportChat';
 import { cn } from '@/lib/utils';
-import posthog from '@/posthog';
+import { resetPostHog } from '@/posthog';
 import { applyTheme, type Theme } from '@/preferences';
 import { logout } from '@/routes';
 import { members } from '@/routes/app';
@@ -136,7 +136,7 @@ const handleCreateWorkspace = (): void => {
 };
 
 const handleLogout = (): void => {
-    posthog.reset();
+    resetPostHog();
     clearAllComposerAutosaves();
     router.flushAll();
 };

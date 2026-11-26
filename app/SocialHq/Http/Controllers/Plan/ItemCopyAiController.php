@@ -40,10 +40,10 @@ class ItemCopyAiController extends Controller
             return response()->json(['message' => __('socialhq_production.item.copy.ai_failed')], Response::HTTP_BAD_GATEWAY);
         }
 
-        // keywords_missing: the brand has no SEO keywords, so the page shows a light note under the copy.
+        // Under the copy: the note when the brand has no SEO keywords, else the keywords this version says.
         return response()->json([
             'number' => $version->number,
-            'keywords_missing' => BrandKeywords::isEmpty($planItem->workspace),
+            ...BrandKeywords::forAnswer($request->user(), $planItem->workspace, (string) $version->caption, "{$version->hashtags}\n{$version->script}"),
         ], Response::HTTP_CREATED);
     }
 }

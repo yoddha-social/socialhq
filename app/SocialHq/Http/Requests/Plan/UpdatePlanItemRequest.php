@@ -7,6 +7,7 @@ namespace App\SocialHq\Http\Requests\Plan;
 use App\Enums\PostPlatform\ContentType;
 use App\SocialHq\Http\Requests\Plan\Concerns\ResolvesPlanContext;
 use App\SocialHq\Plan\CreativeKind;
+use App\SocialHq\Plan\ItemPosts;
 use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Plan\PlanMonth;
 use App\SocialHq\Plan\SuggestedTime;
@@ -16,7 +17,10 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 /**
- * Changes to an item of the current workspace, within its month.
+ * Changes to an item of the current workspace, within its month. A new
+ * channel or format for an item whose post will still go out needs the
+ * person's choice for that post ("posts": back to drafts, or keep it
+ * scheduled), as dropping the item does.
  */
 class UpdatePlanItemRequest extends FormRequest
 {
@@ -49,6 +53,7 @@ class UpdatePlanItemRequest extends FormRequest
             'owner_id' => ['nullable', 'string', Rule::in($this->ownerIds())],
             'suggested_time' => ['nullable', 'string', 'regex:'.SuggestedTime::PATTERN],
             'suggested_timezone' => ['nullable', 'string', 'timezone:all'],
+            'posts' => ['nullable', 'string', Rule::in([ItemPosts::TO_DRAFTS, ItemPosts::KEEP])],
         ];
     }
 

@@ -148,7 +148,7 @@ watch(activeEntry, (entry) => {
                 <template v-if="activeEntry">
                     <button
                         type="button"
-                        class="group -ms-1 inline-flex h-8 cursor-pointer items-center gap-1 rounded-md px-1 text-sm font-medium text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                        class="group -ms-1 inline-flex h-8 cursor-pointer items-center gap-1 rounded-md px-1 text-sm font-medium text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring focus-visible:outline-solid"
                         data-testid="changelog-back"
                         @click="backToList"
                     >

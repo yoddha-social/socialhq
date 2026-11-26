@@ -1,8 +1,8 @@
 # Social HQ
 
-Social HQ is the internal social media platform of our team: a fork of
-[TryPost](https://github.com/trypostit/trypost) (AGPL-3.0) with our own
-features in a separate module. TryPost gives us workspaces, members,
+Social HQ is the internal social media platform of our team: a hard fork of
+[TryPost](https://github.com/trypostit/trypost) v2.0.1 (AGPL-3.0, owner decision
+2026-11-25), with our own features in a separate module. TryPost gives us workspaces, members,
 approvals, the calendar, the post composer, media and publishing; Social HQ
 adds the planning and AI layer:
 
@@ -24,16 +24,21 @@ adds the planning and AI layer:
 | Routes | `routes/socialhq.php`, which loads `routes/socialhq/*.php` (all under `/socialhq/*`) |
 | Configuration | `config/socialhq.php` |
 | Inertia pages and components | `resources/js/pages/socialhq/`, `resources/js/components/socialhq/` |
-| Tests (Pest) | `tests/Feature/SocialHq/`, `tests/Unit/SocialHq/`, `tests/Browser/SocialHq/` |
+| Tests (Pest) | `tests/Feature/SocialHq/`, `tests/Unit/SocialHq/`, `tests/Browser/SocialHq/`. The feature and unit ones run under the production rules (`socialHqProductionRules()` in `tests/Pest.php`, undoing `phpunit.xml`'s switches), and every account they create has an approved company; a test that needs TryPost's rule sets it back and says why |
 | Interface copy | `lang/en/socialhq.php` (see below) |
 | Image build | `.github/workflows/socialhq-image.yml` (tags `shq-v*`) |
 | Dependency audit | `.github/workflows/socialhq-audit.yml` (PRs and weekly) |
 | CI | `.github/workflows/socialhq-ci.yml` (PRs and pushes to `main`), PostgreSQL only: quality (Pint, ESLint, `vue-tsc`, Prettier on changed files), backend in 2 shards, browser in 4 shards, and production rules: TryPost's post, API, MCP, parity and repurpose suites with the approval and company rules on (`phpunit.xml` turns them off), skipping the tests listed with the reason in `tests/fixtures/socialhq/production-rules-exclusions.txt`. The job `ci` passes only when all of them pass; it is the check `main`'s ruleset is to require (until the owner switches it, the ruleset requires `quality`, `backend` and `e2e`, which the workflow still reports) |
 | Claude Code setup | `CLAUDE.md`, `.claude/settings.json`, `.claude/hooks/`, `.claude/rules/`; skills in `.ai/skills/socialhq-*` (linked into `.claude/skills/` and `.agents/skills/`), checked by `bin/socialhq-lint-skills` |
 
-Changes to files that came with TryPost are listed in [PATCHES.md](PATCHES.md),
-which also logs the monthly security intake (we take TryPost's security fixes,
-not its feature releases). Follow the conventions in [AGENTS.md](AGENTS.md)
+TryPost's files are ours to change; we never merge its feature releases, only
+port its security fixes by hand. [PATCHES.md](PATCHES.md) records each security
+watch, with the TryPost commit it was reviewed up to, and says how to ask git what
+we changed in a TryPost file (`git log v2.0.1..main -- <path>`). The per-file
+ledger of those changes was frozen on 2026-11-25
+([docs/history/PATCHES-ledger-2026-11-25.md](docs/history/PATCHES-ledger-2026-11-25.md)):
+"PATCHES.md row N" in this file and in code comments means a row there. New changes
+get no row; their reason goes in the commit message. Follow the conventions in [AGENTS.md](AGENTS.md)
 (Laravel Boost, Pest, Pint, Inertia v3, Wayfinder).
 
 ## AI routing
@@ -279,8 +284,9 @@ own). An SVG logo can't be a reference: upload a PNG for that.
 
 **SEO keywords** (Strategy tab; admins edit, members read). Up to 5 main
 and 25 supporting keywords on the brand profile (`keywords`, `[{text,
-main}]`; `socialhq.knowledge.keywords`), cleaned (one line, lowercased, a
-leading `#` dropped) and without duplicates (case and accents ignored).
+main}]`; `socialhq.knowledge.keywords`), cleaned (one line, lowercased,
+commas and semicolons made spaces, a leading `#` dropped) and without
+duplicates (case and accents ignored).
 Every change saves the whole list (`PUT socialhq/brand/keywords`). A CSV or
 text file can be dropped on the card or chosen: it is read in the browser
 (up to 100 KB; a `keyword` column or the first one, an optional `group`
@@ -291,11 +297,20 @@ its knowledge changes) gives each keyword a verdict, first match wins:
 **Conflict** (a word or phrase of "words to avoid" is in it), **Weak** (no
 single profile field, entry used in AI or document excerpt holds all its
 words, claim words aside), **Check** (one word, a claim word from
-`claim_words`, a country or time zone city that isn't an audience place,
-or the same words as another keyword), else **Good fit**, with where it was
+`claim_words`, a place that isn't an audience place or part of one, or the
+same words as another keyword), else **Good fit**, with where it was
 found and how many posts of the last 90 days say it (`KeywordMatcher`:
 words in order, case and accents ignored, linking words between allowed,
-a hashtag of the words run together counts). Verdicts are warnings only
+a hashtag of the words run together counts). Places are countries, time
+zone cities and `LocalPlaces` (Nepal's towns and city neighbourhoods, each
+with the city it is part of, so Thamel counts as Kathmandu; districts named
+for a product, like Ilam, are left out); an audience place without a city
+covers its whole country. Reasons name what was found: up to two entries or
+documents by title, the words the brand knowledge never says, the audience
+place a keyword names; a fix may point to another of the brand's keywords
+(one to pair a single word with, one that says a claim's words without
+it). Someone who can't edit Brand knowledge gets each fix in the form that
+says who can (`member_fixes`). Verdicts are warnings only
 (owner decision 2026-11-23): every keyword goes to the AI. It checks fit
 with the brand, never search demand; there is no score. A prompt gets the
 main keywords, then the supporting ones that share most words with its
@@ -308,7 +323,18 @@ one or two where they read naturally, never as a claim, never translated.
 A place inside a keyword is a source for "Check these". When the brand has
 none, the plan item's AI copy and the composer assistant's new captions
 answer `keywords_missing` and show a light note (× hides it for 7 days in
-that browser).
+that browser). The link to the card shows only when the answer's
+`can_add_keywords` says so: `BrandKeywords::missingNote()` asks
+`BrandKnowledge::canEdit`, the rule that guards the card. Once the brand
+has keywords, the same place shows "Keywords used:" instead: the keywords
+the text says (caption, hashtags and script, never the team's notes; main
+ones first), and whether a main one is in the caption's first line, found
+by `KeywordMatcher` after the answer arrives, never asked of the model
+(`BrandKeywords::forAnswer()`, `keywords_used` and `main_in_first_line`).
+New text that says none gets "No keyword fits this post"; a rewrite of the
+person's own text that says none shows nothing. Agents get the keywords a
+topic gets from `get-brand-knowledge-tool` (`keywords`, with the rules in
+its description).
 
 **Read our website** (admins). The brand's address starts `ReadWebsite`
 (queued, 5 an hour per person, one run at a time per brand):
@@ -399,7 +425,10 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   Its suggestions are checked in code (date in the month and not past, channel,
   format, confirmed event around its dates, paused channels, duplicates) before
   they show, dashed, to accept or drop. "Approve plan" waits until no
-  suggestion is open; any change sends an approved plan back to review.
+  suggestion on a coming day is open (one on a day already gone can't be
+  accepted, alone or by "Accept all"; move it or drop it); any change sends
+  an approved plan back to review. The dialog plans a week by default: the
+  free models keep far more of a week's suggestions than of a month's.
   The dialog's options (`PlannerOptions`, saved on the plan as
   `generation_options`; the switches remembered per brand in the profile's
   `planner_options`): the days to plan, any range inside the plan's month (a
@@ -423,7 +452,9 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   cards below `md`.
 - **Item** (`/socialhq/plan/items/{id}`). Copy (caption, hashtags, script for
   video, notes) saved as numbered versions, never edited in place; AI writes or
-  rewrites a version (`CopyWriter`). Review thread: send for review, request
+  rewrites a version (`CopyWriter`); hashtags the model also pasted at the
+  caption's end are kept in the hashtag list only, and a tag written with
+  spaces ("#ghar ko swad") becomes one ("#GharKoSwad") (`WriteItemCopy`). Review thread: send for review, request
   changes (a note is required), approve; approved copy is locked until someone
   starts a new version. The brief (graphic or video) is prefilled from the
   format; `BriefWriter` drafts empty fields. Creative files are uploaded in
@@ -438,12 +469,16 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   the item's post status (a failed post first, else the one furthest along);
   a post card in Publish says "From plan: <title>" and links back. A deleted
   post drops off the item. `post_created_at` is when the first post was
-  saved. The plan keeps the posts in step (`ItemPosts`, through TryPost's
+  saved; whether an item has a post is read from its linked posts
+  (`PlanItem::hasPosts()`), never from that stamp. The plan keeps the posts in step (`ItemPosts`, through TryPost's
   own actions, so rights and approvals still apply): dropping or deleting
   an item whose post will still go out (scheduled, or waiting for
-  approval) asks first, "Move it to drafts" (Publish's "Move to drafts")
-  or "Keep it scheduled" (user decision 2026-11-23); the server refuses
-  the change without a choice (`posts`). An item moved to another day
+  approval), or giving it another channel or format, asks first, "Move it
+  to drafts" (Publish's "Move to drafts") or "Keep it scheduled" (user
+  decision 2026-11-23); the server refuses the change without a choice
+  (`posts`). A post kept on the old channel or format is marked on the item
+  page ("Not on the item's channel"). Every item write runs in one
+  transaction under the item's row lock, posts to drafts included. An item moved to another day
   offers "Move post too" (a toast after the sheet saves, and a button on
   the item page by a post marked "Not on the item's day"): dated drafts
   and scheduled posts go to the item's day at the same time of day
@@ -709,7 +744,7 @@ admin's too. Besides the approval rules above:
   posts already made (`App\SocialHq\Mcp\IdempotentPostCreation`, cache).
 - **Planning tools** (`app/SocialHq/Mcp/Tools/Plan/`): read a month's plan,
   an item (copy, change requests, thread, brief), the month's events and
-  the brand knowledge AI writers get; save copy as an item's next version
+  the brand knowledge and SEO keywords AI writers get; save copy as an item's next version
   (source `ai`; refused while the copy is in review or approved) and send it
   for review. Approving stays in the app, and no tool calls our AI (AI is
   web only).
@@ -819,6 +854,20 @@ idle memory went from 1,408 MB to 578 MB and peak memory from 2,227 MB to
 1,395 MB. Publishing waits and the time to clear the burst stayed the same.
 Horizon refuses `minProcesses` 0. One worker per pool also keeps moving
 delayed and retried jobs onto its queues.
+
+## Switched off for a self-hosted team
+
+TryPost ships things for its hosted Cloud that we don't use. They stay in the code
+(a full prune is parked) but are off unless the env turns them on (audit 2026-11-24,
+ARC-08; PATCHES.md rows 350–353):
+
+- Cashier's Stripe webhook route isn't registered on a self-hosted install
+  (`SOCIALHQ_STRIPE_WEBHOOK`): without a secret it would take unsigned messages.
+- Only the networks we publish to are on by default (Facebook, Instagram through
+  Facebook, LinkedIn, YouTube, X); the others, Google Drive and Canva need
+  `*_ENABLED=true`.
+- A missing `MAIL_MAILER` logs mail instead of using TryPost's hosted mailer.
+- PostHog's library is loaded only when PostHog is enabled with a key.
 
 ## Interface copy
 

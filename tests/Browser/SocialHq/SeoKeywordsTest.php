@@ -98,7 +98,33 @@ test('an admin adds a pasted list in the field the link focuses, moves one to su
     waitForDatabase($page, fn (): bool => BrandKeywords::forWorkspace($workspace) === [
         ['text' => 'cheap coffee', 'main' => false],
     ]);
+    // The removed row had the focus: it moves to the row after it, not to the page.
+    waitForState($page, '@socialhq-keyword-toggle-cheap-coffee', 'element === document.activeElement');
 
+    $page->assertNoJavaScriptErrors();
+});
+
+test('keywords asked for as main while main is full go to supporting, said in one toast', function () {
+    [, $workspace] = seoKeywordsBrand(array_map(
+        fn (string $text): array => ['text' => $text, 'main' => true],
+        ['cold brew kathmandu', 'cafe in kathmandu', 'kathmandu coffee shop', 'coffee kathmandu', 'brew kathmandu'],
+    ));
+
+    $page = visit(route('socialhq.brand.index', ['tab' => 'strategy', 'focus' => 'keywords']))->resize(1440, 900);
+    waitFor($page, '@socialhq-keywords-input');
+    $page->select('@socialhq-keywords-group', 'main')
+        ->fill('@socialhq-keywords-input', 'iced coffee kathmandu, cold brew bottles')
+        ->click('@socialhq-keywords-add');
+
+    $message = __('socialhq.keywords.toasts.added_many_supporting', ['count' => 2, 'max' => 5, 'moved' => 2]);
+    waitForText($page, '[data-sonner-toast]', $message);
+    waitForDatabase($page, fn (): bool => count(BrandKeywords::forWorkspace($workspace)) === 7);
+
+    expect(array_slice(BrandKeywords::forWorkspace($workspace), 5))->toBe([
+        ['text' => 'iced coffee kathmandu', 'main' => false],
+        ['text' => 'cold brew bottles', 'main' => false],
+    ])
+        ->and($page->script("document.querySelectorAll('[data-sonner-toast]').length"))->toBe(1);
     $page->assertNoJavaScriptErrors();
 });
 
@@ -108,10 +134,12 @@ test('a file\'s keywords are checked before anything is saved, and saved only wh
     $page = visit(route('socialhq.brand.index', ['tab' => 'strategy']))->resize(1440, 900);
     waitFor($page, '@socialhq-keywords-drop');
 
-    seoKeywordsChooseFile($page, 'keywords.csv', "keyword,group\ncold brew kathmandu,main\ncheap coffee,supporting\nCold Brew Kathmandu,supporting\n");
+    seoKeywordsChooseFile($page, 'keywords.csv', "keyword,group\ncold brew kathmandu,main\ncheap coffee,supporting\nCold Brew Kathmandu,supporting\n\"latte art, kathmandu\",supporting\n");
     waitFor($page, '@socialhq-keywords-import-row-0 @socialhq-keyword-verdict-good');
     waitFor($page, '@socialhq-keywords-import-row-1 @socialhq-keyword-verdict-conflict');
-    $page->assertSeeIn('@socialhq-keywords-import-row-2', __('socialhq.keywords.import.notes.duplicate'));
+    // The same keyword twice in the file, and a quoted cell whose comma goes.
+    $page->assertSeeIn('@socialhq-keywords-import-row-2', __('socialhq.keywords.import.notes.repeated'))
+        ->assertSeeIn('@socialhq-keywords-import-row-3', 'latte art kathmandu');
 
     expect(BrandKeywords::forWorkspace($workspace))->toBe([]);
 
@@ -120,22 +148,70 @@ test('a file\'s keywords are checked before anything is saved, and saved only wh
     waitForDatabase($page, fn (): bool => BrandKeywords::forWorkspace($workspace) === [
         ['text' => 'cold brew kathmandu', 'main' => true],
         ['text' => 'cheap coffee', 'main' => false],
+        ['text' => 'latte art kathmandu', 'main' => false],
     ]);
     waitFor($page, '@socialhq-keywords-group-supporting @socialhq-keyword-cheap-coffee');
+    // The preview had the focus: it goes back to the field.
+    waitForState($page, '@socialhq-keywords-input', 'element === document.activeElement');
 
     $page->assertNoJavaScriptErrors();
 });
 
-test('a member sees the keywords and their verdicts, without the field or the row menus', function () {
-    [, $workspace] = seoKeywordsBrand([['text' => 'cold brew kathmandu', 'main' => true]]);
+test('a member sees the keywords and their verdicts, without the field or the row menus, and advice that says who can act', function () {
+    [, $workspace] = seoKeywordsBrand([['text' => 'cold brew kathmandu', 'main' => true], ['text' => 'cheap coffee', 'main' => false]]);
     test()->actingAs(workspaceMember($workspace));
 
     $page = visit(route('socialhq.brand.index', ['tab' => 'strategy', 'focus' => 'keywords']))->resize(1440, 900);
     waitFor($page, '@socialhq-keyword-cold-brew-kathmandu @socialhq-keyword-verdict-good');
+    waitFor($page, '@socialhq-keyword-cheap-coffee @socialhq-keyword-verdict-conflict');
 
     $page->assertMissing('@socialhq-keywords-form')
         ->assertMissing('@socialhq-keyword-menu-cold-brew-kathmandu')
+        ->assertSeeIn('@socialhq-keyword-cheap-coffee', __('socialhq.keywords.check.member_fixes.conflict'))
+        ->assertSeeIn('@socialhq-keywords-check', trans_choice('socialhq.keywords.check.all_to_ai_member', 2, ['count' => 2]))
         ->assertNoJavaScriptErrors();
+});
+
+test('a list pasted over selected text takes its place, and the group goes back to Main when a main slot frees', function () {
+    seoKeywordsBrand(array_map(
+        fn (string $text): array => ['text' => $text, 'main' => true],
+        ['cold brew kathmandu', 'cafe in kathmandu', 'kathmandu coffee shop', 'coffee kathmandu', 'brew kathmandu'],
+    ));
+
+    $page = visit(route('socialhq.brand.index', ['tab' => 'strategy', 'focus' => 'keywords']))->resize(1440, 900);
+    waitForState($page, '@socialhq-keywords-group', "element.value === 'supporting'");
+
+    seoKeywordsMenu($page, 'brew-kathmandu', 'remove');
+    waitForState($page, '@socialhq-keywords-group', "element.value === 'main'");
+
+    $page->fill('@socialhq-keywords-input', 'text to replace');
+    $page->script(<<<'JS'
+        (() => {
+            const input = document.querySelector('[data-testid="socialhq-keywords-input"]');
+            const data = new DataTransfer();
+            input.focus();
+            input.select();
+            data.setData('text/plain', 'iced latte\ncold brew bottles');
+            input.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+            return true;
+        })();
+    JS);
+    waitForState($page, '@socialhq-keywords-input', "element.value === 'iced latte, cold brew bottles'");
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('"Add an entry" on a keyword nothing backs up opens the entry dialog with the keyword as its title', function () {
+    seoKeywordsBrand([['text' => 'organic tea', 'main' => true]]);
+
+    $page = visit(route('socialhq.brand.index', ['tab' => 'strategy', 'focus' => 'keywords']))->resize(1440, 900);
+    waitFor($page, '@socialhq-keyword-organic-tea @socialhq-keyword-verdict-weak');
+    $page->click('@socialhq-keyword-toggle-organic-tea');
+    waitFor($page, '@socialhq-keyword-add-entry-organic-tea');
+    $page->click('@socialhq-keyword-add-entry-organic-tea');
+
+    waitForState($page, '@socialhq-knowledge-title', "element.value === 'Organic tea'");
+    $page->assertNoJavaScriptErrors();
 });
 
 test('after the composer assistant writes for a brand without keywords, an admin gets a note linking to them, and × hides it', function () {
@@ -199,4 +275,26 @@ test('after AI writes an item\'s copy for a brand without keywords, a member get
     $page->assertSeeIn('@socialhq-keywords-missing-note', __('socialhq.keywords.note.member'))
         ->assertMissing('@socialhq-keywords-missing-note-link')
         ->assertNoJavaScriptErrors();
+});
+
+test('after AI writes an item\'s copy for a brand with keywords, the line lists the ones it says and the main one in the first line', function () {
+    config([
+        'socialhq.ai.gateway' => 'direct',
+        'socialhq.ai.approved_providers' => ['anthropic'],
+        'socialhq.ai.routes.write' => 'anthropic',
+    ]);
+    [, $workspace] = seoKeywordsBrand([['text' => 'cold brew kathmandu', 'main' => true], ['text' => 'organic tea', 'main' => false]]);
+    $item = PlanItem::factory()->create(['plan_id' => ContentPlan::factory()->create(['workspace_id' => $workspace->id])->id]);
+    CopyWriter::fake([['caption' => "Cold brew in Kathmandu, poured slow.\n\nBack for the summer.", 'hashtags' => '#coldbrew', 'script' => '', 'notes' => '']]);
+
+    $page = visit(route('socialhq.plan.items.show', $item->id))->resize(1440, 900);
+    waitFor($page, '@item-copy-ai');
+    $page->click('@item-copy-ai');
+    waitFor($page, '@socialhq-keywords-used');
+
+    $page->assertSeeIn('@socialhq-keywords-used-keyword', 'cold brew kathmandu')
+        ->assertVisible('@socialhq-keywords-used-first-line')
+        ->assertMissing('@socialhq-keywords-missing-note')
+        ->assertNoJavaScriptErrors();
+    expect($page->script("document.querySelectorAll('[data-testid=\"socialhq-keywords-used-keyword\"]').length"))->toBe(1);
 });

@@ -2,15 +2,17 @@ import { reactive } from 'vue';
 
 import type { UpcomingPost } from '@/components/socialhq/plan/types';
 
-/** What a drop or delete does with the item's posts that will still go out. */
+/** What a drop, delete or change does with the item's posts that will still go out. */
 export type PostsChoice = 'drafts' | 'keep';
 
-export type PostsChoiceMode = 'drop' | 'delete';
+/** Dropping or deleting the item, or saving it with another channel or format. */
+export type PostsChoiceMode = 'drop' | 'delete' | 'channel' | 'format';
 
 /**
- * Dropping or deleting an item whose post will still go out asks first
- * (ItemPostsChoiceDialog, mounted once on the month page): the post goes
- * back to drafts or keeps its schedule. Null means the person cancelled.
+ * Dropping or deleting an item whose post will still go out, or giving it
+ * another channel or format, asks first (ItemPostsChoiceDialog, mounted
+ * once on the month page): the post goes back to drafts or keeps its
+ * schedule. Null means the person cancelled.
  */
 export const postsChoice = reactive<{
     open: boolean;

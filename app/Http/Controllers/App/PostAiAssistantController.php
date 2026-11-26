@@ -66,7 +66,7 @@ class PostAiAssistantController extends Controller
             );
         });
 
-        // Social HQ: a new caption for a brand without SEO keywords shows a light note (PATCHES.md row 290).
-        return response()->json(['content' => $content, 'keywords_missing' => $mode->requiresPrompt() && BrandKeywords::isEmpty($workspace)]);
+        // Social HQ: the SEO keywords note, or the keywords the caption says (PATCHES.md row 290).
+        return response()->json(['content' => $content, ...BrandKeywords::forAnswer($request->user(), $workspace, $content, newText: $mode->requiresPrompt())]);
     }
 }

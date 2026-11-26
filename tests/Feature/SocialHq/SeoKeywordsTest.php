@@ -9,6 +9,7 @@ use App\Enums\User\Locale;
 use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Companies\Company;
 use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Knowledge\Documents\DocumentStatus;
 use App\SocialHq\Knowledge\Documents\DocumentStorage;
@@ -21,6 +22,7 @@ use App\SocialHq\Plan\Ai\CopyWriter;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\ItemVersion;
 use App\SocialHq\Plan\PlanItem;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
 use Laravel\Ai\Prompts\AgentPrompt;
@@ -193,6 +195,30 @@ test('broad, claim, foreign-place and twin keywords are to check', function () {
         ->and(KeywordCheck::page($this->workspace)['verdict'])->toBe('mostly');
 });
 
+test('a town the time zones don\'t name is a place too: outside the audience unless its city or its whole country is', function () {
+    $kathmandu = [['country' => 'NP', 'city' => 'Kathmandu', 'timezone' => 'Asia/Kathmandu', 'share' => 100]];
+    brandWithKeywords(
+        $this->workspace,
+        ['coffee delivery lalitpur', 'cafe in thamel', 'momo in patan'],
+        ['about' => 'Coffee delivery across Lalitpur, momo in Patan and our cafe in Thamel.', 'audience_locations' => $kathmandu],
+    );
+
+    $rows = keywordVerdicts($this->workspace);
+
+    expect($rows['coffee delivery lalitpur']['verdict'])->toBe('check')
+        ->and($rows['coffee delivery lalitpur']['reason'])->toBe('Lalitpur isn’t one of your audience places.')
+        // Thamel is part of Kathmandu; Patan is part of Lalitpur, which isn't an audience place.
+        ->and($rows['cafe in thamel']['verdict'])->toBe('good')
+        ->and($rows['momo in patan']['reason'])->toBe('Patan isn’t one of your audience places.');
+
+    // An audience in the whole of Nepal (no city) covers its towns.
+    BrandProfile::query()->where('workspace_id', $this->workspace->id)->sole()
+        ->update(['audience_locations' => [['country' => 'NP', 'city' => null, 'timezone' => 'Asia/Kathmandu', 'share' => 100]]]);
+    Cache::flush();
+
+    expect(collect(keywordVerdicts($this->workspace))->pluck('verdict')->unique()->values()->all())->toBe(['good']);
+});
+
 test('a good fit says where it was found, and counts the recent posts that say it', function () {
     brandWithKeywords($this->workspace, [['cold brew', true]], ['about' => 'A café in Thamel.']);
     keywordEntry($this->workspace, 'Cold brew bottles', 'Steeped for 18 hours, sold in 330 ml bottles.');
@@ -207,12 +233,57 @@ test('a good fit says where it was found, and counts the recent posts that say i
     $row = $page['keywords'][0];
 
     expect($row['verdict'])->toBe('good')
-        ->and($row['reason'])->toBe('Found in 1 entry and 1 document.')
+        ->and($row['reason'])->toBe('Found in your entry “Cold brew bottles” and the document “Summer menu”.')
         ->and(collect($row['found'])->pluck('title')->all())->toBe(['Cold brew bottles', 'Summer menu'])
         ->and($row['found'][1]['snippet'])->toContain('cold brew is on the summer menu')
         ->and($row['posts'])->toBe(1)
         ->and($page['checked'])->toBe(['entries' => 1, 'documents' => 1, 'posts' => 2, 'days' => 90])
         ->and($page['verdict'])->toBe('on_brand');
+});
+
+test('reasons name what the check found, and fixes point to the brand\'s other keywords', function () {
+    brandWithKeywords(
+        $this->workspace,
+        [['cafe in thamel', true], 'coffee', 'coffee london', 'best coffee in kathmandu', 'specialty coffee kathmandu', 'coffee delivery lalitpur', 'cold brew'],
+        ['about' => 'Specialty coffee in Kathmandu, from our cafe in Thamel.', 'audience_locations' => [['country' => 'NP', 'city' => 'Kathmandu', 'timezone' => 'Asia/Kathmandu', 'share' => 100]]],
+    );
+    keywordEntry($this->workspace, 'Cold brew bottles', 'Our cold brew, in 330 ml bottles.');
+    keywordEntry($this->workspace, 'Summer menu', 'Cold brew and iced lattes.');
+
+    $rows = keywordVerdicts($this->workspace);
+
+    expect($rows['cafe in thamel']['reason'])->toBe('Found in your profile. Thamel is in Kathmandu, one of your audience places.')
+        ->and($rows['specialty coffee kathmandu']['reason'])->toBe('Found in your profile. Kathmandu is one of your audience places.')
+        // Only entries hold it, so both are named (newest first, as the AI reads them).
+        ->and($rows['cold brew']['reason'])->toBe('Found in your entries “Summer menu” and “Cold brew bottles”.')
+        // The example skips "coffee london" (a place outside the audience) and the claim.
+        ->and($rows['coffee']['fix'])->toBe('Pair it with what makes you different, like “specialty coffee kathmandu”.')
+        ->and($rows['best coffee in kathmandu']['fix'])->toBe('“specialty coffee kathmandu” says the same without the claim.')
+        ->and($rows['coffee delivery lalitpur']['verdict'])->toBe('weak')
+        ->and($rows['coffee delivery lalitpur']['reason'])->toBe('Your brand knowledge mentions “coffee” but never “delivery” or “lalitpur”. Lalitpur isn’t one of your audience places.')
+        ->and($rows['coffee delivery lalitpur']['fix'])->toBe('If it’s true, add an entry about “delivery” and “lalitpur”. The AI still uses it, only as a search phrase.')
+        ->and($rows['coffee delivery lalitpur'])->not->toHaveKey('member_fix');
+});
+
+test('someone who can\'t edit Brand knowledge gets fixes that say who can, and the page sends them those', function () {
+    brandWithKeywords($this->workspace, ['cheap coffee', 'coffee london'], ['about' => 'Coffee in Kathmandu, shipped to London.', 'words_to_avoid' => 'cheap', 'audience_locations' => [['country' => 'NP', 'city' => 'Kathmandu', 'timezone' => 'Asia/Kathmandu', 'share' => 100]]]);
+
+    $rows = collect(KeywordCheck::page($this->workspace, canEdit: false)['keywords'])->keyBy('text');
+
+    expect($rows['cheap coffee']['fix'])->toBe('The AI uses it as written. If that’s not what you want, a workspace admin can remove or reword it.')
+        ->and($rows['coffee london']['fix'])->toBe('If you post for people there, a workspace admin can add it under Where your audience is.')
+        ->and(keywordVerdicts($this->workspace)['cheap coffee']['fix'])->toStartWith('Your keyword wins');
+
+    $this->actingAs(workspaceMember($this->workspace))
+        ->get(route('socialhq.brand.index', ['tab' => 'strategy']))
+        ->assertInertia(fn (AssertableInertia $page) => $page->loadDeferredProps(fn (AssertableInertia $reload) => $reload
+            ->where('keywordCheck.keywords.0.fix', 'The AI uses it as written. If that’s not what you want, a workspace admin can remove or reword it.')
+            ->missing('keywordCheck.keywords.0.member_fix')));
+});
+
+test('a comma or semicolon never stays in a keyword: a quoted CSV cell is one keyword', function () {
+    expect(BrandKeywords::clean('"Latte art, Kathmandu"'))->toBe('"latte art kathmandu"')
+        ->and(BrandKeywords::clean('latte art; kathmandu'))->toBe('latte art kathmandu');
 });
 
 test('a file\'s keywords are checked before import, against the saved ones too', function () {
@@ -270,12 +341,22 @@ test('the caption assistant gets the keywords and the rules for new text, and on
 });
 
 test('the assistant says when a new caption was written for a brand without keywords', function () {
+    // AI runs for a company a platform admin allowed Social HQ's AI keys.
+    Company::factory()->usingPlatformAi()->create(['account_id' => $this->owner->account_id]);
     PostWritingAssistant::fake(['One', 'Two', 'Three']);
 
     $this->actingAs($this->owner)
         ->postJson(route('app.posts.ai.assist'), ['mode' => 'generate', 'prompt' => 'Introduce our new cold brew bottles'])
         ->assertOk()
-        ->assertJsonPath('keywords_missing', true);
+        ->assertJsonPath('keywords_missing', true)
+        ->assertJsonPath('can_add_keywords', true);
+
+    // Someone who can't edit Brand knowledge gets the note without the link.
+    $this->actingAs(workspaceMember($this->workspace))
+        ->postJson(route('app.posts.ai.assist'), ['mode' => 'generate', 'prompt' => 'Introduce our new cold brew bottles'])
+        ->assertOk()
+        ->assertJsonPath('keywords_missing', true)
+        ->assertJsonPath('can_add_keywords', false);
 
     // A rewrite of the person's caption never shows the note.
     $this->actingAs($this->owner)
@@ -291,6 +372,38 @@ test('the assistant says when a new caption was written for a brand without keyw
         ->assertJsonPath('keywords_missing', false);
 });
 
+test('once the brand has keywords, the assistant says which ones a caption uses and whether a main one opens it', function () {
+    // AI runs for a company a platform admin allowed Social HQ's AI keys.
+    Company::factory()->usingPlatformAi()->create(['account_id' => $this->owner->account_id]);
+    brandWithKeywords($this->workspace, ['cold brew', ['specialty coffee kathmandu', true], 'organic tea']);
+    PostWritingAssistant::fake([
+        "Specialty coffee in Kathmandu, poured slow.\n\nOur cold brew is back. #ColdBrew",
+        'Iced and ready for summer.',
+        'Shorter: iced and ready.',
+    ]);
+
+    // Main ones first, then supporting, in the admin's order; a hashtag of the words counts.
+    $this->actingAs($this->owner)
+        ->postJson(route('app.posts.ai.assist'), ['mode' => 'generate', 'prompt' => 'Cold brew is back'])
+        ->assertOk()
+        ->assertJsonPath('keywords_missing', false)
+        ->assertJsonPath('keywords_used', ['specialty coffee kathmandu', 'cold brew'])
+        ->assertJsonPath('main_in_first_line', true);
+
+    // New text that says none still gets the line ("No keyword fits this post").
+    $this->actingAs($this->owner)
+        ->postJson(route('app.posts.ai.assist'), ['mode' => 'generate', 'prompt' => 'A post about our summer menu'])
+        ->assertOk()
+        ->assertJsonPath('keywords_used', [])
+        ->assertJsonPath('main_in_first_line', false);
+
+    // A rewrite of the person's own text was never asked to add any: no line when it says none.
+    $this->actingAs($this->owner)
+        ->postJson(route('app.posts.ai.assist'), ['mode' => 'shorten', 'current_content' => 'Iced and ready for summer.'])
+        ->assertOk()
+        ->assertJsonPath('keywords_used', null);
+});
+
 describe('plan item copy', function () {
     beforeEach(function () {
         config([
@@ -299,6 +412,8 @@ describe('plan item copy', function () {
             'socialhq.ai.routes.write' => 'anthropic',
             'ai.providers.anthropic.key' => 'test-anthropic-key',
         ]);
+        // AI runs for a company a platform admin allowed Social HQ's AI keys.
+        Company::factory()->usingPlatformAi()->create(['account_id' => $this->owner->account_id]);
 
         $plan = ContentPlan::factory()->create(['workspace_id' => $this->workspace->id]);
         $this->item = PlanItem::factory()->create(['plan_id' => $plan->id, 'title' => 'Momo delivery week']);
@@ -314,11 +429,14 @@ describe('plan item copy', function () {
         CopyWriter::assertPrompted(fn (AgentPrompt $prompt): bool => ! str_contains($prompt->agent->instructions(), "The brand's SEO keywords"));
 
         brandWithKeywords($this->workspace, [['momo delivery lalitpur', true]]);
-        CopyWriter::fake([['caption' => 'Fresh momos now in Lalitpur.', 'hashtags' => '#momo', 'script' => '', 'notes' => '']]);
+        CopyWriter::fake([['caption' => "Fresh momos at your door.\n\nMomo delivery in Lalitpur, hot and fresh.", 'hashtags' => '#momo', 'script' => '', 'notes' => '']]);
 
+        // The keyword is in the caption, but not in its first line.
         $this->actingAs($this->owner)->postJson(route('socialhq.plan.items.copy.ai', $this->item->id))
             ->assertCreated()
-            ->assertJsonPath('keywords_missing', false);
+            ->assertJsonPath('keywords_missing', false)
+            ->assertJsonPath('keywords_used', ['momo delivery lalitpur'])
+            ->assertJsonPath('main_in_first_line', false);
 
         CopyWriter::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->agent->instructions(), '- momo delivery lalitpur (main)')
             && str_contains($prompt->agent->instructions(), 'when a main keyword fits the post, put it in the caption\'s first line')

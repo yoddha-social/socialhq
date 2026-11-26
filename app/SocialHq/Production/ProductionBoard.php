@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\SocialHq\Production;
 
 use App\Enums\Media\Type as MediaType;
-use App\Enums\SocialAccount\Platform;
 use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Plan\ItemPage;
+use App\SocialHq\Plan\ItemStatus;
 use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Plan\PlanMonth;
 use App\SocialHq\Plan\ReviewKind;
@@ -32,7 +32,9 @@ final class ProductionBoard
     /**
      * The board's cards. Without a month, the work still open plus what was
      * approved for this month or later (approved work of past months stays
-     * out, so the board doesn't load every brief ever made).
+     * out, so the board doesn't load every brief ever made). A dropped
+     * item's brief stays off the board until the item is restored: nobody
+     * should keep designing for a post the plan no longer has.
      *
      * @param  array{mine?: bool, kind?: ?string, month?: ?string}  $filters
      * @return list<array<string, mixed>>
@@ -44,6 +46,7 @@ final class ProductionBoard
 
         return Brief::query()
             ->where('workspace_id', $workspace->id)
+            ->whereHas('item', fn ($items) => $items->where('status', '!=', ItemStatus::Dropped))
             ->when($filters['mine'] ?? false, fn ($query) => $query->where('assignee_id', $user->id))
             ->when(filled($filters['kind'] ?? null), fn ($query) => $query->where('kind', $filters['kind']))
             ->when(
@@ -189,7 +192,8 @@ final class ProductionBoard
             'stage' => $brief->stage->value,
             'position' => $brief->position,
             'platform' => $item->socialAccount?->platform->value ?? $item->platform,
-            'channel' => $item->socialAccount?->display_name ?: ($item->socialAccount?->username ?? Platform::tryFrom((string) $item->platform)?->label()),
+            // The team's name for the channel (Name in Social HQ); the card adds the network.
+            'channel' => $item->socialAccount?->display_label,
             'format' => $item->content_type?->label(),
             'scheduled_on' => $item->scheduled_on->toDateString(),
             'due_on' => $brief->due_on?->toDateString(),

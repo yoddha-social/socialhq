@@ -276,7 +276,10 @@ test('isEnabled falls back to env when enabled config is missing', function (Pla
     config(['trypost.platforms' => $platforms]);
 
     $original = getenv($envKey);
+    // Social HQ: phpunit.xml sets some of these, and env() reads $_SERVER and $_ENV before getenv().
+    $saved = [$_ENV[$envKey] ?? null, $_SERVER[$envKey] ?? null];
     putenv("{$envKey}=false");
+    $_ENV[$envKey] = $_SERVER[$envKey] = 'false';
 
     try {
         expect($platform->isEnabled())->toBeFalse();
@@ -285,6 +288,13 @@ test('isEnabled falls back to env when enabled config is missing', function (Pla
             putenv($envKey);
         } else {
             putenv("{$envKey}={$original}");
+        }
+        [$_ENV[$envKey], $_SERVER[$envKey]] = $saved;
+        if ($saved[0] === null) {
+            unset($_ENV[$envKey]);
+        }
+        if ($saved[1] === null) {
+            unset($_SERVER[$envKey]);
         }
     }
 })->with([

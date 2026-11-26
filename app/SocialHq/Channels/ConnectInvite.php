@@ -18,7 +18,8 @@ use Illuminate\Support\Str;
 /**
  * A link that lets the owner of a network account connect it to a workspace
  * without a Social HQ login. It works once, for an hour, for one workspace and
- * one network. The row stays as the record of what happened.
+ * one network, and an admin can cancel it before then. The row stays as the
+ * record of what happened.
  *
  * @property int $id
  * @property string $workspace_id
@@ -31,6 +32,8 @@ use Illuminate\Support\Str;
  * @property CarbonInterface|null $started_at
  * @property CarbonInterface|null $used_at
  * @property string|null $used_ip
+ * @property CarbonInterface|null $cancelled_at
+ * @property string|null $cancelled_by
  * @property list<array{id: string, name: string}>|null $connected
  */
 class ConnectInvite extends Model
@@ -133,6 +136,47 @@ class ConnectInvite extends Model
     }
 
     /**
+     * The link stops working at once, as a use would stop it (every check
+     * reads `used_at`), and records who cancelled it.
+     */
+    public function cancel(User $by): void
+    {
+        $this->update([
+            'used_at' => now(),
+            'cancelled_at' => now(),
+            'cancelled_by' => $by->id,
+        ]);
+    }
+
+    /**
+     * The workspace's links that still work, soonest to stop first: the
+     * channel page lists them with a Cancel button.
+     *
+     * @return list<array{id: int, network: string, reconnect: string|null, created_by: string|null, created_at: string, expires_at: string}>
+     */
+    public static function openForPage(Workspace $workspace): array
+    {
+        return self::query()
+            ->open()
+            ->where('workspace_id', $workspace->id)
+            ->with('creator:id,name')
+            ->orderBy('expires_at')
+            ->get()
+            ->map(fn (self $invite): array => [
+                'id' => $invite->id,
+                'network' => $invite->channelName(),
+                'reconnect' => $invite->reconnect_account_id === null
+                    ? null
+                    : SocialAccount::query()->where('workspace_id', $workspace->id)->find($invite->reconnect_account_id)?->display_label,
+                'created_by' => $invite->creator?->name,
+                'created_at' => $invite->created_at->toIso8601ZuluString(),
+                'expires_at' => $invite->expires_at->toIso8601ZuluString(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
      * The network's name in route names: `app.social.<slug>.connect`.
      */
     public function networkSlug(): string
@@ -197,6 +241,7 @@ class ConnectInvite extends Model
             'opened_at' => 'datetime',
             'started_at' => 'datetime',
             'used_at' => 'datetime',
+            'cancelled_at' => 'datetime',
             'connected' => 'array',
         ];
     }

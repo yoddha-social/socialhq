@@ -22,6 +22,7 @@ use App\SocialHq\Plan\ItemPosts;
 use App\SocialHq\Plan\ItemSource;
 use App\SocialHq\Plan\ItemStatus;
 use App\SocialHq\Plan\PlanAccess;
+use App\SocialHq\Plan\PlanChanged;
 use App\SocialHq\Plan\PlanItem;
 use App\SocialHq\Plan\PlanMonth;
 use App\SocialHq\Plan\PlanOptions;
@@ -236,6 +237,7 @@ class PlanItemWriteController extends Controller
                     ->where('status', ItemStatus::Suggested)
                     ->whereDate('scheduled_on', '>=', PlanMonth::today($request->user()))
                     ->update(['status' => ItemStatus::Planned, 'updated_at' => now()]);
+                PlanChanged::dispatchFor($plan->id);
 
                 if ($accepted > 0) {
                     $plan->reopen();

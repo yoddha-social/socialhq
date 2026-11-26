@@ -27,14 +27,18 @@ beforeEach(function () {
 test('a member sends the plan for review and an approver approves it', function () {
     PlanItem::factory()->for($this->plan, 'plan')->create();
 
-    $this->actingAs($this->member)->post(route('socialhq.plan.submit', $this->monthKey))->assertSessionHasNoErrors();
+    $this->actingAs($this->member)->post(route('socialhq.plan.submit', $this->monthKey))
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('flash.success', __('socialhq_plan.review.sent'));
     expect($this->plan->fresh()->status)->toBe(PlanStatus::InReview)
         ->and($this->plan->fresh()->submitted_by)->toBe($this->member->id);
 
     $this->actingAs($this->member)->post(route('socialhq.plan.approve', $this->monthKey))->assertForbidden();
     expect($this->plan->fresh()->status)->toBe(PlanStatus::InReview);
 
-    $this->actingAs($this->owner)->post(route('socialhq.plan.approve', $this->monthKey))->assertSessionHasNoErrors();
+    $this->actingAs($this->owner)->post(route('socialhq.plan.approve', $this->monthKey))
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('flash.success', __('socialhq_plan.review.approved'));
     expect($this->plan->fresh()->status)->toBe(PlanStatus::Approved)
         ->and($this->plan->fresh()->approved_by)->toBe($this->owner->id)
         ->and($this->plan->fresh()->approved_at)->not->toBeNull();

@@ -10,7 +10,7 @@ import {
     IconSparkles,
     IconUpload,
 } from '@tabler/icons-vue';
-import { trans } from 'laravel-vue-i18n';
+import { trans, transChoice } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
@@ -23,6 +23,7 @@ import type {
     BriefFileRow,
     PlanAbilities,
 } from '@/components/socialhq/plan/item/types';
+import { trackUnsavedWork } from '@/components/socialhq/plan/item/unsavedWork';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -53,6 +54,7 @@ const canSubmit = computed(() => props.brief.can_submit ?? false);
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const note = ref('');
+trackUnsavedWork(() => note.value.trim() !== '');
 const uploadingName = ref<string | null>(null);
 const accept = acceptAttribute();
 
@@ -128,6 +130,15 @@ const uploadOne = (
         );
     });
 
+// One toast for the whole pick, not one per file.
+const toastUploaded = (count: number): void => {
+    toast.success(
+        transChoice('socialhq_production.flash.files_uploaded', count, {
+            count: String(count),
+        }),
+    );
+};
+
 const onFilesChosen = async (event: Event): Promise<void> => {
     const input = event.target as HTMLInputElement;
     const files = Array.from(input.files ?? []);
@@ -151,6 +162,7 @@ const onFilesChosen = async (event: Event): Promise<void> => {
 
     if (uploaded > 0) {
         note.value = '';
+        toastUploaded(uploaded);
     }
 };
 
@@ -236,6 +248,10 @@ const uploadAiGraphic = async ({
     );
 
     uploadingName.value = null;
+
+    if (result === 'uploaded') {
+        toastUploaded(1);
+    }
 
     if (result === 'uploaded' && typedNote) {
         note.value = '';

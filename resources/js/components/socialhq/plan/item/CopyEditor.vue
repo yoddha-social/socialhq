@@ -21,6 +21,7 @@ import type {
     PlanAbilities,
     PlanItemDetail,
 } from '@/components/socialhq/plan/item/types';
+import { trackUnsavedWork } from '@/components/socialhq/plan/item/unsavedWork';
 import UnsupportedDetailsNote from '@/components/socialhq/plan/UnsupportedDetailsNote.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,6 +59,7 @@ const fieldsOf = (version: CopyVersion | null): CopyFields => ({
 });
 
 const form = useForm<CopyFields>(fieldsOf(props.latest));
+trackUnsavedWork(() => form.isDirty);
 const page = usePage();
 
 /** Approved copy stays read-only until someone starts a new version. */

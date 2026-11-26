@@ -6,6 +6,7 @@ namespace App\SocialHq\Production;
 
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Plan\PlanChanged;
 use App\SocialHq\Plan\PlanItem;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -25,6 +26,23 @@ class Brief extends Model
     protected $table = 'shq_briefs';
 
     protected $guarded = ['id'];
+
+    /**
+     * The month's cards show the brief's stage: open plan pages reload it
+     * (`PlanChanged`).
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn (self $brief) => PlanChanged::dispatchFor(self::planIdOf($brief)));
+        static::deleted(fn (self $brief) => PlanChanged::dispatchFor(self::planIdOf($brief)));
+    }
+
+    private static function planIdOf(self $brief): ?int
+    {
+        $planId = PlanItem::query()->whereKey($brief->item_id)->value('plan_id');
+
+        return $planId === null ? null : (int) $planId;
+    }
 
     protected function casts(): array
     {

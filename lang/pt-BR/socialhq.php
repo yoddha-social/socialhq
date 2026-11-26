@@ -610,6 +610,10 @@ return [
         'publish_count' => 'Publish :count posts',
         'request_approval' => 'Request approval',
         'request_approval_count' => 'Request approval for :count posts',
+        'saved' => [
+            'draft' => '{1} Draft saved.|[0,*] :count drafts saved.',
+            'pending_approval' => '{1} Sent for approval. An approver will review it.|[0,*] :count posts sent for approval.',
+        ],
         'repeat' => [
             'none' => 'Doesn’t repeat',
             'rule' => [

@@ -42,6 +42,8 @@ return [
         'waiting' => 'Waiting for a workspace admin to approve',
         'approve_blocked' => 'To approve the plan, accept or drop every AI suggestion.',
         'approve_generating' => 'To approve the plan, wait for the AI draft to finish and review its suggestions.',
+        'sent' => 'Plan sent for review.',
+        'approved' => 'Plan approved.',
     ],
     'ai_off' => 'AI drafts are off. Ask whoever runs Social HQ to turn them on.',
     'read_only' => 'You can view this plan but not change it. To plan posts here, ask a workspace admin to let you create posts.',
@@ -177,6 +179,8 @@ return [
         'cancel' => 'Cancel',
         'add' => 'Add item',
         'save' => 'Save changes',
+        'unsaved_switch' => 'Your changes to this item aren\'t saved. To open another item, save them first or discard them.',
+        'discard_switch' => 'Discard changes',
         'item_gone' => 'This item is no longer in the plan. New AI suggestions may have replaced it, or someone deleted it.',
     ],
     'delete' => [

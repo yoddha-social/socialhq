@@ -9,6 +9,7 @@ import {
 } from '@tabler/icons-vue';
 
 import type { ReviewEntry } from '@/components/socialhq/plan/item/types';
+import { trackUnsavedWork } from '@/components/socialhq/plan/item/unsavedWork';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -32,6 +33,7 @@ const form = useForm<{ body: string; about: string }>({
     body: '',
     about: '',
 });
+trackUnsavedWork(() => form.body.trim() !== '');
 
 const icons = {
     comment: IconMessage,

@@ -18,6 +18,7 @@ use App\Http\Requests\App\Post\StorePostRequest;
 use App\Http\Requests\App\Post\UpdatePostRequest;
 use App\Models\Post;
 use App\SocialHq\Composer\ComposerRepeat;
+use App\SocialHq\Composer\ComposerSaved;
 use App\SocialHq\Plan\ItemPosts;
 use App\SocialHq\Plan\PlanItem;
 use App\Support\PostStatusRules;
@@ -137,6 +138,9 @@ class PostController extends Controller
             ItemPosts::link(PlanItem::query()->findOrFail((int) $request->validated('plan_item_id')), $posts, $request->user());
         }
 
+        // Social HQ: a toast for drafts and approval requests.
+        ComposerSaved::flash($posts, $request->filled('queue'));
+
         $tab = match ($request->input('status')) {
             PostStatus::Draft->value => ['tab' => 'drafts'],
             PostStatus::Scheduled->value, PostStatus::Publishing->value => ['tab' => 'queue'],
@@ -199,6 +203,9 @@ class PostController extends Controller
         if ($request->has('recurrence')) {
             ComposerRepeat::apply([data_get($result, 'post')], $request->validated('recurrence') ?: null);
         }
+
+        // Social HQ: a toast for drafts and approval requests.
+        ComposerSaved::flash([data_get($result, 'post')], $request->filled('queue'));
 
         $tab = match (true) {
             in_array($action, [PostAction::Publishing, PostAction::Scheduled], true) => ['tab' => 'queue'],

@@ -62,7 +62,7 @@ class PlanController extends Controller
             }
         });
 
-        return back();
+        return back()->with('flash.success', __('socialhq_plan.review.sent'));
     }
 
     /**
@@ -99,7 +99,7 @@ class PlanController extends Controller
             }
         });
 
-        return back();
+        return back()->with('flash.success', __('socialhq_plan.review.approved'));
     }
 
     /**

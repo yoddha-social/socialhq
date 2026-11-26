@@ -103,7 +103,9 @@ test('a round is reviewed: changes need a note, only approvers decide, the next 
     $this->actingAs($this->designer)->post(route('socialhq.plan.items.brief.submit', $this->item->id))->assertSessionHasErrors('creative');
 
     uploadCreative($this, $this->designer);
-    $this->actingAs($this->designer)->post(route('socialhq.plan.items.brief.submit', $this->item->id))->assertSessionHasNoErrors();
+    $this->actingAs($this->designer)->post(route('socialhq.plan.items.brief.submit', $this->item->id))
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('flash.success', __('socialhq_production.flash.creative_submitted'));
     expect($this->brief->fresh()->stage)->toBe(BriefStage::InReview);
 
     // No uploads while in review.
@@ -111,7 +113,9 @@ test('a round is reviewed: changes need a note, only approvers decide, the next 
 
     $this->actingAs($this->designer)->post(route('socialhq.plan.items.brief.approve', $this->item->id), ['round' => 1])->assertForbidden();
     $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.request-changes', $this->item->id), ['note' => '', 'round' => 1])->assertSessionHasErrors('note');
-    $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.request-changes', $this->item->id), ['note' => 'Bigger logo', 'round' => 1])->assertSessionHasNoErrors();
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.request-changes', $this->item->id), ['note' => 'Bigger logo', 'round' => 1])
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('flash.success', __('socialhq_production.flash.changes_requested'));
     expect($this->brief->fresh()->stage)->toBe(BriefStage::ChangesRequested);
 
     // The reviewed round can't be sent again without new files.
@@ -126,7 +130,9 @@ test('a round is reviewed: changes need a note, only approvers decide, the next 
     // An approval of the round the approver saw before round 2 arrived is refused.
     $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.approve', $this->item->id), ['round' => 1])
         ->assertSessionHasErrors(['creative' => __('socialhq_production.review.errors.changed')]);
-    $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.approve', $this->item->id), ['round' => 2])->assertSessionHasNoErrors();
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.brief.approve', $this->item->id), ['round' => 2])
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('flash.success', __('socialhq_production.flash.creative_approved'));
 
     $brief = $this->brief->fresh();
     $thread = ItemReview::query()->where('brief_id', $brief->id)->orderBy('id')->get();

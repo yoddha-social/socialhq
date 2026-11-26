@@ -6,6 +6,7 @@ declare(strict_types=1);
 
 return [
     'item' => [
+        'unsaved_description' => 'What you typed on this item isn\'t saved yet. If you leave now, it\'ll be lost.',
         'back' => 'Back to :month',
         'no_channel' => 'No channel',
         'event' => 'Event: :name',
@@ -247,6 +248,16 @@ return [
             'approvers_only' => 'Only :names can take cards out of In review, or move them into or out of Approved and Changes requested.',
             'review_needs_files' => 'To send this creative for review, upload the files for a new round first.',
         ],
+    ],
+
+    'flash' => [
+        'copy_saved' => 'Copy saved as version :number.',
+        'copy_submitted' => 'Copy sent for review.',
+        'copy_approved' => 'Copy approved.',
+        'creative_submitted' => 'Creative sent for review.',
+        'creative_approved' => 'Creative approved.',
+        'changes_requested' => 'Changes requested. Your note is in the review thread.',
+        'files_uploaded' => '{0} No files uploaded.|{1} File uploaded.|[2,*] :count files uploaded.',
     ],
 
     'review' => [

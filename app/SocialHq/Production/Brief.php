@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
+use App\SocialHq\Plan\PlanChanged;
 
 /**
  * What the creative team makes for a plan item: a graphic or a video, with
@@ -25,6 +26,23 @@ class Brief extends Model
     protected $table = 'shq_briefs';
 
     protected $guarded = ['id'];
+
+    /**
+     * The month's cards show the brief's stage: open plan pages reload it
+     * (`PlanChanged`).
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn (self $brief) => PlanChanged::dispatchFor(self::planIdOf($brief)));
+        static::deleted(fn (self $brief) => PlanChanged::dispatchFor(self::planIdOf($brief)));
+    }
+
+    private static function planIdOf(self $brief): ?int
+    {
+        $planId = PlanItem::query()->whereKey($brief->item_id)->value('plan_id');
+
+        return $planId === null ? null : (int) $planId;
+    }
 
     protected function casts(): array
     {

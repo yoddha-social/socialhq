@@ -30,6 +30,15 @@ class PlanItem extends Model
 
     protected $guarded = ['id'];
 
+    /**
+     * Open plan pages reload the month when an item changes (`PlanChanged`).
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn (self $item) => PlanChanged::dispatchFor($item->plan_id));
+        static::deleted(fn (self $item) => PlanChanged::dispatchFor($item->plan_id));
+    }
+
     protected function casts(): array
     {
         return [

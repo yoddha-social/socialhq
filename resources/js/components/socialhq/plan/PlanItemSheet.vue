@@ -53,6 +53,8 @@ import {
 
 const props = defineProps<{
     item: PlanItem | null;
+    /** The item picked on the board (null for a new one), even while it is gone from `item`. */
+    itemId: number | null;
     defaultDay: string | null;
     month: string;
     channels: PlanChannel[];
@@ -218,6 +220,7 @@ const fill = (): void => {
     form.owner_id = item?.owner_id ?? '';
     form.time_hour = item?.suggested_time?.slice(0, 2) ?? '';
     form.time_minute = item?.suggested_time?.slice(3, 5) ?? '00';
+    form.defaults();
 };
 
 watch(open, (isOpen) => {
@@ -226,10 +229,59 @@ watch(open, (isOpen) => {
     }
 });
 
+// The sheet stays open while another card or day is picked (QA 2026-11-18,
+// item 8): it shows that one instead.
+watch(
+    () => [props.itemId, props.defaultDay] as const,
+    () => {
+        if (open.value) {
+            fill();
+        }
+    },
+);
+
+/**
+ * Runs a switch to another item or day, unless this one has unsaved changes:
+ * then a toast says so and offers to discard them and switch.
+ */
+const switchTo = (apply: () => void): void => {
+    if (!open.value || !form.isDirty) {
+        apply();
+
+        return;
+    }
+
+    toast(trans('socialhq_plan.sheet.unsaved_switch'), {
+        id: 'plan-sheet-unsaved',
+        testId: 'plan-sheet-unsaved-toast',
+        duration: 10000,
+        action: {
+            label: trans('socialhq_plan.sheet.discard_switch'),
+            onClick: apply,
+        },
+    });
+};
+
+defineExpose({ switchTo });
+
+/**
+ * Clicks on the plan's cards, days and "Add item" keep the sheet open, so the
+ * click opens what it was on instead of only closing the sheet.
+ */
+const keepOpenForPlanClicks = (event: Event): void => {
+    const original = (event as CustomEvent<{ originalEvent?: Event }>).detail
+        ?.originalEvent;
+    const target = (original?.target ?? event.target) as Element | null;
+
+    if (target?.closest?.('[data-plan-board]')) {
+        event.preventDefault();
+    }
+};
+
 watch(
     () => props.item,
     (item) => {
-        if (!open.value || editingId.value === null || item !== null) {
+        if (!open.value || props.itemId === null || item !== null) {
             return;
         }
 
@@ -385,10 +437,11 @@ const askDelete = async (): Promise<void> => {
 
 <template>
     <div class="contents">
-        <Sheet v-model:open="open">
+        <Sheet v-model:open="open" :modal="false">
             <SheetContent
                 class="w-full gap-0 sm:max-w-md"
                 data-testid="plan-item-sheet"
+                @interact-outside="keepOpenForPlanClicks"
             >
                 <SheetHeader class="border-b border-border px-5 py-4 pe-14">
                     <div class="flex items-center gap-2">

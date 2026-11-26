@@ -455,6 +455,19 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
 - **Production** (`/socialhq/plan/production`). Every brief by stage, with drag
   and drop or a keyboard "Move to" menu. Only approvers move a card into or out
   of Changes requested and Approved.
+- **Feedback and fresh screens** (QA 2026-11-18, items 7–9 and 12). Saving
+  copy, sending copy or a creative for review, approving or asking for
+  changes, sending or approving the plan and saving drafts or approval
+  requests in the composer each end with a toast (`flash.success`, and
+  `Composer\ComposerSaved`); an upload says how many files went up. A change
+  to a month (an item, its copy or brief, the plan) broadcasts
+  `Plan\PlanChanged` (`shq.plan.changed`, once per plan per request or job,
+  through `defer()`) on `workspace.{id}`, and open plan pages of that month
+  reload; after Back the month asks the server again. The item sheet is not
+  modal: another card or day opens in it, and unsaved changes wait behind a
+  toast that offers to discard them. The item page asks before an in-app
+  visit or a tab close drops typed copy, a brief, a comment or a reviewer's
+  note (`plan/item/unsavedWork.ts`; the browser's back button isn't held).
 - **AI output** must list every key as required (strict providers such as Groq
   refuse a schema with optional keys, and models drop them); `""` means none.
 

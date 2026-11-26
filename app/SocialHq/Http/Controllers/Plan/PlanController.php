@@ -57,7 +57,7 @@ class PlanController extends Controller
             $plan->forceFill(['status' => PlanStatus::InReview, 'submitted_at' => now(), 'submitted_by' => $request->user()->id])->save();
         }
 
-        return back();
+        return back()->with('flash.success', __('socialhq_plan.review.sent'));
     }
 
     /**
@@ -94,7 +94,7 @@ class PlanController extends Controller
             }
         });
 
-        return back();
+        return back()->with('flash.success', __('socialhq_plan.review.approved'));
     }
 
     /**

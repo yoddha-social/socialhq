@@ -86,12 +86,12 @@ import type {
     PublishChannel,
     PublishCounts,
     PublishQueue,
-    QueueItem,
-    QueueView,
     PublishScope,
     PublishSocialAccount,
     PublishTab,
     QueueDay,
+    QueueItem,
+    QueueView,
     ScrollPostCards,
 } from '@/types/publish';
 
@@ -265,9 +265,7 @@ const groupQueueItems = (items: QueueItem[]): QueueDay[] => {
     return [...groups].map(([key, items]) => ({ date: key, items }));
 };
 
-const hasMorePosts = computed(
-    () => page.scrollProps?.posts?.nextPage != null,
-);
+const hasMorePosts = computed(() => page.scrollProps?.posts?.nextPage != null);
 
 const lastLoadedPostAt = computed<number | null>(() => {
     const times = (props.posts?.data ?? [])
@@ -537,7 +535,9 @@ const withPostInSlot = (
 
     return {
         days: groupQueueItems([
-            ...items.filter((item) => item.post_id !== postId && !isTarget(item)),
+            ...items.filter(
+                (item) => item.post_id !== postId && !isTarget(item),
+            ),
             ...freed,
             {
                 type: 'post',
@@ -764,13 +764,23 @@ const onComposerOpenChange = (open: boolean): void => {
 /**
  * After a save, steps back to the page the composer was opened from, so the
  * edit leaves no history entry behind, and refreshes that page's posts.
+ * The save's toast went with the page the save landed on, so it is shown
+ * again there (Social HQ, PATCHES.md row 250).
  */
-const returnToOpeningPage = (): void => {
+const returnToOpeningPage = (savedMessage: string | null = null): void => {
     void nextTick(() =>
         afterHistorySettles(() => {
             const stop = router.on('navigate', () => {
                 stop();
-                router.reload();
+                router.reload({
+                    onSuccess: () => {
+                        if (savedMessage) {
+                            toast.success(savedMessage, {
+                                id: 'flash-success',
+                            });
+                        }
+                    },
+                });
             });
             window.history.back();
         }),
@@ -786,12 +796,16 @@ const submitComposition = (
     if (!editPost) return;
     const returnsBack = cameFromAppPage();
     let saved = false;
+    let savedMessage: string | null = null;
     composerSubmitting.value = true;
     const options = {
         preserveScroll: true,
         replace: true,
         onSuccess: () => {
             saved = true;
+            savedMessage =
+                (page.props.flash as { success?: string } | undefined)
+                    ?.success ?? null;
             composerOpen.value = false;
             onSaved?.();
         },
@@ -799,7 +813,7 @@ const submitComposition = (
             composerSubmitting.value = false;
 
             if (saved && returnsBack) {
-                returnToOpeningPage();
+                returnToOpeningPage(savedMessage);
             }
         },
     };
@@ -921,7 +935,9 @@ const submitComposition = (
                                 "
                             />
                             <NewPostButton
-                                :social-account-ids="channel ? [channel.id] : []"
+                                :social-account-ids="
+                                    channel ? [channel.id] : []
+                                "
                             />
                         </div>
                     </AppHeaderActions>
@@ -938,7 +954,9 @@ const submitComposition = (
                     <PublishEmptyIllustration />
                 </template>
                 <template v-if="canManageAccounts" #action>
-                    <div class="flex flex-wrap items-center justify-center gap-2">
+                    <div
+                        class="flex flex-wrap items-center justify-center gap-2"
+                    >
                         <Button
                             data-testid="publish-welcome-connect"
                             @click="openConnectDialog()"
@@ -968,7 +986,9 @@ const submitComposition = (
                     <PublishEmptyIllustration />
                 </template>
                 <template #action>
-                    <div class="flex flex-wrap items-center justify-center gap-2">
+                    <div
+                        class="flex flex-wrap items-center justify-center gap-2"
+                    >
                         <Button
                             :data-testid="`publish-empty-new-post-${tab}`"
                             @click="newPost"

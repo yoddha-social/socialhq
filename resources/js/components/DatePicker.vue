@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { parseDate } from '@internationalized/date';
+import { type DateValue, parseDate } from '@internationalized/date';
 import { IconCalendar } from '@tabler/icons-vue';
 import { computed, ref, watch } from 'vue';
 
@@ -120,24 +120,24 @@ const onTimeChange = () => {
     }
 };
 
-const isInternalUpdate = ref(false);
-
+// The parent's value fills the calendar; a value the calendar already shows
+// is left alone, so nothing is emitted back (no flag to get stuck when a pick
+// emits the value the parent already has).
 watch(
     () => props.modelValue,
     (newVal) => {
-        if (isInternalUpdate.value) {
-            isInternalUpdate.value = false;
-            return;
+        const parsed = parseInput(newVal);
+
+        if (parsed?.toString() !== internalDate.value?.toString()) {
+            internalDate.value = parsed;
         }
 
-        internalDate.value = parseInput(newVal);
-
         if (newVal) {
-            const parsed = dayjs(newVal);
-            if (parsed.isValid()) {
+            const parsedValue = dayjs(newVal);
+            if (parsedValue.isValid()) {
                 if (props.showTime) {
-                    selectedHour.value = parsed.format('HH');
-                    selectedMinute.value = parsed.format('mm');
+                    selectedHour.value = parsedValue.format('HH');
+                    selectedMinute.value = parsedValue.format('mm');
                 }
             }
         } else {
@@ -148,17 +148,48 @@ watch(
     { immediate: true },
 );
 
-watch(internalDate, (newDate) => {
-    if (!newDate || isInternalUpdate.value) return;
+/**
+ * A day picked in the calendar. Picking the selected day again keeps it
+ * (`prevent-deselect`), so the calendar emits nothing for it.
+ */
+const onDatePicked = (picked: DateValue | undefined): void => {
+    if (!picked) return;
 
-    isInternalUpdate.value = true;
-    const formatted = newDate.toString();
-    emit('update:modelValue', buildDateTime(formatted));
+    const day = parseDate(picked.toString().slice(0, 10));
+    internalDate.value = day;
+    const value = buildDateTime(day.toString());
 
-    if (!props.showTime) {
+    if (value !== props.modelValue) {
+        emit('update:modelValue', value);
+    }
+};
+
+/**
+ * Any day chosen in a date-only picker closes it, the selected one too, so
+ * the popover never stays open to swallow the next click.
+ */
+const closeOnDayChosen = (event: Event): void => {
+    if (
+        event instanceof KeyboardEvent &&
+        event.key !== 'Enter' &&
+        event.key !== ' '
+    ) {
+        return;
+    }
+
+    const day = (event.target as Element | null)?.closest(
+        '[data-reka-calendar-cell-trigger]',
+    );
+
+    if (
+        !props.showTime &&
+        day &&
+        !day.hasAttribute('data-disabled') &&
+        !day.hasAttribute('data-unavailable')
+    ) {
         popoverOpen.value = false;
     }
-});
+};
 
 const displayText = computed(() => {
     if (!props.modelValue || !dayjs(props.modelValue).isValid()) {
@@ -203,15 +234,19 @@ const displayText = computed(() => {
             class="w-auto p-0"
             :align="align"
             :data-testid="name ? `${name}-calendar` : undefined"
+            @click="closeOnDayChosen"
+            @keydown="closeOnDayChosen"
         >
             <Calendar
-                v-model="internalDate as any"
+                :model-value="internalDate as any"
                 :placeholder="internalDate as any"
                 :min-value="minDate as any"
                 layout="month-and-year"
                 :locale="calendarLocale"
                 :calendar-label="$t('common.date_picker.label')"
+                prevent-deselect
                 initial-focus
+                @update:model-value="onDatePicked"
             />
             <div v-if="showTime" class="border-t border-border p-3">
                 <div class="flex items-center gap-2">

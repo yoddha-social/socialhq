@@ -85,9 +85,12 @@ test('saving copy always adds a numbered version and never edits one', function 
 
 test('copy goes through review: submit, changes requested with a note, approve', function () {
     $writer = workspaceMember($this->workspace, 'approval');
-    $this->actingAs($writer)->post(route('socialhq.plan.items.versions.store', $this->item->id), copyPayload());
+    $this->actingAs($writer)->post(route('socialhq.plan.items.versions.store', $this->item->id), copyPayload())
+        ->assertSessionHas('flash.success', __('socialhq_production.flash.copy_saved', ['number' => 1]));
 
-    $this->actingAs($writer)->post(route('socialhq.plan.items.copy.submit', $this->item->id))->assertSessionHasNoErrors();
+    $this->actingAs($writer)->post(route('socialhq.plan.items.copy.submit', $this->item->id))
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('flash.success', __('socialhq_production.flash.copy_submitted'));
     expect($this->item->fresh()->copy_status)->toBe(CopyStatus::InReview);
 
     // A writer who can't approve is refused both decisions.
@@ -98,12 +101,15 @@ test('copy goes through review: submit, changes requested with a note, approve',
     $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.request-changes', $this->item->id), ['note' => '', 'version_id' => shownVersion($this->item)])
         ->assertSessionHasErrors('note');
     $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.request-changes', $this->item->id), ['note' => 'Shorter hook', 'version_id' => shownVersion($this->item)])
-        ->assertSessionHasNoErrors();
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('flash.success', __('socialhq_production.flash.changes_requested'));
     expect($this->item->fresh()->copy_status)->toBe(CopyStatus::ChangesRequested);
 
     $this->actingAs($writer)->post(route('socialhq.plan.items.versions.store', $this->item->id), copyPayload('Shorter'));
     $this->actingAs($writer)->post(route('socialhq.plan.items.copy.submit', $this->item->id))->assertSessionHasNoErrors();
-    $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.approve', $this->item->id), ['version_id' => shownVersion($this->item)])->assertSessionHasNoErrors();
+    $this->actingAs($this->owner)->post(route('socialhq.plan.items.copy.approve', $this->item->id), ['version_id' => shownVersion($this->item)])
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('flash.success', __('socialhq_production.flash.copy_approved'));
 
     expect($this->item->fresh()->copy_status)->toBe(CopyStatus::Approved)
         ->and(ItemReview::query()->where('item_id', $this->item->id)->orderBy('id')->pluck('kind')->map->value->all())

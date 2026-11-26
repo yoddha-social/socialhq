@@ -26,6 +26,14 @@ class ContentPlan extends Model
 
     protected $guarded = ['id'];
 
+    /**
+     * Open plan pages reload the month when the plan changes (`PlanChanged`).
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn (self $plan) => PlanChanged::dispatchFor($plan->id));
+    }
+
     protected function casts(): array
     {
         return [

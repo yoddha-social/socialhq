@@ -21,20 +21,20 @@ class ItemCopyReviewController extends Controller
     {
         ItemCopy::submit(PlanAccess::item($request, $item), $request->user());
 
-        return back();
+        return back()->with('flash.success', __('socialhq_production.flash.copy_submitted'));
     }
 
     public function approve(ReviewDecisionRequest $request, int $item): RedirectResponse
     {
         ItemCopy::approve(PlanAccess::item($request, $item, approve: true), $request->user(), $request->validated('note'), (int) $request->validated('version_id'));
 
-        return back();
+        return back()->with('flash.success', __('socialhq_production.flash.copy_approved'));
     }
 
     public function requestChanges(ReviewDecisionRequest $request, int $item): RedirectResponse
     {
         ItemCopy::requestChanges(PlanAccess::item($request, $item, approve: true), $request->user(), (string) $request->validated('note'), (int) $request->validated('version_id'));
 
-        return back();
+        return back()->with('flash.success', __('socialhq_production.flash.changes_requested'));
     }
 }

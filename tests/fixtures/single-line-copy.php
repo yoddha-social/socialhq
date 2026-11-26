@@ -369,6 +369,7 @@ return [
     'socialhq_knowledge.website.review.skip' => 4,
     'socialhq_knowledge.website.review.accepted' => 8,
     'socialhq_knowledge.website.review.skipped' => 7,
+    'socialhq_knowledge.website.review.reviewed' => 25,
     'socialhq_companies.platform.approve' => 7,
     'socialhq_companies.platform.decline' => 7,
     'socialhq_companies.platform.suspend' => 5,

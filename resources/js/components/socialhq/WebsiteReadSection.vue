@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useForm, usePoll } from '@inertiajs/vue3';
-import { IconWorld } from '@tabler/icons-vue';
-import { computed, watch } from 'vue';
+import { IconChevronDown, IconWorld } from '@tabler/icons-vue';
+import { computed, ref, watch } from 'vue';
 
 import {
     isRunningCrawl,
@@ -9,6 +9,11 @@ import {
 } from '@/components/socialhq/brandSources';
 import WebsiteSuggestionItem from '@/components/socialhq/WebsiteSuggestionItem.vue';
 import { Button } from '@/components/ui/button';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
@@ -19,7 +24,8 @@ import { store as storeCrawl } from '@/routes/socialhq/brand/website';
  * "Read our website" on Brand knowledge: an admin gives the site's
  * address; it is read in the background (the page reloads the `website`
  * prop while it runs) and the suggestions are listed to accept, edit or
- * skip one by one. For workspace admins only.
+ * skip one by one; the ones already decided fold under one closed row.
+ * For workspace admins only.
  */
 const props = defineProps<{
     website: WebsiteProp;
@@ -29,9 +35,15 @@ const props = defineProps<{
 const crawl = computed(() => props.website.crawl);
 const isRunning = computed(() => isRunningCrawl(crawl.value?.status));
 const suggestions = computed(() => crawl.value?.suggestions ?? []);
-const hasOpen = computed(() =>
-    suggestions.value.some((suggestion) => suggestion.status === 'open'),
+const openSuggestions = computed(() =>
+    suggestions.value.filter((suggestion) => suggestion.status === 'open'),
 );
+const reviewedSuggestions = computed(() =>
+    suggestions.value.filter((suggestion) => suggestion.status !== 'open'),
+);
+const hasOpen = computed(() => openSuggestions.value.length > 0);
+/** The accepted and skipped suggestions start folded away. */
+const isReviewedOpen = ref(false);
 const showsSuggestions = computed(
     () =>
         crawl.value?.status === 'ready' || crawl.value?.status === 'unchanged',
@@ -206,14 +218,55 @@ const read = (): void => {
             >
                 {{ $t('socialhq_knowledge.website.review.none') }}
             </p>
-            <ul v-else class="flex flex-col gap-2">
-                <WebsiteSuggestionItem
-                    v-for="suggestion in suggestions"
-                    :key="suggestion.key"
-                    :crawl-id="crawl.id"
-                    :suggestion="suggestion"
-                />
-            </ul>
+            <template v-else>
+                <ul v-if="hasOpen" class="flex flex-col gap-2">
+                    <WebsiteSuggestionItem
+                        v-for="suggestion in openSuggestions"
+                        :key="suggestion.key"
+                        :crawl-id="crawl.id"
+                        :suggestion="suggestion"
+                    />
+                </ul>
+
+                <Collapsible
+                    v-if="reviewedSuggestions.length > 0"
+                    v-model:open="isReviewedOpen"
+                    class="flex flex-col gap-2"
+                >
+                    <CollapsibleTrigger
+                        class="flex w-full cursor-pointer items-center gap-2 rounded-lg border bg-card px-4 py-3 text-start text-sm font-medium text-foreground transition-control outline-none hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring focus-visible:outline-solid"
+                        data-testid="socialhq-website-reviewed-toggle"
+                    >
+                        <span class="flex-1">
+                            {{
+                                $t(
+                                    'socialhq_knowledge.website.review.reviewed',
+                                    {
+                                        count: formatFullNumber(
+                                            reviewedSuggestions.length,
+                                        ),
+                                    },
+                                )
+                            }}
+                        </span>
+                        <IconChevronDown
+                            class="size-4 shrink-0 text-muted-foreground transition-transform"
+                            :class="{ 'rotate-180': isReviewedOpen }"
+                            aria-hidden="true"
+                        />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent data-testid="socialhq-website-reviewed">
+                        <ul class="flex flex-col gap-2">
+                            <WebsiteSuggestionItem
+                                v-for="suggestion in reviewedSuggestions"
+                                :key="suggestion.key"
+                                :crawl-id="crawl.id"
+                                :suggestion="suggestion"
+                            />
+                        </ul>
+                    </CollapsibleContent>
+                </Collapsible>
+            </template>
         </template>
     </section>
 </template>

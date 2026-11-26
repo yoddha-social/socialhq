@@ -415,6 +415,30 @@ its text, web links opening in a new tab with `noopener noreferrer`); Word and
 PowerPoint as the text `DocumentText` reads. Text stops at 100 KB
 (`preview_kilobytes`). 60 previews a minute per person.
 
+**SEO keywords from the website** (owner decision 2026-11-26). The same run
+makes one more AI call, on the pages it already read (no more crawling):
+`WebsiteKeywordSignals` reads in code what the site stresses (page titles,
+headings, questions, opening words, and two- and three-word phrases several
+pages repeat) and `WebsiteKeywordReader` (`AiTask::Structured`) turns it
+into up to 20 keywords of 1 to 4 words, said as a customer would, each
+with the site's words it came from, a group, the brand's pillar, product
+or service and occasion it fits, and a caption line.
+`WebsiteKeywordSuggestions` checks them in code: the brand's name (the
+workspace's and the site's), a claim word, a price, a keyword the catalogue
+already has (KeywordMatcher) and one no page says are left out; up to 5
+main while main slots are free (more are offered for the library, never in
+place of a main one) and 15 more while the library has room; tags only
+when they are the brand's own; each run through the keyword check
+(warnings only); why (how many pages say it, and their titles); the caption
+line only when it says the keyword. Competitor names are left to the AI's
+instructions. The panel lists them under "SEO keywords from your site" in
+groups (features, problems and questions, audience, place, seasonal, for
+reading only: tags decide where a keyword goes), with Accept, Edit (the
+phrase) and Skip; accepting adds it to the catalogue with its tags
+(`WebsiteReview`), main only if a main slot is still free. A failed keyword
+call leaves the other suggestions; an unchanged site whose last run had no
+keyword suggestions gets the keyword call once.
+
 **Focus and search.** Every caller passes what it writes about as `$focus`:
 the planner the month's goals, pillars, confirmed events and networks; the
 copy writer the item (title, objective, angle, pillar, event, format) and open

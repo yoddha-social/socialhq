@@ -7,6 +7,7 @@ namespace App\SocialHq\Knowledge\Website;
 use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Knowledge\BrandProfile;
+use App\SocialHq\Knowledge\Documents\DocumentPreview;
 use App\SocialHq\Knowledge\Documents\DocumentSource;
 use App\SocialHq\Knowledge\Documents\DocumentStatus;
 use App\SocialHq\Knowledge\Documents\DocumentStorage;
@@ -30,7 +31,8 @@ use Symfony\Component\HttpFoundation\Response;
  * replaced, an entry added, a colour added to the brand look, a font or the
  * style notes set, the website's text kept as the "Website" document, or an
  * SEO keyword added to the catalogue with its tags.
- * Each suggestion is decided once; the row is locked while deciding.
+ * Each suggestion is decided once; the row is locked while deciding. The
+ * "Website text" suggestion can be previewed first (preview()).
  */
 final class WebsiteReview
 {
@@ -214,10 +216,29 @@ final class WebsiteReview
     }
 
     /**
-     * The website's pages as one document ("Website"), for search: created,
-     * or its text replaced. It doesn't count toward the documents limit.
+     * What the Preview of a "Website text" suggestion shows: the pages
+     * Accept would keep, from the text the read already stored. Nothing is
+     * fetched. Not found for another suggestion type or another brand's run.
+     *
+     * @return array<string, mixed>
      */
-    private static function keepDocument(Workspace $workspace, WebsiteCrawl $crawl, User $user): void
+    public static function preview(Workspace $workspace, int $crawlId, string $key): array
+    {
+        $crawl = WebsiteCrawl::query()->where('workspace_id', $workspace->id)->findOrFail($crawlId);
+        $suggestion = collect((array) $crawl->suggestions)->firstWhere('key', $key);
+
+        abort_unless($crawl->status->hasSuggestions() && data_get($suggestion, 'type') === 'document', Response::HTTP_NOT_FOUND);
+
+        return DocumentPreview::pages(self::documentPages($workspace));
+    }
+
+    /**
+     * The brand's pages from its latest read, in reading order, without the
+     * lines and pages repeated across them: what the "Website" document keeps.
+     *
+     * @return list<array{url: string, title: string, text: string}>
+     */
+    public static function documentPages(Workspace $workspace): array
     {
         $pages = CrawledPage::query()
             ->where('workspace_id', $workspace->id)
@@ -225,7 +246,17 @@ final class WebsiteReview
             ->get(['url', 'title', 'text'])
             ->map(fn (CrawledPage $page): array => ['url' => (string) $page->url, 'title' => (string) $page->title, 'text' => (string) $page->text])
             ->all();
-        $text = WebsiteText::document(WebsiteText::deduplicate($pages));
+
+        return WebsiteText::deduplicate($pages);
+    }
+
+    /**
+     * The website's pages as one document ("Website"), for search: created,
+     * or its text replaced. It doesn't count toward the documents limit.
+     */
+    private static function keepDocument(Workspace $workspace, WebsiteCrawl $crawl, User $user): void
+    {
+        $text = WebsiteText::document(self::documentPages($workspace));
 
         if ($text === '') {
             throw ValidationException::withMessages(['suggestion' => __('socialhq_knowledge.website.errors.pages_gone')]);

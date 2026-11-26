@@ -142,3 +142,19 @@ export interface WebsiteProp {
 
 export const isRunningCrawl = (status: CrawlStatus | undefined): boolean =>
     status === 'queued' || status === 'reading' || status === 'drafting';
+
+/** What the Preview dialog shows (DocumentPreview on the server). */
+export interface SourcePreview {
+    kind: 'pdf' | 'text' | 'markdown' | 'extracted' | 'pages' | 'none';
+    text: string | null;
+    /** Markdown rendered by the server without the file's HTML, pictures or scripts. */
+    html: string | null;
+    /** A "Website text" suggestion's pages, as Accept keeps them. */
+    pages: { url: string; title: string; text: string }[];
+    count: number;
+    /** Only the first `kilobytes` of the text are shown. */
+    truncated: boolean;
+    kilobytes: number;
+    /** A PDF, served inline from the app's own origin. */
+    file_url: string | null;
+}

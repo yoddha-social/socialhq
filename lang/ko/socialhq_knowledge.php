@@ -88,6 +88,22 @@ return [
         ],
     ],
 
+    'preview' => [
+        'action' => 'Preview',
+        'label' => 'Preview :title',
+        'loading' => 'Loading the preview…',
+        'failed' => 'Couldn\'t load the preview. Try again.',
+        'pdf_fallback' => 'If the file doesn\'t show here, open it in a new tab.',
+        'open_tab' => 'Open in new tab',
+        'extracted' => 'This is the text we read from the file, without its layout or pictures. To see it as it looks, download it.',
+        'truncated' => 'Showing the first :size KB. To see the rest, download the file.',
+        'truncated_pages' => 'Showing the first :size KB of the text.',
+        'none' => 'There\'s no preview for this file. To open it, download it.',
+        'website_description' => 'The text of the page we read. Accept it to keep it as a document the AI searches.|The text of the :count pages we read. Accept it to keep it as a document the AI searches.',
+        'close' => 'Close',
+        'download' => 'Download',
+    ],
+
     'links' => [
         'dialog' => [
             'title' => 'Add a Google file',

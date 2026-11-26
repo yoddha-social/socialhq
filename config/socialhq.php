@@ -499,6 +499,8 @@ return [
             'max_expanded_bytes' => 100 * 1024 * 1024,
             'max_part_bytes' => 20 * 1024 * 1024,
             'pdf_decode_bytes' => 32 * 1024 * 1024,
+            // Preview: at most this much text is shown (a PDF is shown whole, in the browser's viewer).
+            'preview_kilobytes' => 100,
         ],
         // Old calendars (CSV or XLSX) imported as past posts for the AI planner.
         // An upload never confirmed is deleted after a day.

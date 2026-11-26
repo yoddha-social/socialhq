@@ -31,7 +31,7 @@ class ChannelPage
     public const NAME_MAX_LENGTH = 60;
 
     /**
-     * @return array{stats: array{scheduled: int, pending_approval: int, drafts: int, published: int, waiting: int}, week: array{sent: int, goal: int|null}, name: array{custom: string|null, network: string}, invite: array{supported: bool, reconnecting: bool}}
+     * @return array{stats: array{scheduled: int, pending_approval: int, drafts: int, published: int, waiting: int}, week: array{sent: int, goal: int|null}, name: array{custom: string|null, network: string}, invite: array{supported: bool, reconnecting: bool, open: list<array<string, mixed>>}}
      */
     public static function props(User $viewer, SocialAccount $channel): array
     {
@@ -48,6 +48,8 @@ class ChannelPage
             'invite' => [
                 'supported' => ConnectInvite::entryFor($channel->platform) !== null,
                 'reconnecting' => $channel->isDisconnected(),
+                // The workspace's links that still work, each with Cancel (SEC-17).
+                'open' => ConnectInvite::openForPage($channel->workspace),
             ],
         ];
     }

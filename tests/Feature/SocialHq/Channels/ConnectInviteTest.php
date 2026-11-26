@@ -438,3 +438,86 @@ test('a link names what is connected and where the owner signs in', function (Pl
     'YouTube' => [Platform::YouTube, 'YouTube', 'Google'],
     'LinkedIn' => [Platform::LinkedIn, 'LinkedIn', 'LinkedIn'],
 ]);
+
+test('an admin sees the workspace\'s open links on the channel page and cancels one: it stops working at once', function () {
+    [$invite, $token] = ConnectInvite::issue($this->workspace, Platform::X, $this->admin);
+    [$used] = ConnectInvite::issue($this->workspace, Platform::X, $this->admin);
+    $used->update(['used_at' => now()]);
+
+    $this->actingAs($this->admin)->get(route('app.channels.settings', $this->channel))
+        ->assertInertia(fn ($page) => $page->has('invite.open', 1)
+            ->where('invite.open.0.id', $invite->id)
+            ->where('invite.open.0.network', 'X')
+            ->where('invite.open.0.reconnect', null)
+            ->where('invite.open.0.created_by', 'Asha Gurung')
+            ->where('invite.open.0.expires_at', $invite->expires_at->toIso8601ZuluString()));
+
+    $this->actingAs($this->admin)->delete(route('socialhq.connect-invites.destroy', $invite->id))
+        ->assertRedirect()
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('flash.success', __('socialhq.channels.invite.cancelled'));
+
+    $invite->refresh();
+    expect($invite->used_at)->not->toBeNull()
+        ->and($invite->cancelled_at)->not->toBeNull()
+        ->and($invite->cancelled_by)->toBe($this->admin->id)
+        ->and($invite->connected)->toBeNull();
+
+    $this->actingAs($this->admin)->get(route('app.channels.settings', $this->channel))
+        ->assertInertia(fn ($page) => $page->has('invite.open', 0));
+
+    auth()->logout();
+    $this->get(route('socialhq.connect-invite.landing', $token))->assertInertia(fn ($page) => $page->where('state', 'expired'));
+    $this->post(route('socialhq.connect-invite.start', $token))->assertRedirect(route('socialhq.connect-invite.landing', $token));
+});
+
+test('a link cancelled while the guest is signing in on the network can\'t finish', function () {
+    connectInviteFakeX();
+    [$invite, $token] = ConnectInvite::issue($this->workspace, Platform::X, $this->admin);
+
+    connectInviteWalkToConfirmation($this, $token);
+    $invite->fresh()->cancel($this->admin);
+
+    $this->post(route('app.social.connect.finish', Platform::X), ['identities' => ['x:123456789']])->assertRedirect(route('login'));
+    $this->get(route('socialhq.connect-invite.show'))->assertInertia(fn ($page) => $page->where('state', 'expired'));
+
+    expect($this->workspace->socialAccounts()->count())->toBe(1)
+        ->and($invite->fresh()->connected)->toBeNull();
+});
+
+test('only an admin of the link\'s workspace cancels it, and only while it still works', function () {
+    [$invite] = ConnectInvite::issue($this->workspace, Platform::X, $this->admin);
+    $member = workspaceMember($this->workspace, 'member');
+    $otherAdmin = User::factory()->create();
+    $otherWorkspace = Workspace::factory()->create(['user_id' => $otherAdmin->id, 'account_id' => $otherAdmin->account_id]);
+    $otherWorkspace->members()->attach($otherAdmin->id, membershipPivot('admin'));
+    $otherAdmin->update(['current_workspace_id' => $otherWorkspace->id]);
+
+    $this->actingAs($member)->delete(route('socialhq.connect-invites.destroy', $invite->id))->assertForbidden();
+    $this->actingAs($otherAdmin->fresh())->delete(route('socialhq.connect-invites.destroy', $invite->id))->assertNotFound();
+    expect($invite->fresh()->isOpen())->toBeTrue();
+
+    [$used] = ConnectInvite::issue($this->workspace, Platform::X, $this->admin);
+    $used->update(['used_at' => now(), 'connected' => [['id' => $this->channel->id, 'name' => 'brewco']]]);
+    [$expired] = ConnectInvite::issue($this->workspace, Platform::X, $this->admin);
+    $expired->update(['expires_at' => now()->subMinute()]);
+
+    foreach ([$used, $expired] as $closed) {
+        $this->actingAs($this->admin)->delete(route('socialhq.connect-invites.destroy', $closed->id))
+            ->assertSessionHasErrors(['invite' => __('socialhq.channels.invite.not_open')]);
+        expect($closed->fresh()->cancelled_at)->toBeNull();
+    }
+});
+
+test('a cancel while the guest is finishing waits for it and says so', function () {
+    [$invite] = ConnectInvite::issue($this->workspace, Platform::X, $this->admin);
+    // The guest's "Finish connection" holds this lock (ActAsConnectInviter).
+    $finishing = Cache::lock("shq_connect_invite:{$invite->id}", 60);
+    $finishing->get();
+
+    $this->actingAs($this->admin)->delete(route('socialhq.connect-invites.destroy', $invite->id))
+        ->assertSessionHasErrors(['invite' => __('socialhq.channels.invite.in_use')]);
+
+    expect($invite->fresh()->isOpen())->toBeTrue();
+    $finishing->release();
+});

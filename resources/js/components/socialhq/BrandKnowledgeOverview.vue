@@ -106,7 +106,18 @@ const keywordConflicts = computed(
     () => props.keywordCheck?.counts.conflict ?? 0,
 );
 
-type Health = 'empty' | 'attention' | 'ready';
+/**
+ * 'setup' while a step the AI builds on is still missing (audit 2026-11-24,
+ * UX-05): the light turns green only once they are all done, not as soon as
+ * the profile is written.
+ */
+type Health = 'empty' | 'attention' | 'setup' | 'ready';
+
+/**
+ * The setup steps the AI builds on: without them its plans and captions come
+ * out generic. The brand look and SEO keywords are extras.
+ */
+const IMPORTANT_STEPS = ['profile', 'strategy', 'knowledge', 'sources'];
 
 /** The first thing that needs a look, as a lang key and its count. */
 const firstIssue = computed<{ key: string; count: number } | null>(() => {
@@ -134,7 +145,11 @@ const health = computed<Health>(() => {
         return 'empty';
     }
 
-    return firstIssue.value ? 'attention' : 'ready';
+    if (firstIssue.value) {
+        return 'attention';
+    }
+
+    return nextStep.value ? 'setup' : 'ready';
 });
 
 type IdentityState = 'complete' | 'shortened' | 'in_progress' | 'not_started';
@@ -315,6 +330,17 @@ const setupDone = computed(
     () => setupRows.value.filter((row) => row.done).length,
 );
 
+/** The first step the AI builds on that is still to do, for the status card. */
+const nextStep = computed<SetupRow | null>(
+    () =>
+        setupRows.value.find(
+            (row) => IMPORTANT_STEPS.includes(row.key) && !row.done,
+        ) ?? null,
+);
+
+/** Extras (look, SEO keywords) still open once the light is green. */
+const optionalLeft = computed(() => setupRows.value.length - setupDone.value);
+
 const openTab = (tab: BrandTab, filter?: string): void => {
     emit('open', tab, filter);
 };
@@ -391,23 +417,59 @@ const fillProfile = (): void => {
                 data-testid="socialhq-brand-health"
             >
                 <span
-                    class="size-2.5 rounded-full"
+                    class="size-2.5 shrink-0 rounded-full"
                     :class="{
                         'bg-success ring-4 ring-success/20': health === 'ready',
                         'bg-warning ring-4 ring-warning/20':
-                            health === 'attention',
+                            health === 'attention' || health === 'setup',
                         'bg-subtle-foreground ring-4 ring-accent':
                             health === 'empty',
                     }"
+                    :data-state="health"
+                    data-testid="socialhq-brand-health-light"
                 />
                 <div class="min-w-0">
-                    <p class="text-sm font-semibold text-foreground">
-                        {{ $t(`socialhq.brand.overview.health.${health}`) }}
+                    <p
+                        class="text-sm font-semibold text-foreground"
+                        data-testid="socialhq-brand-health-title"
+                    >
+                        <template v-if="health === 'setup'">
+                            {{
+                                $t('socialhq.brand.overview.health.setup', {
+                                    done: formatFullNumber(setupDone),
+                                    total: formatFullNumber(setupRows.length),
+                                })
+                            }}
+                        </template>
+                        <template v-else>
+                            {{ $t(`socialhq.brand.overview.health.${health}`) }}
+                        </template>
                     </p>
-                    <p class="text-xs text-muted-foreground">
-                        <template v-if="health === 'ready'">
+                    <p
+                        class="max-w-xs text-xs text-muted-foreground"
+                        data-testid="socialhq-brand-health-hint"
+                    >
+                        <template v-if="health === 'ready' && optionalLeft > 0">
+                            {{
+                                $tChoice(
+                                    'socialhq.brand.overview.health.ready_hint_optional',
+                                    optionalLeft,
+                                    { count: formatFullNumber(optionalLeft) },
+                                )
+                            }}
+                        </template>
+                        <template v-else-if="health === 'ready'">
                             {{
                                 $t('socialhq.brand.overview.health.ready_hint')
+                            }}
+                        </template>
+                        <template v-else-if="health === 'setup' && nextStep">
+                            {{
+                                $t(
+                                    canEdit
+                                        ? `socialhq.brand.overview.health.next.${nextStep.key}`
+                                        : `socialhq.brand.overview.health.next_member.${nextStep.key}`,
+                                )
                             }}
                         </template>
                         <template v-else-if="health === 'empty'">
@@ -429,6 +491,26 @@ const fillProfile = (): void => {
                             }}
                         </template>
                     </p>
+                    <Button
+                        v-if="health === 'setup' && nextStep"
+                        variant="link"
+                        size="sm"
+                        class="mt-1 h-auto p-0 text-xs"
+                        data-testid="socialhq-brand-health-next"
+                        @click="openSetupRow(nextStep)"
+                    >
+                        {{
+                            $t('socialhq.brand.overview.setup.action_label', {
+                                action: $t(
+                                    `socialhq.brand.overview.setup.actions.${nextStep.action}`,
+                                ),
+                                part: $t(
+                                    `socialhq.brand.overview.setup.rows.${nextStep.key}`,
+                                ),
+                            })
+                        }}
+                        <IconArrowUpRight class="size-3.5" />
+                    </Button>
                 </div>
             </div>
         </section>

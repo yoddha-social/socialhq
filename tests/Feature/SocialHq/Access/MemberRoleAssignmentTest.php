@@ -13,6 +13,7 @@ use App\SocialHq\Access\Role;
 use App\SocialHq\Access\Roles;
 use App\SocialHq\Access\WorkspaceAccess;
 use App\SocialHq\Signup\AccessRequest;
+use Database\Factories\AccountFactory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
@@ -162,7 +163,8 @@ test('an invite carries its role, and the person joins with it', function () {
         ->and($invite->is_admin)->toBeFalse()
         ->and($invite->requires_approval)->toBeTrue();
 
-    $person = User::factory()->create(['email' => 'designer@example.com']);
+    // A new sign-up's account is empty (no company), so the invite moves them in.
+    $person = AccountFactory::withoutCompany(fn (): User => User::factory()->create(['email' => 'designer@example.com']));
     AcceptInvite::execute($person, $invite);
 
     $access = WorkspaceAccess::of($person->fresh(), $this->workspace);
@@ -262,7 +264,8 @@ test('an invite whose role is not the company’s joins as Viewer, never by its 
         'is_admin' => true,
         'requires_approval' => false,
     ]);
-    $person = User::factory()->create(['email' => 'odd@example.com']);
+    // A new sign-up's account is empty (no company), so the invite moves them in.
+    $person = AccountFactory::withoutCompany(fn (): User => User::factory()->create(['email' => 'odd@example.com']));
 
     AcceptInvite::execute($person, $invite);
 

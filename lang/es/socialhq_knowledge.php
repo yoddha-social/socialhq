@@ -166,7 +166,7 @@ return [
 
     'website' => [
         'title' => 'Read our website',
-        'description' => 'We read up to :count pages of your site and suggest profile text, knowledge entries and colours. Nothing is saved until you accept it.',
+        'description' => 'We read up to :count pages of your site and suggest profile text, knowledge entries, colours and SEO keywords. Nothing is saved until you accept it.',
         'url' => 'Website address',
         'url_placeholder' => 'www.example.com',
         'start' => 'Read website',
@@ -210,6 +210,24 @@ return [
                 'font' => 'Font',
                 'style' => 'Overall look',
                 'document' => 'Website text',
+                'keyword' => 'SEO keyword',
+            ],
+            // SEO keywords from what the site stresses, shown in groups.
+            'keywords' => [
+                'title' => 'SEO keywords from your site',
+                'description' => 'Phrases your pages stress, said the way a customer searches. Accepting one adds it to your SEO keywords with its tags.',
+                'groups' => [
+                    'features' => 'Features',
+                    'problems' => 'Problems & questions',
+                    'audience' => 'Audience',
+                    'place' => 'Place',
+                    'seasonal' => 'Seasonal',
+                ],
+                'main' => 'Main',
+                'main_full' => 'You already have 5 main keywords, so it goes to your keyword library.',
+                'why' => 'On :count page: :pages|On :count pages: :pages',
+                'sample' => 'In a caption: “:line”',
+                'label' => 'Keyword',
             ],
             'document' => 'Keep the text of the pages read as a document, so the AI finds details from your site when it writes about them.',
         ],
@@ -221,6 +239,9 @@ return [
             'decided' => 'This suggestion was already accepted or skipped.',
             'empty' => 'Fill this in, or skip the suggestion.',
             'pages_gone' => 'The pages from this read are gone. Read your website again, then accept it.',
+            'keyword_length' => 'A keyword needs :min to :max characters.',
+            'keyword_exists' => '“:keyword” is already in your SEO keywords.',
+            'library_full' => 'Your keyword library has :max keywords, the most it can hold. Remove one in SEO keywords first.',
         ],
     ],
 

@@ -13,9 +13,11 @@ use App\SocialHq\Knowledge\Documents\DocumentStorage;
 use App\SocialHq\Knowledge\Documents\DocumentType;
 use App\SocialHq\Knowledge\Documents\ExtractKnowledgeDocument;
 use App\SocialHq\Knowledge\Documents\KnowledgeDocument;
+use App\SocialHq\Knowledge\Keywords\BrandKeywords;
 use App\SocialHq\Knowledge\KnowledgeEntry;
 use App\SocialHq\Knowledge\KnowledgeKind;
 use App\SocialHq\Knowledge\Look\BrandLook;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Uri;
@@ -26,7 +28,8 @@ use Symfony\Component\HttpFoundation\Response;
  * Accept (as suggested, or edited) or Skip one website suggestion. Accepting
  * is the only way a suggestion reaches brand knowledge: a profile field is
  * replaced, an entry added, a colour added to the brand look, a font or the
- * style notes set, or the website's text kept as the "Website" document.
+ * style notes set, the website's text kept as the "Website" document, or an
+ * SEO keyword added to the catalogue with its tags.
  * Each suggestion is decided once; the row is locked while deciding.
  */
 final class WebsiteReview
@@ -143,9 +146,49 @@ final class WebsiteReview
                 self::keepDocument($workspace, $crawl, $user);
 
                 return $suggestion;
+
+            case 'keyword':
+                return self::addKeyword($workspace, $suggestion, $pick('text'));
         }
 
         abort(Response::HTTP_NOT_FOUND);
+    }
+
+    /**
+     * Adds the keyword to the catalogue with its tags: main when it was
+     * suggested as main and a main slot is still free, else to the library.
+     * Never in place of a keyword the brand has.
+     *
+     * @param  array<string, mixed>  $suggestion
+     * @return array<string, mixed>
+     */
+    private static function addKeyword(Workspace $workspace, array $suggestion, string $text): array
+    {
+        $text = BrandKeywords::clean(self::required($text, 'text'));
+
+        if (mb_strlen($text) < BrandKeywords::MIN_LENGTH || mb_strlen($text) > BrandKeywords::MAX_LENGTH) {
+            throw ValidationException::withMessages(['text' => __('socialhq_knowledge.website.errors.keyword_length', ['min' => BrandKeywords::MIN_LENGTH, 'max' => BrandKeywords::MAX_LENGTH])]);
+        }
+
+        $catalogue = BrandKeywords::catalogue($workspace);
+
+        if (collect($catalogue)->contains(fn (array $keyword): bool => BrandKeywords::sameKey($keyword['text']) === BrandKeywords::sameKey($text))) {
+            throw ValidationException::withMessages(['text' => __('socialhq_knowledge.website.errors.keyword_exists', ['keyword' => $text])]);
+        }
+
+        $mains = count(array_filter($catalogue, fn (array $keyword): bool => $keyword['main']));
+        $main = data_get($suggestion, 'main') === true && $mains < BrandKeywords::maxMain();
+
+        if (! $main && count($catalogue) - $mains >= BrandKeywords::maxSupporting()) {
+            throw ValidationException::withMessages(['suggestion' => __('socialhq_knowledge.website.errors.library_full', ['max' => BrandKeywords::maxSupporting()])]);
+        }
+
+        BrandKeywords::save($workspace, [
+            ...array_map(fn (array $keyword): array => Arr::only($keyword, ['text', 'main', 'tags']), $catalogue),
+            ['text' => $text, 'main' => $main, 'tags' => (array) data_get($suggestion, 'tags', [])],
+        ]);
+
+        return [...$suggestion, 'text' => $text, 'main' => $main];
     }
 
     private static function required(string $value, string $field): string

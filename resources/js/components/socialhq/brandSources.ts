@@ -1,3 +1,8 @@
+import type {
+    KeywordTag,
+    KeywordVerdict,
+} from '@/components/socialhq/keywords/keywords';
+
 /** Brand look on Brand knowledge (LookPage::prop). */
 export interface BrandColour {
     name: string;
@@ -90,7 +95,34 @@ export type WebsiteSuggestion =
           type: 'document';
           pages: number;
           status: SuggestionStatus;
+      }
+    | {
+          key: string;
+          type: 'keyword';
+          text: string;
+          main: boolean;
+          /** Asked for as main while main was full: it goes to the library. */
+          main_full: boolean;
+          group: WebsiteKeywordGroup;
+          tags: KeywordTag[];
+          pages: number;
+          page_titles: string[];
+          sample: string;
+          verdict: KeywordVerdict;
+          reason: string;
+          status: SuggestionStatus;
       };
+
+/** How keyword suggestions are grouped for review (WebsiteKeywordReader::GROUPS). */
+export const WEBSITE_KEYWORD_GROUPS = [
+    'features',
+    'problems',
+    'audience',
+    'place',
+    'seasonal',
+] as const;
+
+export type WebsiteKeywordGroup = (typeof WEBSITE_KEYWORD_GROUPS)[number];
 
 export interface WebsiteProp {
     aiAvailable: boolean;

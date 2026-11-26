@@ -3,6 +3,8 @@ import { router, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 import type { WebsiteSuggestion } from '@/components/socialhq/brandSources';
+import KeywordTagChip from '@/components/socialhq/keywords/KeywordTagChip.vue';
+import KeywordVerdictPill from '@/components/socialhq/keywords/KeywordVerdictPill.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +13,8 @@ import { accept, skip } from '@/routes/socialhq/brand/website';
 
 /**
  * One suggestion from "Read our website": Accept as it is, Edit then
- * accept, or Skip. Nothing is saved until it is accepted.
+ * accept, or Skip. Nothing is saved until it is accepted. An SEO keyword
+ * shows its tags, its check, the pages that say it and a caption line.
  */
 const props = defineProps<{
     crawlId: number;
@@ -27,7 +30,8 @@ const form = useForm<{
     body: string;
     name: string;
     hex: string;
-}>({ value: '', title: '', body: '', name: '', hex: '' });
+    text: string;
+}>({ value: '', title: '', body: '', name: '', hex: '', text: '' });
 
 /** A refused accept's messages, only while the suggestion is still open. */
 const errors = computed(() =>
@@ -51,6 +55,8 @@ const editedFields = (): Record<string, string> => {
             return { name: form.name, hex: form.hex };
         case 'document':
             return {};
+        case 'keyword':
+            return { text: form.text };
         default:
             return { value: form.value };
     }
@@ -64,6 +70,7 @@ const startEdit = (): void => {
     form.body = suggestion.type === 'entry' ? suggestion.body : '';
     form.name = suggestion.type === 'colour' ? suggestion.name : '';
     form.hex = suggestion.type === 'colour' ? suggestion.hex : '';
+    form.text = suggestion.type === 'keyword' ? suggestion.text : '';
     isEditing.value = true;
 };
 
@@ -137,6 +144,16 @@ const skipSuggestion = (): void => {
             >
                 {{ $t(`socialhq.brand.entries.kinds.${suggestion.kind}`) }}
             </span>
+            <template v-else-if="suggestion.type === 'keyword'">
+                <Badge
+                    v-if="suggestion.main"
+                    variant="outline"
+                    :data-testid="`socialhq-website-suggestion-main-${suggestion.key}`"
+                >
+                    {{ $t('socialhq_knowledge.website.review.keywords.main') }}
+                </Badge>
+                <KeywordVerdictPill :verdict="suggestion.verdict" />
+            </template>
             <Badge
                 v-if="suggestion.status === 'accepted'"
                 variant="success"
@@ -184,6 +201,69 @@ const skipSuggestion = (): void => {
             >
                 {{ $t('socialhq_knowledge.website.review.document') }}
             </p>
+            <div
+                v-else-if="suggestion.type === 'keyword'"
+                class="flex flex-col gap-1.5"
+            >
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <span
+                        class="text-sm font-medium text-foreground"
+                        :data-testid="`socialhq-website-suggestion-text-${suggestion.key}`"
+                    >
+                        {{ suggestion.text }}
+                    </span>
+                    <KeywordTagChip
+                        v-for="(tag, index) in suggestion.tags"
+                        :key="index"
+                        :kind="tag.kind"
+                        :label="tag.label"
+                    />
+                </div>
+                <p
+                    class="text-xs text-muted-foreground"
+                    :data-testid="`socialhq-website-suggestion-why-${suggestion.key}`"
+                >
+                    {{
+                        $tChoice(
+                            'socialhq_knowledge.website.review.keywords.why',
+                            suggestion.pages,
+                            {
+                                count: String(suggestion.pages),
+                                pages: suggestion.page_titles.join(', '),
+                            },
+                        )
+                    }}
+                </p>
+                <p
+                    v-if="suggestion.sample"
+                    class="text-sm text-muted-foreground italic"
+                >
+                    {{
+                        $t(
+                            'socialhq_knowledge.website.review.keywords.sample',
+                            {
+                                line: suggestion.sample,
+                            },
+                        )
+                    }}
+                </p>
+                <p
+                    v-if="suggestion.verdict !== 'good' && suggestion.reason"
+                    class="text-xs text-muted-foreground"
+                >
+                    {{ suggestion.reason }}
+                </p>
+                <p
+                    v-if="isOpen && suggestion.main_full"
+                    class="text-xs text-muted-foreground"
+                >
+                    {{
+                        $t(
+                            'socialhq_knowledge.website.review.keywords.main_full',
+                        )
+                    }}
+                </p>
+            </div>
             <p v-else class="text-sm whitespace-pre-line text-foreground">
                 {{ suggestion.value }}
             </p>
@@ -227,6 +307,14 @@ const skipSuggestion = (): void => {
                 v-else-if="suggestion.type === 'font'"
                 v-model="form.value"
                 :aria-label="$t(`socialhq_knowledge.look.${suggestion.field}`)"
+            />
+            <Input
+                v-else-if="suggestion.type === 'keyword'"
+                v-model="form.text"
+                :aria-label="
+                    $t('socialhq_knowledge.website.review.keywords.label')
+                "
+                :data-testid="`socialhq-website-suggestion-keyword-${suggestion.key}`"
             />
             <Textarea
                 v-else

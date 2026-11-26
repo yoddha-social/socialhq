@@ -486,8 +486,11 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   each item a `suggested_time` ("HH:MM", checked in code; an unreadable one is
   dropped, not the item) with `suggested_timezone` set by the code. Cards, the
   list and the side sheet show it in that zone and the viewer's ("9:00 in
-  Sydney · 4:45 in Kathmandu"); "Create post" hands the composer that instant
-  as a wall clock in the user's zone (`SuggestedTime`), else 09:00 of the day.
+  Sydney · 4:45 in Kathmandu"); the item page and its "Create post" card say it
+  in the channel's zone too, the one the composer shows ("9:00 in Sydney · 4:45
+  PM in Kathmandu, the channel's time zone"). "Create post" hands the composer
+  that instant as a wall clock in the user's zone (`SuggestedTime`), else 09:00
+  of the day in the main audience zone (QA 2026-11-18, item 13).
 - **List view**: grouped by week (the user's start of week) with sticky week
   headers, sortable by day, channel, pillar, owner and status (kept per
   browser), inline accept, drop and restore, time and event columns; stacked
@@ -738,7 +741,10 @@ Everything about when a post goes out sits in one bar (PATCHES.md rows 232–233
 labels and "Repeat" on the left; the "when" button (a set time shows its weekday
 and time zone), "Save draft" and the primary button on the right. The primary
 button counts the posts it saves ("Schedule 4 posts", "Request approval for 4
-posts").
+posts"); an approver editing a post that waits for approval sees "Approve and
+schedule" (or "…add to queue", "…publish now"), since saving approves it
+(`approveAction` in `PostComposerDialog.vue`). Below `lg` the time's zone shows as its place
+("Kathmandu").
 
 - **Repeat** (`components/socialhq/composer/ComposerRepeat.vue`) is the post card's
   "Make Recurring" rule, picked before saving. Only people who publish directly see

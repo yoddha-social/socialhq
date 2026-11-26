@@ -14,6 +14,7 @@ use App\SocialHq\Production\Brief;
 use App\SocialHq\Production\BriefFile;
 use App\SocialHq\Production\BriefRounds;
 use App\SocialHq\Production\BriefTeam;
+use App\Support\Timezone;
 
 /**
  * What the item page shows: the item, its copy versions and review thread.
@@ -86,6 +87,8 @@ final class ItemPage
             'id' => $item->id,
             'title' => $item->title,
             'scheduled_on' => $item->scheduled_on->toDateString(),
+            'suggested_at' => SuggestedTime::instant($item)?->toIso8601ZuluString(),
+            'suggested_timezone' => $item->suggested_timezone,
             'month' => $item->plan->month->format('Y-m'),
             'platform' => $item->platform,
             'platform_label' => $platform?->label(),
@@ -107,6 +110,8 @@ final class ItemPage
                 'name' => $account->display_label,
                 'platform' => $account->platform->value,
                 'avatar_url' => $account->avatar_url,
+                // The zone the composer shows the post's time in.
+                'timezone' => Timezone::normalize($account->timezone),
             ],
             'event' => $item->event === null ? null : [
                 'name' => $item->event->name,

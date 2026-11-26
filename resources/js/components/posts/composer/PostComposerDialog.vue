@@ -1578,6 +1578,24 @@ const scheduleTriggerIcon = computed(() => {
         : { name: 'send', component: IconSend };
 });
 /**
+ * Social HQ: an approver saving a post that waits for approval approves it
+ * (PostApproval::transition records them), so the button says so.
+ */
+const approveAction = computed(() =>
+    props.initialPost?.status === PostStatus.PendingApproval &&
+    !requiresApproval.value
+        ? {
+              one: isQueueMode.value
+                  ? 'socialhq.approvals.approve_and_queue'
+                  : scheduleMode.value === 'now'
+                    ? 'socialhq.approvals.approve_and_publish'
+                    : 'socialhq.approvals.approve_and_schedule',
+              many: 'socialhq.approvals.approve_and_schedule',
+              icon: IconCalendarCheck,
+          }
+        : null,
+);
+/**
  * Social HQ: the primary button says what saving does, counted when it saves
  * several posts ("Schedule 4 posts", "Request approval for 4 posts").
  */
@@ -1606,10 +1624,12 @@ const submitAction = computed(() => {
                   icon: IconCalendarCheck,
               };
 
+    const chosen = approveAction.value ?? action;
+
     return {
-        key: isBatch.value ? action.many : action.one,
+        key: isBatch.value ? chosen.many : chosen.one,
         params: { count: String(selectedAccounts.value.length) },
-        icon: action.icon,
+        icon: chosen.icon,
     };
 });
 /** Social HQ: the set time a repeat counts from, as a UTC instant; empty in the queue and "Now". */

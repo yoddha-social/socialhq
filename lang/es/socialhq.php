@@ -837,6 +837,7 @@ return [
         ],
         'approve_and_schedule' => 'Approve and schedule',
         'approve_and_queue' => 'Approve and add to queue',
+        'approve_and_publish' => 'Approve and publish now',
     ],
     'post_card' => [
         'from_plan' => 'From plan: :title',

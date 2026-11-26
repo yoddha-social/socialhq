@@ -423,13 +423,33 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   and angle. "Generate with AI" (`ContentPlanner`, a queued job) drafts the
   month from confirmed events, `BrandKnowledge`, pillars and posts per week
   (brand settings), the last 90 days of posts with metrics and the team's focus.
-  Its suggestions are checked in code (date in the month and not past, channel,
-  format, confirmed event around its dates, paused channels, duplicates) before
-  they show, dashed, to accept or drop. "Approve plan" waits until no
+  It asks the AI one week per call (`PlannerOptions::weeks()`: calendar weeks
+  from the requester's first day of the week, a piece under 3 days at either
+  end joined to its neighbour; days already gone get no call), each told how
+  many posts every channel still needs that week and its free days, worked out
+  in code (`posts_to_plan`, `free_days`). The hard rules live in code
+  (`Plan\Ai\SuggestionChecks`), not in the hope that the model obeys: what is
+  certain is repaired (a channel key with a typo, or the channel's name or
+  network, or the only channel that takes the format; a format of another
+  network becomes the same kind here; what to make follows the format; an
+  event named instead of keyed; a pillar's case; a day that is taken, too far
+  from its event or switched off in the channel's posting times moves to the
+  nearest free day of the same calendar week), the rest is refused with a
+  reason (outside the days, past, unknown or paused channel, unconfirmed or
+  unknown event, duplicate title, over the week's posts, no free day). A week
+  with room left after that gets one more call with the refused items and
+  their reasons; a failed call is tried once more. Each week is saved when
+  checked, replacing only its own days' untouched suggestions, so a week that
+  still fails keeps its earlier ones and shows as "Not drafted" with why, and
+  the others go on (the run fails only when no week was drafted). No call
+  starts after 9 minutes (`BUDGET_SECONDS`, job timeout 15). How each week
+  went is kept on the plan (`generation_weeks`: proposed, added, refused,
+  repaired, calls). Suggestions show, dashed, to accept or drop; the panel says
+  how many were added, the main reason for the rest, and the weeks not
+  drafted. "Approve plan" waits until no
   suggestion on a coming day is open (one on a day already gone can't be
   accepted, alone or by "Accept all"; move it or drop it); any change sends
-  an approved plan back to review. The dialog plans a week by default: the
-  free models keep far more of a week's suggestions than of a month's.
+  an approved plan back to review. The dialog plans a week by default.
   The dialog's options (`PlannerOptions`, saved on the plan as
   `generation_options`; the switches remembered per brand in the profile's
   `planner_options`): the days to plan, any range inside the plan's month (a

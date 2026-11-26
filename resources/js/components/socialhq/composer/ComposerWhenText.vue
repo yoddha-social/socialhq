@@ -23,6 +23,10 @@ const weekday = computed(() =>
         : '',
 );
 const zone = computed(() => props.timezone.replaceAll('_', ' '));
+/** The zone's place ("Kathmandu"), shown on narrow screens where the full name doesn't fit. */
+const place = computed(() =>
+    (props.timezone.split('/').pop() ?? props.timezone).replaceAll('_', ' '),
+);
 </script>
 
 <template>
@@ -41,6 +45,12 @@ const zone = computed(() => props.timezone.replaceAll('_', ' '));
             class="font-normal text-subtle-foreground max-lg:hidden"
             data-testid="composer-schedule-trigger-zone"
             >{{ zone }}</span
+        >
+        <span
+            v-if="wallClock"
+            class="shrink-0 font-normal text-subtle-foreground lg:hidden"
+            data-testid="composer-schedule-trigger-place"
+            >{{ place }}</span
         >
     </span>
 </template>

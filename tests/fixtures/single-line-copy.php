@@ -180,6 +180,7 @@ return [
     'signatures.description' => 43,
     'socialhq.approvals.reject.cancel' => 6,
     'socialhq.approvals.reject.confirm' => 6,
+    'socialhq.approvals.approve_and_publish' => 23,
     'socialhq.approvals.approve_and_queue' => 24,
     'socialhq.approvals.approve_and_schedule' => 20,
     'socialhq.inbox.nav' => 15,

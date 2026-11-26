@@ -21,12 +21,19 @@ export interface PostingTime {
 
 export const postingTimeOf = (
     item: Pick<PlanItem, 'suggested_at' | 'suggested_timezone'>,
+): PostingTime | null => postingTimeIn(item, userTimezone.value);
+
+/**
+ * The same, with the second time in a given zone instead of the viewer's
+ * (the channel's, which the composer shows).
+ */
+export const postingTimeIn = (
+    item: Pick<PlanItem, 'suggested_at' | 'suggested_timezone'>,
+    zone: string,
 ): PostingTime | null => {
     if (!item.suggested_at || !item.suggested_timezone) {
         return null;
     }
-
-    const viewerZone = userTimezone.value;
 
     return {
         time: date.formatTimeInTimezone(
@@ -34,8 +41,8 @@ export const postingTimeOf = (
             item.suggested_timezone,
         ),
         place: placeOfZone(item.suggested_timezone),
-        viewerTime: date.formatTimeInTimezone(item.suggested_at, viewerZone),
-        viewerPlace: placeOfZone(viewerZone),
-        sameZone: viewerZone === item.suggested_timezone,
+        viewerTime: date.formatTimeInTimezone(item.suggested_at, zone),
+        viewerPlace: placeOfZone(zone),
+        sameZone: zone === item.suggested_timezone,
     };
 };

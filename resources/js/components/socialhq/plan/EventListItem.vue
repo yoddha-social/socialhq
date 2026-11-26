@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { IconCircleCheck, IconDots, IconExternalLink } from '@tabler/icons-vue';
+import {
+    IconCircleCheck,
+    IconDots,
+    IconExternalLink,
+    IconFlag,
+} from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import {
@@ -23,20 +28,46 @@ import { activeLocale } from '@/language';
  * One event on the events page: names, kind, holiday, source and who
  * confirmed it. People who approve posts get the actions.
  */
-const props = defineProps<{
-    event: CalendarEventRow;
-    canApprove: boolean;
-    busy: boolean;
-    /** "Until 12 Oct" text, already formatted, for a multi-day event. */
-    until: string | null;
-}>();
+const props = withDefaults(
+    defineProps<{
+        event: CalendarEventRow;
+        canApprove: boolean;
+        busy: boolean;
+        /** "Until 12 Oct" text, already formatted, for a multi-day event. */
+        until: string | null;
+        /** A brand approver may hide a shared date for this brand. */
+        canHide?: boolean;
+        /** Someone who works on the plan but can't change the date flags it. */
+        canFlag?: boolean;
+        /** The brand's approvers mark a flag as handled. */
+        canResolveFlags?: boolean;
+        /** Shown in "Hidden for this brand": the only action is to show it again. */
+        hidden?: boolean;
+    }>(),
+    { canHide: false, canFlag: false, canResolveFlags: false, hidden: false },
+);
 
 const emit = defineEmits<{
     confirm: [event: CalendarEventRow];
     unconfirm: [event: CalendarEventRow];
     edit: [event: CalendarEventRow];
     delete: [event: CalendarEventRow];
+    hide: [event: CalendarEventRow];
+    unhide: [event: CalendarEventRow];
+    flag: [event: CalendarEventRow];
+    resolveFlag: [flagId: number];
 }>();
+
+/** The countries whose holiday this international day also is, named. */
+const alsoIn = computed((): string =>
+    props.event.also_countries
+        .map((code) => countryName(code, activeLocale.value))
+        .join(', '),
+);
+
+const hasMenu = computed(
+    () => !props.hidden && (props.canApprove || props.canHide),
+);
 
 const sourceLabel = computed((): string | null => {
     if (props.event.source_name) {
@@ -65,6 +96,10 @@ const confirm = (): void => emit('confirm', props.event);
 const unconfirm = (): void => emit('unconfirm', props.event);
 const edit = (): void => emit('edit', props.event);
 const remove = (): void => emit('delete', props.event);
+const hide = (): void => emit('hide', props.event);
+const unhide = (): void => emit('unhide', props.event);
+const flag = (): void => emit('flag', props.event);
+const resolveFlag = (flagId: number): void => emit('resolveFlag', flagId);
 </script>
 
 <template>
@@ -151,6 +186,50 @@ const remove = (): void => emit('delete', props.event);
                 {{ event.description }}
             </p>
 
+            <p
+                v-if="event.also_countries.length > 0"
+                class="text-xs text-muted-foreground"
+                :data-testid="`socialhq-event-also-${event.id}`"
+            >
+                {{ $t('socialhq_events.also_in', { countries: alsoIn }) }}
+            </p>
+
+            <ul
+                v-if="event.flags.length > 0"
+                class="flex flex-col gap-1"
+                :data-testid="`socialhq-event-flags-${event.id}`"
+            >
+                <li
+                    v-for="item in event.flags"
+                    :key="item.id"
+                    class="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-amber-500/10 px-2 py-1 text-xs text-foreground"
+                    :data-testid="`socialhq-event-flag-${item.id}`"
+                >
+                    <IconFlag
+                        class="size-3.5 shrink-0 text-amber-600"
+                        aria-hidden="true"
+                    />
+                    <span class="min-w-0 flex-1">{{
+                        item.by
+                            ? $t('socialhq_events.flag.by', {
+                                  name: item.by,
+                                  note: item.note,
+                              })
+                            : item.note
+                    }}</span>
+                    <Button
+                        v-if="canResolveFlags"
+                        variant="link"
+                        size="sm"
+                        class="h-auto p-0 text-xs"
+                        :data-testid="`socialhq-event-flag-resolve-${item.id}`"
+                        @click="resolveFlag(item.id)"
+                    >
+                        {{ $t('socialhq_events.flag.resolve') }}
+                    </Button>
+                </li>
+            </ul>
+
             <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                 <span
                     v-if="event.verified"
@@ -205,9 +284,34 @@ const remove = (): void => emit('delete', props.event);
             </div>
         </div>
 
-        <div v-if="canApprove" class="flex shrink-0 items-center gap-1">
+        <div v-if="hidden" class="flex shrink-0 items-center gap-1">
             <Button
-                v-if="!event.verified && !event.delisted"
+                size="sm"
+                variant="outline"
+                :loading="busy"
+                :data-testid="`socialhq-event-unhide-${event.id}`"
+                @click="unhide"
+            >
+                {{ $t('socialhq_events.hide.show') }}
+            </Button>
+        </div>
+        <div
+            v-else-if="canFlag && !canApprove"
+            class="flex shrink-0 items-center gap-1"
+        >
+            <Button
+                size="sm"
+                variant="ghost"
+                :data-testid="`socialhq-event-flag-${event.id}`"
+                @click="flag"
+            >
+                <IconFlag class="size-4" />
+                {{ $t('socialhq_events.flag.action') }}
+            </Button>
+        </div>
+        <div v-if="hasMenu" class="flex shrink-0 items-center gap-1">
+            <Button
+                v-if="canApprove && !event.verified && !event.delisted"
                 size="sm"
                 variant="outline"
                 :loading="busy"
@@ -232,27 +336,38 @@ const remove = (): void => emit('delete', props.event);
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                    <template v-if="canApprove">
+                        <DropdownMenuItem
+                            v-if="event.verified"
+                            :data-testid="`socialhq-event-unconfirm-${event.id}`"
+                            @select="unconfirm"
+                        >
+                            {{ $t('socialhq_events.actions.unconfirm') }}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            :data-testid="`socialhq-event-edit-${event.id}`"
+                            @select="edit"
+                        >
+                            {{ $t('socialhq_events.actions.edit') }}
+                        </DropdownMenuItem>
+                    </template>
                     <DropdownMenuItem
-                        v-if="event.verified"
-                        :data-testid="`socialhq-event-unconfirm-${event.id}`"
-                        @select="unconfirm"
+                        v-if="canHide"
+                        :data-testid="`socialhq-event-hide-${event.id}`"
+                        @select="hide"
                     >
-                        {{ $t('socialhq_events.actions.unconfirm') }}
+                        {{ $t('socialhq_events.hide.action') }}
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                        :data-testid="`socialhq-event-edit-${event.id}`"
-                        @select="edit"
-                    >
-                        {{ $t('socialhq_events.actions.edit') }}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                        variant="destructive"
-                        :data-testid="`socialhq-event-delete-${event.id}`"
-                        @select="remove"
-                    >
-                        {{ $t('socialhq_events.actions.delete') }}
-                    </DropdownMenuItem>
+                    <template v-if="canApprove">
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                            variant="destructive"
+                            :data-testid="`socialhq-event-delete-${event.id}`"
+                            @select="remove"
+                        >
+                            {{ $t('socialhq_events.actions.delete') }}
+                        </DropdownMenuItem>
+                    </template>
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>

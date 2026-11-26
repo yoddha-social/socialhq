@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import {
     IconChecks,
     IconChevronLeft,
     IconChevronRight,
     IconDownload,
+    IconEyeOff,
     IconLoader,
     IconLock,
     IconPlus,
     IconWorld,
 } from '@tabler/icons-vue';
+import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
@@ -28,6 +30,7 @@ import {
 import PlanHeader from '@/components/socialhq/plan/PlanHeader.vue';
 import PlanTabs from '@/components/socialhq/plan/PlanTabs.vue';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -36,24 +39,31 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import {
-    NativeSelect,
-    NativeSelectOption,
-} from '@/components/ui/native-select';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
 import AppLayout from '@/layouts/AppLayout.vue';
 import {
     destroy as destroyEvent,
     index as eventsIndex,
+    hide as hideEvent,
     importMethod as importEvents,
+    unhide as unhideEvent,
     unverify as unverifyEvent,
     verify as verifyEvent,
     verifyShown as verifyShownEvents,
 } from '@/routes/socialhq/plan/events';
+import { update as updateBrandCountries } from '@/routes/socialhq/plan/events/brand-countries';
+import {
+    destroy as resolveEventFlag,
+    store as storeEventFlag,
+} from '@/routes/socialhq/plan/events/flags';
+import { undo as undoVerifyShown } from '@/routes/socialhq/plan/events/verify-shown';
 
 type EventsView = 'month' | 'upcoming';
-type EventFilter = 'all' | 'nepal' | 'international' | 'brand' | 'unverified';
+/** A chip: every date, a country the brand follows (`country:NP`), or a kind. */
+type EventFilter = string;
 
 const props = defineProps<{
     view: EventsView;
@@ -65,8 +75,14 @@ const props = defineProps<{
     country: string | null;
     events: CalendarEventRow[];
     hasEvents: boolean;
-    /** The countries the brand has dates for. */
+    /** The countries the account has dates for, plus Nepal: what the brand can follow. */
     countries: string[];
+    /** The countries whose dates this brand plans around, and whether the brand chose them. */
+    brandCountries: { codes: string[]; chosen: boolean };
+    /** The audience's countries this brand doesn't follow yet. */
+    audienceCountries: string[];
+    /** Shared dates of the period this brand hid (approvers only). */
+    hidden: CalendarEventRow[];
     /** "Add a country": loaded when the dialog opens; null when Nager.Date can't be reached. */
     holidayCountries?: HolidayCountry[] | null;
     holidayYears: number[];
@@ -77,29 +93,44 @@ const props = defineProps<{
         canApprove: boolean;
         canManageBrand: boolean;
         canManageSharedEvents: boolean;
+        canChooseCountries: boolean;
     };
 }>();
 
-const FILTERS: EventFilter[] = [
+const page = usePage();
+
+/** The country of a `country:NP` chip, or null for another chip. */
+const countryOf = (by: EventFilter): string | null =>
+    by.startsWith('country:') ? by.slice('country:'.length) : null;
+
+/** One chip per country the brand follows (QA 2026-11-18, item 6), then the kinds. */
+const FILTERS = computed<EventFilter[]>(() => [
     'all',
-    'nepal',
+    ...props.brandCountries.codes.map((code) => `country:${code}`),
     'international',
     'brand',
     'unverified',
-];
+    'flagged',
+]);
 
 const filter = ref<EventFilter>('all');
 
 const matches = (event: CalendarEventRow, by: EventFilter): boolean => {
+    const country = countryOf(by);
+
+    if (country !== null) {
+        return event.country_code === country;
+    }
+
     switch (by) {
-        case 'nepal':
-            return event.region === 'nepal';
         case 'international':
             return event.region === 'international';
         case 'brand':
             return event.brand_only;
         case 'unverified':
             return !event.verified;
+        case 'flagged':
+            return event.flags.length > 0;
         default:
             return true;
     }
@@ -108,11 +139,24 @@ const matches = (event: CalendarEventRow, by: EventFilter): boolean => {
 const counts = computed<Record<EventFilter, number>>(
     () =>
         Object.fromEntries(
-            FILTERS.map((by) => [
+            FILTERS.value.map((by) => [
                 by,
                 props.events.filter((event) => matches(event, by)).length,
             ]),
         ) as Record<EventFilter, number>,
+);
+
+/** The brand's countries, named: "Nepal, Australia". */
+const brandCountryNames = computed((): string =>
+    props.brandCountries.codes
+        .map((code) => countryName(code, activeLocale.value))
+        .join(', '),
+);
+
+const audienceCountryNames = computed((): string =>
+    props.audienceCountries
+        .map((code) => countryName(code, activeLocale.value))
+        .join(', '),
 );
 
 const setFilter = (by: EventFilter): void => {
@@ -209,45 +253,121 @@ const showUpcoming = (): void => {
     visit({ view: 'upcoming' });
 };
 
-/** The countries in the filter: the brand's, plus the one picked. */
-const countryOptions = computed(() =>
-    [
-        ...new Set([
-            ...props.countries,
-            ...(props.country ? [props.country] : []),
-        ]),
-    ]
-        .map((code) => ({
-            code,
-            name: countryName(code, activeLocale.value),
-        }))
+const isCountryDialogOpen = ref(false);
+/** Countries "Add a country" starts with ticked: the audience's, from its hint. */
+const countryDialogPicks = ref<string[]>([]);
+
+const openAddCountry = (): void => {
+    countryDialogPicks.value = [];
+    isCountryDialogOpen.value = true;
+};
+
+/** Audience countries the account has dates for (Nepal's come from the official list): the brand only needs to follow them. */
+const followableAudience = computed(() =>
+    props.audienceCountries.filter((code) => props.countries.includes(code)),
+);
+
+/** Audience countries whose holidays have to be added first. */
+const importableAudience = computed(() =>
+    props.audienceCountries.filter((code) => !props.countries.includes(code)),
+);
+
+const openAddAudienceCountries = (): void => {
+    countryDialogPicks.value = [...importableAudience.value];
+    isCountryDialogOpen.value = true;
+};
+
+const followAudienceCountries = (): void => {
+    router.put(
+        updateBrandCountries.url(),
+        {
+            countries: [
+                ...props.brandCountries.codes,
+                ...followableAudience.value,
+            ],
+        },
+        { preserveScroll: true },
+    );
+};
+
+/* Countries this brand follows (owner decision 2026-11-24). */
+const isBrandCountriesOpen = ref(false);
+const brandCountriesForm = useForm({ countries: [] as string[] });
+
+const countryChoices = computed(() =>
+    props.countries
+        .map((code) => ({ code, name: countryName(code, activeLocale.value) }))
         .sort((first, second) => first.name.localeCompare(second.name)),
 );
 
-const selectedCountryName = computed(() =>
-    props.country ? countryName(props.country, activeLocale.value) : null,
-);
+const openBrandCountries = (): void => {
+    brandCountriesForm.countries = [...props.brandCountries.codes];
+    brandCountriesForm.clearErrors();
+    isBrandCountriesOpen.value = true;
+};
 
-/** The country filter's select: picking one reloads the page for it ('' is every country). */
-const countryModel = computed({
-    get: (): string => props.country ?? '',
-    set: (value: unknown): void => {
-        const period: Record<string, string> =
-            props.view === 'upcoming'
-                ? { view: 'upcoming' }
-                : { month: props.month };
+const closeBrandCountries = (): void => {
+    isBrandCountriesOpen.value = false;
+};
 
-        visit({
-            ...period,
-            country: typeof value === 'string' ? value : '',
-        });
-    },
-});
+const toggleBrandCountry = (
+    code: string,
+    on: boolean | 'indeterminate',
+): void => {
+    const others = brandCountriesForm.countries.filter(
+        (picked) => picked !== code,
+    );
+    brandCountriesForm.countries = on === true ? [...others, code] : others;
+};
 
-const isCountryDialogOpen = ref(false);
+const saveBrandCountries = (): void => {
+    brandCountriesForm.put(updateBrandCountries.url(), {
+        preserveScroll: true,
+        onSuccess: closeBrandCountries,
+    });
+};
 
-const openAddCountry = (): void => {
-    isCountryDialogOpen.value = true;
+/* Hide a shared date for this brand, or show it again. */
+const hideForBrand = (event: CalendarEventRow): void => {
+    router.post(hideEvent.url(event.id), {}, trackBusy(event));
+};
+
+const showForBrand = (event: CalendarEventRow): void => {
+    router.delete(unhideEvent.url(event.id), trackBusy(event));
+};
+
+/* Members flag a date for the brand's approvers. */
+const flaggingEvent = ref<CalendarEventRow | null>(null);
+const isFlagOpen = ref(false);
+const flagForm = useForm({ note: '' });
+
+const openFlag = (event: CalendarEventRow): void => {
+    flaggingEvent.value = event;
+    flagForm.reset();
+    flagForm.clearErrors();
+    isFlagOpen.value = true;
+};
+
+const closeFlag = (): void => {
+    isFlagOpen.value = false;
+};
+
+const sendFlag = (): void => {
+    if (flaggingEvent.value === null) {
+        return;
+    }
+
+    flagForm.post(storeEventFlag.url(flaggingEvent.value.id), {
+        preserveScroll: true,
+        onSuccess: closeFlag,
+    });
+};
+
+const resolveFlag = (flagId: number): void => {
+    router.delete(resolveEventFlag.url(flagId), {
+        preserveScroll: true,
+        preserveState: true,
+    });
 };
 
 const busyEventId = ref<number | null>(null);
@@ -317,8 +437,8 @@ const confirmShown = (): void => {
         {
             view: props.view,
             month: props.view === 'month' ? props.month : null,
-            country: props.country,
-            filter: filter.value,
+            country: countryOf(filter.value),
+            filter: countryOf(filter.value) === null ? filter.value : 'country',
         },
         {
             preserveScroll: true,
@@ -329,8 +449,49 @@ const confirmShown = (): void => {
             onFinish: () => {
                 isConfirmingShown.value = false;
             },
-            onSuccess: closeConfirmShown,
+            onSuccess: () => {
+                closeConfirmShown();
+                offerUndo();
+            },
         },
+    );
+};
+
+interface ConfirmedBatch {
+    message: string;
+    ids: number[];
+    at: string;
+}
+
+/** "Confirm all shown" says what it did and offers Undo (QA 2026-11-18, item 6). */
+const offerUndo = (): void => {
+    const batch = (
+        page.props.flash as { eventsConfirmed?: ConfirmedBatch } | undefined
+    )?.eventsConfirmed;
+
+    if (!batch) {
+        return;
+    }
+
+    toast.success(batch.message, {
+        id: 'events-confirmed',
+        testId: 'socialhq-events-confirmed-toast',
+        duration: 10000,
+        action:
+            batch.ids.length > 0
+                ? {
+                      label: trans('socialhq_events.confirm_shown.undo'),
+                      onClick: () => undoConfirmShown(batch),
+                  }
+                : undefined,
+    });
+};
+
+const undoConfirmShown = (batch: ConfirmedBatch): void => {
+    router.post(
+        undoVerifyShown.url(),
+        { ids: batch.ids, at: batch.at },
+        { preserveScroll: true, preserveState: true },
     );
 };
 
@@ -470,6 +631,99 @@ const confirmDelete = (): void => {
                         <p class="max-w-3xl text-sm text-muted-foreground">
                             {{ $t('socialhq_events.description') }}
                         </p>
+                        <p
+                            class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-foreground"
+                            data-testid="socialhq-events-brand-countries"
+                        >
+                            <IconWorld
+                                class="size-4 shrink-0 text-muted-foreground"
+                                aria-hidden="true"
+                            />
+                            <span class="text-muted-foreground">{{
+                                $t('socialhq_events.brand_countries.label')
+                            }}</span>
+                            <span class="font-medium">{{
+                                [
+                                    brandCountryNames,
+                                    $t(
+                                        'socialhq_events.brand_countries.international',
+                                    ),
+                                ]
+                                    .filter(Boolean)
+                                    .join(' · ')
+                            }}</span>
+                            <Button
+                                v-if="abilities.canChooseCountries"
+                                variant="link"
+                                size="sm"
+                                class="h-auto p-0"
+                                data-testid="socialhq-events-brand-countries-change"
+                                @click="openBrandCountries"
+                            >
+                                {{
+                                    $t('socialhq_events.brand_countries.change')
+                                }}
+                            </Button>
+                        </p>
+                        <div
+                            v-if="audienceCountries.length > 0"
+                            class="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-border-strong px-3 py-2 text-sm"
+                            data-testid="socialhq-events-audience-hint"
+                        >
+                            <span
+                                class="min-w-0 flex-1 text-muted-foreground"
+                                >{{
+                                    abilities.canChooseCountries ||
+                                    abilities.canManageSharedEvents
+                                        ? $t(
+                                              'socialhq_events.brand_countries.audience_hint',
+                                              {
+                                                  countries:
+                                                      audienceCountryNames,
+                                              },
+                                          )
+                                        : $t(
+                                              'socialhq_events.brand_countries.audience_hint_member',
+                                              {
+                                                  countries:
+                                                      audienceCountryNames,
+                                              },
+                                          )
+                                }}</span
+                            >
+                            <Button
+                                v-if="
+                                    abilities.canChooseCountries &&
+                                    followableAudience.length > 0
+                                "
+                                size="sm"
+                                variant="outline"
+                                data-testid="socialhq-events-audience-follow"
+                                @click="followAudienceCountries"
+                            >
+                                {{
+                                    $t(
+                                        'socialhq_events.brand_countries.audience_follow',
+                                    )
+                                }}
+                            </Button>
+                            <Button
+                                v-if="
+                                    abilities.canManageSharedEvents &&
+                                    importableAudience.length > 0
+                                "
+                                size="sm"
+                                variant="outline"
+                                data-testid="socialhq-events-audience-add"
+                                @click="openAddAudienceCountries"
+                            >
+                                {{
+                                    $t(
+                                        'socialhq_events.brand_countries.audience_add',
+                                    )
+                                }}
+                            </Button>
+                        </div>
                         <p
                             v-if="!abilities.canApprove"
                             class="flex items-start gap-2 text-sm text-muted-foreground"
@@ -664,15 +918,25 @@ const confirmDelete = (): void => {
                                 :class="
                                     filter === by
                                         ? 'border-transparent bg-primary-selected text-primary-text'
-                                        : by === 'unverified' && counts[by] > 0
+                                        : (by === 'unverified' ||
+                                                by === 'flagged') &&
+                                            counts[by] > 0
                                           ? 'border-dashed border-amber-500/70 bg-card text-foreground hover:bg-accent'
                                           : 'border-border-strong bg-card text-foreground hover:bg-accent'
                                 "
                                 :aria-pressed="filter === by"
-                                :data-testid="`socialhq-events-filter-${by}`"
+                                :data-testid="`socialhq-events-filter-${by.replace(':', '-')}`"
                                 @click="setFilter(by)"
                             >
-                                {{ $t(`socialhq_events.filters.${by}`) }}
+                                <template v-if="countryOf(by)">{{
+                                    countryName(
+                                        countryOf(by) ?? '',
+                                        activeLocale,
+                                    )
+                                }}</template>
+                                <template v-else>{{
+                                    $t(`socialhq_events.filters.${by}`)
+                                }}</template>
                                 <span
                                     class="text-xs tabular-nums"
                                     :class="
@@ -683,31 +947,6 @@ const confirmDelete = (): void => {
                                     >{{ counts[by] }}</span
                                 >
                             </button>
-
-                            <NativeSelect
-                                v-if="countryOptions.length > 0"
-                                class="h-8 w-auto py-1"
-                                v-model="countryModel"
-                                :aria-label="
-                                    $t('socialhq_events.filters.country')
-                                "
-                                data-testid="socialhq-events-country-filter"
-                            >
-                                <NativeSelectOption value="">
-                                    {{
-                                        $t(
-                                            'socialhq_events.filters.all_countries',
-                                        )
-                                    }}
-                                </NativeSelectOption>
-                                <NativeSelectOption
-                                    v-for="option in countryOptions"
-                                    :key="option.code"
-                                    :value="option.code"
-                                >
-                                    {{ option.name }}
-                                </NativeSelectOption>
-                            </NativeSelect>
 
                             <Button
                                 v-if="confirmableShown > 0"
@@ -721,17 +960,6 @@ const confirmDelete = (): void => {
                                 {{ $t('socialhq_events.confirm_shown.button') }}
                             </Button>
                         </div>
-                        <p
-                            v-if="selectedCountryName"
-                            class="-mt-2 text-xs text-muted-foreground"
-                            data-testid="socialhq-events-country-hint"
-                        >
-                            {{
-                                $t('socialhq_events.filters.country_hint', {
-                                    country: selectedCountryName,
-                                })
-                            }}
-                        </p>
 
                         <EmptyState
                             v-if="groups.length === 0"
@@ -829,14 +1057,60 @@ const confirmDelete = (): void => {
                                                   })
                                                 : null
                                         "
+                                        :can-hide="
+                                            abilities.canApprove &&
+                                            !event.brand_only
+                                        "
+                                        :can-flag="abilities.canWork"
+                                        :can-resolve-flags="
+                                            abilities.canApprove
+                                        "
                                         @confirm="confirmEvent"
                                         @unconfirm="unconfirmEvent"
                                         @edit="openEditEvent"
                                         @delete="openDeleteEvent"
+                                        @hide="hideForBrand"
+                                        @flag="openFlag"
+                                        @resolve-flag="resolveFlag"
                                     />
                                 </ul>
                             </li>
                         </ol>
+
+                        <section
+                            v-if="hidden.length > 0"
+                            class="flex flex-col gap-2 border-t border-border pt-4"
+                            data-testid="socialhq-events-hidden"
+                        >
+                            <h3
+                                class="flex items-center gap-2 text-sm font-semibold text-foreground"
+                            >
+                                <IconEyeOff
+                                    class="size-4 text-muted-foreground"
+                                    aria-hidden="true"
+                                />
+                                {{ $t('socialhq_events.hide.hidden_title') }}
+                            </h3>
+                            <p class="text-xs text-muted-foreground">
+                                {{
+                                    $t(
+                                        'socialhq_events.hide.hidden_description',
+                                    )
+                                }}
+                            </p>
+                            <ul class="flex flex-col gap-2">
+                                <EventListItem
+                                    v-for="event in hidden"
+                                    :key="event.id"
+                                    :event="event"
+                                    :can-approve="false"
+                                    :busy="busyEventId === event.id"
+                                    :until="null"
+                                    hidden
+                                    @unhide="showForBrand"
+                                />
+                            </ul>
+                        </section>
                     </template>
                 </div>
             </div>
@@ -858,8 +1132,128 @@ const confirmDelete = (): void => {
         :countries="holidayCountries"
         :years="holidayYears"
         :max="maxHolidayCountries"
+        :preselected="countryDialogPicks"
         @add-date="openAddEvent"
     />
+
+    <Dialog
+        v-if="abilities.canChooseCountries"
+        v-model:open="isBrandCountriesOpen"
+    >
+        <DialogContent
+            class="sm:max-w-md"
+            data-testid="socialhq-events-brand-countries-dialog"
+        >
+            <DialogHeader>
+                <DialogTitle>
+                    {{ $t('socialhq_events.brand_countries.title') }}
+                </DialogTitle>
+                <DialogDescription>
+                    {{ $t('socialhq_events.brand_countries.description') }}
+                </DialogDescription>
+            </DialogHeader>
+            <ul class="flex max-h-72 flex-col gap-1 overflow-y-auto">
+                <li v-for="choice in countryChoices" :key="choice.code">
+                    <Label
+                        class="flex items-center gap-2 rounded-md px-2 py-1.5 font-normal hover:bg-accent"
+                    >
+                        <Checkbox
+                            :model-value="
+                                brandCountriesForm.countries.includes(
+                                    choice.code,
+                                )
+                            "
+                            :data-testid="`socialhq-events-brand-country-${choice.code}`"
+                            @update:model-value="
+                                (on) => toggleBrandCountry(choice.code, on)
+                            "
+                        />
+                        {{ choice.name }}
+                    </Label>
+                </li>
+            </ul>
+            <p
+                v-if="brandCountriesForm.countries.length === 0"
+                class="text-xs text-muted-foreground"
+            >
+                {{ $t('socialhq_events.brand_countries.none') }}
+            </p>
+            <p class="text-xs text-muted-foreground">
+                {{ $t('socialhq_events.brand_countries.add_hint') }}
+            </p>
+            <p
+                v-if="brandCountriesForm.errors.countries"
+                class="text-sm text-destructive-text"
+            >
+                {{ brandCountriesForm.errors.countries }}
+            </p>
+            <DialogFooter>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    @click="closeBrandCountries"
+                >
+                    {{ $t('socialhq_events.brand_countries.cancel') }}
+                </Button>
+                <Button
+                    :loading="brandCountriesForm.processing"
+                    data-testid="socialhq-events-brand-countries-save"
+                    @click="saveBrandCountries"
+                >
+                    {{ $t('socialhq_events.brand_countries.save') }}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+
+    <Dialog v-if="abilities.canWork" v-model:open="isFlagOpen">
+        <DialogContent
+            class="sm:max-w-md"
+            data-testid="socialhq-event-flag-dialog"
+        >
+            <DialogHeader>
+                <DialogTitle>
+                    {{ $t('socialhq_events.flag.title') }}
+                    <template v-if="flaggingEvent">
+                        · {{ flaggingEvent.name }}
+                    </template>
+                </DialogTitle>
+                <DialogDescription>
+                    {{ $t('socialhq_events.flag.description') }}
+                </DialogDescription>
+            </DialogHeader>
+            <div class="grid gap-2">
+                <Label for="socialhq-event-flag-note">
+                    {{ $t('socialhq_events.flag.note') }}
+                </Label>
+                <Textarea
+                    id="socialhq-event-flag-note"
+                    v-model="flagForm.note"
+                    :placeholder="$t('socialhq_events.flag.note_placeholder')"
+                    rows="3"
+                    data-testid="socialhq-event-flag-note"
+                />
+                <p
+                    v-if="flagForm.errors.note"
+                    class="text-sm text-destructive-text"
+                >
+                    {{ flagForm.errors.note }}
+                </p>
+            </div>
+            <DialogFooter>
+                <Button type="button" variant="ghost" @click="closeFlag">
+                    {{ $t('socialhq_events.flag.cancel') }}
+                </Button>
+                <Button
+                    :loading="flagForm.processing"
+                    data-testid="socialhq-event-flag-send"
+                    @click="sendFlag"
+                >
+                    {{ $t('socialhq_events.flag.send') }}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
 
     <Dialog v-if="abilities.canApprove" v-model:open="isConfirmShownOpen">
         <DialogContent

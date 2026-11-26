@@ -32,6 +32,8 @@ class BrandProfile extends Model
             'cadence' => 'array',
             // SEO keywords, [{text, main}] in the admin's order (Keywords\BrandKeywords).
             'keywords' => 'array',
+            // The countries whose dates the brand plans around (Events\BrandEventCountries).
+            'event_countries' => 'array',
         ];
     }
 

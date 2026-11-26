@@ -70,6 +70,8 @@ class PlanGenerationController extends Controller
                 'generation_requested_by' => $user->id,
                 'generation_run_id' => $runId,
                 'generation_options' => $options->toArray(),
+                // The job lists the run's weeks; the last run's must not show as this one's progress.
+                'generation_weeks' => null,
             ])->save();
 
             return true;

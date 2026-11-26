@@ -9,6 +9,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Knowledge\Audience\Audience;
 use App\SocialHq\Production\BriefFile;
 use App\SocialHq\Production\BriefStage;
 use App\SocialHq\Production\BriefStorage;
@@ -123,7 +124,7 @@ final class CreatePostFromItem
      * and saving links them (ItemPosts), so a composer closed without saving
      * leaves the item as it was.
      *
-     * @return array{content: string, media: Collection<int, Media>, import_ids: list<string>, left_out: list<string>, scheduled_on: string, scheduled_at: ?string, social_account_id: ?string}
+     * @return array{content: string, media: Collection<int, Media>, import_ids: list<string>, left_out: list<string>, scheduled_on: string, scheduled_at: string, social_account_id: ?string}
      */
     public static function execute(PlanItem $item, User $user): array
     {
@@ -158,9 +159,24 @@ final class CreatePostFromItem
             'import_ids' => $importIds,
             'left_out' => $leftOut->pluck('original_name')->values()->all(),
             'scheduled_on' => $item->scheduled_on->toDateString(),
-            'scheduled_at' => SuggestedTime::wallClockIn($item, Timezone::normalize($user->timezone)),
+            'scheduled_at' => self::postingTime($item, $user),
             'social_account_id' => $item->socialAccount?->workspace_id === $item->workspace_id ? $item->socialAccount->id : null,
         ];
+    }
+
+    /**
+     * The item's time as a wall clock in the user's zone, as the composer takes
+     * it. An item without a time goes out at 09:00 where most of the audience
+     * is (QA 2026-11-18, item 13), not at 09:00 for whoever creates the post.
+     */
+    private static function postingTime(PlanItem $item, User $user): string
+    {
+        $userZone = Timezone::normalize($user->timezone);
+
+        return SuggestedTime::wallClockIn($item, $userZone)
+            ?? SuggestedTime::at($item->scheduled_on->toDateString(), '09:00', Audience::mainZone(PlanOptions::profile($item->workspace), $user->timezone))
+                ->setTimezone($userZone)
+                ->format('Y-m-d\TH:i');
     }
 
     /**

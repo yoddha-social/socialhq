@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Events\BrandEventCountries;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Events\EventCategory;
 use App\SocialHq\Events\EventRegion;
@@ -349,7 +350,7 @@ test('confirm all shown confirms the shown month\'s unconfirmed dates in one que
         ->post(route('socialhq.plan.events.verify-shown'), confirmShownPayload($this->day))
         ->assertRedirect()
         ->assertSessionHasNoErrors()
-        ->assertSessionHas('flash.banner', trans_choice('socialhq_events.confirm_shown.done', 3, ['count' => 3]));
+        ->assertSessionHas('flash.eventsConfirmed.message', trans_choice('socialhq_events.confirm_shown.done', 3, ['count' => 3]));
 
     expect($updates)->toBe(1)
         ->and($nepal->fresh()->verified_by)->toBe($this->owner->id)
@@ -362,26 +363,31 @@ test('confirm all shown confirms the shown month\'s unconfirmed dates in one que
         ->and(CalendarEvent::query()->withTrashed()->find($deleted->id)->isVerified())->toBeFalse();
 });
 
-test('confirm all shown keeps to the page\'s filter and country', function () {
+test('confirm all shown keeps to the page\'s chip: a country, or the international days', function () {
+    BrandEventCountries::save($this->workspace, ['NP', 'AU']);
     $nepal = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'region' => 'nepal', 'country_code' => 'NP', 'starts_on' => $this->day, 'ends_on' => $this->day]);
     $international = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'region' => 'international', 'country_code' => null, 'starts_on' => $this->day, 'ends_on' => $this->day]);
     $australia = CalendarEvent::factory()->create(['account_id' => $this->account->id, 'region' => 'country', 'country_code' => 'AU', 'starts_on' => $this->day, 'ends_on' => $this->day]);
 
     $this->actingAs($this->owner)
-        ->post(route('socialhq.plan.events.verify-shown'), confirmShownPayload($this->day, ['filter' => 'nepal']))
+        ->post(route('socialhq.plan.events.verify-shown'), confirmShownPayload($this->day, ['filter' => 'country', 'country' => 'NP']))
         ->assertRedirect();
 
     expect($nepal->fresh()->isVerified())->toBeTrue()
         ->and($international->fresh()->isVerified())->toBeFalse()
         ->and($australia->fresh()->isVerified())->toBeFalse();
 
-    // Australia's dates plus the ones without a country, as the page lists them.
     $this->actingAs($this->owner)
-        ->post(route('socialhq.plan.events.verify-shown'), confirmShownPayload($this->day, ['country' => 'AU']))
+        ->post(route('socialhq.plan.events.verify-shown'), confirmShownPayload($this->day, ['filter' => 'international']))
         ->assertRedirect();
 
     expect($international->fresh()->isVerified())->toBeTrue()
-        ->and($australia->fresh()->isVerified())->toBeTrue();
+        ->and($australia->fresh()->isVerified())->toBeFalse();
+
+    // A country chip needs its country.
+    $this->actingAs($this->owner)
+        ->post(route('socialhq.plan.events.verify-shown'), confirmShownPayload($this->day, ['filter' => 'country']))
+        ->assertSessionHasErrors('country');
 });
 
 test('confirm all shown covers the next 90 days in that view', function () {

@@ -232,3 +232,33 @@ test('editing a post of a series shows its repeat and keeps the series when save
         ->and($post->recurrence_origin_at?->toIso8601String())->toBe($at->copy()->subWeek()->toIso8601String());
     $page->assertNoJavaScriptErrors();
 });
+
+test('on a narrow screen the set time still says its place', function () {
+    [$user, , $channels] = whenBarWorkspace();
+    $this->actingAs($user);
+
+    $page = whenBarNewPost($channels);
+    $page->resize(900, 900);
+
+    waitFor($page, '@composer-schedule-trigger-place');
+    expect($page->script('document.querySelector(\'[data-testid="composer-schedule-trigger-place"]\').textContent.trim()'))->toBe('Kathmandu');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('an approver opening a post that waits for approval sees the button approve it', function () {
+    [$owner, $workspace, $channels] = whenBarWorkspace();
+    $member = workspaceMember($workspace, 'approval', ['timezone' => 'Asia/Kathmandu']);
+    $post = Post::factory()->forAccount($channels->first())->pendingApproval()->create([
+        'user_id' => $member->id,
+        'content' => 'Winter menu is here',
+        'scheduled_at' => now()->addDays(3)->startOfHour(),
+        'schedule_mode' => ScheduleMode::Custom,
+    ]);
+    $this->actingAs($owner);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1440, 900);
+    waitFor($page, '@composer-submit');
+
+    waitForText($page, '@composer-submit', __('socialhq.approvals.approve_and_schedule'));
+    $page->assertNoJavaScriptErrors();
+});

@@ -4,32 +4,25 @@ declare(strict_types=1);
 
 namespace App\SocialHq\Plan\Ai;
 
-use App\Enums\PostPlatform\ContentType;
 use App\Enums\User\Locale;
 use App\Enums\User\WeekStart;
-use App\Models\SocialAccount;
 use App\Models\User;
 use App\SocialHq\Ai\AiTenant;
 use App\SocialHq\Ai\AiUnavailableException;
-use App\SocialHq\Events\CalendarEvent;
-use App\SocialHq\Knowledge\Audience\Audience;
 use App\SocialHq\Plan\ContentPlan;
-use App\SocialHq\Plan\CreativeKind;
 use App\SocialHq\Plan\GenerationStatus;
-use App\SocialHq\Plan\ItemSource;
 use App\SocialHq\Plan\ItemStatus;
 use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Plan\PlanItem;
-use App\SocialHq\Plan\PlanMonth;
 use App\SocialHq\Plan\PlannerOptions;
 use App\SocialHq\Plan\PlanOptions;
-use App\SocialHq\Plan\SuggestedTime;
 use App\Support\Timezone;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
+use Closure;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Ai\Responses\Data\FinishReason;
@@ -38,11 +31,19 @@ use RuntimeException;
 use Throwable;
 
 /**
- * Asks the AI planner for a month and saves what passes the checks as
- * suggestions, replacing the earlier run's suggestions (never planned or
- * dropped items). Every refused item is kept with its reason, and any AI
- * error leaves the plan "failed" with a message for the team. A job whose
- * run is no longer the plan's current one writes nothing.
+ * Drafts the run's days one week per AI call (PlannerOptions::weeks), so a
+ * free model gets a small job: it is told how many posts each channel still
+ * needs that week and on which days. Every answer goes through the hard rules
+ * in code (SuggestionChecks), which repair what they can and refuse the rest
+ * with a reason. When a week still has room afterwards, the model gets one
+ * more try with the refused items and their reasons. A failed call is tried
+ * once more too; a week that still fails keeps its earlier suggestions and is
+ * listed as not drafted, and the other weeks go on.
+ *
+ * Each week is saved as soon as it is checked, replacing the earlier run's
+ * untouched suggestions on its days (never planned or dropped items, or ones
+ * with work); the plan's generation_weeks says how each week went. A job
+ * whose run is no longer the plan's current one writes nothing more.
  */
 class GeneratePlanSuggestions implements ShouldQueue
 {
@@ -51,10 +52,21 @@ class GeneratePlanSuggestions implements ShouldQueue
     /** How many days before an event its post may go out. */
     public const EVENT_LEAD_DAYS = 3;
 
+    /**
+     * No AI call starts once a run is this old (seconds): a call started
+     * before it (AiTimeout::QUEUED at most) and its save still end inside
+     * $timeout. The weeks not reached are listed as not drafted.
+     */
+    public const BUDGET_SECONDS = 540;
+
     public int $tries = 1;
 
-    /** Longer than the SDK's 300 s for a queued AI call; ContentPlan::STALE_MINUTES stays above it. */
-    public int $timeout = 360;
+    /**
+     * The budget plus one queued AI call and a minute to save; under the
+     * redis queue's retry_after (960 s), so no second worker takes the job.
+     * ContentPlan::STALE_MINUTES stays above it.
+     */
+    public int $timeout = 900;
 
     /**
      * @param  string  $runId  the plan's generation_run_id when the run started
@@ -81,62 +93,170 @@ class GeneratePlanSuggestions implements ShouldQueue
         }
 
         $today = CarbonImmutable::createFromFormat('!Y-m-d', CarbonImmutable::now(Timezone::normalize($user->timezone))->toDateString(), 'UTC');
+        $weekStart = $user->week_starts_on ?? WeekStart::DEFAULT;
+        $run = PlannerOptions::forPlan($plan, PlanOptions::profile($plan->workspace));
+        // Days already gone get no call (when the run reaches today).
+        $weeks = ($today->betweenIncluded($run->from, $run->to) ? $run->between($today, $run->to) : $run)->weeks($weekStart);
+        $deadline = now()->addSeconds(self::BUDGET_SECONDS);
+
+        if (! $this->start($weeks)) {
+            return;
+        }
+
+        foreach ($weeks as $index => $week) {
+            if (now()->greaterThan($deadline)) {
+                $this->closeWeeks('out_of_time');
+
+                break;
+            }
+
+            try {
+                if (! $this->draftWeek($user, $run, $week, $index, $today, $weekStart, $deadline)) {
+                    return;
+                }
+            } catch (AiUnavailableException $exception) {
+                // No AI set up for the company is a configuration state, not an error to report.
+                if (! $exception->isConfigurationState()) {
+                    report($exception);
+                }
+
+                $this->closeWeeks('ai_unavailable');
+
+                break;
+            }
+        }
+
+        $this->finish();
+    }
+
+    /**
+     * A timeout or a crash outside handle(): the plan must not stay
+     * "running". The weeks already saved stay; the others are not drafted.
+     */
+    public function failed(?Throwable $exception): void
+    {
+        $this->finish();
+    }
+
+    /**
+     * One week: a call (and one more if it fails), the checks and the save,
+     * then one retry with the refused items when the week still has room.
+     * False when the plan moved on to another run.
+     */
+    private function draftWeek(User $user, PlannerOptions $run, PlannerOptions $week, int $index, CarbonImmutable $today, WeekStart $weekStart, CarbonInterface $deadline): bool
+    {
+        $checks = fn (bool $replacing, ?ContentPlan $locked = null): ?SuggestionChecks => $this->checks($locked, $run, $week, $today, $weekStart, $user->timezone, $replacing);
+        $answer = $this->ask($user, $today, $checks(true));
+        $calls = 1;
+
+        if ($answer !== null && $answer['error'] !== null && now()->lessThanOrEqualTo($deadline)) {
+            $answer = $this->ask($user, $today, $checks(true));
+            $calls = 2;
+        }
+
+        if ($answer === null) {
+            return false;
+        }
+
+        if ($answer['error'] !== null) {
+            return $this->whileCurrent(fn (ContentPlan $plan) => self::withWeek($plan, $index, ['status' => 'failed', 'error' => $answer['error'], 'calls' => $calls])->save());
+        }
+
+        $saved = $this->save($index, $answer, $checks, replacing: true, calls: $calls);
+
+        if ($saved === null) {
+            return false;
+        }
+
+        if ($calls > 1 || ! data_get($saved, 'open') || now()->greaterThan($deadline)) {
+            return true;
+        }
+
+        // One more try for what the week still needs, told what was refused and why.
+        $retry = $this->ask($user, $today, $checks(false), (array) data_get($saved, 'feedback'));
+
+        if ($retry === null) {
+            return false;
+        }
+
+        if ($retry['error'] !== null) {
+            return $this->whileCurrent(fn (ContentPlan $plan) => self::withWeek($plan, $index, ['calls' => 2])->save());
+        }
+
+        return $this->save($index, $retry, $checks, replacing: false, calls: 2) !== null;
+    }
+
+    /**
+     * One AI call for the checks' week. Null when the plan moved on to
+     * another run; an "error" when the call failed or its answer has no items.
+     *
+     * @param  list<array<string, string>>|null  $refused  the first answer's refused items, on the retry
+     * @return array{items: list<mixed>, summary: string, context: array<string, mixed>, error: string|null}|null
+     */
+    private function ask(User $user, CarbonImmutable $today, ?SuggestionChecks $checks, ?array $refused = null): ?array
+    {
+        if ($checks === null) {
+            return null;
+        }
 
         $context = [];
+        $failed = fn (string $error): array => ['items' => [], 'summary' => '', 'context' => $context, 'error' => $error];
 
         try {
             // The job has no signed-in user: the plan's workspace decides whose AI it uses.
-            $response = AiTenant::run($plan->workspace, function () use ($plan, $today, $user, &$context) {
-                $context = PlannerContext::build($plan, $today, $user->timezone);
+            $response = AiTenant::run($checks->workspace(), function () use ($checks, $today, $user, $refused, &$context) {
+                $context = PlannerContext::build($checks->plan(), $today, $user->timezone, $checks);
+                $prompt = $refused === null ? $context : [...$context, 'retry' => ['rejected' => $refused]];
 
-                return (new ContentPlanner($user->locale ?? Locale::DEFAULT))
-                    ->prompt(json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+                return (new ContentPlanner($user->locale ?? Locale::DEFAULT, retry: $refused !== null))
+                    ->prompt(json_encode($prompt, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
             });
         } catch (AiUnavailableException $exception) {
-            // No AI set up for the company is a configuration state, not an error to report.
-            if (! $exception->isConfigurationState()) {
-                report($exception);
-            }
-
-            $this->markFailed('ai_unavailable');
-
-            return;
+            throw $exception;
         } catch (Throwable $exception) {
             report($exception);
-            $this->markFailed('ai_failed');
 
-            return;
+            return $failed('ai_failed');
         }
 
         $items = data_get($response, 'items');
 
         if (! is_array($items)) {
             report(new RuntimeException(self::describeUnreadable($response)));
-            $this->markFailed(self::stoppedAtLimit($response) ? 'cut_off' : 'invalid_output');
 
-            return;
+            return $failed(self::stoppedAtLimit($response) ? 'cut_off' : 'invalid_output');
         }
 
-        DB::transaction(function () use ($items, $response, $today, $user, $context): void {
-            // Read again under a lock: an approval, an item change or a newer run may have come while the AI worked.
-            $plan = ContentPlan::query()->with('workspace')->lockForUpdate()->find($this->planId);
+        return ['items' => array_values($items), 'summary' => trim((string) data_get($response, 'summary')), 'context' => $context, 'error' => null];
+    }
 
-            if ($plan === null || ! $this->isCurrentRun($plan)) {
-                return;
+    /**
+     * Checks an answer under the plan's lock and saves what passes; the
+     * first save of a week replaces the earlier run's untouched suggestions
+     * on its days. Null when the plan moved on to another run.
+     *
+     * @param  array{items: list<mixed>, summary: string, context: array<string, mixed>, error: string|null}  $answer
+     * @param  Closure(bool, ContentPlan|null): ?SuggestionChecks  $checks
+     * @return array{feedback: list<array<string, string>>, open: bool}|null
+     */
+    private function save(int $index, array $answer, Closure $checks, bool $replacing, int $calls): ?array
+    {
+        $saved = null;
+
+        $current = $this->whileCurrent(function (ContentPlan $plan) use ($index, $answer, $checks, $replacing, $calls, &$saved): void {
+            // Read again under the lock: an item change may have come while the AI worked.
+            $rules = $checks($replacing, $plan);
+            $outcome = $rules->check(array_slice($answer['items'], 0, ContentPlanner::MAX_ITEMS));
+
+            if ($replacing) {
+                self::replaceableSuggestions($plan, $rules->week)->delete();
             }
-
-            $options = PlannerOptions::forPlan($plan, PlanOptions::profile($plan->workspace));
-            [$accepted, $rejections] = $this->check($plan, $options, array_slice(array_values($items), 0, ContentPlanner::MAX_ITEMS), $today, $user->timezone, $user->week_starts_on ?? WeekStart::DEFAULT);
-
-            // Only untouched suggestions inside the run's days are replaced; one with copy or a brief
-            // keeps its work (starting work accepts it, but older rows may predate that).
-            self::replaceableSuggestions($plan, $options)->delete();
 
             $positions = [];
             // Names and numbers the planner wrote that its sources don't have, for the team to check.
-            $sources = UnsupportedDetails::against(UnsupportedDetails::sourceText($context));
+            $sources = UnsupportedDetails::against(UnsupportedDetails::sourceText($answer['context']));
 
-            foreach ($accepted as $attributes) {
+            foreach ($outcome['accepted'] as $attributes) {
                 $day = $attributes['scheduled_on'];
                 $positions[$day] ??= (int) $plan->items()->whereDate('scheduled_on', $day)->max('position');
                 $positions[$day]++;
@@ -148,162 +268,146 @@ class GeneratePlanSuggestions implements ShouldQueue
                 ]);
             }
 
+            $before = (array) data_get($plan->generation_weeks, $index, []);
+
             $plan->forceFill([
-                'generation_status' => GenerationStatus::Idle,
-                'generation_error' => null,
-                'generation_summary' => Str::limit(trim((string) data_get($response, 'summary')), 2000, '…'),
-                'generation_rejections' => $rejections,
-                'generated_at' => now(),
-                'generation_started_at' => null,
-                'generation_run_id' => null,
+                'generation_rejections' => [...(array) ($plan->generation_rejections ?? []), ...$outcome['rejections']],
+                // The week's plan in the model's words; the retry's answer only adds items.
+                'generation_summary' => $replacing && $answer['summary'] !== '' ? trim("{$plan->generation_summary}\n\n{$answer['summary']}") : $plan->generation_summary,
+            ]);
+
+            self::withWeek($plan, $index, [
+                'status' => 'done',
+                'error' => null,
+                'proposed' => (int) data_get($before, 'proposed', 0) + count($answer['items']),
+                'added' => (int) data_get($before, 'added', 0) + count($outcome['accepted']),
+                'not_added' => (int) data_get($before, 'not_added', 0) + count($outcome['rejections']),
+                'repaired' => (int) data_get($before, 'repaired', 0) + $outcome['repaired'],
+                'calls' => $calls,
             ])->save();
 
-            if ($accepted !== []) {
+            if ($outcome['accepted'] !== []) {
                 $plan->reopen();
             }
+
+            $saved = ['feedback' => $outcome['feedback'], 'open' => $rules->hasOpenSlots()];
+        });
+
+        return $current ? $saved : null;
+    }
+
+    /**
+     * The rules for a week, read from the plan as it is now (the locked one
+     * when saving). Suggestions the run will still replace don't count as
+     * planned: from the week's first day while it isn't saved yet, else from
+     * the day after it.
+     */
+    private function checks(?ContentPlan $plan, PlannerOptions $run, PlannerOptions $week, CarbonImmutable $today, WeekStart $weekStart, ?string $userZone, bool $replacing): ?SuggestionChecks
+    {
+        $plan ??= ContentPlan::query()->with('workspace')->find($this->planId);
+
+        if ($plan === null || ! $this->isCurrentRun($plan)) {
+            return null;
+        }
+
+        $from = $replacing ? $week->from : $week->to->addDay();
+        $replaceable = $from->greaterThan($run->to) ? [] : self::replaceableSuggestions($plan, $run->between($from, $run->to))->pluck('id')->all();
+
+        return new SuggestionChecks($plan, $week, $today, $weekStart, $userZone, $replaceable);
+    }
+
+    /**
+     * Lists the run's weeks as pending and clears the last run's summary and
+     * refused items. False when the plan moved on to another run.
+     *
+     * @param  list<PlannerOptions>  $weeks
+     */
+    private function start(array $weeks): bool
+    {
+        return $this->whileCurrent(fn (ContentPlan $plan) => $plan->forceFill([
+            'generation_weeks' => array_map(fn (PlannerOptions $week): array => [
+                'from' => $week->from->toDateString(),
+                'to' => $week->to->toDateString(),
+                'status' => 'pending',
+                'error' => null,
+                'proposed' => 0,
+                'added' => 0,
+                'not_added' => 0,
+                'repaired' => 0,
+                'calls' => 0,
+            ], $weeks),
+            'generation_rejections' => [],
+            'generation_summary' => null,
+        ])->save());
+    }
+
+    /**
+     * The weeks not drafted yet end as failed, with why.
+     */
+    private function closeWeeks(string $error): void
+    {
+        $this->whileCurrent(function (ContentPlan $plan) use ($error): void {
+            $plan->generation_weeks = collect((array) $plan->generation_weeks)
+                ->map(fn (array $week): array => data_get($week, 'status') === 'pending' ? [...$week, 'status' => 'failed', 'error' => $error] : $week)
+                ->all();
+            $plan->save();
         });
     }
 
     /**
-     * A timeout or a crash outside handle(): the plan must not stay "running".
+     * Ends the run: idle when any week was drafted (the others are listed as
+     * not drafted), failed with the first week's reason when none was.
      */
-    public function failed(?Throwable $exception): void
+    private function finish(): void
     {
-        $this->markFailed('ai_failed');
+        $this->whileCurrent(function (ContentPlan $plan): void {
+            $weeks = collect((array) ($plan->generation_weeks ?? []))
+                ->map(fn (array $week): array => data_get($week, 'status') === 'pending' ? [...$week, 'status' => 'failed', 'error' => 'ai_failed'] : $week);
+            $drafted = $weeks->contains(fn (array $week): bool => data_get($week, 'status') === 'done');
+
+            $plan->forceFill([
+                'generation_weeks' => $weeks->all() ?: null,
+                'generation_status' => $drafted ? GenerationStatus::Idle : GenerationStatus::Failed,
+                'generation_error' => $drafted ? null : ($weeks->pluck('error')->filter()->first() ?? 'ai_failed'),
+                'generation_summary' => Str::limit(trim((string) $plan->generation_summary), 2000, '…') ?: null,
+                ...($drafted ? ['generated_at' => now()] : []),
+                'generation_started_at' => null,
+                'generation_run_id' => null,
+            ])->save();
+        });
     }
 
     /**
-     * @param  list<mixed>  $items
-     * @return array{0: list<array<string, mixed>>, 1: list<array{title: string, date: string, channel: string, reason: string}>}
+     * Runs a change on the plan under its row lock while this run is still
+     * its current one; false when it isn't.
+     *
+     * @param  Closure(ContentPlan): mixed  $change
      */
-    private function check(ContentPlan $plan, PlannerOptions $options, array $items, CarbonImmutable $today, ?string $userZone, WeekStart $weekStart): array
+    private function whileCurrent(Closure $change): bool
     {
-        $month = CarbonImmutable::createFromFormat('!Y-m-d', $plan->month->toDateString(), 'UTC');
-        $end = PlanMonth::end($month);
-        $workspace = $plan->workspace;
-        $profile = PlanOptions::profile($workspace);
-        $pillars = PlanOptions::pillars($profile);
-        $channelList = PlanOptions::channels($workspace);
-        $channels = $channelList->keyBy('id');
-        $cadence = PlanOptions::cadence($profile, $channelList);
-        // The same events the planner was shown: the run's days (and the lead days after them,
-        // whose events may get posts in the range), the audience's countries when asked.
-        $events = PlanOptions::events($workspace, $options->from, $options->to->addDays(self::EVENT_LEAD_DAYS), $options->eventCountries($profile))->groupBy('key');
-        $zone = Audience::mainZone($profile, $userZone);
-        $replaceable = self::replaceableSuggestions($plan, $options)->pluck('id')->all();
-        // Everything that survives this draft: planned items, suggestions someone started
-        // work on, and suggestions outside the run's days.
-        $planned = $plan->items()
-            ->where('status', '!=', ItemStatus::Dropped)
-            ->whereKeyNot($replaceable)
-            ->get(['social_account_id', 'scheduled_on', 'title']);
+        return DB::transaction(function () use ($change): bool {
+            $plan = ContentPlan::query()->with('workspace')->lockForUpdate()->find($this->planId);
 
-        /** @var array<string, true> $taken channel id + day already holding an item */
-        $taken = $planned
-            ->mapWithKeys(fn (PlanItem $item): array => ["{$item->social_account_id}|{$item->scheduled_on->toDateString()}" => true])
-            ->all();
-
-        /** @var array<string, true> $titles titles already in the month, compared without case */
-        $titles = $planned->mapWithKeys(fn (PlanItem $item): array => [self::titleKey($item->title) => true])->all();
-
-        /** @var array<string, int> $weekly items per channel and calendar week (the requester's week start), for the cadence */
-        $weekly = $planned
-            ->countBy(fn (PlanItem $item): string => self::weekSlot($item->social_account_id, CarbonImmutable::parse($item->scheduled_on), $weekStart))
-            ->all();
-
-        $accepted = [];
-        $rejections = [];
-
-        foreach ($items as $item) {
-            $title = Str::limit(trim((string) data_get($item, 'title')), 160, '');
-            $dateText = trim((string) data_get($item, 'date'));
-            $channelId = trim((string) data_get($item, 'channel'));
-            /** @var SocialAccount|null $channel */
-            $channel = $channels->get($channelId);
-            $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateText) === 1 ? CarbonImmutable::createFromFormat('!Y-m-d', $dateText, 'UTC') : null;
-            $contentType = ContentType::tryFrom(trim((string) data_get($item, 'content_type')));
-            $creative = CreativeKind::tryFrom(trim((string) data_get($item, 'creative')));
-            $eventKey = trim((string) data_get($item, 'event_key'));
-            /** @var Collection<int, CalendarEvent>|null $matches */
-            $matches = $eventKey === '' ? null : $events->get($eventKey);
-            $confirmed = $matches?->filter(fn (CalendarEvent $candidate): bool => $candidate->isVerified());
-            $event = $date === null ? null : $confirmed?->first(fn (CalendarEvent $candidate): bool => self::fitsEvent($date, $candidate));
-            $slot = $channel === null || $date === null ? null : "{$channel->id}|{$date->toDateString()}";
-            $weekSlot = $channel === null || $date === null ? null : self::weekSlot($channel->id, $date, $weekStart);
-            $perWeek = $channel === null ? null : data_get($cadence, $channel->id);
-
-            $reason = match (true) {
-                $title === '' => 'missing_title',
-                $date === null || $date->toDateString() !== $dateText || $date->lessThan($month) || $date->greaterThan($end) => 'date_outside_month',
-                $date->lessThan($today) => 'date_in_past',
-                $date->lessThan($options->from) || $date->greaterThan($options->to) => 'date_outside_range',
-                $channel === null => 'unknown_channel',
-                data_get($cadence, $channel->id) === 0 => 'channel_paused',
-                $contentType === null || ! PlanOptions::fitsChannel($contentType, $channel->platform) => 'content_type_not_for_channel',
-                $creative === null || ! PlanOptions::creativeFits($creative, $contentType) => 'creative_mismatch',
-                $eventKey !== '' && $matches === null => 'unknown_event',
-                $eventKey !== '' && $confirmed->isEmpty() => 'unconfirmed_event',
-                $eventKey !== '' && $event === null => 'event_date_mismatch',
-                isset($titles[self::titleKey($title)]) => 'duplicate_title',
-                isset($taken[$slot]) => 'duplicate_day',
-                is_int($perWeek) && data_get($weekly, $weekSlot, 0) >= $perWeek => 'over_cadence',
-                default => null,
-            };
-
-            if ($reason !== null) {
-                $rejections[] = [
-                    'title' => $title,
-                    'date' => Str::limit($dateText, 20, ''),
-                    'channel' => $channel?->display_label ?? Str::limit($channelId, 60, ''),
-                    // The page adds the network, so same-named channels stay apart.
-                    'platform' => $channel?->platform->value,
-                    'reason' => $reason,
-                ];
-
-                continue;
+            if ($plan === null || ! $this->isCurrentRun($plan)) {
+                return false;
             }
 
-            $taken[$slot] = true;
-            $weekly[$weekSlot] = data_get($weekly, $weekSlot, 0) + 1;
-            $titles[self::titleKey($title)] = true;
-            $pillar = trim((string) data_get($item, 'pillar'));
-            $time = SuggestedTime::normalize(data_get($item, 'suggested_time'));
+            $change($plan);
 
-            // A time already gone today (in the audience's zone) is dropped, not the item: the team picks a new one.
-            if ($time !== null && SuggestedTime::isZone($zone) && SuggestedTime::at($date->toDateString(), $time, $zone)->lessThanOrEqualTo(now())) {
-                $time = null;
-            }
-
-            $accepted[] = [
-                'workspace_id' => $workspace->id,
-                'scheduled_on' => $date->toDateString(),
-                'social_account_id' => $channel->id,
-                'platform' => $channel->platform->value,
-                'content_type' => $contentType,
-                'creative' => $creative,
-                'pillar' => in_array($pillar, $pillars, true) ? $pillar : null,
-                'title' => $title,
-                'objective' => Str::limit(trim((string) data_get($item, 'objective')), 300, '') ?: null,
-                'angle' => Str::limit(trim((string) data_get($item, 'angle')), 600, '') ?: null,
-                'event_id' => $event?->id,
-                // A time the code can't read is dropped, not the item: the team sets one by hand.
-                'suggested_time' => $time,
-                'suggested_timezone' => $time === null ? null : $zone,
-                'status' => ItemStatus::Suggested,
-                'source' => ItemSource::Ai,
-                'created_by' => $plan->generation_requested_by,
-            ];
-        }
-
-        return [$accepted, $rejections];
+            return true;
+        });
     }
 
     /**
-     * One channel's calendar week, starting on the requester's first day of the week.
+     * @param  array<string, mixed>  $changes
      */
-    private static function weekSlot(?string $channelId, CarbonImmutable $date, WeekStart $weekStart): string
+    private static function withWeek(ContentPlan $plan, int $index, array $changes): ContentPlan
     {
-        return "{$channelId}|{$date->startOfWeek($weekStart->firstDay())->toDateString()}";
+        $weeks = (array) ($plan->generation_weeks ?? []);
+        $weeks[$index] = [...(array) data_get($weeks, $index, []), ...$changes];
+        $plan->generation_weeks = $weeks;
+
+        return $plan;
     }
 
     /**
@@ -319,16 +423,6 @@ class GeneratePlanSuggestions implements ShouldQueue
             ->whereDate('scheduled_on', '<=', $options->to->toDateString())
             ->whereDoesntHave('versions')
             ->whereDoesntHave('brief');
-    }
-
-    /**
-     * An event's post goes on one of its days or up to EVENT_LEAD_DAYS before it.
-     */
-    private static function fitsEvent(CarbonImmutable $date, CalendarEvent $event): bool
-    {
-        $from = $event->starts_on->subDays(self::EVENT_LEAD_DAYS)->toDateString();
-
-        return $date->toDateString() >= $from && $date->toDateString() <= $event->ends_on->toDateString();
     }
 
     /**
@@ -360,11 +454,6 @@ class GeneratePlanSuggestions implements ShouldQueue
             mb_strlen($response->text),
             $response->usage->completionTokens,
         );
-    }
-
-    private static function titleKey(string $title): string
-    {
-        return Str::lower(Str::squish($title));
     }
 
     private function isCurrentRun(ContentPlan $plan): bool

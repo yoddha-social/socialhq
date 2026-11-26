@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Uri;
+
 return [
 
     /*
@@ -84,7 +86,13 @@ return [
                     'scheme' => env('REVERB_SCHEME', 'https'),
                     'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
                 ],
-                'allowed_origins' => ['*'],
+                // Social HQ: only pages of the app itself may open a live-update
+                // connection (audit SEC-09). Hosts, comma separated, `*` as a
+                // wildcard (`*.example.com`); the default is APP_URL's host.
+                'allowed_origins' => array_values(array_filter(array_map('trim', explode(',', (string) env(
+                    'REVERB_ALLOWED_ORIGINS',
+                    (string) Uri::of((string) env('APP_URL', 'http://localhost'))->host(),
+                ))))),
                 'ping_interval' => env('REVERB_APP_PING_INTERVAL', 60),
                 'activity_timeout' => env('REVERB_APP_ACTIVITY_TIMEOUT', 30),
                 'max_connections' => env('REVERB_APP_MAX_CONNECTIONS'),

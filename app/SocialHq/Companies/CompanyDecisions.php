@@ -13,6 +13,7 @@ use App\Models\Workspace;
 use App\SocialHq\Ai\Company\CompanyAi;
 use App\SocialHq\Ai\Company\Jobs\BlockCompanyAi;
 use App\Support\PostApproval;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\DB;
 
@@ -37,6 +38,45 @@ final class CompanyDecisions
         }
 
         return $decided !== null;
+    }
+
+    /**
+     * A company the server's operator creates (php artisan socialhq:company),
+     * so company requests can stay off: approved at once, with no request
+     * and no email. Its owner must own their account and have confirmed
+     * their email, as approve() requires. Null when the account is a
+     * company already.
+     */
+    public static function createApproved(User $owner, string $name, bool $usesPlatformAi): ?Company
+    {
+        if (! $owner->isAccountOwner() || ! $owner->hasVerifiedEmail()) {
+            return null;
+        }
+
+        try {
+            return DB::transaction(function () use ($owner, $name, $usesPlatformAi): Company {
+                $company = Company::query()->forceCreate([
+                    'account_id' => $owner->account_id,
+                    'name' => $name,
+                    'status' => CompanyStatus::Approved,
+                    'uses_platform_ai' => $usesPlatformAi,
+                    'requested_by' => $owner->id,
+                    'requested_at' => now(),
+                    'decided_at' => now(),
+                ]);
+
+                $owner->account?->update(['name' => $name]);
+                $company->record(CompanyEvent::APPROVED, null, 'Created with php artisan socialhq:company');
+
+                if ($usesPlatformAi) {
+                    $company->record(CompanyEvent::PLATFORM_AI_ON, null);
+                }
+
+                return $company;
+            });
+        } catch (UniqueConstraintViolationException) {
+            return null;
+        }
     }
 
     public static function decline(Company $company, User $admin, string $note): bool

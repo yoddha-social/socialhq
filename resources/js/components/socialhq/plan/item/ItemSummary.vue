@@ -12,6 +12,10 @@ import { channelLabel } from '@/components/socialhq/channelLabel';
 import { localizedDay } from '@/components/socialhq/localizedDay';
 import { reviewBadgeVariant } from '@/components/socialhq/plan/copyStatus';
 import type { PlanItemDetail } from '@/components/socialhq/plan/item/types';
+import {
+    postingTimeIn,
+    postingTimeOf,
+} from '@/components/socialhq/plan/postingTime';
 import UnsupportedDetailsNote from '@/components/socialhq/plan/UnsupportedDetailsNote.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +30,45 @@ const monthLabel = computed(() =>
 );
 const dayLabel = computed(() =>
     localizedDay(props.item.scheduled_on).format('dddd, LL'),
+);
+
+/**
+ * The posting time where most of the audience is and in the channel's zone,
+ * which the composer shows (QA 2026-11-18, item 13); without a channel, in
+ * the viewer's. A lang key and its values, resolved with $t in the template.
+ */
+const postingTime = computed(
+    (): { key: string; values: Record<string, string> } | null => {
+        const zone = props.item.channel?.timezone;
+        const time = zone
+            ? postingTimeIn(props.item, zone)
+            : postingTimeOf(props.item);
+
+        if (!time) {
+            return null;
+        }
+
+        if (time.sameZone) {
+            return {
+                key: 'socialhq_plan.time.in_zone',
+                values: { time: time.time, place: time.place },
+            };
+        }
+
+        return {
+            key: zone
+                ? 'socialhq_production.item.time_channel'
+                : 'socialhq_plan.time.both',
+            values: {
+                time: time.time,
+                place: time.place,
+                channel_time: time.viewerTime,
+                channel_place: time.viewerPlace,
+                viewer: time.viewerTime,
+                viewer_place: time.viewerPlace,
+            },
+        };
+    },
 );
 </script>
 
@@ -49,6 +92,12 @@ const dayLabel = computed(() =>
                 </h1>
                 <p class="mt-1 text-sm text-muted-foreground">
                     <time :datetime="item.scheduled_on">{{ dayLabel }}</time>
+                    <template v-if="postingTime">
+                        ·
+                        <span data-testid="item-posting-time">{{
+                            $t(postingTime.key, postingTime.values)
+                        }}</span>
+                    </template>
                 </p>
             </div>
             <div

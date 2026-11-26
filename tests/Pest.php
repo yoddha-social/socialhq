@@ -14,9 +14,11 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Http\HostResolver;
+use App\SocialHq\Plan\Ai\ContentPlanner;
 use App\Support\Social\PendingConnection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpClientRequest;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -296,6 +298,54 @@ function workspaceOutsider(Workspace $workspace): User
     $user->update(['current_workspace_id' => $workspace->id]);
 
     return $user->fresh();
+}
+
+/**
+ * Fakes the AI planner one week at a time, as the job asks it: each call
+ * answers with the given items dated in its days ("range" in the prompt).
+ * Items dated outside the plan's month (or unreadable) and items with
+ * 'week' => 0 go to the run's first call, so their refusal can be tested.
+ * The week's second try (its prompt has "retry") answers with $retry items
+ * dated in its days. $whileAsked runs during each call (with the prompt and
+ * the call's number), as something happening while the AI works. Returns
+ * every prompt the planner got, decoded.
+ *
+ * @param  list<array<string, mixed>>  $items
+ * @param  list<array<string, mixed>>  $retry
+ * @return ArrayObject<int, array<string, mixed>>
+ */
+function fakePlannerWeeks(array $items, array $retry = [], string $summary = 'Planned.', ?Closure $whileAsked = null): ArrayObject
+{
+    $prompts = new ArrayObject;
+
+    ContentPlanner::fake(function (string $prompt) use ($items, $retry, $summary, $prompts, $whileAsked): array {
+        $context = json_decode($prompt, true, flags: JSON_THROW_ON_ERROR);
+        $prompts->append($context);
+
+        if ($whileAsked !== null) {
+            $whileAsked($context, $prompts->count());
+        }
+
+        $isRetry = data_get($context, 'retry') !== null;
+        $firstCall = $prompts->count() === 1;
+        $month = (string) data_get($context, 'month');
+        $inDays = fn (array $item): bool => (string) data_get($item, 'date') >= data_get($context, 'range.from')
+            && (string) data_get($item, 'date') <= data_get($context, 'range.to');
+        $outsideMonth = fn (array $item): bool => ! Str::startsWith((string) data_get($item, 'date'), "{$month}-");
+        $answer = collect($isRetry ? $retry : $items)
+            ->filter(fn (array $item): bool => match (true) {
+                $isRetry => $inDays($item),
+                array_key_exists('week', $item) => $firstCall && data_get($item, 'week') === 0,
+                default => $inDays($item) || ($firstCall && $outsideMonth($item)),
+            })
+            ->map(fn (array $item): array => Arr::except($item, 'week'))
+            ->values()
+            ->all();
+
+        return ['summary' => $isRetry ? '' : $summary, 'items' => $answer];
+    });
+
+    return $prompts;
 }
 
 /**

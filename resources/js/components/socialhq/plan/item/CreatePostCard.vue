@@ -24,6 +24,7 @@ import {
     backToApprovalWarning,
     followPosts,
 } from '@/components/socialhq/plan/planRequests';
+import { postingTimeIn } from '@/components/socialhq/plan/postingTime';
 import { postStatusLabelKey } from '@/components/socialhq/plan/postStatus';
 import { POST_STATUS_TONES } from '@/components/socialhq/postStatusTone';
 import {
@@ -66,8 +67,8 @@ const http = useHttp<
         /** Approved files the post's format can't carry (a PDF on a Facebook post). */
         left_out: string[];
         scheduled_on: string;
-        /** The item's posting time as a wall clock in the user's zone, or null. */
-        scheduled_at: string | null;
+        /** The item's posting time as a wall clock in the user's zone; 09:00 where most of the audience is without one. */
+        scheduled_at: string;
         social_account_id: string | null;
     }
 >({});
@@ -97,6 +98,17 @@ const followWarning = computed(() =>
 );
 
 const following = ref(false);
+
+/**
+ * The item's time as the composer will show it, in the channel's zone, when
+ * that isn't the zone the plan wrote it in (QA 2026-11-18, item 13).
+ */
+const composerTime = computed(() => {
+    const zone = props.item.channel?.timezone;
+    const time = zone ? postingTimeIn(props.item, zone) : null;
+
+    return time && !time.sameZone ? time : null;
+});
 
 const movePostsToItemDay = (): void => followPosts(props.item.id, following);
 
@@ -151,7 +163,7 @@ const createPost = async (): Promise<void> => {
         }
 
         openPostComposer({
-            date: draft.scheduled_at ?? draft.scheduled_on,
+            date: draft.scheduled_at,
             socialAccountIds: draft.social_account_id
                 ? [draft.social_account_id]
                 : [],
@@ -221,6 +233,20 @@ const createPost = async (): Promise<void> => {
                 </li>
             </ul>
         </div>
+        <p
+            v-if="ready && composerTime"
+            class="text-sm text-muted-foreground"
+            data-testid="item-create-post-time"
+        >
+            {{
+                $t('socialhq_production.post.time_in_composer', {
+                    time: composerTime.time,
+                    place: composerTime.place,
+                    channel_time: composerTime.viewerTime,
+                    channel_place: composerTime.viewerPlace,
+                })
+            }}
+        </p>
         <div
             v-if="waiver"
             class="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"

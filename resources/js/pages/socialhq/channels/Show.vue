@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, useHttp, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, useHttp, usePage } from '@inertiajs/vue3';
 import {
     IconArrowLeft,
     IconBrandFacebook,
@@ -33,6 +33,7 @@ import ChannelStatTiles, {
 } from '@/components/socialhq/channels/ChannelStatTiles.vue';
 import ChannelTimesDialog from '@/components/socialhq/channels/ChannelTimesDialog.vue';
 import ChannelTimezoneChange from '@/components/socialhq/channels/ChannelTimezoneChange.vue';
+import { firstErrorOf } from '@/components/socialhq/requestErrors';
 import { Button } from '@/components/ui/button';
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
 import { useNetworkConnect } from '@/composables/useNetworkConnect';
@@ -53,6 +54,7 @@ import { publish } from '@/routes/app/channels';
 import { copy, generate, update } from '@/routes/app/channels/posting-schedule';
 import { channels as channelsRoute } from '@/routes/app/workspace';
 import { store as storeConnectInvite } from '@/routes/socialhq/channels/connect-invites';
+import { destroy as cancelConnectInvite } from '@/routes/socialhq/connect-invites';
 import { Platform } from '@/types/platform';
 import type {
     ChannelScheduleState,
@@ -70,6 +72,17 @@ import {
 const DEFAULT_GOAL = 3;
 const RANGE_MIN_DAYS = 3;
 
+/** A connect link of the workspace that still works (ConnectInvite::openForPage). */
+interface OpenInvite {
+    id: number;
+    network: string;
+    /** The channel it reconnects, or null for a new connection. */
+    reconnect: string | null;
+    created_by: string | null;
+    created_at: string;
+    expires_at: string;
+}
+
 const props = defineProps<{
     channel: ConnectedAccount;
     schedule: ChannelScheduleState;
@@ -78,7 +91,7 @@ const props = defineProps<{
     stats: ChannelStats;
     week: { sent: number; goal: number | null };
     name: { custom: string | null; network: string };
-    invite: { supported: boolean; reconnecting: boolean };
+    invite: { supported: boolean; reconnecting: boolean; open: OpenInvite[] };
 }>();
 
 const state = ref<ChannelScheduleState>({ ...props.schedule });
@@ -380,6 +393,9 @@ const copyInvite = async (): Promise<void> => {
         inviteLoading.value = false;
     }
 
+    // The new link joins "Links still open".
+    router.reload({ only: ['invite'] });
+
     try {
         await navigator.clipboard.writeText(inviteUrl.value);
         toast.success(trans('socialhq.channels.invite.copied'));
@@ -387,6 +403,32 @@ const copyInvite = async (): Promise<void> => {
         // The browser refused to copy after the request: show the link instead.
         inviteOpen.value = true;
     }
+};
+
+// A link sent to the wrong person stops working once cancelled (SEC-17).
+const cancellingInviteId = ref<number | null>(null);
+
+const cancelInvite = (id: number): void => {
+    router.delete(cancelConnectInvite.url(id), {
+        preserveScroll: true,
+        preserveState: true,
+        only: ['invite', 'flash'],
+        onStart: () => {
+            cancellingInviteId.value = id;
+        },
+        onFinish: () => {
+            cancellingInviteId.value = null;
+        },
+        onError: (errors) => {
+            const message = firstErrorOf(
+                errors as Record<string, string | undefined>,
+            );
+
+            if (message) {
+                toast.error(message);
+            }
+        },
+    });
 };
 
 const composeUrl = computed(() =>
@@ -752,6 +794,84 @@ const composeUrl = computed(() =>
                             {{ $t('socialhq.channels.invite.action') }}
                         </Button>
                     </ChannelSettingRow>
+                    <div
+                        v-if="invite.open.length > 0"
+                        class="flex flex-col gap-2 border-b border-border px-4 py-3.5 last:border-b-0"
+                        data-testid="channel-invites-open"
+                    >
+                        <div>
+                            <p
+                                class="text-sm leading-5 font-emphasis text-foreground"
+                            >
+                                {{ $t('socialhq.channels.invite.open_title') }}
+                            </p>
+                            <p class="text-[13px] text-muted-foreground">
+                                {{
+                                    $t(
+                                        'socialhq.channels.invite.open_description',
+                                    )
+                                }}
+                            </p>
+                        </div>
+                        <ul class="flex flex-col gap-2">
+                            <li
+                                v-for="link in invite.open"
+                                :key="link.id"
+                                class="flex items-center gap-3 rounded-lg bg-muted px-3 py-2"
+                                :data-testid="`channel-invite-open-${link.id}`"
+                            >
+                                <div class="min-w-0 flex-1">
+                                    <p class="truncate text-sm text-foreground">
+                                        {{
+                                            link.reconnect
+                                                ? $t(
+                                                      'socialhq.channels.invite.open_reconnect',
+                                                      {
+                                                          channel:
+                                                              link.reconnect,
+                                                      },
+                                                  )
+                                                : $t(
+                                                      'socialhq.channels.invite.open_network',
+                                                      { network: link.network },
+                                                  )
+                                        }}
+                                    </p>
+                                    <p class="text-xs text-muted-foreground">
+                                        {{
+                                            link.created_by
+                                                ? $t(
+                                                      'socialhq.channels.invite.open_meta',
+                                                      {
+                                                          name: link.created_by,
+                                                          time: date.formatTime(
+                                                              link.expires_at,
+                                                          ),
+                                                      },
+                                                  )
+                                                : $t(
+                                                      'socialhq.channels.invite.open_meta_unknown',
+                                                      {
+                                                          time: date.formatTime(
+                                                              link.expires_at,
+                                                          ),
+                                                      },
+                                                  )
+                                        }}
+                                    </p>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    :loading="cancellingInviteId === link.id"
+                                    :data-testid="`channel-invite-cancel-${link.id}`"
+                                    @click="cancelInvite(link.id)"
+                                >
+                                    {{ $t('socialhq.channels.invite.cancel') }}
+                                </Button>
+                            </li>
+                        </ul>
+                    </div>
                     <ChannelSettingRow
                         v-if="canLinkFacebook"
                         :icon="IconBrandFacebook"

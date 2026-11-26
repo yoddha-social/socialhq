@@ -293,3 +293,33 @@ test('a connect link opens a page that says who asks, and a used or wrong link s
     waitFor($expired, '@connect-invite-expired');
     $expired->assertSee(__('socialhq.connect_invite.expired.title'))->assertNoJavaScriptErrors();
 });
+
+test('a copied link shows under "Links still open", and Cancel link stops it', function () {
+    // Audit 2026-11-24, SEC-17: a link sent to the wrong person can be cancelled.
+    [$user, , $channel] = channelPageSetup();
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $channel->workspace_id, 'display_name' => 'Acme on X']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.settings', $x))->resize(1440, 900);
+    waitFor($page, '@channel-invite-copy');
+    $page->assertMissing('@channel-invites-open');
+    // End on a plain value: Playwright calls a script whose result is a function.
+    $page->script('window.__copied = null; navigator.clipboard.writeText = async (text) => { window.__copied = text; }; true;');
+    $page->click('@channel-invite-copy');
+
+    $invite = null;
+    waitForDatabase($page, function () use (&$invite): bool {
+        $invite = ConnectInvite::query()->first();
+
+        return $invite !== null;
+    });
+    waitFor($page, "@channel-invite-open-{$invite->id}");
+    $page->assertSeeIn("@channel-invite-open-{$invite->id}", __('socialhq.channels.invite.open_network', ['network' => 'X']));
+
+    $page->click("@channel-invite-cancel-{$invite->id}");
+    waitForGone($page, '@channel-invites-open');
+
+    expect($invite->fresh()->cancelled_by)->toBe($user->id)
+        ->and($invite->fresh()->isOpen())->toBeFalse();
+    $page->assertNoJavaScriptErrors();
+});

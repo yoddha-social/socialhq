@@ -11,6 +11,7 @@ return [
         'no_channel' => 'No channel',
         'event' => 'Event: :name',
         'event_unverified' => 'Needs check',
+        'time_channel' => ':time in :place · :channel_time in :channel_place, the channel’s time zone',
         'owner' => 'Owner',
         'no_owner' => 'No owner',
         'objective' => 'Objective',
@@ -190,6 +191,7 @@ return [
         'open' => 'Open',
         'open_on_network' => 'See it on the network',
         'create_another' => 'Create another post',
+        'time_in_composer' => 'The composer shows the channel’s time zone: :channel_time in :channel_place is :time in :place.',
         'ready' => 'Everything this item needs is approved. The button opens it in the composer, where you schedule it.',
         'waiting' => 'To create the post:',
         'blockers' => [

@@ -201,6 +201,9 @@ return [
             'email' => 'البريد الإلكتروني',
             'email_placeholder' => 'collaborator@email.com',
             'submit' => 'إرسال الدعوة',
+            'sent' => 'تم إرسال الدعوة إلى :email',
+            'another' => 'دعوة شخص آخر',
+            'done' => 'تم',
         ],
 
         'pending' => [
@@ -244,6 +247,10 @@ return [
             'description' => 'اختر ما يمكن لهذا العضو فعله في مساحة العمل هذه.',
             'submit' => 'حفظ',
             'action' => 'تعديل الصلاحيات',
+        ],
+        'edit_invite' => [
+            'title' => 'تعديل الدعوة',
+            'description' => 'اختر ما يمكن لهذا الشخص فعله في مساحة العمل هذه بعد قبول الدعوة.',
         ],
 
         'errors' => [

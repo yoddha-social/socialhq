@@ -201,6 +201,9 @@ return [
             'email' => 'E-mail',
             'email_placeholder' => 'wspolpracownik@email.com',
             'submit' => 'Wyślij zaproszenie',
+            'sent' => 'Zaproszenie wysłane na adres :email',
+            'another' => 'Zaproś kolejną osobę',
+            'done' => 'Gotowe',
         ],
 
         'pending' => [
@@ -244,6 +247,10 @@ return [
             'description' => 'Wybierz, co ten członek może robić w tej przestrzeni roboczej.',
             'submit' => 'Zapisz',
             'action' => 'Edytuj dostęp',
+        ],
+        'edit_invite' => [
+            'title' => 'Edytuj zaproszenie',
+            'description' => 'Wybierz, co ta osoba będzie mogła robić w tej przestrzeni roboczej po przyjęciu zaproszenia.',
         ],
 
         'errors' => [

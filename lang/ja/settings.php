@@ -201,6 +201,9 @@ return [
             'email' => 'メールアドレス',
             'email_placeholder' => 'collaborator@email.com',
             'submit' => '招待を送信',
+            'sent' => ':email に招待を送信しました',
+            'another' => '別の人を招待',
+            'done' => '完了',
         ],
 
         'pending' => [
@@ -244,6 +247,10 @@ return [
             'description' => 'このワークスペースでこのメンバーができることを選択します。',
             'submit' => '保存',
             'action' => 'アクセスを編集',
+        ],
+        'edit_invite' => [
+            'title' => '招待を編集',
+            'description' => '招待が承諾されたあと、この人がこのワークスペースでできることを選択します。',
         ],
 
         'errors' => [

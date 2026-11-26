@@ -201,6 +201,9 @@ return [
             'email' => 'E-mail',
             'email_placeholder' => 'colaborador@email.com',
             'submit' => 'Enviar Convite',
+            'sent' => 'Convite enviado para :email',
+            'another' => 'Convidar outra pessoa',
+            'done' => 'Concluído',
         ],
 
         'pending' => [
@@ -244,6 +247,10 @@ return [
             'description' => 'Escolha o que este membro pode fazer neste workspace.',
             'submit' => 'Salvar',
             'action' => 'Editar acesso',
+        ],
+        'edit_invite' => [
+            'title' => 'Editar convite',
+            'description' => 'Escolha o que essa pessoa poderá fazer neste workspace quando aceitar o convite.',
         ],
 
         'errors' => [

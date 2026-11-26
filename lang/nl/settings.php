@@ -201,6 +201,9 @@ return [
             'email' => 'E-mail',
             'email_placeholder' => 'medewerker@email.com',
             'submit' => 'Uitnodiging versturen',
+            'sent' => 'Uitnodiging verstuurd naar :email',
+            'another' => 'Nog iemand uitnodigen',
+            'done' => 'Klaar',
         ],
 
         'pending' => [
@@ -244,6 +247,10 @@ return [
             'description' => 'Kies wat dit lid in deze workspace mag doen.',
             'submit' => 'Opslaan',
             'action' => 'Toegang bewerken',
+        ],
+        'edit_invite' => [
+            'title' => 'Uitnodiging bewerken',
+            'description' => 'Kies wat deze persoon in deze workspace mag doen zodra de uitnodiging is geaccepteerd.',
         ],
 
         'errors' => [

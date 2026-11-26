@@ -201,6 +201,9 @@ return [
             'email' => '邮箱',
             'email_placeholder' => 'collaborator@email.com',
             'submit' => '发送邀请',
+            'sent' => '已向 :email 发送邀请',
+            'another' => '再邀请一位',
+            'done' => '完成',
         ],
 
         'pending' => [
@@ -244,6 +247,10 @@ return [
             'description' => '选择该成员在此工作区中可以做什么。',
             'submit' => '保存',
             'action' => '编辑权限',
+        ],
+        'edit_invite' => [
+            'title' => '编辑邀请',
+            'description' => '选择此人接受邀请后可以在此工作区中做什么。',
         ],
 
         'errors' => [

@@ -9,9 +9,11 @@ use App\Actions\Invite\CreateInvite;
 use App\Actions\Invite\DeleteInvite;
 use App\Actions\Invite\RemoveMember;
 use App\Http\Requests\App\Invite\StoreWorkspaceInviteRequest;
+use App\Http\Requests\App\Invite\UpdateWorkspaceInviteRequest;
 use App\Http\Requests\App\Invite\UpdateWorkspaceMemberRequest;
 use App\Models\Invite;
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -98,6 +100,40 @@ class WorkspaceInviteController extends Controller
         return back();
     }
 
+    /**
+     * Social HQ: changes a pending invite's access (admin, needs approval).
+     * Only an invite still waiting for this workspace can change: an accepted
+     * one, or one for another workspace, is not found.
+     */
+    public function update(UpdateWorkspaceInviteRequest $request, Invite $invite): RedirectResponse
+    {
+        $workspace = $request->user()->currentWorkspace;
+
+        if (! $workspace) {
+            return redirect()->route('app.workspaces.create');
+        }
+
+        $this->manageableInvite($request, $workspace, $invite)->update($request->memberAccess());
+
+        return back();
+    }
+
+    /**
+     * Social HQ (PATCHES.md row 270): a pending invite to the current
+     * workspace whose every workspace the person manages, so an admin of
+     * one brand never changes or cancels another brand's invite.
+     */
+    private function manageableInvite(Request $request, Workspace $workspace, Invite $invite): Invite
+    {
+        $found = $workspace->invites()->whereKey($invite->id)->firstOrFail();
+        $manages = Workspace::query()->whereKey($found->workspaces ?? [])->get()
+            ->every(fn (Workspace $listed): bool => $request->user()->can('manageTeam', $listed));
+
+        abort_unless($manages, Response::HTTP_NOT_FOUND);
+
+        return $found;
+    }
+
     public function destroy(Request $request, Invite $invite): RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
@@ -108,11 +144,7 @@ class WorkspaceInviteController extends Controller
 
         $this->authorize('manageTeam', $workspace);
 
-        if ($invite->account_id !== $workspace->account_id) {
-            abort(Response::HTTP_NOT_FOUND);
-        }
-
-        DeleteInvite::execute($invite);
+        DeleteInvite::execute($this->manageableInvite($request, $workspace, $invite));
 
         session()->flash('flash.banner', __('settings.members.flash.invite_deleted'));
         session()->flash('flash.bannerStyle', 'success');

@@ -6,13 +6,13 @@ namespace App\SocialHq\Production;
 
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Plan\PlanChanged;
 use App\SocialHq\Plan\PlanItem;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
-use App\SocialHq\Plan\PlanChanged;
 
 /**
  * What the creative team makes for a plan item: a graphic or a video, with

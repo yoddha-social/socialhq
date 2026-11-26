@@ -749,6 +749,17 @@ posts").
   its place in the series; "Don't repeat" (`null`) stops it; a save without the key
   changes nothing.
 
+## Members
+
+Settings › Members (workspace admins) is also in the workspace switcher
+("Members"). A pending invite's access (admin, or a member who needs
+approval) can change until it is accepted: "Edit access" in its ⋯ menu, with
+the same rules as inviting (`app.invites.update`).
+After an invite is sent, the dialog stays open and says who got it, with
+"Invite another" and "Done". Workspace settings keep "Delete this
+workspace" closed until it is opened. An invite has no name field:
+the person types their name when they sign up (owner decision 2026-11-24).
+
 ## Approvals
 
 Stricter than TryPost (`app/SocialHq/Approval/ApprovalRules.php`):

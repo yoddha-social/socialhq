@@ -11,6 +11,7 @@ return [
         'label' => 'Workspace',
         'all' => 'All workspaces',
         'settings' => 'Workspace settings',
+        'members' => 'Members',
         'switch_to' => 'Switch workspace',
     ],
     'auth_panel' => [

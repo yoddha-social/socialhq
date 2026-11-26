@@ -201,6 +201,9 @@ return [
             'email' => 'Email',
             'email_placeholder' => 'collaborator@email.com',
             'submit' => 'Αποστολή πρόσκλησης',
+            'sent' => 'Η πρόσκληση στάλθηκε στο :email',
+            'another' => 'Νέα πρόσκληση',
+            'done' => 'Τέλος',
         ],
 
         'pending' => [
@@ -244,6 +247,10 @@ return [
             'description' => 'Επιλέξτε τι μπορεί να κάνει αυτό το μέλος σε αυτό το workspace.',
             'submit' => 'Αποθήκευση',
             'action' => 'Επεξεργασία πρόσβασης',
+        ],
+        'edit_invite' => [
+            'title' => 'Επεξεργασία πρόσκλησης',
+            'description' => 'Επιλέξτε τι θα μπορεί να κάνει αυτό το άτομο σε αυτό το workspace όταν αποδεχτεί την πρόσκληση.',
         ],
 
         'errors' => [

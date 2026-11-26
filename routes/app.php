@@ -285,6 +285,7 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
 
     Route::get('settings/workspace/members', [WorkspaceInviteController::class, 'index'])->name('app.members');
     Route::post('settings/workspace/members/invites', [WorkspaceInviteController::class, 'store'])->name('app.invites.store');
+    Route::put('settings/workspace/members/invites/{invite}', [WorkspaceInviteController::class, 'update'])->name('app.invites.update');
     Route::delete('settings/workspace/members/invites/{invite}', [WorkspaceInviteController::class, 'destroy'])->name('app.invites.destroy');
     Route::delete('settings/workspace/members/{user}', [WorkspaceInviteController::class, 'removeMember'])->name('app.members.remove');
     Route::put('settings/workspace/members/{user}', [WorkspaceInviteController::class, 'updateMember'])->name('app.members.update');

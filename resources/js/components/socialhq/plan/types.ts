@@ -26,6 +26,8 @@ export interface PlanGenerationWeek {
     status: 'pending' | 'done' | 'failed';
     /** Why the week wasn't drafted, when it failed. */
     error: string | null;
+    /** The team's must-haves filled every channel, so the AI wasn't asked. */
+    filled: boolean;
 }
 
 export interface PlanData {
@@ -40,6 +42,8 @@ export interface PlanData {
         weeks: PlanGenerationWeek[];
         /** Suggestions the draft added; null for drafts made before weekly calls. */
         added: number | null;
+        /** Must-haves the app added itself because the AI missed them. */
+        must_haves_added: number;
         generated_at: string | null;
     };
     submitted_at: string | null;
@@ -72,6 +76,8 @@ export interface PlanItem {
     unsupported_details: string[];
     event_id: number | null;
     owner_id: string | null;
+    /** One of the posts the team required when it generated the plan. */
+    must_have: boolean;
     /** "HH:MM" on the item's day in suggested_timezone, or null. */
     suggested_time: string | null;
     suggested_timezone: string | null;
@@ -133,13 +139,27 @@ export interface PlanAudience {
     countries: { code: string; name: string }[];
 }
 
-/** What "Generate with AI" opens with (PlannerOptions). */
+/** A post the team requires in a run of "Generate with AI" (null channel or format: any). */
+export interface PlanMustHave {
+    date: string;
+    channel: string | null;
+    content_type: string | null;
+    focus: string;
+}
+
+/** What "Generate with AI" opens with (PlannerOptions::forDialog). */
 export interface PlanGenerateOptions {
     from: string;
     to: string;
     old_calendars: boolean;
     past_posts: boolean;
     audience_events: boolean;
+    /** Weekdays with no suggestions, 0 (Sunday) to 6. */
+    days_off: number[];
+    /** The must-haves of this plan's last run that aren't past yet. */
+    must_haves: PlanMustHave[];
+    /** The plan's strategy, else the one the brand keeps for next month. */
+    strategy: string;
 }
 
 /** Everything a card or row needs to draw an item, looked up once per page. */

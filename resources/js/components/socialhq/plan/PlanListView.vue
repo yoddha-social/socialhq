@@ -19,6 +19,7 @@ import {
     COPY_STATUS_DOT,
     copyStatusLabelKey,
 } from '@/components/socialhq/plan/copyStatus';
+import MustHaveBadge from '@/components/socialhq/plan/MustHaveBadge.vue';
 import { pillarColor } from '@/components/socialhq/plan/pillarColors';
 import PlanItemTime from '@/components/socialhq/plan/PlanItemTime.vue';
 import {
@@ -315,6 +316,10 @@ const actionClass =
                                     {{ item.title }}
                                 </Link>
                             </span>
+                            <MustHaveBadge
+                                v-if="item.must_have"
+                                :data-testid="`plan-row-must-have-${item.id}`"
+                            />
                             <!-- How a keyboard or screen reader opens the side sheet. -->
                             <button
                                 type="button"
@@ -660,6 +665,10 @@ const actionClass =
                             />
                             <span class="line-clamp-2">{{ item.title }}</span>
                         </Link>
+                        <MustHaveBadge
+                            v-if="item.must_have"
+                            :data-testid="`plan-row-must-have-${item.id}`"
+                        />
                         <div
                             class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"
                         >

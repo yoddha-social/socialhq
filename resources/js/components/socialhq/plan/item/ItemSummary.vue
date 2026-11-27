@@ -12,6 +12,7 @@ import { channelLabel } from '@/components/socialhq/channelLabel';
 import { localizedDay } from '@/components/socialhq/localizedDay';
 import { reviewBadgeVariant } from '@/components/socialhq/plan/copyStatus';
 import type { PlanItemDetail } from '@/components/socialhq/plan/item/types';
+import MustHaveBadge from '@/components/socialhq/plan/MustHaveBadge.vue';
 import {
     postingTimeIn,
     postingTimeOf,
@@ -118,6 +119,7 @@ const postingTime = computed(
             </div>
         </div>
         <div class="flex flex-wrap items-center gap-2" data-testid="item-chips">
+            <MustHaveBadge v-if="item.must_have" data-testid="item-must-have" />
             <span
                 class="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs"
             >

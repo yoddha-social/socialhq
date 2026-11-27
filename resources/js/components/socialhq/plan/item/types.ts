@@ -34,6 +34,8 @@ export interface PlanItemDetail {
     /** Names and numbers the AI planner wrote that its sources don't contain. */
     unsupported_details: string[];
     status: string;
+    /** One of the posts the team required when it generated the plan. */
+    must_have: boolean;
     copy_status: CopyStatus;
     post_created_at: string | null;
     max_length: number | null;

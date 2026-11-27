@@ -85,6 +85,7 @@ class ContentPlanner implements Agent, HasProviderOptions, HasStructuredOutput
                 'objective' => $schema->string()->required(),
                 'angle' => $schema->string()->required(),
                 'suggested_time' => $schema->string()->description('Posting time "HH:MM" (24-hour) in the audience\'s main_timezone, or "" when unsure.')->required(),
+                'must_have' => $schema->string()->description('The "id" of the must-have this item covers, or "" when it covers none.')->required(),
             ])->withoutAdditionalProperties())->required(),
         ];
     }

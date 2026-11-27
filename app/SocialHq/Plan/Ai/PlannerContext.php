@@ -24,13 +24,14 @@ use Illuminate\Support\Collection;
 
 /**
  * Everything the AI planner is told for one call, as one JSON-ready array:
- * the days to plan (a week of the run), the team's goals, the brand, where
- * its audience is, its pillars, its channels with their cadence, formats,
- * the posts each still needs in these days and the days it has free, the
- * days' events (confirmed or not, flagged; only the audience's countries'
- * and international ones when asked), what is already planned, and, when
- * the run asks for them, how recent posts did and the team's old calendars.
- * What a run leaves out is not sent at all, to keep the prompt small.
+ * the days to plan (a week of the run), the team's instructions (the plan's
+ * strategy, the days off and the must-have posts of these days), the brand,
+ * where its audience is, its pillars, its channels with their cadence,
+ * formats, the posts each still needs in these days and the days it has
+ * free, the days' events (confirmed or not, flagged; only the audience's
+ * countries' and international ones when asked), what is already planned,
+ * and, when the run asks for them, how recent posts did and the team's old
+ * calendars. What a run leaves out is not sent at all, to keep the prompt small.
  */
 final class PlannerContext
 {
@@ -49,7 +50,9 @@ final class PlannerContext
      *     now: string,
      *     range: array{from: string, to: string},
      *     days: list<string>,
-     *     goals: string|null,
+     *     strategy: string|null,
+     *     days_off: list<string>,
+     *     must_haves: list<array{id: string, date: string, channel: string, content_type: string, focus: string}>,
      *     brand: string,
      *     audience: array{main_timezone: string, locations: list<array<string, mixed>>},
      *     pillars: list<string>,
@@ -89,8 +92,13 @@ final class PlannerContext
                 ->map(fn ($day): string => $day->format('Y-m-d D'))
                 ->values()
                 ->all(),
-            'goals' => filled($plan->goals) ? trim((string) $plan->goals) : null,
-            'brand' => BrandKnowledge::forPrompt($workspace, self::focus($plan, $pillars, $events, $channels)),
+            // The team's strategy for the plan ("Strategy for this plan"), followed in every week.
+            'strategy' => filled($plan->goals) ? trim((string) $plan->goals) : null,
+            // Weekdays the team wants nothing on; free_days already leave them out.
+            'days_off' => $checks->daysOffForPrompt(),
+            // The posts the team requires in these days, each to cover with one item that names it.
+            'must_haves' => $checks->mustHavesForPrompt(),
+            'brand' => BrandKnowledge::forPrompt($workspace, self::focus($plan, $pillars, $events, $channels, array_column($checks->mustHavesForPrompt(), 'focus'))),
             'audience' => Audience::forPlanner($profile, $mainZone),
             'pillars' => $pillars,
             'channels' => $channels->map(fn (SocialAccount $channel): array => [
@@ -133,17 +141,20 @@ final class PlannerContext
     }
 
     /**
-     * What the month is about, for picking brand knowledge: the team's goals,
-     * the pillars, the confirmed events and the channels' networks.
+     * What the month is about, for picking brand knowledge: the team's
+     * strategy and must-haves, the pillars, the confirmed events and the
+     * channels' networks.
      *
      * @param  list<string>  $pillars
      * @param  Collection<int, CalendarEvent>  $events
      * @param  Collection<int, SocialAccount>  $channels
+     * @param  list<string>  $mustHaves  what the days' must-haves are about
      */
-    public static function focus(ContentPlan $plan, array $pillars, Collection $events, Collection $channels): string
+    public static function focus(ContentPlan $plan, array $pillars, Collection $events, Collection $channels, array $mustHaves = []): string
     {
         return collect([
             trim((string) $plan->goals),
+            implode("\n", $mustHaves),
             implode(', ', $pillars),
             $events->filter(fn (CalendarEvent $event): bool => $event->isVerified())->pluck('name')->implode(', '),
             $channels->map(fn (SocialAccount $channel): string => $channel->platform->label())->unique()->implode(', '),

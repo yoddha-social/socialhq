@@ -230,7 +230,9 @@ test('the planner context holds the month, brand, channels, events, planned item
         ->and($context['today'])->toBe($today->toDateString())
         ->and($context['days'])->toHaveCount($this->month->daysInMonth)
         ->and($context['days'][0])->toBe($this->month->format('Y-m-d D'))
-        ->and($context['goals'])->toBe('More reels.')
+        ->and($context['strategy'])->toBe('More reels.')
+        ->and($context['days_off'])->toBe([])
+        ->and($context['must_haves'])->toBe([])
         ->and($context['brand'])->toContain('A Kathmandu momo chain.')
         ->and($context['pillars'])->toBe(['Menu', 'Team'])
         ->and($context['channels'])->toHaveCount(2)
@@ -569,7 +571,7 @@ test('the planner schema lists every key as required, as strict providers want',
     $schema = (new ContentPlanner(Locale::DEFAULT))->schema(new JsonSchemaTypeFactory);
     $item = data_get($schema['items']->toArray(), 'items');
 
-    expect($item['required'])->toEqualCanonicalizing(['date', 'channel', 'content_type', 'creative', 'title', 'pillar', 'objective', 'angle', 'event_key', 'suggested_time']);
+    expect($item['required'])->toEqualCanonicalizing(['date', 'channel', 'content_type', 'creative', 'title', 'pillar', 'objective', 'angle', 'event_key', 'suggested_time', 'must_have']);
 });
 
 test('an answer without items is logged with who answered and how it stopped', function () {

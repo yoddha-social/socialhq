@@ -79,8 +79,8 @@ final class PlanPage
                 'mainTimezone' => Audience::mainZone($profile, $user->timezone),
                 'countries' => array_map(fn (string $code): array => ['code' => $code, 'name' => AudienceCountries::name($code)], Audience::countries($profile)),
             ],
-            // What "Generate with AI" opens with: the brand's last switches and the month's days.
-            'generateDefaults' => PlannerOptions::defaults($month, $profile)->toArray(),
+            // What "Generate with AI" opens with: the brand's last switches, the month's days and the team's instructions.
+            'generateDefaults' => PlannerOptions::forDialog($plan, $month, $profile, PlanMonth::today($user)),
             // Asked for by a partial reload when the "What worked lately" panel opens.
             'whatWorked' => Inertia::optional(fn (): array => PastPerformance::lately($workspace->id)),
         ];
@@ -106,6 +106,8 @@ final class PlanPage
             'unsupported_details' => array_values((array) $item->unsupported_details),
             'event_id' => $item->event_id,
             'owner_id' => $item->owner_id,
+            // One of the posts the team required when it generated the plan ("Must-have").
+            'must_have' => $item->must_have !== null,
             'suggested_time' => $item->suggested_time,
             'suggested_timezone' => $item->suggested_timezone,
             'suggested_at' => SuggestedTime::instant($item)?->toIso8601ZuluString(),
@@ -143,6 +145,8 @@ final class PlanPage
                 'weeks' => self::generationWeeks($plan),
                 // Suggestions the latest draft added (null for drafts made before it planned week by week).
                 'added' => $plan->generation_weeks === null ? null : (int) collect($plan->generation_weeks)->sum('added'),
+                // Of those, the must-haves the app added itself because the AI missed them (or wasn't asked).
+                'must_haves_added' => (int) collect((array) ($plan->generation_weeks ?? []))->sum('must_haves_added'),
                 'generated_at' => $plan->generated_at?->toIso8601String(),
             ],
             'submitted_at' => $plan->submitted_at?->toIso8601String(),
@@ -153,9 +157,10 @@ final class PlanPage
 
     /**
      * The latest draft's weeks (one AI call each) as the panel shows them:
-     * the days, how far the run got, and why a week wasn't drafted.
+     * the days, how far the run got, why a week wasn't drafted, and whether
+     * the team's must-haves filled it (so the AI wasn't asked for more).
      *
-     * @return list<array{from: string, to: string, status: string, error: string|null}>
+     * @return list<array{from: string, to: string, status: string, error: string|null, filled: bool}>
      */
     private static function generationWeeks(ContentPlan $plan): array
     {
@@ -167,6 +172,7 @@ final class PlanPage
                 'error' => data_get($week, 'status') === 'failed'
                     ? __('socialhq_plan.generation.week_errors.'.(data_get($week, 'error') ?: 'ai_failed'))
                     : null,
+                'filled' => (bool) data_get($week, 'filled', false),
             ])
             ->values()
             ->all();

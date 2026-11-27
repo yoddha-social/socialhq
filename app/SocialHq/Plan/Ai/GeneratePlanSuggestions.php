@@ -38,7 +38,9 @@ use Throwable;
  * with a reason. When a week still has room afterwards, the model gets one
  * more try with the refused items and their reasons. A failed call is tried
  * once more too; a week that still fails keeps its earlier suggestions and is
- * listed as not drafted, and the other weeks go on.
+ * listed as not drafted, and the other weeks go on. The team's must-haves are
+ * placed by the checks too (the AI's item for each, else one the app adds),
+ * and a week they fill gets no AI call at all.
  *
  * Each week is saved as soon as it is checked, replacing the earlier run's
  * untouched suggestions on its days (never planned or dropped items, or ones
@@ -103,9 +105,11 @@ class GeneratePlanSuggestions implements ShouldQueue
             return;
         }
 
+        $stopped = null;
+
         foreach ($weeks as $index => $week) {
             if (now()->greaterThan($deadline)) {
-                $this->closeWeeks('out_of_time');
+                $stopped = ['out_of_time', $index];
 
                 break;
             }
@@ -120,9 +124,22 @@ class GeneratePlanSuggestions implements ShouldQueue
                     report($exception);
                 }
 
-                $this->closeWeeks('ai_unavailable');
+                $stopped = ['ai_unavailable', $index];
 
                 break;
+            }
+        }
+
+        if ($stopped !== null) {
+            [$reason, $from] = $stopped;
+
+            // The weeks the AI won't draft still get the team's must-haves.
+            foreach (array_slice($weeks, $from, preserve_keys: true) as $index => $week) {
+                $checks = fn (bool $replacing, ?ContentPlan $locked = null): ?SuggestionChecks => $this->checks($locked, $run, $week, $today, $weekStart, $user->timezone, $replacing);
+
+                if (! $this->notDrafted($index, $reason, null, $checks)) {
+                    return;
+                }
             }
         }
 
@@ -146,7 +163,18 @@ class GeneratePlanSuggestions implements ShouldQueue
     private function draftWeek(User $user, PlannerOptions $run, PlannerOptions $week, int $index, CarbonImmutable $today, WeekStart $weekStart, CarbonInterface $deadline): bool
     {
         $checks = fn (bool $replacing, ?ContentPlan $locked = null): ?SuggestionChecks => $this->checks($locked, $run, $week, $today, $weekStart, $user->timezone, $replacing);
-        $answer = $this->ask($user, $today, $checks(true));
+        $first = $checks(true);
+
+        if ($first === null) {
+            return false;
+        }
+
+        // The team's must-haves fill every channel's posts: the app adds them, and the AI isn't asked for more.
+        if ($first->hasOpenMustHaves() && ! $first->hasOpenSlots()) {
+            return $this->save($index, ['items' => [], 'summary' => '', 'context' => [], 'error' => null], $checks, replacing: true, calls: 0, filled: true) !== null;
+        }
+
+        $answer = $this->ask($user, $today, $first);
         $calls = 1;
 
         if ($answer !== null && $answer['error'] !== null && now()->lessThanOrEqualTo($deadline)) {
@@ -159,7 +187,7 @@ class GeneratePlanSuggestions implements ShouldQueue
         }
 
         if ($answer['error'] !== null) {
-            return $this->whileCurrent(fn (ContentPlan $plan) => self::withWeek($plan, $index, ['status' => 'failed', 'error' => $answer['error'], 'calls' => $calls])->save());
+            return $this->notDrafted($index, $answer['error'], $calls, $checks);
         }
 
         $saved = $this->save($index, $answer, $checks, replacing: true, calls: $calls);
@@ -184,6 +212,37 @@ class GeneratePlanSuggestions implements ShouldQueue
         }
 
         return $this->save($index, $retry, $checks, replacing: false, calls: 2) !== null;
+    }
+
+    /**
+     * A week the AI didn't draft (its call failed, the run ran out of time,
+     * or the company has no AI): it keeps its earlier suggestions and is
+     * listed as not drafted with why, and the team's must-haves no item
+     * covers yet are added all the same. False when the plan moved on to
+     * another run.
+     *
+     * @param  int|null  $calls  the week's calls, or null to keep the count it has
+     * @param  Closure(bool, ContentPlan|null): ?SuggestionChecks  $checks
+     */
+    private function notDrafted(int $index, string $error, ?int $calls, Closure $checks): bool
+    {
+        $week = ['status' => 'failed', 'error' => $error, ...($calls === null ? [] : ['calls' => $calls])];
+        $rules = $checks(false);
+
+        if ($rules === null) {
+            return false;
+        }
+
+        // A week already saved (the AI stopped answering on its second try) stays drafted.
+        if (data_get($rules->plan()->generation_weeks, "{$index}.status") !== 'pending') {
+            return true;
+        }
+
+        if (! $rules->hasOpenMustHaves()) {
+            return $this->whileCurrent(fn (ContentPlan $plan) => self::withWeek($plan, $index, $week)->save());
+        }
+
+        return $this->save($index, ['items' => [], 'summary' => '', 'context' => [], 'error' => null], $checks, replacing: false, calls: $calls, week: $week) !== null;
     }
 
     /**
@@ -237,13 +296,16 @@ class GeneratePlanSuggestions implements ShouldQueue
      *
      * @param  array{items: list<mixed>, summary: string, context: array<string, mixed>, error: string|null}  $answer
      * @param  Closure(bool, ContentPlan|null): ?SuggestionChecks  $checks
+     * @param  int|null  $calls  the week's calls, or null to keep the count it has
+     * @param  bool  $filled  the week's must-haves fill every channel, so the AI wasn't asked
+     * @param  array<string, mixed>  $week  what the week's record says over the counts (a week not drafted)
      * @return array{feedback: list<array<string, string>>, open: bool}|null
      */
-    private function save(int $index, array $answer, Closure $checks, bool $replacing, int $calls): ?array
+    private function save(int $index, array $answer, Closure $checks, bool $replacing, ?int $calls, bool $filled = false, array $week = []): ?array
     {
         $saved = null;
 
-        $current = $this->whileCurrent(function (ContentPlan $plan) use ($index, $answer, $checks, $replacing, $calls, &$saved): void {
+        $current = $this->whileCurrent(function (ContentPlan $plan) use ($index, $answer, $checks, $replacing, $calls, $filled, $week, &$saved): void {
             // Read again under the lock: an item change may have come while the AI worked.
             $rules = $checks($replacing, $plan);
             $outcome = $rules->check(array_slice($answer['items'], 0, ContentPlanner::MAX_ITEMS));
@@ -255,8 +317,13 @@ class GeneratePlanSuggestions implements ShouldQueue
             $positions = [];
             // Names and numbers the planner wrote that its sources don't have, for the team to check.
             $sources = UnsupportedDetails::against(UnsupportedDetails::sourceText($answer['context']));
+            // The must-haves the app added itself hold only the team's words: nothing to check there.
+            $items = [
+                ...array_map(fn (array $attributes): array => [$attributes, true], $outcome['accepted']),
+                ...array_map(fn (array $attributes): array => [$attributes, false], $outcome['added']),
+            ];
 
-            foreach ($outcome['accepted'] as $attributes) {
+            foreach ($items as [$attributes, $fromAi]) {
                 $day = $attributes['scheduled_on'];
                 $positions[$day] ??= (int) $plan->items()->whereDate('scheduled_on', $day)->max('position');
                 $positions[$day]++;
@@ -264,7 +331,7 @@ class GeneratePlanSuggestions implements ShouldQueue
                 $plan->items()->create([
                     ...$attributes,
                     'position' => $positions[$day],
-                    'unsupported_details' => $sources->in(trim("{$attributes['objective']}\n{$attributes['angle']}")) ?: null,
+                    'unsupported_details' => $fromAi ? ($sources->in(trim("{$attributes['objective']}\n{$attributes['angle']}")) ?: null) : null,
                 ]);
             }
 
@@ -280,13 +347,17 @@ class GeneratePlanSuggestions implements ShouldQueue
                 'status' => 'done',
                 'error' => null,
                 'proposed' => (int) data_get($before, 'proposed', 0) + count($answer['items']),
-                'added' => (int) data_get($before, 'added', 0) + count($outcome['accepted']),
+                'added' => (int) data_get($before, 'added', 0) + count($outcome['accepted']) + count($outcome['added']),
                 'not_added' => (int) data_get($before, 'not_added', 0) + count($outcome['rejections']),
                 'repaired' => (int) data_get($before, 'repaired', 0) + $outcome['repaired'],
-                'calls' => $calls,
+                // Must-haves the AI missed (or wasn't asked for), which the app added itself.
+                'must_haves_added' => (int) data_get($before, 'must_haves_added', 0) + count($outcome['added']),
+                'filled' => $filled || (bool) data_get($before, 'filled', false),
+                'calls' => $calls ?? (int) data_get($before, 'calls', 0),
+                ...$week,
             ])->save();
 
-            if ($outcome['accepted'] !== []) {
+            if ($outcome['accepted'] !== [] || $outcome['added'] !== []) {
                 $plan->reopen();
             }
 
@@ -334,24 +405,13 @@ class GeneratePlanSuggestions implements ShouldQueue
                 'added' => 0,
                 'not_added' => 0,
                 'repaired' => 0,
+                'must_haves_added' => 0,
+                'filled' => false,
                 'calls' => 0,
             ], $weeks),
             'generation_rejections' => [],
             'generation_summary' => null,
         ])->save());
-    }
-
-    /**
-     * The weeks not drafted yet end as failed, with why.
-     */
-    private function closeWeeks(string $error): void
-    {
-        $this->whileCurrent(function (ContentPlan $plan) use ($error): void {
-            $plan->generation_weeks = collect((array) $plan->generation_weeks)
-                ->map(fn (array $week): array => data_get($week, 'status') === 'pending' ? [...$week, 'status' => 'failed', 'error' => $error] : $week)
-                ->all();
-            $plan->save();
-        });
     }
 
     /**

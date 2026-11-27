@@ -1031,6 +1031,38 @@ ARC-08; PATCHES.md rows 350–353):
 - A missing `MAIL_MAILER` logs mail instead of using TryPost's hosted mailer.
 - PostHog's library is loaded only when PostHog is enabled with a key.
 
+## Email
+
+What the app sends: workspace invites, email verification and password resets,
+sign-up and company requests and their answers, approval requests and
+decisions, notes and mentions, published, failed and at-risk posts, channel
+disconnections and paused webhooks. Mailables are queued, so a worker must be
+running for anything to leave.
+
+- **Log only (the default):** `MAIL_MAILER=log`, or no `MAIL_MAILER` at all,
+  writes each email to `storage/logs/laravel.log` and sends nothing. On a laptop,
+  copy verification and invite links from there.
+- **Sending for real:** SMTP on port 587 with `MAIL_SCHEME=smtp`, which upgrades
+  to TLS (STARTTLS). Don't use 25 or 465: Hetzner Cloud blocks both. We use SMTP
+  rather than Laravel's `resend` mailer, because the app doesn't ship the
+  `resend/resend-php` package.
+- **Providers:** Resend is the main one (username `resend`, password an API key
+  limited to sending from our domain). Brevo is a backup switched by hand (its
+  SMTP login, `…@smtp-brevo.com`, and an SMTP key). Both have the same sending
+  domain verified, so `MAIL_FROM_ADDRESS` stays the same whichever is active.
+  The domain has exactly one DMARC record; adding a provider must not add a
+  second one.
+- **Switching provider:** change `MAIL_HOST`, `MAIL_USERNAME` and
+  `MAIL_PASSWORD` together, then recreate the app container (`docker compose
+  up -d`, not `restart`, which doesn't re-read the env file). The deploy
+  repo's `trypost.env.example` has both blocks ready, one commented out.
+- **Limits:** Resend's free plan sends 100 a day and 3,000 a month, shared by
+  every environment that uses the same key. A laptop that sends for real uses
+  the same daily budget as production; set it back to `log` when not needed.
+- **Checking a send:** a delivered email shows up in the provider's log
+  (Resend: Emails). A rejected login or a blocked port fails the queued job,
+  which Horizon lists under Failed Jobs with the SMTP error.
+
 ## Browser safety
 
 Audit 2026-11-24, SEC-09 (the app's side; HTTPS-only is switched on at

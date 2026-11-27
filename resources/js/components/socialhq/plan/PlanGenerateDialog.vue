@@ -573,7 +573,32 @@ const start = (): void => {
                                 :data-testid="`plan-generate-must-have-${index}`"
                             >
                                 <div
-                                    class="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center [&_[data-slot=native-select-wrapper]]:w-full"
+                                    class="-me-1 -mt-1 flex items-center justify-between gap-2"
+                                >
+                                    <MustHaveBadge />
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        class="size-8 text-muted-foreground hover:text-foreground"
+                                        :aria-label="
+                                            $t(
+                                                'socialhq_plan.generate.must_have.remove',
+                                            )
+                                        "
+                                        :title="
+                                            $t(
+                                                'socialhq_plan.generate.must_have.remove',
+                                            )
+                                        "
+                                        :data-testid="`plan-generate-must-have-remove-${index}`"
+                                        @click="removeMustHave(index)"
+                                    >
+                                        <IconTrash class="size-4" />
+                                    </Button>
+                                </div>
+                                <div
+                                    class="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_minmax(0,1fr)] [&_[data-slot=native-select-wrapper]]:w-full"
                                 >
                                     <NativeSelect
                                         v-model="row.date"
@@ -657,31 +682,6 @@ const start = (): void => {
                                             }}
                                         </NativeSelectOption>
                                     </NativeSelect>
-                                    <div
-                                        class="flex items-center justify-between gap-2 sm:justify-end"
-                                    >
-                                        <MustHaveBadge />
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            class="size-8 text-muted-foreground hover:text-foreground"
-                                            :aria-label="
-                                                $t(
-                                                    'socialhq_plan.generate.must_have.remove',
-                                                )
-                                            "
-                                            :title="
-                                                $t(
-                                                    'socialhq_plan.generate.must_have.remove',
-                                                )
-                                            "
-                                            :data-testid="`plan-generate-must-have-remove-${index}`"
-                                            @click="removeMustHave(index)"
-                                        >
-                                            <IconTrash class="size-4" />
-                                        </Button>
-                                    </div>
                                 </div>
                                 <Textarea
                                     v-model="row.focus"

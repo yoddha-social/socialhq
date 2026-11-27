@@ -35,10 +35,21 @@ export interface CalendarEventRow {
     verified_at: string | null;
     /** Its source no longer lists it: it needs a check and stays out of planning. */
     delisted: boolean;
-    /** Countries whose holiday on the same day is this international day. */
-    also_countries: string[];
     /** The brand's open notes that the date looks wrong. */
     flags: EventFlagRow[];
+}
+
+/**
+ * One event on the events page: the same holiday on the same day is one
+ * event with a row per country (EventsForMonth::group), each row confirmed,
+ * flagged, hidden and edited on its own.
+ */
+export interface CalendarEventGroup {
+    /** The row plan items link to: the oldest confirmed one, else the oldest. */
+    id: number;
+    starts_on: string;
+    /** International first, then the countries by code, then the brand's own date. */
+    rows: CalendarEventRow[];
 }
 
 /** A team member's note that a date looks wrong. */
@@ -74,8 +85,11 @@ export const countryName = (code: string, locale: string): string => {
 /** One event on a day of the publish calendar (`shqEvents` prop). */
 export interface CalendarEventMarker {
     name: string;
+    /** Confirmed for at least one of its countries. */
     verified: boolean;
     category: EventCategory;
+    /** The countries whose holiday it is, by code; none for an international day. */
+    countries: string[];
 }
 
 interface CategoryStyle {
@@ -116,6 +130,9 @@ const STYLES: Record<EventCategory, CategoryStyle> = {
     },
 };
 
+/** The kinds in the order a card lists them: a festival before a public holiday. */
+export const CATEGORY_ORDER = Object.keys(STYLES) as EventCategory[];
+
 const styleOf = (category: string): CategoryStyle =>
     STYLES[category as EventCategory] ?? STYLES.observance;
 
@@ -124,6 +141,10 @@ export const categoryBadgeClass = (category: string): string =>
 
 export const categoryDotClass = (category: string): string =>
     styleOf(category).dot;
+
+/** The countries of an event, named in the interface language: "Australia, Nepal". */
+export const countryNames = (codes: string[], locale: string): string =>
+    codes.map((code) => countryName(code, locale)).join(', ');
 
 /** The outline of an event that nobody has confirmed yet. */
 export const NEEDS_CHECK_CLASS =

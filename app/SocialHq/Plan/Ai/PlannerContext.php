@@ -7,7 +7,7 @@ namespace App\SocialHq\Plan\Ai;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\User\WeekStart;
 use App\Models\SocialAccount;
-use App\SocialHq\Events\CalendarEvent;
+use App\SocialHq\Events\EventGroup;
 use App\SocialHq\Knowledge\Audience\Audience;
 use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\Calendars\OldCalendars;
@@ -54,7 +54,7 @@ final class PlannerContext
      *     audience: array{main_timezone: string, locations: list<array<string, mixed>>},
      *     pillars: list<string>,
      *     channels: list<array{key: string, platform: string, name: string, posts_per_week: int|null, content_types: list<string>, posts_to_plan: int, free_days: list<string>}>,
-     *     events: list<array{key: string, name: string, category: string, starts_on: string, ends_on: string, confirmed: bool}>,
+     *     events: list<array{key: string, name: string, category: string, starts_on: string, ends_on: string, confirmed: bool, countries: list<string>}>,
      *     already_planned: list<array{title: string, date: string, channel: string|null, pillar: string}>,
      *     past_posts?: list<array<string, mixed>>,
      *     old_calendar?: list<array<string, mixed>>,
@@ -75,8 +75,9 @@ final class PlannerContext
         $open = $checks->openSlots();
         $channels = PlanOptions::channels($workspace);
         $cadence = PlanOptions::cadence($profile, $channels);
-        // Events up to EVENT_LEAD_DAYS after the range too: their posts may go out in it.
-        $events = PlanOptions::events($workspace, $options->from, $options->to->addDays(GeneratePlanSuggestions::EVENT_LEAD_DAYS), $options->eventCountries($profile));
+        // Events up to EVENT_LEAD_DAYS after the range too: their posts may go out in it. One per holiday, as confirmed.
+        $events = PlanOptions::events($workspace, $options->from, $options->to->addDays(GeneratePlanSuggestions::EVENT_LEAD_DAYS), $options->eventCountries($profile))
+            ->map(fn (EventGroup $event): EventGroup => $event->asPlanned());
         $pillars = PlanOptions::pillars($profile);
         $mainZone = Audience::mainZone($profile, $fallbackZone);
 
@@ -103,13 +104,15 @@ final class PlannerContext
                 'posts_to_plan' => (int) data_get($open, "{$channel->id}.posts", 0),
                 'free_days' => data_get($open, "{$channel->id}.days", []),
             ])->values()->all(),
-            'events' => $events->map(fn (CalendarEvent $event): array => [
-                'key' => $event->key,
-                'name' => $event->name,
-                'category' => $event->category->value,
-                'starts_on' => $event->starts_on->toDateString(),
-                'ends_on' => $event->ends_on->toDateString(),
-                'confirmed' => $event->isVerified(),
+            'events' => $events->map(fn (EventGroup $event): array => [
+                'key' => $event->key(),
+                'name' => $event->name(),
+                'category' => $event->category()->value,
+                'starts_on' => $event->startsOn()->toDateString(),
+                'ends_on' => $event->endsOn()->toDateString(),
+                'confirmed' => $event->isConfirmed(),
+                // Only the countries a person confirmed the date for.
+                'countries' => $event->confirmedCountries(),
             ])->values()->all(),
             // Everything this draft keeps: planned items and the suggestions it won't replace.
             'already_planned' => $plan->items()
@@ -137,7 +140,7 @@ final class PlannerContext
      * the pillars, the confirmed events and the channels' networks.
      *
      * @param  list<string>  $pillars
-     * @param  Collection<int, CalendarEvent>  $events
+     * @param  Collection<int, EventGroup>  $events
      * @param  Collection<int, SocialAccount>  $channels
      */
     public static function focus(ContentPlan $plan, array $pillars, Collection $events, Collection $channels): string
@@ -145,7 +148,7 @@ final class PlannerContext
         return collect([
             trim((string) $plan->goals),
             implode(', ', $pillars),
-            $events->filter(fn (CalendarEvent $event): bool => $event->isVerified())->pluck('name')->implode(', '),
+            $events->filter(fn (EventGroup $event): bool => $event->isConfirmed())->map(fn (EventGroup $event): string => $event->name())->implode(', '),
             $channels->map(fn (SocialAccount $channel): string => $channel->platform->label())->unique()->implode(', '),
         ])->filter()->implode("\n");
     }

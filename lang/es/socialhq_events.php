@@ -130,7 +130,14 @@ return [
         'audience_follow' => 'Follow their dates',
     ],
 
-    'also_in' => 'Also a holiday in :countries',
+    // One event in several countries: a row per country, each checked on its own.
+    'group' => [
+        'summary_countries' => ':confirmed of :total countries confirmed',
+        'summary' => ':confirmed of :total confirmed',
+        'confirm' => 'Confirm',
+        'confirm_for' => 'Confirm the date for :country',
+        'flag_for' => 'Flag the date for :country',
+    ],
 
     'hide' => [
         'action' => 'Hide for this brand',

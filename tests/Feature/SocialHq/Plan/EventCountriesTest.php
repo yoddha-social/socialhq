@@ -345,7 +345,7 @@ test('the events page filters by country, keeping dates without one', function (
             ->where('countries', ['DE', 'NP', 'US'])
             ->has('events', 2)
             ->where('events', fn ($events) => collect($events)->pluck('id')->sort()->values()->all() === collect([$us->id, $international->id])->sort()->values()->all())
-            ->where('events.0.country_code', fn ($code) => in_array($code, ['US', null], true)));
+            ->where('events.0.rows.0.country_code', fn ($code) => in_array($code, ['US', null], true)));
 
     $this->actingAs($this->owner)
         ->get(route('socialhq.plan.events.index', ['month' => $day->format('Y-m'), 'country' => 'nonsense']))

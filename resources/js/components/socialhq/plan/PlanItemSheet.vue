@@ -204,6 +204,15 @@ const pillarOptions = computed(() =>
 
 const isNew = computed(() => editingId.value === null);
 
+/**
+ * An event's option: the item's own row when it already links to one of the
+ * event's countries, so saving keeps the link it has.
+ */
+const eventOptionValue = (event: PlanEvent): string =>
+    props.item?.event_id && event.ids.includes(props.item.event_id)
+        ? String(props.item.event_id)
+        : String(event.id);
+
 const fill = (): void => {
     form.clearErrors();
 
@@ -832,7 +841,7 @@ const askDelete = async (): Promise<void> => {
                                     <NativeSelectOption
                                         v-for="event in events"
                                         :key="event.id"
-                                        :value="String(event.id)"
+                                        :value="eventOptionValue(event)"
                                     >
                                         {{
                                             event.confirmed

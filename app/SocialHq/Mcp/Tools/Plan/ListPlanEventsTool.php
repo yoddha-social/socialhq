@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\SocialHq\Mcp\Tools\Plan;
 
 use App\Models\Workspace;
-use App\SocialHq\Events\CalendarEvent;
+use App\SocialHq\Events\EventGroup;
 use App\SocialHq\Mcp\Concerns\WorksOnPlans;
 use App\SocialHq\Plan\PlanMonth;
 use App\SocialHq\Plan\PlanOptions;
@@ -22,7 +22,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly(true)]
 #[IsDestructive(false)]
 #[IsOpenWorld(false)]
-#[Description('List the dated events (festivals, public holidays, international days and the brand\'s own dates) that overlap one month, as the content plan sees them, in date order. confirmed is true when a person checked the date; plan content only around confirmed events, and never calculate or guess a festival\'s date yourself: Nepali festival dates follow the Bikram Sambat calendar and come from the official holiday list. country_code is null for international days.')]
+#[Description('List the dated events (festivals, public holidays, international days and the brand\'s own dates) that overlap one month, as the content plan sees them, in date order. The same holiday on the same day in several countries is one event: countries lists them (empty for an international day or the brand\'s own date), and ids holds each country\'s date, any of which a plan item\'s event may be. confirmed is true when a person checked the date for at least one of its countries (confirmed_countries); plan content only around confirmed events, once per event, and never calculate or guess a festival\'s date yourself: Nepali festival dates follow the Bikram Sambat calendar and come from the official holiday list.')]
 class ListPlanEventsTool extends Tool
 {
     use WorksOnPlans;
@@ -40,14 +40,16 @@ class ListPlanEventsTool extends Tool
         return Response::structured([
             'month' => PlanMonth::key($month),
             'events' => PlanOptions::events($workspace, $month, PlanMonth::end($month))
-                ->map(fn (CalendarEvent $event): array => [
+                ->map(fn (EventGroup $event): array => [
                     'id' => $event->id,
-                    'name' => $event->name,
-                    'category' => $event->category->value,
-                    'starts_on' => $event->starts_on->toDateString(),
-                    'ends_on' => $event->ends_on->toDateString(),
-                    'country_code' => $event->country_code,
-                    'confirmed' => $event->isVerified(),
+                    'ids' => $event->ids(),
+                    'name' => $event->name(),
+                    'category' => $event->category()->value,
+                    'starts_on' => $event->startsOn()->toDateString(),
+                    'ends_on' => $event->endsOn()->toDateString(),
+                    'countries' => $event->countries(),
+                    'confirmed' => $event->isConfirmed(),
+                    'confirmed_countries' => $event->confirmedCountries(),
                 ])
                 ->all(),
         ]);

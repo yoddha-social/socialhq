@@ -126,7 +126,9 @@ const lookups = computed<PlanLookups>(() => ({
         props.planChannels.map((channel) => [channel.id, channel]),
     ),
     owners: Object.fromEntries(props.owners.map((owner) => [owner.id, owner])),
-    events: Object.fromEntries(props.events.map((event) => [event.id, event])),
+    events: Object.fromEntries(
+        props.events.flatMap((event) => event.ids.map((id) => [id, event])),
+    ),
     pillars: props.pillars,
 }));
 

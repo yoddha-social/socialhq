@@ -10,6 +10,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Events\CalendarEvent;
+use App\SocialHq\Events\EventGroup;
 use App\SocialHq\Events\EventsForMonth;
 use App\SocialHq\Knowledge\BrandProfile;
 use Carbon\CarbonImmutable;
@@ -61,19 +62,19 @@ final class PlanOptions
 
     /**
      * Events the brand sees that overlap the days given, confirmed or not, in
-     * date order, without dates their source no longer lists (the source
-     * corrected or dropped them). With countries, only the events of those
-     * countries and the international ones (no country).
+     * date order, one per holiday and day (the same holiday in several
+     * countries is one event), without dates their source no longer lists
+     * (the source corrected or dropped them). With countries, only the
+     * events of those countries and the international ones (no country).
      *
      * @param  list<string>|null  $countries  ISO 3166-1 alpha-2 codes, or null for every event
-     * @return Collection<int, CalendarEvent>
+     * @return Collection<int, EventGroup>
      */
     public static function events(Workspace $workspace, CarbonImmutable $from, CarbonImmutable $to, ?array $countries = null): Collection
     {
         // The audience's countries plus every event without one (international, brand-only).
-        return EventsForMonth::forWorkspace($workspace, $from, $to, $countries)
-            ->reject(fn (CalendarEvent $event): bool => $event->isDelisted())
-            ->values();
+        return EventsForMonth::group(EventsForMonth::rows($workspace, $from, $to, $countries)
+            ->reject(fn (CalendarEvent $event): bool => $event->isDelisted()));
     }
 
     public static function profile(Workspace $workspace): ?BrandProfile

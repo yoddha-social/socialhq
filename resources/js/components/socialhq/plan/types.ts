@@ -91,14 +91,25 @@ export interface PlanItem {
     position: number;
 }
 
+/**
+ * One event of the month: the same holiday on the same day in several
+ * countries is one event (EventsForMonth::group).
+ */
 export interface PlanEvent {
+    /** The row a new item links to: the oldest confirmed one, else the oldest. */
     id: number;
+    /** Every country's row of the event: an item may point at any of them. */
+    ids: number[];
     key: string;
     name: string;
     category: string;
     starts_on: string;
     ends_on: string;
+    /** Confirmed for at least one of its countries: the planner uses it. */
     confirmed: boolean;
+    /** The countries whose holiday it is, by code; none for an international day. */
+    countries: string[];
+    confirmed_countries: string[];
 }
 
 export interface PlanChannel {
@@ -146,6 +157,7 @@ export interface PlanGenerateOptions {
 export interface PlanLookups {
     channels: Record<string, PlanChannel>;
     owners: Record<string, PlanOwner>;
+    /** By every row id of the event, so an item linked to any country's row finds it. */
     events: Record<number, PlanEvent>;
     pillars: string[];
 }

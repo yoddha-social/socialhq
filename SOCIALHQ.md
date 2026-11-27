@@ -290,8 +290,10 @@ up to 5 main keywords, brand-wide, and a library of up to 75 more
 pillars (by name), products or services (knowledge entries of that kind; the
 tag goes with the entry) and occasions: an event of the Events page, kept
 by its key without the year (`Keywords\Occasion::key()`, so "Nepali New Year
-2084" is the same occasion as 2083's) and in season from 14 days before
-its first day to 2 days after its last
+2084" is the same occasion as 2083's) or a country (one tag covers every
+country's date of the event: the picker offers an event of several countries
+once, and each of its rows' keys puts it in season), and in season from 14
+days before its first day to 2 days after its last
 (`SOCIALHQ_KEYWORDS_OCCASION_DAYS_BEFORE` / `_AFTER`), or a range of months
 for a season without an event (it may run over the new year). Untagged is
 general. No per-format or per-channel tags, and no free-form groups (owner
@@ -509,11 +511,29 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   deleted instead. Anyone working on the plan **flags** a date with a note
   (`shq_event_flags`): it shows on the date and in "Waiting for you" for the
   brand's approvers, and confirming, editing or hiding the date, or "Mark
-  handled", closes it. One day under one name is one event: a country's
-  holiday that is also the international day (New Year) shows once, naming
-  the country. "Confirm all shown" offers Undo (the batch's ids and time, for
-  that person's confirmations only); a single confirmation says so. "Generate
-  with AI" says how many dates of the month still need a check.
+  handled", closes it. **One day under one name is one event** (QA
+  2026-11-18; owner decision 2026-11-27, layout A of the mockup): dates that
+  start on the same day under the same key, or the same name once
+  normalised, are one event whatever their countries (Christmas Day for
+  Australia and for Nepal; a country's New Year that is also the
+  international day). The data stays one row per country, each with its own
+  confirmation, source, flags and hides, since a date confirmed for
+  Australia is no proof for Nepal; `EventsForMonth::group()` reads them
+  together (`Events\EventGroup`), the one place it happens, for the events
+  page, the plan, the publish calendar markers, the planner, MCP and keyword
+  occasions. The events page shows one card per event: the name (and a local
+  name), the kinds, "1 of 2 countries confirmed" and a row per country it
+  follows with its status, source, "Confirm" and its own menu (edit, hide,
+  delete) or flag; an event with one row shown looks as before. The filters,
+  their counts, "Confirm all shown" and Undo work on the rows. An event is
+  confirmed for planning once one of its countries' dates is: the planner
+  gets each event once with only its confirmed countries (`countries`),
+  suggestion checks accept any of its rows' keys, and its items link to its
+  oldest confirmed row (`EventGroup::$id`; an item may already point at any
+  of its rows). "Confirm all shown" offers Undo (the batch's ids and time,
+  for that person's confirmations only); a single confirmation says so.
+  "Generate with AI" says how many events of the month no country has
+  confirmed yet.
 - **Content plan** (`/socialhq/plan/{YYYY-MM}`). Items with a date, channel,
   format (TryPost's content type), what to make, pillar, owner, event, objective
   and angle. "Generate with AI" (`ContentPlanner`, a queued job) drafts the

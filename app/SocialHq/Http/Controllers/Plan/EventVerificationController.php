@@ -8,7 +8,6 @@ use App\Http\Controllers\Controller;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Events\EventFlag;
 use App\SocialHq\Events\EventRegion;
-use App\SocialHq\Events\EventsForMonth;
 use App\SocialHq\Http\Requests\Plan\ConfirmShownEventsRequest;
 use App\SocialHq\Http\Requests\Plan\UndoConfirmShownEventsRequest;
 use App\SocialHq\Http\Requests\Plan\VerifyCalendarEventRequest;
@@ -79,12 +78,10 @@ class EventVerificationController extends Controller
 
         // A plain update: no model events and no updated_at, like a single confirmation.
         $at = now()->startOfSecond();
-        // Only what the page lists: a holiday folded into the international day of the same name stays as it is.
-        $listed = EventsForMonth::forWorkspace($workspace, $from, $to)->modelKeys();
-        $ids = DB::transaction(function () use ($request, $workspace, $from, $to, $country, $canManageShared, $at, $listed): array {
+        // Every country's row of an event is listed on its own, so each is confirmed on its own.
+        $ids = DB::transaction(function () use ($request, $workspace, $from, $to, $country, $canManageShared, $at): array {
             $ids = CalendarEvent::query()
                 ->forBrand($workspace)
-                ->whereKey($listed)
                 ->overlapping($from->toDateString(), $to->toDateString())
                 ->whereNull('verified_at')
                 // A date its source no longer lists can't be confirmed (store() says why).

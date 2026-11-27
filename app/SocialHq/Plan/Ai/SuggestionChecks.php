@@ -8,7 +8,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\User\WeekStart;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
-use App\SocialHq\Events\CalendarEvent;
+use App\SocialHq\Events\EventGroup;
 use App\SocialHq\Knowledge\Audience\Audience;
 use App\SocialHq\Plan\ContentPlan;
 use App\SocialHq\Plan\CreativeKind;
@@ -65,7 +65,7 @@ final class SuggestionChecks
     /** @var array<string, int|null> */
     private array $cadence;
 
-    /** @var Collection<int, CalendarEvent> */
+    /** @var Collection<int, EventGroup> one per holiday and day, as the planner is shown them */
     private Collection $events;
 
     /** @var list<string> */
@@ -105,7 +105,8 @@ final class SuggestionChecks
         $this->channels = $channels->keyBy('id');
         $this->cadence = PlanOptions::cadence($profile, $channels);
         // The events the planner is shown: the week's days and the lead days after them.
-        $this->events = PlanOptions::events($workspace, $week->from, $week->to->addDays(GeneratePlanSuggestions::EVENT_LEAD_DAYS), $week->eventCountries($profile));
+        $this->events = PlanOptions::events($workspace, $week->from, $week->to->addDays(GeneratePlanSuggestions::EVENT_LEAD_DAYS), $week->eventCountries($profile))
+            ->map(fn (EventGroup $event): EventGroup => $event->asPlanned());
         $this->pillars = PlanOptions::pillars($profile);
         $this->zone = Audience::mainZone($profile, $userZone);
         $this->daysOff = $channels->mapWithKeys(fn (SocialAccount $channel): array => [$channel->id => self::daysOff($channel)])->all();
@@ -299,16 +300,17 @@ final class SuggestionChecks
         }
 
         $eventText = trim((string) data_get($item, 'event_key'));
-        /** @var Collection<int, CalendarEvent>|null $confirmed */
+        /** @var Collection<int, EventGroup>|null $confirmed */
         $confirmed = null;
 
         if ($eventText !== '') {
-            $matches = $this->events->where('key', $eventText)->values();
+            // An event of several countries answers to each of its rows' keys.
+            $matches = $this->events->filter(fn (EventGroup $event): bool => $event->hasKey($eventText))->values();
 
             if ($matches->isEmpty()) {
                 // The event's name instead of its key, written once.
-                $named = $this->events->filter(fn (CalendarEvent $event): bool => Str::lower($event->name) === Str::lower($eventText) || Str::lower($event->key) === Str::lower($eventText));
-                $matches = $named->pluck('key')->unique()->count() === 1 ? $named->values() : $matches;
+                $named = $this->events->filter(fn (EventGroup $event): bool => Str::lower($event->name()) === Str::lower($eventText) || Str::lower($event->key()) === Str::lower($eventText));
+                $matches = $named->map(fn (EventGroup $event): string => $event->key())->unique()->count() === 1 ? $named->values() : $matches;
                 $fixes += $matches->isEmpty() ? 0 : 1;
             }
 
@@ -316,7 +318,7 @@ final class SuggestionChecks
                 return $reject('unknown_event');
             }
 
-            $confirmed = $matches->filter(fn (CalendarEvent $event): bool => $event->isVerified())->values();
+            $confirmed = $matches->filter(fn (EventGroup $event): bool => $event->isConfirmed())->values();
 
             if ($confirmed->isEmpty()) {
                 return $reject('unconfirmed_event');
@@ -346,7 +348,7 @@ final class SuggestionChecks
             $fixes++;
         }
 
-        $event = $confirmed?->first(fn (CalendarEvent $candidate): bool => self::fitsEvent($date, $candidate));
+        $event = $confirmed?->first(fn (EventGroup $candidate): bool => self::fitsEvent($date, $candidate));
         $this->taken[self::slot($channel->id, $date)] = true;
         $this->weekly[$this->weekSlot($channel->id, $date)] = data_get($this->weekly, $this->weekSlot($channel->id, $date), 0) + 1;
         $this->titles[self::titleKey($title)] = true;
@@ -383,12 +385,12 @@ final class SuggestionChecks
      * Why a channel can't post on a day, or null when it can: the event's
      * days, the channel's posting days, one post a day, its posts per week.
      *
-     * @param  Collection<int, CalendarEvent>|null  $confirmed
+     * @param  Collection<int, EventGroup>|null  $confirmed
      */
     private function dayProblem(SocialAccount $channel, CarbonImmutable $day, ?int $perWeek, ?Collection $confirmed): ?string
     {
         return match (true) {
-            $confirmed !== null && ! $confirmed->contains(fn (CalendarEvent $event): bool => self::fitsEvent($day, $event)) => 'event_date_mismatch',
+            $confirmed !== null && ! $confirmed->contains(fn (EventGroup $event): bool => self::fitsEvent($day, $event)) => 'event_date_mismatch',
             $this->isOff($channel, $day) => 'day_off',
             isset($this->taken[self::slot($channel->id, $day)]) => 'duplicate_day',
             is_int($perWeek) && data_get($this->weekly, $this->weekSlot($channel->id, $day), 0) >= $perWeek => 'over_cadence',
@@ -493,11 +495,11 @@ final class SuggestionChecks
     /**
      * An event's post goes on one of its days or up to EVENT_LEAD_DAYS before it.
      */
-    private static function fitsEvent(CarbonImmutable $date, CalendarEvent $event): bool
+    private static function fitsEvent(CarbonImmutable $date, EventGroup $event): bool
     {
-        $from = $event->starts_on->subDays(GeneratePlanSuggestions::EVENT_LEAD_DAYS)->toDateString();
+        $from = $event->startsOn()->subDays(GeneratePlanSuggestions::EVENT_LEAD_DAYS)->toDateString();
 
-        return $date->toDateString() >= $from && $date->toDateString() <= $event->ends_on->toDateString();
+        return $date->toDateString() >= $from && $date->toDateString() <= $event->endsOn()->toDateString();
     }
 
     private static function slot(?string $channelId, CarbonImmutable $day): string

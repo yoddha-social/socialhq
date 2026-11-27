@@ -154,8 +154,8 @@ test('a member flags a date; approvers see it on the date and in Waiting for you
 
     $this->actingAs($this->owner)
         ->get(route('socialhq.plan.events.index', ['month' => $this->day->format('Y-m')]))
-        ->assertInertia(fn ($page) => $page->where('events.0.flags.0.note', 'Tihar is a day earlier.')
-            ->where('events.0.flags.0.by', $this->member->name));
+        ->assertInertia(fn ($page) => $page->where('events.0.rows.0.flags.0.note', 'Tihar is a day earlier.')
+            ->where('events.0.rows.0.flags.0.by', $this->member->name));
     $this->actingAs($this->owner)
         ->get(route('socialhq.inbox'))
         ->assertInertia(fn ($page) => $page->has('sections.event_flags', 1)->where('sections.event_flags.0.name', $date->name));
@@ -182,22 +182,27 @@ test('an approver marks a flag handled', function () {
     expect($flag->fresh()->resolved_at)->not->toBeNull();
 });
 
-test('a country\'s holiday that is also the international day shows once, naming the country', function () {
+test('a country\'s holiday that is also the international day is one event, with a row for each', function () {
     BrandEventCountries::save($this->workspace, ['NP', 'AU']);
     $international = ($this->on)(['key' => 'new-years-day', 'name' => 'New Year\'s Day', 'country_code' => null, 'region' => EventRegion::International]);
-    ($this->on)(['key' => 'new-years-day', 'name' => 'New Year\'s Day', 'country_code' => 'AU', 'region' => EventRegion::Country]);
+    $australia = ($this->on)(['key' => 'new-years-day', 'name' => 'New Year\'s Day', 'country_code' => 'AU', 'region' => EventRegion::Country]);
 
     expect(($this->shown)())->toBe([$international->id])
-        ->and(EventsForMonth::markersByDay($this->workspace, $this->day, $this->day)[$this->day->toDateString()])->toHaveCount(1);
+        ->and(EventsForMonth::markersByDay($this->workspace, $this->day, $this->day)[$this->day->toDateString()])->toHaveCount(1)
+        ->and(EventsForMonth::markersByDay($this->workspace, $this->day, $this->day)[$this->day->toDateString()][0]['countries'])->toBe(['AU']);
 
     $this->actingAs($this->owner)
         ->get(route('socialhq.plan.events.index', ['month' => $this->day->format('Y-m')]))
-        ->assertInertia(fn ($page) => $page->has('events', 1)->where('events.0.also_countries', ['AU']));
+        ->assertInertia(fn ($page) => $page->has('events', 1)
+            ->where('events.0.rows.0.id', $international->id)
+            ->where('events.0.rows.1.id', $australia->id));
 
-    // "Confirm all shown" confirms what the page lists: the folded holiday is not counted.
+    // Australia's date is a row of its own now, so Australia's chip confirms it.
     $this->actingAs($this->owner)
         ->post(route('socialhq.plan.events.verify-shown'), ['view' => 'month', 'month' => $this->day->format('Y-m'), 'filter' => 'country', 'country' => 'AU'])
-        ->assertSessionHas('flash.eventsConfirmed.ids', []);
+        ->assertSessionHas('flash.eventsConfirmed.ids', [$australia->id]);
+
+    expect($international->fresh()->isVerified())->toBeFalse();
 });
 
 test('confirm all shown can be undone, leaving dates confirmed since by someone else', function () {

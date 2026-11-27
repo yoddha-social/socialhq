@@ -39,6 +39,11 @@ porting" are the original notes from the Rails reference.
   "Add a country"), matched within their country; the CSV importer only matches
   and counts NP and null rows (`fromOfficialList`). Both share `WriteImportedEvent`.
   `EventsForMonth::forWorkspace(..., $countries)` keeps those countries plus null.
+- The same holiday on the same day in several countries is one event
+  (`EventsForMonth::group()`, `EventGroup`: same day, same key or same name
+  once normalised), a row per country, each confirmed on its own. Every
+  surface reads events through it; an event is confirmed for planning once
+  one row is, and items link to its oldest confirmed row (`EventGroup::$id`).
 - A brand sees only the countries it follows (`BrandEventCountries`: the admins'
   choice, else the audience's countries, else NP), plus null-country rows and its
   own dates, less what it hid (`shq_event_hides`). Read events through

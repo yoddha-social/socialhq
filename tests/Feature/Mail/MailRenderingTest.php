@@ -20,6 +20,8 @@ use App\Models\PostNote;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Access\Role;
+use App\SocialHq\Access\Roles;
 use App\Support\Mail\ApprovalEmailPost;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -80,6 +82,16 @@ test('the workspace invite renders in the requested locale and names the workspa
     $mailable->assertSeeInHtml(__('mail.workspace_invite.intro_from', ['inviter' => e('Asha <Rai>'), 'workspace' => 'Launch Team'], 'pt-BR'), false);
     $mailable->assertDontSeeInHtml('Acme Co');
     $mailable->assertSeeInHtml(__('mail.workspace_invite.roles.needs_approval', [], 'pt-BR'));
+});
+
+test('the workspace invite names the role it joins with', function () {
+    $workspace = Workspace::factory()->create(['name' => 'Launch Team']);
+    $role = Role::factory()->create(['account_id' => $workspace->account_id, 'name' => 'Video <producer>']);
+    $invite = Invite::factory()->create(['account_id' => $workspace->account_id, 'workspaces' => [$workspace->id], ...Roles::membershipColumns($role)]);
+
+    (new WorkspaceInvite($invite))
+        ->assertSeeInHtml(__('mail.workspace_invite.role', ['role' => e('Video <producer>')]), false)
+        ->assertDontSeeInHtml(__('mail.workspace_invite.roles.needs_approval'));
 });
 
 test('the workspace invite falls back to the plain intro when the inviter is gone', function () {

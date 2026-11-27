@@ -55,8 +55,13 @@ import type { SidebarChannel } from '@/types/channel';
 const page = usePage();
 const currentWorkspace = computed(() => page.props.auth.currentWorkspace);
 
-const { canCreatePost, canManageRepurposes, canManageAccounts, canManageTeam } =
-    useWorkspaceAbilities();
+const {
+    canCreatePost,
+    canWorkOnPlans,
+    canManageRepurposes,
+    canManageAccounts,
+    canManageTeam,
+} = useWorkspaceAbilities();
 const { open: openConnectDialog } = useConnectChannelDialog();
 
 const inviteMemberDialogOpen = ref(false);
@@ -92,7 +97,8 @@ const mainNavItems = computed<NavItem[]>(() => [
         count: scheduledPostsCount.value,
         countTestId: 'sidebar-publish-count',
     },
-    ...(canCreatePost.value
+    // Social HQ: the plan for roles that work on it ("Work on plans").
+    ...(canWorkOnPlans.value
         ? [
               {
                   title: trans('socialhq_plan.nav'),
@@ -100,6 +106,10 @@ const mainNavItems = computed<NavItem[]>(() => [
                   icon: IconCalendarStats,
                   activePattern: '/socialhq/plan',
               },
+          ]
+        : []),
+    ...(canCreatePost.value || canWorkOnPlans.value
+        ? [
               // Social HQ: reviews and change requests waiting for this person.
               {
                   title: trans('socialhq.inbox.nav'),

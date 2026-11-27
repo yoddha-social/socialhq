@@ -11,6 +11,12 @@ use App\Jobs\SendNotification;
 use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Access\AccessLog;
+use App\SocialHq\Access\BuiltInRole;
+use App\SocialHq\Access\MemberRoles;
+use App\SocialHq\Access\Role;
+use App\SocialHq\Access\RoleResource;
+use App\SocialHq\Access\Roles;
 use App\SocialHq\Support\PerRequest;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -164,12 +170,47 @@ final class AccessRequests
     }
 
     /**
-     * Gives the person the picked workspaces. False when someone else
-     * decided on the request first: nothing changes then.
+     * The company's roles for the approve dialog, each with the workspaces
+     * (of those this person manages) where they may give it.
+     *
+     * @param  Collection<int, Workspace>  $workspaces
+     * @return list<array<string, mixed>>
+     */
+    public static function rolesFor(User $user, Collection $workspaces): array
+    {
+        if ($user->account_id === null) {
+            return [];
+        }
+
+        $assignable = $workspaces->mapWithKeys(fn (Workspace $workspace): array => [
+            $workspace->id => MemberRoles::assignableIds($user, $workspace),
+        ]);
+
+        return Roles::forAccount((string) $user->account_id)
+            ->map(fn (Role $role): array => [
+                ...RoleResource::make($role),
+                'assignable_in' => $assignable->filter(fn (array $ids): bool => in_array($role->id, $ids, true))->keys()->values()->all(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * The built-in role for the old "admin or not" choice: Admin, or Editor
+     * (someone who signed up is reviewed until an admin trusts them more).
+     */
+    public static function roleFor(string $accountId, bool $isAdmin): Role
+    {
+        return Roles::builtIn($accountId, $isAdmin ? BuiltInRole::Admin : BuiltInRole::Editor);
+    }
+
+    /**
+     * Gives the person the picked workspaces, with this role in each. False
+     * when someone else decided on the request first: nothing changes then.
      *
      * @param  list<string>  $workspaceIds  workspaces the approver manages
      */
-    public static function approve(AccessRequest $request, User $approver, array $workspaceIds, bool $isAdmin): bool
+    public static function approve(AccessRequest $request, User $approver, array $workspaceIds, Role $role): bool
     {
         $workspaces = self::workspacesManagedBy($approver)->whereIn('id', $workspaceIds)->values();
 
@@ -177,7 +218,7 @@ final class AccessRequests
             return false;
         }
 
-        $user = DB::transaction(function () use ($request, $approver, $workspaces, $isAdmin): ?User {
+        $user = DB::transaction(function () use ($request, $approver, $workspaces, $role): ?User {
             $locked = self::lockPending($request);
             $user = $locked?->user;
 
@@ -193,11 +234,8 @@ final class AccessRequests
             ])->save();
 
             foreach ($workspaces as $workspace) {
-                $user->workspaces()->syncWithoutDetaching([$workspace->id => [
-                    'is_admin' => $isAdmin,
-                    // Someone who signed up is reviewed until an admin trusts them more.
-                    'requires_approval' => ! $isAdmin,
-                ]]);
+                $user->workspaces()->syncWithoutDetaching([$workspace->id => Roles::membershipColumns($role)]);
+                AccessLog::accessGranted($workspace, $user, $role);
             }
 
             $user->update(['current_workspace_id' => $workspaces->first()->id]);

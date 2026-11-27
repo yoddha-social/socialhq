@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\SocialHq\Http\Controllers\Plan;
 
 use App\Http\Controllers\Controller;
+use App\SocialHq\Access\AiAccess;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiTask;
 use App\SocialHq\Ai\AiUnavailableException;
@@ -20,7 +21,6 @@ use App\SocialHq\Plan\PlanOptions;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
@@ -43,7 +43,7 @@ class PlanGenerationController extends Controller
             throw ValidationException::withMessages(['generate' => AiUnavailableException::forTask(AiTask::Structured, $user)->messageFor($user)]);
         }
 
-        $gate = Gate::inspect('useAi', $workspace->account);
+        $gate = AiAccess::inspect($user, $workspace);
 
         if ($gate->denied()) {
             throw ValidationException::withMessages(['generate' => (string) $gate->message()]);

@@ -36,6 +36,7 @@ import {
 import { show as companyAi } from '@/routes/socialhq/ai-settings';
 import { show as aiUsage } from '@/routes/socialhq/ai-usage';
 import { index as brandKnowledge } from '@/routes/socialhq/brand';
+import { index as rolesIndex } from '@/routes/socialhq/roles';
 import type { NavItem } from '@/types';
 
 export interface SettingsNavGroup {
@@ -44,7 +45,7 @@ export interface SettingsNavGroup {
     items: (NavItem & {
         name: string;
         count?: number;
-        children?: (NavItem & { name: string })[];
+        children?: (NavItem & { name: string; exact?: boolean })[];
     })[];
 }
 
@@ -55,6 +56,8 @@ export const useSettingsNavigation = () => {
         canCreatePost,
         canManageAccounts,
         canManageWebhooks,
+        canManageApiKeys,
+        canManageTeam,
         canManageBilling,
     } = useWorkspaceAbilities();
 
@@ -124,12 +127,27 @@ export const useSettingsNavigation = () => {
                         workspace && canManageAccounts.value,
                         channelCount.value,
                     ),
-                    ...item(
-                        'members',
-                        members.url(),
-                        IconUsers,
-                        workspace && canManageWorkspace.value,
-                    ),
+                    // Social HQ: Settings › Members › Roles (who gives roles sees them).
+                    ...(workspace && canManageTeam.value
+                        ? [
+                              {
+                                  name: 'members',
+                                  title: trans(
+                                      'settings.sidebar.items.members',
+                                  ),
+                                  href: members.url(),
+                                  icon: IconUsers,
+                                  children: [
+                                      {
+                                          name: 'socialhq_roles',
+                                          title: trans('socialhq_roles.nav'),
+                                          href: rolesIndex.url(),
+                                          exact: false,
+                                      },
+                                  ],
+                              },
+                          ]
+                        : []),
                     ...item(
                         'billing',
                         billing.url(),
@@ -173,8 +191,8 @@ export const useSettingsNavigation = () => {
                         IconTag,
                         workspace && canCreatePost.value,
                     ),
-                    // Social HQ: the brand profile and knowledge the AI writes from.
-                    ...(workspace && canCreatePost.value
+                    // Social HQ: the brand profile and knowledge the AI writes from (every member reads it).
+                    ...(workspace
                         ? [
                               {
                                   name: 'socialhq_brand',
@@ -194,7 +212,7 @@ export const useSettingsNavigation = () => {
                         'api_keys',
                         apiKeys.url(),
                         IconCode,
-                        workspace && canManageWorkspace.value,
+                        workspace && canManageApiKeys.value,
                     ),
                     ...item('mcp', mcp.url(), IconMcp, workspace),
                     ...item(

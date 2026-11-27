@@ -22,6 +22,8 @@ class CreateInvite
             'account_id' => $workspace->account_id,
             'invited_by' => $inviter->id,
             'email' => data_get($data, 'email'),
+            // Social HQ: the role the person joins with (Roles::membershipColumns()).
+            'shq_role_id' => data_get($data, 'shq_role_id'),
             'is_admin' => (bool) data_get($data, 'is_admin'),
             'requires_approval' => (bool) data_get($data, 'requires_approval'),
             'workspaces' => [$workspace->id],

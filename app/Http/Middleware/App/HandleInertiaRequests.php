@@ -23,6 +23,7 @@ use App\Models\Account;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Access\Permission;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiTask;
 use App\Support\HeicConverter;
@@ -111,12 +112,18 @@ class HandleInertiaRequests extends Middleware
             'languages' => fn (): array => Locale::options(),
             // Social HQ: which AI tasks the company can use now, and whether it has any AI (`any`): an AI
             // button hides without any, and one whose task can't run says what is missing (components/socialhq/aiTasks.ts).
-            'aiTasks' => fn (): array => [
-                'write' => AiRouter::isAvailable(AiTask::Write),
-                'structured' => AiRouter::isAvailable(AiTask::Structured),
-                'vision' => AiRouter::isAvailable(AiTask::Vision),
-                'any' => AiRouter::anyAvailable(),
-            ],
+            // A role without "Use AI" sees no AI button at all (all false).
+            'aiTasks' => function () use ($user): array {
+                $workspace = $user?->currentWorkspace;
+                $mayUseAi = $workspace === null || $user->hasPermissionIn($workspace, Permission::AiUse);
+
+                return [
+                    'write' => $mayUseAi && AiRouter::isAvailable(AiTask::Write),
+                    'structured' => $mayUseAi && AiRouter::isAvailable(AiTask::Structured),
+                    'vision' => $mayUseAi && AiRouter::isAvailable(AiTask::Vision),
+                    'any' => $mayUseAi && AiRouter::anyAvailable(),
+                ];
+            },
             'googleAuthEnabled' => fn (): bool => SocialAuthProvider::Google->isEnabled(),
             'githubAuthEnabled' => fn (): bool => SocialAuthProvider::GitHub->isEnabled(),
             ...(filled($user) ? [

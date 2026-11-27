@@ -6,6 +6,9 @@ namespace App\Models;
 
 use App\Models\Traits\HasMedia;
 use App\Observers\WorkspaceObserver;
+use App\SocialHq\Access\Permission;
+use App\SocialHq\Access\Role;
+use App\SocialHq\Access\WorkspaceAccess;
 use Database\Factories\WorkspaceFactory;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Collection;
@@ -53,21 +56,21 @@ class Workspace extends Model
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class)
-            ->withPivot(['is_admin', 'requires_approval'])
+            ->withPivot(['is_admin', 'requires_approval', 'shq_role_id'])
             ->withTimestamps();
     }
 
     /**
-     * Users who may approve posts here: the account owner and every member who publishes directly.
-     *
-     * @return Collection<int, User>
+     * Users who may approve posts here: the account owner and every member
+     * whose role has "Approve posts" (Social HQ roles, one roles read).
      */
     public function approvers(): Collection
     {
+        $roles = Role::query()->forAccount($this->account_id)->get()->keyBy('id');
         $approvers = $this->members()
             ->with('account')
             ->get()
-            ->filter(fn (User $member): bool => $member->publishesDirectlyThrough($this, $member->pivot));
+            ->filter(fn (User $member): bool => WorkspaceAccess::through($member, $this, $member->pivot, $roles)->allows(Permission::PostsApprove));
         $owner = $this->account?->owner;
 
         if ($owner !== null && ! $approvers->contains('id', $owner->id)) {

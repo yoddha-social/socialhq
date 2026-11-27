@@ -3,8 +3,14 @@ import { Head } from '@inertiajs/vue3';
 import { IconPlus } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
-import UsersTab from '@/components/settings/UsersTab.vue';
+import InviteMemberDialog from '@/components/members/InviteMemberDialog.vue';
 import AccessRequestsBanner from '@/components/socialhq/AccessRequestsBanner.vue';
+import MembersList from '@/components/socialhq/roles/MembersList.vue';
+import type {
+    CatalogGroup,
+    CompanyRole,
+} from '@/components/socialhq/roles/roles';
+import RolesPageShell from '@/components/socialhq/roles/RolesPageShell.vue';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
@@ -15,6 +21,9 @@ defineProps<{
     owner: { id: string | null; name: string | null; email: string | null };
     members: WorkspaceMember[];
     invites: WorkspaceInvitation[];
+    // Social HQ: the company's roles (with the ones the viewer may give) and the permission catalog.
+    roles: CompanyRole[];
+    catalog: CatalogGroup[];
 }>();
 
 const { canManageTeam } = useWorkspaceAbilities();
@@ -29,24 +38,39 @@ const openInviteDialog = (): void => {
 <template>
     <Head :title="$t('settings.members.title')" />
 
-    <SettingsLayout
-        :title="$t('settings.members.title')"
-        :description="$t('settings.workspace.members_description')"
-    >
-        <template v-if="canManageTeam" #actions>
-            <Button data-testid="invite-member-button" @click="openInviteDialog">
-                <IconPlus class="size-4" />
-                {{ $t('settings.members.invite.submit') }}
-            </Button>
-        </template>
+    <!-- Social HQ: members with their role (Settings › Members › Roles, PATCHES.md). -->
+    <SettingsLayout>
+        <RolesPageShell
+            width="members"
+            :title="$t('settings.members.title')"
+            :description="
+                $t('socialhq_roles.members.description', {
+                    workspace: workspace.name,
+                })
+            "
+        >
+            <template v-if="canManageTeam" #actions>
+                <Button
+                    data-testid="invite-member-button"
+                    @click="openInviteDialog"
+                >
+                    <IconPlus class="size-4" />
+                    {{ $t('settings.members.invite.submit') }}
+                </Button>
+            </template>
 
-        <AccessRequestsBanner />
+            <AccessRequestsBanner />
 
-        <UsersTab
-            v-model:invite-open="inviteOpen"
-            :members="members"
-            :invitations="invites"
-            :owner-id="owner.id"
-        />
+            <MembersList
+                :members="members"
+                :invitations="invites"
+                :roles="roles"
+                :catalog="catalog"
+                :owner-id="owner.id"
+                :workspace-name="workspace.name"
+            />
+
+            <InviteMemberDialog v-model:open="inviteOpen" :roles="roles" />
+        </RolesPageShell>
     </SettingsLayout>
 </template>

@@ -96,7 +96,7 @@ const exactMatchItems = ['general', 'profile', 'account'];
                                 <SidebarMenuSubButton
                                     as-child
                                     class="text-muted-foreground data-[active=true]:text-sidebar-foreground"
-                                    :is-active="urlIsActive(child.href, { exact: true })"
+                                    :is-active="urlIsActive(child.href, { exact: child.exact ?? true })"
                                 >
                                     <Link
                                         :href="child.href"

@@ -15,7 +15,7 @@ class StoreApiKeyRequest extends FormRequest
         $workspace = $user?->currentWorkspace;
 
         return $workspace !== null
-            && $user->can('manageTeam', $workspace);
+            && $user->can('manageApiKeys', $workspace);
     }
 
     /**

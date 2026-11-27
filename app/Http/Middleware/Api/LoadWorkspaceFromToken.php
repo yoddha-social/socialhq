@@ -63,7 +63,7 @@ class LoadWorkspaceFromToken
                 return response()->json(['message' => 'Personal access token required.'], Response::HTTP_FORBIDDEN);
             }
 
-            if (! $user->can('manageTeam', $workspace)) {
+            if (! $user->can('useApiKeys', $workspace)) {
                 return response()->json(['message' => 'Insufficient workspace permissions.'], Response::HTTP_FORBIDDEN);
             }
         }

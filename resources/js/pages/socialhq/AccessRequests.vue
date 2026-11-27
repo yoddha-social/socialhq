@@ -5,6 +5,8 @@ import { computed, ref } from 'vue';
 
 import EmptyState from '@/components/EmptyState.vue';
 import SettingsListRow from '@/components/settings/SettingsListRow.vue';
+import RoleChoiceList from '@/components/socialhq/roles/RoleChoiceList.vue';
+import type { CompanyRole } from '@/components/socialhq/roles/roles';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -16,7 +18,6 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import date from '@/date';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
 import { create as createWorkspaceRoute } from '@/routes/app/workspaces';
@@ -41,6 +42,8 @@ const props = defineProps<{
     requests: AccessRequestRow[];
     workspaces: WorkspaceOption[];
     canDecline: boolean;
+    // Social HQ roles: the company's roles and where this person may give each.
+    roles: CompanyRole[];
 }>();
 
 const approving = ref<AccessRequestRow | null>(null);
@@ -49,10 +52,19 @@ const isApproveOpen = ref(false);
 const isDeclineOpen = ref(false);
 const isDeclining = ref(false);
 
-const form = useForm<{ workspaces: string[]; is_admin: boolean }>({
+const form = useForm<{ workspaces: string[]; role_id: string | null }>({
     workspaces: [],
-    is_admin: false,
+    role_id: null,
 });
+
+// A role is offered when this person may give it in every workspace picked.
+const isAvailable = (role: CompanyRole): boolean => {
+    const places = role.assignable_in ?? [];
+
+    return form.workspaces.length
+        ? form.workspaces.every((id) => places.includes(id))
+        : places.length > 0;
+};
 
 /**
  * The server keys a refused workspace by its position (`workspaces.0`), and
@@ -78,6 +90,11 @@ const openApprove = (request: AccessRequestRow): void => {
     form.clearErrors();
     form.workspaces =
         props.workspaces.length === 1 ? [props.workspaces[0].id] : [];
+    form.role_id =
+        props.roles.find((role) => role.key === 'editor' && isAvailable(role))
+            ?.id ??
+        props.roles.find(isAvailable)?.id ??
+        null;
     isApproveOpen.value = true;
 };
 
@@ -89,10 +106,6 @@ const toggleWorkspace = (workspaceId: string): void => {
     form.workspaces = form.workspaces.includes(workspaceId)
         ? form.workspaces.filter((id) => id !== workspaceId)
         : [...form.workspaces, workspaceId];
-};
-
-const setAdmin = (value: boolean): void => {
-    form.is_admin = value;
 };
 
 const submitApprove = (): void => {
@@ -283,30 +296,45 @@ const submitDecline = (): void => {
                     </p>
                 </fieldset>
 
-                <div class="flex items-start justify-between gap-4">
+                <div class="flex flex-col gap-2">
                     <div class="flex flex-col gap-1">
-                        <Label for="socialhq-access-admin">
-                            {{ $t('socialhq.signup.requests.admin_label') }}
+                        <Label id="socialhq-access-role-label">
+                            {{ $t('socialhq_roles.access_requests.role') }}
                         </Label>
                         <p class="text-sm text-muted-foreground">
-                            {{ $t('socialhq.signup.requests.admin_hint') }}
+                            {{ $t('socialhq_roles.access_requests.role_hint') }}
                         </p>
                     </div>
-                    <Switch
-                        id="socialhq-access-admin"
-                        class="shrink-0"
-                        :model-value="form.is_admin"
-                        data-testid="socialhq-access-admin"
-                        @update:model-value="setAdmin(Boolean($event))"
+                    <RoleChoiceList
+                        v-model="form.role_id"
+                        :roles="roles"
+                        :available="isAvailable"
+                        labelled-by="socialhq-access-role-label"
                     />
+                    <p
+                        v-if="
+                            form.role_id &&
+                            !roles.some(
+                                (role) =>
+                                    role.id === form.role_id &&
+                                    isAvailable(role),
+                            )
+                        "
+                        class="text-sm text-destructive"
+                        data-testid="socialhq-access-role-unavailable"
+                    >
+                        {{
+                            $t('socialhq_roles.access_requests.not_everywhere')
+                        }}
+                    </p>
+                    <p
+                        v-if="form.errors.role_id"
+                        class="text-sm text-destructive"
+                        data-testid="socialhq-access-role-error"
+                    >
+                        {{ form.errors.role_id }}
+                    </p>
                 </div>
-                <p
-                    v-if="form.errors.is_admin"
-                    class="-mt-3 text-sm text-destructive"
-                    data-testid="socialhq-access-admin-error"
-                >
-                    {{ form.errors.is_admin }}
-                </p>
 
                 <DialogFooter>
                     <Button type="button" variant="ghost" @click="closeApprove">

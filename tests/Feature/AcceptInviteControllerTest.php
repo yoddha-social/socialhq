@@ -6,6 +6,8 @@ use App\Models\Account;
 use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Access\BuiltInRole;
+use App\SocialHq\Access\Roles;
 use Database\Factories\AccountFactory;
 
 /**
@@ -298,7 +300,23 @@ test('the accept page shows the invite access', function () {
     $this->get(route('app.invites.show', $invite))
         ->assertInertia(fn ($page) => $page
             ->where('invite.access', ['is_admin' => false, 'requires_approval' => true])
-            ->missing('invite.role'));
+            ->where('invite.role', null));
+});
+
+test('the accept page names the role the invite joins with', function () {
+    $designer = Roles::builtIn($this->account->id, BuiltInRole::Designer);
+    $invite = Invite::factory()->create([
+        'account_id' => $this->account->id,
+        'invited_by' => $this->owner->id,
+        'email' => 'invitee@example.com',
+        'workspaces' => [$this->workspace->id],
+        ...Roles::membershipColumns($designer),
+    ]);
+
+    $this->get(route('app.invites.show', $invite))
+        ->assertInertia(fn ($page) => $page
+            ->where('invite.role.id', $designer->id)
+            ->where('invite.role.name', 'Designer'));
 });
 
 test('accepting an already accepted invite does not claim the workspace was deleted', function () {

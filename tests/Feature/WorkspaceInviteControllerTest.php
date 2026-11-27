@@ -54,11 +54,15 @@ test('members page shows members and invites', function () {
         ->has('workspace')
         ->has('members')
         ->has('members.0', fn ($member) => $member
-            ->hasAll(['id', 'name', 'email', 'photo_url', 'is_admin', 'requires_approval'])
+            ->hasAll(['id', 'name', 'email', 'photo_url', 'is_admin', 'requires_approval', 'role', 'manageable', 'permissions'])
         )
         ->has('invites')
         ->has('owner')
-        ->missing('roles')
+        // Social HQ roles: the company's roles, with the ones this person may give.
+        ->has('roles', 5, fn ($role) => $role
+            ->hasAll(['id', 'key', 'name', 'description', 'built_in', 'fixed', 'changed', 'permissions', 'defaults', 'assignable'])
+        )
+        ->has('catalog', 5)
     );
 });
 
@@ -288,7 +292,7 @@ test('update member makes a member an admin', function () {
     $this->actingAs($this->user)
         ->put(route('app.members.update', $member), ['is_admin' => '1', 'requires_approval' => '0'])
         ->assertRedirect()
-        ->assertSessionMissing('flash.banner');
+        ->assertSessionHas('flash.banner');
 
     expect(inviteControllerMemberFlags($this->workspace, $member))->toBe(['is_admin' => true, 'requires_approval' => false]);
 });

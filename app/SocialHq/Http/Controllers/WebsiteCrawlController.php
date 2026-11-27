@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\SocialHq\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\SocialHq\Access\Permission;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiTask;
 use App\SocialHq\Http\Controllers\Concerns\WorksOnBrandKnowledge;
@@ -18,6 +19,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * "Read our website" on Brand knowledge: a workspace admin starts a run
@@ -31,6 +33,9 @@ class WebsiteCrawlController extends Controller
     public function store(StoreWebsiteCrawlRequest $request): RedirectResponse
     {
         $workspace = $this->workspace($request);
+
+        // Social HQ roles: reading the website calls AI, so it needs "Use AI" too.
+        abort_unless($request->user()->hasPermissionIn($workspace, Permission::AiUse), Response::HTTP_FORBIDDEN, __('socialhq_roles.denied.ai'));
 
         if (! AiRouter::isAvailable(AiTask::Structured)) {
             throw ValidationException::withMessages(['url' => __('socialhq_knowledge.website.errors.ai_unavailable')]);

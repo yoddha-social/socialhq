@@ -197,7 +197,7 @@ TryPost's four agents carry it too (PATCHES.md row 15). Code:
 Each workspace (one brand) has a brand profile (what the brand is, audience,
 voice and tone, words to use and to avoid) and knowledge entries (products,
 projects, past campaigns, facts), under Settings › Content › Brand knowledge.
-Members who can post read it; workspace admins change it. Code:
+Every member reads it; roles with "Edit brand knowledge" change it. Code:
 `app/SocialHq/Knowledge/`.
 
 `BrandKnowledge::forPrompt($workspace)` builds the block every AI feature
@@ -463,9 +463,9 @@ The month's content, from idea to post. One workspace is one brand. Code:
 `app/SocialHq/{Events,Plan,Production}/`, pages in
 `resources/js/pages/socialhq/plan/`, routes in `routes/socialhq/*.php`
 (`socialhq.plan.*`), copy in `lang/en/socialhq_{plan,events,production}.php`.
-Who may do what is `App\SocialHq\Plan\PlanAccess`: anyone who may create posts
-works on plans, copy and briefs; approving (a plan, copy, a creative, an event
-date) follows TryPost's `approvePosts`, so it matches who approves posts.
+Who may do what is `App\SocialHq\Plan\PlanAccess`, from the person's role (see
+"Roles and access"): "Work on plans" works on plans, copy and briefs; "Approve
+plans" approves a plan, copy, a creative or an event date (never an agent).
 
 - **Events** (`/socialhq/plan/events`). Dated festivals, holidays and days,
   shared by the account's brands or for one brand only. "Import official dates"
@@ -684,8 +684,9 @@ The vision gate, which fails closed:
    other brands' logos, fake documents, sexual or violent content and the
    like, and says why. If the check can't run, nothing is generated.
 3. Limits: 20 per person per hour, 100 per workspace per day (env).
-4. Only people who can create posts in the workspace can use it, and posts
-   with AI graphics still go through approvals.
+4. Only roles with "Use AI" and "Write posts" can use it (the graphic
+   arrives through the media import), and posts with AI graphics still go
+   through approvals.
 5. Every attempt is logged in `shq_ai_graphics`: who, prompt, provider,
    status (generated, blocked, failed) and reason.
 
@@ -843,16 +844,101 @@ schedule" (or "…add to queue", "…publish now"), since saving approves it
   its place in the series; "Don't repeat" (`null`) stops it; a save without the key
   changes nothing.
 
+## Roles and access
+
+What a member may do in a workspace is their role there (owner request
+2026-11-23; code `app/SocialHq/Access/`, copy `lang/en/socialhq_roles.php`,
+mockup `research/mockups/postqueen-ui/roles.html` at the workspace root).
+
+- **Permissions** (`Permission`): 13 switches in five groups, each one check
+  in the app: posts (`posts.create`, `posts.publish`, `posts.approve`,
+  `repurpose.manage`), planning (`plan.edit`, `plan.approve`), brand and AI
+  (`brand.edit`, `ai.use`), workspace (`channels.manage`, `team.manage`,
+  `workspace.settings`) and integrations (`api_keys.manage`,
+  `webhooks.manage`). Some need others (`Permission::needs()`: approving a
+  post schedules it, so it needs publishing, which needs writing); a set that
+  breaks this is refused, never fixed up. Seeing the workspace (calendar,
+  posts, insights, brand knowledge) comes with membership.
+- **Owner only**, never a permission: roles, company AI, creating and
+  deleting workspaces, billing.
+- **Roles** (`shq_roles`, per company): five built-in ones created with the
+  company (`BuiltInRole`, `Roles::ensureBuiltIns()`): Admin (everything,
+  fixed), Manager (posts, approvals, plans, brand, AI), Editor (writes and
+  plans; posts wait for approval), Designer (plans and AI, no posts), Viewer
+  (looks only). The owner changes the switches of every built-in role but
+  Admin, and "Reset to default" puts them back; built-in roles keep their
+  name and can't be deleted. The owner adds up to 30 custom roles (name of
+  up to 40 characters, unique in the company whatever its case and never a
+  built-in name; description up to 160). Deleting a role in use moves its
+  memberships and pending invites to another role first (`move_to`).
+  "Duplicate" copies any role into a custom one ("Manager (copy)", then
+  "(copy 2)", cut to fit the name).
+- **Pages** (Settings › Members › Roles, `RoleController`, `RolePage`): the
+  list (`socialhq.roles.index`), one role with its switches
+  (`socialhq.roles.show`) and the compare table (`socialhq.roles.compare`),
+  for whoever may give roles in the workspace; changes
+  (`socialhq.roles.store|update|duplicate|destroy`) are the owner's, never
+  through an agent. Switching one on turns on what it needs, and off what
+  needs it, and says so; "Reset to default" brings a built-in role's
+  switches back and "Save role" applies them. The owner sees who has each
+  role in every workspace, anyone else in this workspace only. The members
+  page shows a role picker per member (roles above your access are dimmed),
+  a "can now / can no longer" check before a change, and the invite dialog
+  picks a role (Editor by default), loading the roles it may give
+  (`socialhq.roles.assignable`) when opened outside the members page.
+- **Log** (`shq_access_events`, `AccessLog`): roles created, changed and
+  deleted (permissions before and after), a member's role changed (from,
+  to), invites sent with their role and a pending invite's role changed,
+  access requests approved and members removed; who did it, and names and emails as they were, since removing a
+  member can delete their user. Not shown in the app yet.
+- **Members** (`user_workspace.shq_role_id`, per workspace, so one person can
+  be Editor in one brand and Manager in another) and **invites**
+  (`invites.shq_role_id`). Settings › Members takes `role_id`, or TryPost's
+  two flags, which pick the matching built-in role. Nobody hands out more
+  access than they hold (`MemberRoles`): giving a role needs all its
+  permissions, changing or removing a member all of theirs; nobody changes
+  their own role or the owner's. An admin holds everything, so admins still
+  make admins, as before roles.
+- **Mirrors:** `is_admin` (may manage members) and `requires_approval` (may
+  not publish directly) stay on memberships and invites, written from the
+  role by `Roles` whenever a role is given or changed, so code that reads them
+  (access requests, TryPost's API) agrees. A membership without a role (rows
+  from before roles, or written by code that only sets flags) keeps exactly
+  what its flags gave (`WorkspaceAccess::legacyPermissions()`); the migration
+  gives every existing one a role: admins Admin, members who published
+  directly Manager, everyone else Editor.
+- **Enforcement:** `WorkspaceAccess::of()` resolves the role in one query;
+  `WorkspacePolicy`, `PlanAccess`, `BrandKnowledge`, `AiGraphics` and
+  `AiAccess` ask it. A REST API key works only while its person's role has
+  "Manage API keys" (`useApiKeys`), and changing a role revokes the API keys
+  of people who lose it. The client reads `auth.currentWorkspace.permissions`
+  (`useWorkspaceAbilities()`), and `aiTasks` is all false without "Use AI".
+- **Fail closed:** a membership or invite whose role id points nowhere (or
+  at another company) holds nothing, or joins as Viewer; never its flags. The
+  foreign keys have no "on delete", so a role in use can't be deleted without
+  moving its people. Approving an access request gives a role picked from
+  the company's (`role_id`; the old `is_admin` still means Admin or Editor)
+  and needs every permission of it in each workspace picked.
+- **Concurrency:** giving a role reads it under a shared lock and a change
+  to what it grants locks it for update, so the mirrors never disagree with
+  the role; creating a role locks the company row, so the 30-role limit and
+  unique names hold.
+- Not done yet: a Designer can't make AI graphics for a plan item (the
+  graphic arrives through TryPost's media import, which needs "Write
+  posts"), and the access log has no page.
+
 ## Members
 
-Settings › Members (workspace admins) is also in the workspace switcher
-("Members"). A pending invite's access (admin, or a member who needs
-approval) can change until it is accepted: "Edit access" in its ⋯ menu, with
-the same rules as inviting (`app.invites.update`).
-After an invite is sent, the dialog stays open and says who got it, with
-"Invite another" and "Done". Workspace settings keep "Delete this
-workspace" closed until it is opened. An invite has no name field:
-the person types their name when they sign up (owner decision 2026-11-24).
+Settings › Members (whoever may manage members) is also in the workspace
+switcher ("Members"). A pending invite's role can change until it is
+accepted: the pencil on its row ("Edit access", `app.invites.update`), with
+the rules of inviting (only someone who could have sent the invite changes
+it, and only to a role they could give; TryPost's two flags still pick the
+matching built-in role). After an invite is sent, the dialog stays open and
+says who got it, with "Invite another" and "Done". Workspace settings keep
+"Delete this workspace" closed until it is opened. An invite has no name
+field: the person types their name when they sign up (owner decision
+2026-11-24).
 
 ## Approvals
 
@@ -860,8 +946,9 @@ Stricter than TryPost (`app/SocialHq/Approval/ApprovalRules.php`):
 
 | Who | Schedules or publishes | Approves |
 |---|---|---|
-| Owner and admins, in the app | Directly | Yes |
-| Members who are not admins | Always sent for approval (`SOCIALHQ_MEMBERS_ALWAYS_REVIEWED`, default on) | No |
+| Owner, and members whose role has "Publish without approval", in the app | Directly | When the role also has "Approve posts" |
+| Members whose role lacks it | Always sent for approval | No |
+| A membership without a role that is not an admin | Always sent for approval (`SOCIALHQ_MEMBERS_ALWAYS_REVIEWED`, default on) | No |
 | Anyone through an API key or MCP grant, admins included | Always sent for approval (`SOCIALHQ_AGENT_POSTS_REVIEWED`, default on) | No |
 
 Every request, approval, rejection and withdrawal is recorded in
@@ -928,8 +1015,8 @@ empty sign-up stays invites only. Code: `app/SocialHq/Signup/`.
    signs up again doesn't flood them), "Access requests" with a count
    appears in the workspace menu, and a banner on Settings › Members links
    to it.
-4. An admin picks the workspaces they manage and whether the person is an
-   admin; a member who is not an admin always sends posts for approval. The
+4. An admin picks the workspaces they manage and the person's role there
+   (Editor by default; only roles within the admin's own access). The
    person gets an email. Only the account owner declines (an admin of one
    workspace sees the list without the button): declining deletes their
    user (and their avatar files) and keeps the request in

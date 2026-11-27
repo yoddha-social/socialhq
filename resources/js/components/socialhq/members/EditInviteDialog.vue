@@ -4,7 +4,8 @@ import { IconClock } from '@tabler/icons-vue';
 import { ref, watch } from 'vue';
 
 import InputError from '@/components/InputError.vue';
-import MemberAccessFields from '@/components/members/MemberAccessFields.vue';
+import RoleChoiceList from '@/components/socialhq/roles/RoleChoiceList.vue';
+import type { CompanyRole } from '@/components/socialhq/roles/roles';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -14,13 +15,17 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { update as updateInvite } from '@/routes/app/invites';
 import type { WorkspaceInvitation } from '@/types/members';
 
-// Social HQ: change a pending invite's access before it is accepted, with
-// the same fields as editing a member (TryPost could only cancel it).
+// Social HQ: change the role a pending invite joins with before it is
+// accepted, with the same choices as inviting (TryPost could only cancel it).
 
-const props = defineProps<{ invitation: WorkspaceInvitation | null }>();
+const props = defineProps<{
+    invitation: WorkspaceInvitation | null;
+    roles: CompanyRole[];
+}>();
 
 const open = defineModel<boolean>('open', { default: false });
 
@@ -28,19 +33,19 @@ const closeDialog = (): void => {
     open.value = false;
 };
 
-const isAdmin = ref(false);
-const requiresApproval = ref(false);
+const roleId = ref<string | null>(null);
 
-const loadAccess = (): void => {
-    isAdmin.value = props.invitation?.is_admin ?? false;
-    requiresApproval.value = props.invitation?.requires_approval ?? false;
+const isAvailable = (role: CompanyRole): boolean => role.assignable === true;
+
+const loadRole = (): void => {
+    roleId.value = props.invitation?.role?.id ?? null;
 };
 
-watch(() => props.invitation, loadAccess, { immediate: true });
+watch(() => props.invitation, loadRole, { immediate: true });
 
 watch(open, (isOpen) => {
     if (isOpen) {
-        loadAccess();
+        loadRole();
     }
 });
 </script>
@@ -84,13 +89,25 @@ watch(open, (isOpen) => {
                     </div>
                 </div>
 
-                <MemberAccessFields
-                    v-model:is-admin="isAdmin"
-                    v-model:requires-approval="requiresApproval"
-                />
-                <InputError
-                    :message="errors.is_admin ?? errors.requires_approval"
-                />
+                <div class="grid gap-2">
+                    <Label id="edit-invite-role-label">{{
+                        $t('socialhq_roles.invite.role')
+                    }}</Label>
+                    <RoleChoiceList
+                        v-model="roleId"
+                        :roles="roles"
+                        :available="isAvailable"
+                        labelled-by="edit-invite-role-label"
+                    />
+                    <input type="hidden" name="role_id" :value="roleId ?? ''" />
+                    <InputError
+                        :message="
+                            errors.role_id ??
+                            errors.is_admin ??
+                            errors.requires_approval
+                        "
+                    />
+                </div>
 
                 <DialogFooter>
                     <Button
@@ -104,6 +121,7 @@ watch(open, (isOpen) => {
                     <Button
                         type="submit"
                         :loading="processing"
+                        :disabled="!roleId"
                         data-testid="edit-invite-submit"
                     >
                         {{ $t('settings.members.edit.submit') }}

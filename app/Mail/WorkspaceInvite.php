@@ -6,6 +6,7 @@ namespace App\Mail;
 
 use App\Actions\Invite\ResolveInviteWorkspaces;
 use App\Models\Invite;
+use App\SocialHq\Access\Role;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -39,6 +40,8 @@ class WorkspaceInvite extends Mailable implements ShouldQueue
                 'previewText' => __('mail.workspace_invite.preview', ['workspace' => $workspaceName]),
                 'workspaceName' => $workspaceName,
                 'inviterName' => (string) $this->invite->invitedBy?->name,
+                // Social HQ: the role the invite joins with, by its name in the company.
+                'roleName' => (string) Role::query()->whereKey($this->invite->shq_role_id)->value('name'),
                 'isAdmin' => (bool) $this->invite->is_admin,
                 'requiresApproval' => (bool) $this->invite->requires_approval,
                 'url' => route('app.invites.show', $this->invite),

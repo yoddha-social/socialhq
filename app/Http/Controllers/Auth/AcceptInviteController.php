@@ -11,6 +11,8 @@ use App\Actions\Invite\SettleAfterInvite;
 use App\Enums\Invite\Result;
 use App\Http\Controllers\Controller;
 use App\Models\Invite;
+use App\SocialHq\Access\Role;
+use App\SocialHq\Access\RoleResource;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -51,6 +53,8 @@ class AcceptInviteController extends Controller
                     'is_admin' => $invite->is_admin,
                     'requires_approval' => $invite->requires_approval,
                 ],
+                // Social HQ: the role it joins with (null for an invite from before roles).
+                'role' => RoleResource::summary(Role::query()->find($invite->shq_role_id)),
             ],
             // Social HQ: only the invited person, signed in, learns their account can't move.
             'otherAccount' => $user !== null && $invite->isFor($user->email) && AcceptInvite::holdsOtherAccount($user, $invite),

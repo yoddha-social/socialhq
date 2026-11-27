@@ -6,8 +6,8 @@ namespace App\SocialHq\Ai;
 
 use App\Models\User;
 use App\Models\Workspace;
+use App\SocialHq\Access\AiAccess;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -42,9 +42,7 @@ final class AiResponses
             return $unavailable;
         }
 
-        $gate = Gate::forUser($user)->inspect('useAi', $workspace->account);
-
-        return $gate->denied() ? response()->json(['message' => $gate->message()], Response::HTTP_PAYMENT_REQUIRED) : null;
+        return AiAccess::refusal($user, $workspace);
     }
 
     /**
@@ -52,7 +50,7 @@ final class AiResponses
      */
     public static function isUsable(AiTask $task, User $user, Workspace $workspace): bool
     {
-        return AiRouter::isAvailable($task) && Gate::forUser($user)->allows('useAi', $workspace->account);
+        return AiRouter::isAvailable($task) && AiAccess::allows($user, $workspace);
     }
 
     /**

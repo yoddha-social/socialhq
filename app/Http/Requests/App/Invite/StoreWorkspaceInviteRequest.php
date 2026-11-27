@@ -53,6 +53,7 @@ class StoreWorkspaceInviteRequest extends FormRequest
             'email.required' => __('validation.required', ['attribute' => 'email']),
             'email.email' => __('validation.email', ['attribute' => 'email']),
             'email.max' => __('validation.max.string', ['attribute' => 'email', 'max' => 255]),
+            ...$this->memberAccessMessages(),
         ];
     }
 }

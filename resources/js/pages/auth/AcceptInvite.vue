@@ -7,7 +7,7 @@ import AuthLayout from '@/layouts/AuthLayout.vue';
 import { login, register } from '@/routes';
 import { home } from '@/routes/app';
 import { accept, decline } from '@/routes/app/invites';
-import { type SharedData } from '@/types';
+import { type SharedData, type WorkspaceRoleSummary } from '@/types';
 import { type MemberAccess } from '@/types/members';
 
 const props = defineProps<{
@@ -16,6 +16,8 @@ const props = defineProps<{
         id: string;
         email: string;
         access: MemberAccess;
+        /** Social HQ: the role the invite joins with (null before roles). */
+        role?: WorkspaceRoleSummary | null;
         workspace: {
             id: string;
             name: string;
@@ -73,12 +75,15 @@ const publishingKey = computed(() =>
                         <dt class="shrink-0 text-muted-foreground">
                             {{ $t('auth.accept_invite.your_role') }}
                         </dt>
-                        <dd class="min-w-0 truncate font-medium">
-                            {{ $t(roleKey) }}
+                        <dd
+                            class="min-w-0 truncate font-medium"
+                            data-testid="accept-invite-role"
+                        >
+                            {{ invite.role ? invite.role.name : $t(roleKey) }}
                         </dd>
                     </div>
                     <div
-                        v-if="!invite.access.is_admin"
+                        v-if="!invite.role && !invite.access.is_admin"
                         class="flex justify-between gap-3"
                     >
                         <dt class="shrink-0 text-muted-foreground">

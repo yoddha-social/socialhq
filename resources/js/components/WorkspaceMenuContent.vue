@@ -70,11 +70,11 @@ const emit = defineEmits<{
 }>();
 
 const page = usePage();
-const { canManageBilling, canManageTeam, canManageWorkspace } =
+const { canManageAccounts, canManageBilling, canManageTeam } =
     useWorkspaceAbilities();
 const selfHosted = computed(() => Boolean(page.props.selfHosted));
 const showBilling = computed(() => canManageBilling.value && !selfHosted.value);
-const showChannels = computed(() => canManageWorkspace.value);
+const showChannels = computed(() => canManageAccounts.value);
 const planName = computed(() =>
     showBilling.value ? (page.props.auth.plan?.name ?? null) : null,
 );

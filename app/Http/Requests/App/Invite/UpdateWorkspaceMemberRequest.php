@@ -26,4 +26,12 @@ class UpdateWorkspaceMemberRequest extends FormRequest
     {
         return $this->memberAccessRules();
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return $this->memberAccessMessages();
+    }
 }

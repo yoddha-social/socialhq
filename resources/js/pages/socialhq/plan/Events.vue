@@ -19,10 +19,12 @@ import EmptyState from '@/components/EmptyState.vue';
 import { localizedDay } from '@/components/socialhq/localizedDay';
 import EventCountryDialog from '@/components/socialhq/plan/EventCountryDialog.vue';
 import EventDialog from '@/components/socialhq/plan/EventDialog.vue';
+import EventGroupCard from '@/components/socialhq/plan/EventGroupCard.vue';
 import EventListItem from '@/components/socialhq/plan/EventListItem.vue';
 import EventsEmptyIllustration from '@/components/socialhq/plan/EventsEmptyIllustration.vue';
 import {
     countryName,
+    type CalendarEventGroup,
     type CalendarEventRow,
     type EventCategory,
     type HolidayCountry,
@@ -73,7 +75,8 @@ const props = defineProps<{
     to: string;
     /** The country filter (ISO code), or null for every country. */
     country: string | null;
-    events: CalendarEventRow[];
+    /** One per event: the same holiday on the same day in several countries has a row per country. */
+    events: CalendarEventGroup[];
     hasEvents: boolean;
     /** The countries the account has dates for, plus Nepal: what the brand can follow. */
     countries: string[];
@@ -115,6 +118,32 @@ const FILTERS = computed<EventFilter[]>(() => [
 
 const filter = ref<EventFilter>('all');
 
+/** Every country's date on its own: the filters, counts and "Confirm all shown" work on these. */
+const rows = computed<CalendarEventRow[]>(() =>
+    props.events.flatMap((event) => event.rows),
+);
+
+/** Rows of an event in several countries: a dialog about one of them names its country. */
+const sharedRowIds = computed(
+    () =>
+        new Set(
+            props.events
+                .filter((event) => event.rows.length > 1)
+                .flatMap((event) => event.rows.map((row) => row.id)),
+        ),
+);
+
+/** A date's name for a dialog: "Christmas Day · Nepal" when the event has other countries' rows. */
+const dialogName = (event: CalendarEventRow | null): string => {
+    if (event === null) {
+        return '';
+    }
+
+    return sharedRowIds.value.has(event.id) && event.country_code
+        ? `${event.name} · ${countryName(event.country_code, activeLocale.value)}`
+        : event.name;
+};
+
 const matches = (event: CalendarEventRow, by: EventFilter): boolean => {
     const country = countryOf(by);
 
@@ -141,7 +170,7 @@ const counts = computed<Record<EventFilter, number>>(
         Object.fromEntries(
             FILTERS.value.map((by) => [
                 by,
-                props.events.filter((event) => matches(event, by)).length,
+                rows.value.filter((event) => matches(event, by)).length,
             ]),
         ) as Record<EventFilter, number>,
 );
@@ -167,26 +196,43 @@ const showAll = (): void => {
     filter.value = 'all';
 };
 
+/** An event as the filter leaves it: the rows of its countries that match. */
+interface ShownEvent {
+    id: number;
+    rows: CalendarEventRow[];
+    /** The one row left, drawn as an event of one country. */
+    only: CalendarEventRow | null;
+}
+
 interface DayGroup {
     key: string;
     bsDate: string | null;
-    events: CalendarEventRow[];
+    events: ShownEvent[];
 }
 
 /**
- * Events grouped by day. One that started before the shown period sits on
- * its first shown day.
+ * Events grouped by day, each with the rows the filter keeps. One that
+ * started before the shown period sits on its first shown day.
  */
 const groups = computed<DayGroup[]>(() => {
-    const byDay = new Map<string, CalendarEventRow[]>();
+    const byDay = new Map<string, ShownEvent[]>();
 
     for (const event of props.events) {
-        if (!matches(event, filter.value)) {
+        const shown = event.rows.filter((row) => matches(row, filter.value));
+
+        if (shown.length === 0) {
             continue;
         }
 
         const key = event.starts_on < props.from ? props.from : event.starts_on;
-        byDay.set(key, [...(byDay.get(key) ?? []), event]);
+        byDay.set(key, [
+            ...(byDay.get(key) ?? []),
+            {
+                id: event.id,
+                rows: shown,
+                only: shown.length === 1 ? (shown[0] ?? null) : null,
+            },
+        ]);
     }
 
     return [...byDay.entries()]
@@ -195,7 +241,9 @@ const groups = computed<DayGroup[]>(() => {
             key,
             events,
             bsDate:
-                events.find((event) => event.bs_date && event.starts_on === key)
+                events
+                    .flatMap((event) => event.rows)
+                    .find((row) => row.bs_date && row.starts_on === key)
                     ?.bs_date ?? null,
         }));
 });
@@ -410,7 +458,7 @@ const unconfirmEvent = (event: CalendarEventRow): void => {
 /** The shown dates that need checking and that this person may confirm. */
 const confirmableShown = computed(() =>
     props.abilities.canApprove
-        ? props.events.filter(
+        ? rows.value.filter(
               (event) =>
                   matches(event, filter.value) &&
                   !event.verified &&
@@ -964,12 +1012,12 @@ const confirmDelete = (): void => {
                         <EmptyState
                             v-if="groups.length === 0"
                             :title="
-                                events.length === 0
+                                rows.length === 0
                                     ? $t('socialhq_events.empty.none')
                                     : $t('socialhq_events.empty.no_match')
                             "
                             :description="
-                                events.length > 0
+                                rows.length > 0
                                     ? $t('socialhq_events.empty.no_match_hint')
                                     : view === 'upcoming'
                                       ? $t(
@@ -979,7 +1027,7 @@ const confirmDelete = (): void => {
                             "
                             data-testid="socialhq-events-no-results"
                         >
-                            <template v-if="events.length > 0" #action>
+                            <template v-if="rows.length > 0" #action>
                                 <Button
                                     variant="outline"
                                     data-testid="socialhq-events-show-all"
@@ -1038,41 +1086,69 @@ const confirmDelete = (): void => {
                                 </div>
 
                                 <ul class="flex min-w-0 flex-1 flex-col gap-2">
-                                    <EventListItem
-                                        v-for="event in group.events"
-                                        :key="event.id"
-                                        :event="event"
-                                        :can-approve="
-                                            abilities.canApprove &&
-                                            (event.brand_only ||
-                                                abilities.canManageSharedEvents)
-                                        "
-                                        :busy="busyEventId === event.id"
-                                        :until="
-                                            event.ends_on > event.starts_on
-                                                ? $t('socialhq_events.until', {
-                                                      date: localizedDay(
-                                                          event.ends_on,
-                                                      ).format('D MMM'),
-                                                  })
-                                                : null
-                                        "
-                                        :can-hide="
-                                            abilities.canApprove &&
-                                            !event.brand_only
-                                        "
-                                        :can-flag="abilities.canWork"
-                                        :can-resolve-flags="
-                                            abilities.canApprove
-                                        "
-                                        @confirm="confirmEvent"
-                                        @unconfirm="unconfirmEvent"
-                                        @edit="openEditEvent"
-                                        @delete="openDeleteEvent"
-                                        @hide="hideForBrand"
-                                        @flag="openFlag"
-                                        @resolve-flag="resolveFlag"
-                                    />
+                                    <template
+                                        v-for="shown in group.events"
+                                        :key="shown.id"
+                                    >
+                                        <EventListItem
+                                            v-if="shown.only"
+                                            :event="shown.only"
+                                            :can-approve="
+                                                abilities.canApprove &&
+                                                (shown.only.brand_only ||
+                                                    abilities.canManageSharedEvents)
+                                            "
+                                            :busy="
+                                                busyEventId === shown.only.id
+                                            "
+                                            :until="
+                                                shown.only.ends_on >
+                                                shown.only.starts_on
+                                                    ? $t(
+                                                          'socialhq_events.until',
+                                                          {
+                                                              date: localizedDay(
+                                                                  shown.only
+                                                                      .ends_on,
+                                                              ).format('D MMM'),
+                                                          },
+                                                      )
+                                                    : null
+                                            "
+                                            :can-hide="
+                                                abilities.canApprove &&
+                                                !shown.only.brand_only
+                                            "
+                                            :can-flag="abilities.canWork"
+                                            :can-resolve-flags="
+                                                abilities.canApprove
+                                            "
+                                            @confirm="confirmEvent"
+                                            @unconfirm="unconfirmEvent"
+                                            @edit="openEditEvent"
+                                            @delete="openDeleteEvent"
+                                            @hide="hideForBrand"
+                                            @flag="openFlag"
+                                            @resolve-flag="resolveFlag"
+                                        />
+                                        <EventGroupCard
+                                            v-else
+                                            :rows="shown.rows"
+                                            :can-approve="abilities.canApprove"
+                                            :can-manage-shared-events="
+                                                abilities.canManageSharedEvents
+                                            "
+                                            :can-work="abilities.canWork"
+                                            :busy-event-id="busyEventId"
+                                            @confirm="confirmEvent"
+                                            @unconfirm="unconfirmEvent"
+                                            @edit="openEditEvent"
+                                            @delete="openDeleteEvent"
+                                            @hide="hideForBrand"
+                                            @flag="openFlag"
+                                            @resolve-flag="resolveFlag"
+                                        />
+                                    </template>
                                 </ul>
                             </li>
                         </ol>
@@ -1215,7 +1291,7 @@ const confirmDelete = (): void => {
                 <DialogTitle>
                     {{ $t('socialhq_events.flag.title') }}
                     <template v-if="flaggingEvent">
-                        · {{ flaggingEvent.name }}
+                        · {{ dialogName(flaggingEvent) }}
                     </template>
                 </DialogTitle>
                 <DialogDescription>
@@ -1302,7 +1378,7 @@ const confirmDelete = (): void => {
                 <DialogTitle>
                     {{
                         $t('socialhq_events.delete.title', {
-                            name: deletingEvent?.name ?? '',
+                            name: dialogName(deletingEvent),
                         })
                     }}
                 </DialogTitle>

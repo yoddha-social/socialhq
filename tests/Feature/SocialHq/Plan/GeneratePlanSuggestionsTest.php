@@ -241,7 +241,7 @@ test('the planner context holds the month, brand, channels, events, planned item
         ->and($context['channels'][1]['posts_to_plan'])->toBeBetween(8, 10)
         ->and($context['channels'][0]['content_types'])->toContain(ContentType::InstagramReel->value)
         ->and($context['channels'][1]['posts_per_week'])->toBeNull()
-        ->and($context['events'])->toBe([['key' => 'tihar', 'name' => $context['events'][0]['name'], 'category' => 'festival', 'starts_on' => ($this->day)(20), 'ends_on' => ($this->day)(21), 'confirmed' => false]])
+        ->and($context['events'])->toBe([['key' => 'tihar', 'name' => $context['events'][0]['name'], 'category' => 'festival', 'starts_on' => ($this->day)(20), 'ends_on' => ($this->day)(21), 'confirmed' => false, 'countries' => []]])
         ->and(collect($context['already_planned'])->map(fn (array $item): array => Arr::only($item, ['title', 'date', 'channel']))->all())->toBe([['title' => 'Already planned', 'date' => ($this->day)(1), 'channel' => $this->instagram->id]])
         ->and($context['already_planned'][0])->toHaveKey('pillar')
         ->and($context['past_posts'])->toHaveCount(PlannerContext::PAST_POSTS)

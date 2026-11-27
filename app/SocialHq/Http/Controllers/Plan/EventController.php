@@ -11,6 +11,7 @@ use App\SocialHq\Events\BrandEventCountries;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Events\EventCategory;
 use App\SocialHq\Events\EventFlag;
+use App\SocialHq\Events\EventGroup;
 use App\SocialHq\Events\EventRegion;
 use App\SocialHq\Events\EventsForMonth;
 use App\SocialHq\Events\ImportOfficialEvents;
@@ -55,8 +56,8 @@ class EventController extends Controller
         $canApprove = PlanAccess::canApprove($request->user(), $workspace);
         $profile = PlanOptions::profile($workspace);
         $brandCountries = BrandEventCountries::for($workspace, $profile);
-        $events = EventsForMonth::forWorkspace($workspace, $from, $to, $country === null ? null : [$country]);
-        $events->load(['flags' => fn ($query) => $query->where('workspace_id', $workspace->id)->open()->with('user:id,name')->oldest()]);
+        $rows = EventsForMonth::rows($workspace, $from, $to, $country === null ? null : [$country]);
+        $rows->load(['flags' => fn ($query) => $query->where('workspace_id', $workspace->id)->open()->with('user:id,name')->oldest()]);
 
         return Inertia::render('socialhq/plan/Events', [
             'view' => $upcoming ? 'upcoming' : 'month',
@@ -65,7 +66,12 @@ class EventController extends Controller
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
             'country' => $country,
-            'events' => $events->map(fn (CalendarEvent $event): array => self::row($event))->values(),
+            // One card per event, a row per country (owner decision 2026-11-27): each row keeps its own confirmation and actions.
+            'events' => EventsForMonth::group($rows)->map(fn (EventGroup $event): array => [
+                'id' => $event->id,
+                'starts_on' => $event->startsOn()->toDateString(),
+                'rows' => $event->rows->map(fn (CalendarEvent $row): array => self::row($row))->values()->all(),
+            ])->values(),
             'hasEvents' => CalendarEvent::query()->visibleTo($workspace)->exists(),
             // The countries whose dates this brand plans around (owner decision 2026-11-24), and whether the brand chose them.
             'brandCountries' => [
@@ -210,8 +216,6 @@ class EventController extends Controller
             'verified_by' => $event->verifier?->name,
             'verified_at' => $event->verified_at?->toIso8601String(),
             'delisted' => $event->isDelisted(),
-            // Countries whose holiday on the same day is this international day.
-            'also_countries' => data_get($event->getAttributes(), 'also_countries', []),
             // The brand's open notes that the date looks wrong.
             'flags' => $event->relationLoaded('flags') ? $event->flags->map(fn (EventFlag $flag): array => [
                 'id' => $flag->id,

@@ -11,7 +11,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Ai\AiRouter;
 use App\SocialHq\Ai\AiTask;
-use App\SocialHq\Events\CalendarEvent;
+use App\SocialHq\Events\EventGroup;
 use App\SocialHq\Http\Controllers\Plan\PlanGenerationController;
 use App\SocialHq\Inbox\WaitingForYou;
 use App\SocialHq\Knowledge\Audience\Audience;
@@ -60,7 +60,7 @@ final class PlanPage
                 ])
                 ->all(),
             'events' => PlanOptions::events($workspace, $month, PlanMonth::end($month))
-                ->map(fn (CalendarEvent $event): array => self::event($event))
+                ->map(fn (EventGroup $event): array => self::event($event))
                 ->all(),
             // Not 'channels': that name is the sidebar's shared prop.
             'planChannels' => $channels->map(fn (SocialAccount $channel): array => self::channel($channel))->all(),
@@ -173,18 +173,24 @@ final class PlanPage
     }
 
     /**
+     * One event, however many countries' holiday it is: `id` is the row a new
+     * link gets, `ids` every country's row an item may already point at.
+     *
      * @return array<string, mixed>
      */
-    private static function event(CalendarEvent $event): array
+    private static function event(EventGroup $event): array
     {
         return [
             'id' => $event->id,
-            'key' => $event->key,
-            'name' => $event->name,
-            'category' => $event->category->value,
-            'starts_on' => $event->starts_on->toDateString(),
-            'ends_on' => $event->ends_on->toDateString(),
-            'confirmed' => $event->isVerified(),
+            'ids' => $event->ids(),
+            'key' => $event->key(),
+            'name' => $event->name(),
+            'category' => $event->category()->value,
+            'starts_on' => $event->startsOn()->toDateString(),
+            'ends_on' => $event->endsOn()->toDateString(),
+            'confirmed' => $event->isConfirmed(),
+            'countries' => $event->countries(),
+            'confirmed_countries' => $event->confirmedCountries(),
         ];
     }
 

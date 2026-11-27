@@ -7,6 +7,7 @@ namespace App\SocialHq\Http\Requests\Plan\Concerns;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use App\SocialHq\Events\EventGroup;
 use App\SocialHq\Plan\CreativeKind;
 use App\SocialHq\Plan\PlanAccess;
 use App\SocialHq\Plan\PlanItem;
@@ -72,7 +73,10 @@ trait ResolvesPlanContext
     {
         $month = $this->planMonth();
 
-        $ids = PlanOptions::events($this->planWorkspace(), $month, PlanMonth::end($month))->pluck('id')->all();
+        // Every country's row of an event: an item may link to any of them (EventGroup::$id is the one new links get).
+        $ids = PlanOptions::events($this->planWorkspace(), $month, PlanMonth::end($month))
+            ->flatMap(fn (EventGroup $event): array => $event->ids())
+            ->all();
 
         // The item's current event stays allowed (deleted, moved or made another brand's since), so it doesn't block other edits.
         if ($this->route('item') !== null && $this->planItem()->event_id !== null) {

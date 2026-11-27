@@ -6,6 +6,7 @@ namespace App\SocialHq\Knowledge\Keywords;
 
 use App\Models\Workspace;
 use App\SocialHq\Events\CalendarEvent;
+use App\SocialHq\Events\EventsForMonth;
 use Carbon\CarbonImmutable;
 
 /**
@@ -17,6 +18,13 @@ use Carbon\CarbonImmutable;
  * `days_after` the last (socialhq.knowledge.keywords.occasion). A range of
  * months holds every day of those months, every year, and may run over the
  * new year (November to February).
+ *
+ * The key never names a country, so one tag covers every country's date of
+ * the holiday (Christmas Day for Australia and for Nepal share
+ * "christmas-day"). A holiday the events list reads as one event
+ * (EventsForMonth::group: the same day under the same name) is offered once,
+ * and puts every key its countries' dates carry in season, so a tag stored
+ * from any of them still holds.
  */
 final class Occasion
 {
@@ -25,6 +33,9 @@ final class Occasion
 
     /** How far back it still lists one that just passed. */
     private const int CHOICE_DAYS_BACK = 30;
+
+    /** What reading the brand's dates as events (EventsForMonth::group) needs. */
+    private const array COLUMNS = ['id', 'workspace_id', 'country_code', 'key', 'name', 'starts_on', 'ends_on', 'verified_at'];
 
     /**
      * An event's key without a year: the same occasion every year.
@@ -48,7 +59,8 @@ final class Occasion
 
     /**
      * The occasions in season on a day for this brand: each listed date it
-     * sees whose window holds the day, by occasion key, with its name.
+     * sees whose window holds the day, by occasion key, with its name. An
+     * event of several countries brings every key its rows carry.
      *
      * @return array<string, string>
      */
@@ -56,15 +68,19 @@ final class Occasion
     {
         $active = [];
 
-        CalendarEvent::query()
+        $rows = CalendarEvent::query()
             ->forBrand($workspace)
             ->listed()
             ->overlapping($day->subDays(self::daysAfter())->toDateString(), $day->addDays(self::daysBefore())->toDateString())
             ->orderBy('starts_on')
-            ->get(['id', 'key', 'name'])
-            ->each(function (CalendarEvent $event) use (&$active): void {
-                $active[self::key($event->key)] ??= $event->name;
-            });
+            ->orderBy('id')
+            ->get(self::COLUMNS);
+
+        foreach (EventsForMonth::group($rows) as $event) {
+            foreach ($event->rows as $row) {
+                $active[self::key($row->key)] ??= $event->name();
+            }
+        }
 
         return $active;
     }
@@ -88,22 +104,24 @@ final class Occasion
         $today = CarbonImmutable::today();
         $choices = [];
 
-        CalendarEvent::query()
+        $rows = CalendarEvent::query()
             ->forBrand($workspace)
             ->listed()
             ->overlapping($today->subDays(self::CHOICE_DAYS_BACK)->toDateString(), $today->addDays(self::CHOICE_DAYS_AHEAD)->toDateString())
             ->orderBy('starts_on')
             ->orderBy('id')
-            ->get(['id', 'key', 'name', 'starts_on', 'ends_on'])
-            ->each(function (CalendarEvent $event) use (&$choices, $today): void {
-                $key = self::key($event->key);
-                $known = $choices[$key] ?? null;
+            ->get(self::COLUMNS);
 
-                // The next date wins over one that has passed.
-                if ($known === null || ($known['starts_on'] < $today->toDateString() && $event->starts_on->greaterThanOrEqualTo($today))) {
-                    $choices[$key] = ['key' => $key, 'name' => $event->name, 'starts_on' => $event->starts_on->toDateString()];
-                }
-            });
+        // One choice per event, however many countries' holiday it is.
+        foreach (EventsForMonth::group($rows) as $event) {
+            $key = self::key($event->key());
+            $known = $choices[$key] ?? null;
+
+            // The next date wins over one that has passed.
+            if ($known === null || ($known['starts_on'] < $today->toDateString() && $event->startsOn()->greaterThanOrEqualTo($today))) {
+                $choices[$key] = ['key' => $key, 'name' => $event->name(), 'starts_on' => $event->startsOn()->toDateString()];
+            }
+        }
 
         $choices = array_values($choices);
         usort($choices, fn (array $left, array $right): int => [$left['starts_on'], $left['name']] <=> [$right['starts_on'], $right['name']]);

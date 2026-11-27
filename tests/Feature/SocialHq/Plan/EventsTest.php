@@ -223,10 +223,11 @@ test('members see the month\'s events read-only', function () {
             ->where('abilities.canApprove', false)
             ->has('events', 1)
             ->where('events.0.id', $event->id)
-            ->where('events.0.bs_date', '2083 Kartik 1')
-            ->where('events.0.verified', true)
-            ->where('events.0.verified_by', $this->owner->name)
-            ->where('events.0.brand_only', false));
+            ->has('events.0.rows', 1)
+            ->where('events.0.rows.0.bs_date', '2083 Kartik 1')
+            ->where('events.0.rows.0.verified', true)
+            ->where('events.0.rows.0.verified_by', $this->owner->name)
+            ->where('events.0.rows.0.brand_only', false));
 });
 
 test('the page shows the current month by default and the next 90 days on request', function () {
@@ -479,7 +480,7 @@ test('the publish calendar marks the days of the shown month that have events', 
         ->get(route('app.calendar', ['view' => 'month', 'month' => $this->day->toDateString()]))
         ->assertInertia(fn ($page) => $page->component('posts/Calendar')
             ->has('shqEvents', 2)
-            ->where("shqEvents.{$this->day->toDateString()}", [['name' => 'Laxmi Puja', 'verified' => true, 'category' => $verified->category->value]])
+            ->where("shqEvents.{$this->day->toDateString()}", [['name' => 'Laxmi Puja', 'verified' => true, 'category' => $verified->category->value, 'countries' => []]])
             ->has("shqEvents.{$this->day->addDay()->toDateString()}", 1));
 });
 

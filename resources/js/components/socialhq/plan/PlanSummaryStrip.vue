@@ -61,7 +61,10 @@ const confirmedEvents = computed(() =>
 const coveredEvents = computed(
     () =>
         confirmedEvents.value.filter((event) =>
-            live.value.some((item) => item.event_id === event.id),
+            live.value.some(
+                (item) =>
+                    item.event_id !== null && event.ids.includes(item.event_id),
+            ),
         ).length,
 );
 

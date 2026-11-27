@@ -7,6 +7,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 import {
     categoryBadgeClass,
     categoryDotClass,
+    countryNames,
     NEEDS_CHECK_CLASS,
     type CalendarEventMarker,
 } from '@/components/socialhq/plan/eventStyles';
@@ -16,6 +17,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { activeLocale } from '@/language';
 import { index as eventsIndex } from '@/routes/socialhq/plan/events';
 
 /**
@@ -23,7 +25,8 @@ import { index as eventsIndex } from '@/routes/socialhq/plan/events';
  * from the page's `shqEvents` prop (BuildCalendarPageProps, PATCHES.md row 60).
  * One small chip with the first name and "+N"; the tooltip and the label list
  * them all, and the chip opens that month on the events page. Unconfirmed
- * dates are dashed.
+ * dates are dashed. The same holiday in several countries is one event,
+ * its countries named in the tooltip and the label.
  *
  * When the cell is too narrow to show a readable name (or on phones, through
  * `compact`), the chip becomes a coloured dot with the number of events, its
@@ -116,13 +119,19 @@ watch(events, () => {
     void nextTick(measure);
 });
 
+/** An event's name, with its countries when it is the holiday of several. */
+const nameOf = (event: CalendarEventMarker): string =>
+    event.countries.length > 1
+        ? `${event.name} (${countryNames(event.countries, activeLocale.value)})`
+        : event.name;
+
 const label = computed(() =>
     events.value
         .map((event) =>
             event.verified
-                ? event.name
+                ? nameOf(event)
                 : trans('socialhq_events.markers.needs_check', {
-                      name: event.name,
+                      name: nameOf(event),
                   }),
         )
         .join(', '),
@@ -183,9 +192,9 @@ const label = computed(() =>
                     <li v-for="(event, index) in events" :key="index">
                         {{
                             event.verified
-                                ? event.name
+                                ? nameOf(event)
                                 : $t('socialhq_events.markers.needs_check', {
-                                      name: event.name,
+                                      name: nameOf(event),
                                   })
                         }}
                     </li>

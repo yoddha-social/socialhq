@@ -1,32 +1,22 @@
 <script setup lang="ts">
-import {
-    IconCircleCheck,
-    IconDots,
-    IconExternalLink,
-    IconFlag,
-} from '@tabler/icons-vue';
 import { computed } from 'vue';
 
+import EventRowActions from '@/components/socialhq/plan/EventRowActions.vue';
+import EventRowFlags from '@/components/socialhq/plan/EventRowFlags.vue';
+import EventRowSource from '@/components/socialhq/plan/EventRowSource.vue';
+import EventRowStatus from '@/components/socialhq/plan/EventRowStatus.vue';
 import {
     categoryBadgeClass,
     countryName,
-    NEEDS_CHECK_CLASS,
     type CalendarEventRow,
 } from '@/components/socialhq/plan/eventStyles';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { activeLocale } from '@/language';
 
 /**
  * One event on the events page: names, kind, holiday, source and who
- * confirmed it. People who approve posts get the actions.
+ * confirmed it. People who approve posts get the actions. An event in
+ * several countries is EventGroupCard instead, a row per country.
  */
 const props = withDefaults(
     defineProps<{
@@ -58,33 +48,6 @@ const emit = defineEmits<{
     resolveFlag: [flagId: number];
 }>();
 
-/** The countries whose holiday this international day also is, named. */
-const alsoIn = computed((): string =>
-    props.event.also_countries
-        .map((code) => countryName(code, activeLocale.value))
-        .join(', '),
-);
-
-const hasMenu = computed(
-    () => !props.hidden && (props.canApprove || props.canHide),
-);
-
-const sourceLabel = computed((): string | null => {
-    if (props.event.source_name) {
-        return props.event.source_name;
-    }
-
-    if (!props.event.source_url) {
-        return null;
-    }
-
-    try {
-        return new URL(props.event.source_url).hostname.replace(/^www\./, '');
-    } catch {
-        return props.event.source_url;
-    }
-});
-
 /** The event's country, named in the interface language. */
 const country = computed((): string | null =>
     props.event.country_code
@@ -92,13 +55,13 @@ const country = computed((): string | null =>
         : null,
 );
 
-const confirm = (): void => emit('confirm', props.event);
-const unconfirm = (): void => emit('unconfirm', props.event);
-const edit = (): void => emit('edit', props.event);
-const remove = (): void => emit('delete', props.event);
-const hide = (): void => emit('hide', props.event);
-const unhide = (): void => emit('unhide', props.event);
-const flag = (): void => emit('flag', props.event);
+const confirm = (event: CalendarEventRow): void => emit('confirm', event);
+const unconfirm = (event: CalendarEventRow): void => emit('unconfirm', event);
+const edit = (event: CalendarEventRow): void => emit('edit', event);
+const remove = (event: CalendarEventRow): void => emit('delete', event);
+const hide = (event: CalendarEventRow): void => emit('hide', event);
+const unhide = (event: CalendarEventRow): void => emit('unhide', event);
+const flag = (event: CalendarEventRow): void => emit('flag', event);
 const resolveFlag = (flagId: number): void => emit('resolveFlag', flagId);
 </script>
 
@@ -186,190 +149,33 @@ const resolveFlag = (flagId: number): void => emit('resolveFlag', flagId);
                 {{ event.description }}
             </p>
 
-            <p
-                v-if="event.also_countries.length > 0"
-                class="text-xs text-muted-foreground"
-                :data-testid="`socialhq-event-also-${event.id}`"
-            >
-                {{ $t('socialhq_events.also_in', { countries: alsoIn }) }}
-            </p>
-
-            <ul
+            <EventRowFlags
                 v-if="event.flags.length > 0"
-                class="flex flex-col gap-1"
-                :data-testid="`socialhq-event-flags-${event.id}`"
-            >
-                <li
-                    v-for="item in event.flags"
-                    :key="item.id"
-                    class="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-amber-500/10 px-2 py-1 text-xs text-foreground"
-                    :data-testid="`socialhq-event-flag-${item.id}`"
-                >
-                    <IconFlag
-                        class="size-3.5 shrink-0 text-amber-600"
-                        aria-hidden="true"
-                    />
-                    <span class="min-w-0 flex-1">{{
-                        item.by
-                            ? $t('socialhq_events.flag.by', {
-                                  name: item.by,
-                                  note: item.note,
-                              })
-                            : item.note
-                    }}</span>
-                    <Button
-                        v-if="canResolveFlags"
-                        variant="link"
-                        size="sm"
-                        class="h-auto p-0 text-xs"
-                        :data-testid="`socialhq-event-flag-resolve-${item.id}`"
-                        @click="resolveFlag(item.id)"
-                    >
-                        {{ $t('socialhq_events.flag.resolve') }}
-                    </Button>
-                </li>
-            </ul>
+                :event="event"
+                :can-resolve="canResolveFlags"
+                @resolve="resolveFlag"
+            />
 
             <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                <span
-                    v-if="event.verified"
-                    class="inline-flex items-center gap-1 text-success-text"
-                    :data-testid="`socialhq-event-confirmed-${event.id}`"
-                >
-                    <IconCircleCheck class="size-3.5" />
-                    {{
-                        event.verified_by
-                            ? $t('socialhq_events.badges.confirmed_by', {
-                                  name: event.verified_by,
-                              })
-                            : $t('socialhq_events.badges.confirmed')
-                    }}
-                </span>
-                <Badge
-                    v-else-if="event.delisted"
-                    class="px-1.5"
-                    :class="NEEDS_CHECK_CLASS"
-                    :data-testid="`socialhq-event-delisted-${event.id}`"
-                >
-                    {{ $t('socialhq_events.badges.delisted') }}
-                </Badge>
-                <Badge
-                    v-else
-                    class="px-1.5"
-                    :class="NEEDS_CHECK_CLASS"
-                    :data-testid="`socialhq-event-needs-check-${event.id}`"
-                >
-                    {{ $t('socialhq_events.badges.needs_check') }}
-                </Badge>
-
-                <a
-                    v-if="event.source_url"
-                    :href="event.source_url"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="inline-flex max-w-full min-w-0 items-center gap-1 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
-                    :title="event.source_name ?? event.source_url"
-                    :data-testid="`socialhq-event-source-${event.id}`"
-                >
-                    <IconExternalLink class="size-3.5 shrink-0" />
-                    <span class="truncate sm:max-w-80">{{ sourceLabel }}</span>
-                </a>
-                <span
-                    v-else-if="sourceLabel"
-                    class="truncate text-muted-foreground sm:max-w-80"
-                    :title="sourceLabel"
-                >
-                    {{ sourceLabel }}
-                </span>
+                <EventRowStatus :event="event" />
+                <EventRowSource :event="event" />
             </div>
         </div>
 
-        <div v-if="hidden" class="flex shrink-0 items-center gap-1">
-            <Button
-                size="sm"
-                variant="outline"
-                :loading="busy"
-                :data-testid="`socialhq-event-unhide-${event.id}`"
-                @click="unhide"
-            >
-                {{ $t('socialhq_events.hide.show') }}
-            </Button>
-        </div>
-        <div
-            v-else-if="canFlag && !canApprove"
-            class="flex shrink-0 items-center gap-1"
-        >
-            <Button
-                size="sm"
-                variant="ghost"
-                :data-testid="`socialhq-event-flag-${event.id}`"
-                @click="flag"
-            >
-                <IconFlag class="size-4" />
-                {{ $t('socialhq_events.flag.action') }}
-            </Button>
-        </div>
-        <div v-if="hasMenu" class="flex shrink-0 items-center gap-1">
-            <Button
-                v-if="canApprove && !event.verified && !event.delisted"
-                size="sm"
-                variant="outline"
-                :loading="busy"
-                :data-testid="`socialhq-event-confirm-${event.id}`"
-                @click="confirm"
-            >
-                {{ $t('socialhq_events.actions.confirm') }}
-            </Button>
-            <DropdownMenu>
-                <DropdownMenuTrigger as-child>
-                    <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        :aria-label="
-                            $t('socialhq_events.actions.more', {
-                                name: event.name,
-                            })
-                        "
-                        :data-testid="`socialhq-event-menu-${event.id}`"
-                    >
-                        <IconDots class="size-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <template v-if="canApprove">
-                        <DropdownMenuItem
-                            v-if="event.verified"
-                            :data-testid="`socialhq-event-unconfirm-${event.id}`"
-                            @select="unconfirm"
-                        >
-                            {{ $t('socialhq_events.actions.unconfirm') }}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                            :data-testid="`socialhq-event-edit-${event.id}`"
-                            @select="edit"
-                        >
-                            {{ $t('socialhq_events.actions.edit') }}
-                        </DropdownMenuItem>
-                    </template>
-                    <DropdownMenuItem
-                        v-if="canHide"
-                        :data-testid="`socialhq-event-hide-${event.id}`"
-                        @select="hide"
-                    >
-                        {{ $t('socialhq_events.hide.action') }}
-                    </DropdownMenuItem>
-                    <template v-if="canApprove">
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                            variant="destructive"
-                            :data-testid="`socialhq-event-delete-${event.id}`"
-                            @select="remove"
-                        >
-                            {{ $t('socialhq_events.actions.delete') }}
-                        </DropdownMenuItem>
-                    </template>
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
+        <EventRowActions
+            :event="event"
+            :can-approve="canApprove"
+            :busy="busy"
+            :can-hide="canHide"
+            :can-flag="canFlag"
+            :hidden="hidden"
+            @confirm="confirm"
+            @unconfirm="unconfirm"
+            @edit="edit"
+            @delete="remove"
+            @hide="hide"
+            @unhide="unhide"
+            @flag="flag"
+        />
     </li>
 </template>

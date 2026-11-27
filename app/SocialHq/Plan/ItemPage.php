@@ -104,6 +104,8 @@ final class ItemPage
             'angle' => $item->angle,
             'unsupported_details' => array_values((array) $item->unsupported_details),
             'status' => $item->status->value,
+            // One of the posts the team required when it generated the plan ("Must-have").
+            'must_have' => $item->must_have !== null,
             'copy_status' => $item->copy_status->value,
             'post_created_at' => $item->post_created_at?->toIso8601String(),
             'max_length' => self::maxLength($item),

@@ -729,12 +729,13 @@ const openBrandSettings = (): void => {
         :month="month"
         :month-label="monthLabel"
         :today="today"
-        :goals="plan?.goals ?? null"
         :has-suggestions="suggestions.length > 0"
         :hourly-limit="ai.hourlyLimit"
         :defaults="generateDefaults"
         :audience="audience"
         :unconfirmed-events="events.filter((event) => !event.confirmed).length"
+        :channels="planChannels"
+        :cadence="cadence"
     />
 
     <PlanBrandSettingsDialog

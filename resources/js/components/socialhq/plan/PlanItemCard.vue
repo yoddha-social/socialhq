@@ -8,6 +8,7 @@ import {
     COPY_STATUS_DOT,
     copyStatusLabelKey,
 } from '@/components/socialhq/plan/copyStatus';
+import MustHaveBadge from '@/components/socialhq/plan/MustHaveBadge.vue';
 import { pillarColor } from '@/components/socialhq/plan/pillarColors';
 import PlanItemTime from '@/components/socialhq/plan/PlanItemTime.vue';
 import { postStatusLabelKey } from '@/components/socialhq/plan/postStatus';
@@ -76,6 +77,7 @@ const dropItem = (): void => emit('drop', props.item);
                     item.content_type_label,
                     item.title,
                     $t(`socialhq_plan.item_status.${item.status}`),
+                    item.must_have ? $t('socialhq_plan.item.must_have') : null,
                     item.post_status
                         ? $t(postStatusLabelKey(item.post_status))
                         : null,
@@ -136,6 +138,11 @@ const dropItem = (): void => emit('drop', props.item);
             <PlanItemTime
                 :item="item"
                 class="text-[11px] leading-4 text-muted-foreground"
+            />
+            <MustHaveBadge
+                v-if="item.must_have"
+                class="text-[10px]"
+                :data-testid="`plan-item-must-have-${item.id}`"
             />
             <Badge
                 v-if="item.post_status"

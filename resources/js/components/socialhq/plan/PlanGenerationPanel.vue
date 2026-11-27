@@ -85,6 +85,19 @@ const topReason = computed(() => {
     return reason && count > 1 ? { reason, count: String(count) } : null;
 });
 
+/** Weeks the team's must-haves filled, so the AI added nothing else there. */
+const filledWeeks = computed(() =>
+    (generation.value?.weeks ?? [])
+        .filter((week) => week.status === 'done' && week.filled)
+        .map((week) => ({
+            key: week.from,
+            days: date.formatDayMonthYearRange({
+                start: week.from,
+                end: week.to,
+            }),
+        })),
+);
+
 /** Weeks the AI didn't draft, with the days and why. */
 const failedWeeks = computed(() =>
     (generation.value?.weeks ?? [])
@@ -232,6 +245,32 @@ const retry = (): void => emit('retry');
                 })
             }}
         </p>
+
+        <p
+            v-if="generation.must_haves_added > 0"
+            class="ps-8 text-sm text-foreground"
+            data-testid="plan-generation-must-haves-added"
+        >
+            {{
+                $t('socialhq_plan.generation.must_haves_added', {
+                    count: String(generation.must_haves_added),
+                })
+            }}
+        </p>
+
+        <ul
+            v-if="filledWeeks.length"
+            class="flex flex-col gap-1 ps-8"
+            data-testid="plan-generation-filled"
+        >
+            <li
+                v-for="week in filledWeeks"
+                :key="week.key"
+                class="text-sm text-muted-foreground"
+            >
+                {{ $t('socialhq_plan.generation.filled', { days: week.days }) }}
+            </li>
+        </ul>
 
         <div v-if="generation.rejections.length" class="ps-8">
             <button

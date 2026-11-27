@@ -52,6 +52,7 @@ class PlanGenerationController extends Controller
         $start = PlanMonth::parse($month, $user);
         $plan = PlanMonth::findOrCreate($workspace, $start, $user);
         $options = self::options($request, $start, PlanOptions::profile($workspace));
+        $strategy = $request->has('goals') ? $request->validated('goals') : $plan->goals;
 
         $runId = (string) Str::uuid7();
 
@@ -79,8 +80,11 @@ class PlanGenerationController extends Controller
 
         abort_unless($started, Response::HTTP_CONFLICT, __('socialhq_plan.generation.errors.already_running'));
 
-        // The switches are the brand's next defaults (the days and the focus belong to this month).
-        BrandProfile::query()->updateOrCreate(['workspace_id' => $workspace->id], ['planner_options' => $options->switches()]);
+        // The switches are the brand's next defaults, and so are the strategy and the days off while the team keeps its
+        // instructions (turning that off clears them). The days to plan and the must-haves are dated: they stay with this month's plan.
+        BrandProfile::query()->updateOrCreate(['workspace_id' => $workspace->id], [
+            'planner_options' => $options->remembered($strategy, $request->boolean('keep_instructions', true)),
+        ]);
 
         GeneratePlanSuggestions::dispatch($plan->id, $runId);
 
@@ -100,6 +104,8 @@ class PlanGenerationController extends Controller
             'old_calendars' => $request->boolean('old_calendars', $defaults->oldCalendars),
             'past_posts' => $request->boolean('past_posts', $defaults->pastPosts),
             'audience_events' => $request->boolean('audience_events', $defaults->audienceEvents),
+            'days_off' => $request->has('days_off') ? $request->validated('days_off', []) : $defaults->daysOff,
+            'must_haves' => $request->validated('must_haves', []),
         ]);
     }
 }

@@ -11,28 +11,36 @@ use Carbon\CarbonImmutable;
 
 /**
  * What one "Generate with AI" run is asked for: the days it plans (inside
- * the plan's month, so every item stays in its month's plan) and which
- * sources the planner reads. Saved on the plan when a run starts
- * (generation_options); the three switches are also remembered on the
- * brand profile (planner_options) as the next run's defaults.
+ * the plan's month, so every item stays in its month's plan), which sources
+ * the planner reads, and the team's instructions: days off (weekdays that get
+ * no suggestion) and must-have posts. Saved on the plan when a run starts
+ * (generation_options); the three switches are also remembered on the brand
+ * profile (planner_options) as the next run's defaults, with the strategy
+ * and the days off while "Keep these instructions for next month" is on.
  */
 final readonly class PlannerOptions
 {
     /** A week of the run shorter than this joins the week next to it. */
     public const MIN_WEEK_DAYS = 3;
 
+    /**
+     * @param  list<int>  $daysOff  weekdays (0 Sunday to 6 Saturday) that get no suggestion, on any channel
+     * @param  list<MustHave>  $mustHaves
+     */
     public function __construct(
         public CarbonImmutable $from,
         public CarbonImmutable $to,
         public bool $oldCalendars,
         public bool $pastPosts,
         public bool $audienceEvents,
+        public array $daysOff = [],
+        public array $mustHaves = [],
     ) {}
 
     /**
-     * The whole month with the brand's remembered switches: both history
-     * sources on, and events for the audience's countries only when the
-     * brand has an audience.
+     * The whole month with the brand's remembered switches (both history
+     * sources on, and events for the audience's countries only when the brand
+     * has an audience) and its remembered days off.
      */
     public static function defaults(CarbonImmutable $month, ?BrandProfile $profile): self
     {
@@ -44,6 +52,7 @@ final readonly class PlannerOptions
             (bool) data_get($saved, 'old_calendars', true),
             (bool) data_get($saved, 'past_posts', true),
             (bool) data_get($saved, 'audience_events', Audience::locations($profile) !== []),
+            self::weekdays(data_get($saved, 'days_off')),
         );
     }
 
@@ -63,7 +72,34 @@ final readonly class PlannerOptions
             'old_calendars' => data_get($saved, 'old_calendars', $defaults->oldCalendars),
             'past_posts' => data_get($saved, 'past_posts', $defaults->pastPosts),
             'audience_events' => data_get($saved, 'audience_events', $defaults->audienceEvents),
+            'days_off' => data_get($saved, 'days_off', $defaults->daysOff),
+            'must_haves' => data_get($saved, 'must_haves', []),
         ]);
+    }
+
+    /**
+     * What "Generate with AI" opens with: the brand's switches; this plan's
+     * days off once a run of it set them, else the brand's remembered ones;
+     * the must-haves of the plan's last run that aren't past; and the plan's
+     * strategy, else the one the brand remembers.
+     *
+     * @return array{from: string, to: string, old_calendars: bool, past_posts: bool, audience_events: bool, days_off: list<int>, must_haves: list<array<string, string|null>>, strategy: string}
+     */
+    public static function forDialog(?ContentPlan $plan, CarbonImmutable $month, ?BrandProfile $profile, string $today): array
+    {
+        $defaults = self::defaults($month, $profile);
+        $saved = (array) ($plan?->generation_options ?? []);
+        $mustHaves = array_filter(
+            MustHave::listFrom(data_get($saved, 'must_haves'), $month),
+            fn (MustHave $mustHave): bool => $mustHave->date->toDateString() >= $today,
+        );
+
+        return [
+            ...$defaults->toArray(),
+            'days_off' => array_key_exists('days_off', $saved) ? self::weekdays(data_get($saved, 'days_off')) : $defaults->daysOff,
+            'must_haves' => array_values(array_map(fn (MustHave $mustHave): array => $mustHave->toArray(), $mustHaves)),
+            'strategy' => filled($plan?->goals) ? (string) $plan->goals : (string) data_get((array) ($profile?->planner_options ?? []), 'strategy', ''),
+        ];
     }
 
     /**
@@ -86,6 +122,8 @@ final readonly class PlannerOptions
             (bool) data_get($values, 'old_calendars', true),
             (bool) data_get($values, 'past_posts', true),
             (bool) data_get($values, 'audience_events', false),
+            self::weekdays(data_get($values, 'days_off')),
+            MustHave::listFrom(data_get($values, 'must_haves'), $month),
         );
     }
 
@@ -94,7 +132,7 @@ final readonly class PlannerOptions
      */
     public function between(CarbonImmutable $from, CarbonImmutable $to): self
     {
-        return new self($from, $to, $this->oldCalendars, $this->pastPosts, $this->audienceEvents);
+        return new self($from, $to, $this->oldCalendars, $this->pastPosts, $this->audienceEvents, $this->daysOff, $this->mustHaves);
     }
 
     /**
@@ -130,6 +168,21 @@ final readonly class PlannerOptions
     }
 
     /**
+     * The must-haves dated in these days.
+     *
+     * @return list<MustHave>
+     */
+    public function mustHavesInDays(): array
+    {
+        return array_values(array_filter($this->mustHaves, fn (MustHave $mustHave): bool => $mustHave->date->betweenIncluded($this->from, $this->to)));
+    }
+
+    public function isDayOff(CarbonImmutable $day): bool
+    {
+        return in_array($day->dayOfWeek, $this->daysOff, true);
+    }
+
+    /**
      * The audience's countries when events are limited to them, else null
      * (every event). A brand without an audience gets every event.
      *
@@ -143,7 +196,7 @@ final readonly class PlannerOptions
     }
 
     /**
-     * @return array{from: string, to: string, old_calendars: bool, past_posts: bool, audience_events: bool}
+     * @return array{from: string, to: string, old_calendars: bool, past_posts: bool, audience_events: bool, days_off: list<int>, must_haves: list<array<string, string|null>>}
      */
     public function toArray(): array
     {
@@ -151,6 +204,8 @@ final readonly class PlannerOptions
             'from' => $this->from->toDateString(),
             'to' => $this->to->toDateString(),
             ...$this->switches(),
+            'days_off' => $this->daysOff,
+            'must_haves' => array_map(fn (MustHave $mustHave): array => $mustHave->toArray(), $this->mustHaves),
         ];
     }
 
@@ -164,5 +219,37 @@ final readonly class PlannerOptions
             'past_posts' => $this->pastPosts,
             'audience_events' => $this->audienceEvents,
         ];
+    }
+
+    /**
+     * What the brand remembers for its next run (planner_options): the
+     * switches always; the strategy and the days off only while the team
+     * keeps its instructions, so turning that off clears them.
+     *
+     * @return array<string, mixed>
+     */
+    public function remembered(?string $strategy, bool $keepInstructions): array
+    {
+        return [
+            ...$this->switches(),
+            ...($keepInstructions ? ['strategy' => trim((string) $strategy), 'days_off' => $this->daysOff] : []),
+        ];
+    }
+
+    /**
+     * Weekdays from submitted or saved values: 0 (Sunday) to 6, each once, in order.
+     *
+     * @return list<int>
+     */
+    public static function weekdays(mixed $values): array
+    {
+        $days = array_filter(
+            is_array($values) ? $values : [],
+            fn (mixed $day): bool => is_int($day) || (is_string($day) && preg_match('/^[0-6]$/', $day) === 1),
+        );
+        $days = array_values(array_unique(array_filter(array_map(intval(...), $days), fn (int $day): bool => $day >= 0 && $day <= 6)));
+        sort($days);
+
+        return $days;
     }
 }

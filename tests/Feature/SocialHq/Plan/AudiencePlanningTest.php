@@ -214,14 +214,15 @@ test('a run keeps to its days and the audience\'s events, gives items a time in 
             'Thanksgiving special' => 'unknown_event',
             'Later suggestion' => 'duplicate_title',
         ])
-        ->and($plan->generation_options)->toEqual(['from' => ($this->day)(5), 'to' => ($this->day)(11), 'old_calendars' => false, 'past_posts' => true, 'audience_events' => true])
-        ->and($this->profile->fresh()->planner_options)->toEqual(['old_calendars' => false, 'past_posts' => true, 'audience_events' => true]);
+        ->and($plan->generation_options)->toEqual(['from' => ($this->day)(5), 'to' => ($this->day)(11), 'old_calendars' => false, 'past_posts' => true, 'audience_events' => true, 'days_off' => [], 'must_haves' => []])
+        // Kept for next month with the switches: the strategy and the days off ("Keep these instructions" is on by default).
+        ->and($this->profile->fresh()->planner_options)->toEqual(['old_calendars' => false, 'past_posts' => true, 'audience_events' => true, 'strategy' => 'Momo week.', 'days_off' => []]);
 
     ContentPlanner::assertPrompted(fn ($prompt) => $prompt->contains('Australia/Sydney') && ! $prompt->contains('thanksgiving') && ! $prompt->contains('"old_calendar"'));
 
     $this->actingAs($this->owner)
         ->get(route('socialhq.plan.show', $this->monthKey))
-        ->assertInertia(fn ($page) => $page->where('generateDefaults', ['from' => ($this->day)(0), 'to' => $this->month->endOfMonth()->toDateString(), 'old_calendars' => false, 'past_posts' => true, 'audience_events' => true])
+        ->assertInertia(fn ($page) => $page->where('generateDefaults', ['from' => ($this->day)(0), 'to' => $this->month->endOfMonth()->toDateString(), 'old_calendars' => false, 'past_posts' => true, 'audience_events' => true, 'days_off' => [], 'must_haves' => [], 'strategy' => 'Momo week.'])
             ->where('audience.mainTimezone', 'Australia/Sydney')
             ->where('audience.countries.0.code', 'AU'));
 });

@@ -440,7 +440,7 @@ call leaves the other suggestions; an unchanged site whose last run had no
 keyword suggestions gets the keyword call once.
 
 **Focus and search.** Every caller passes what it writes about as `$focus`:
-the planner the month's goals, pillars, confirmed events and networks; the
+the planner the plan's strategy and must-haves, pillars, confirmed events and networks; the
 copy writer the item (title, objective, angle, pillar, event, format) and open
 change requests; the brief writer the item and its caption; TryPost's caption
 assistant and idea generator the request typed in their form
@@ -518,7 +518,8 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   format (TryPost's content type), what to make, pillar, owner, event, objective
   and angle. "Generate with AI" (`ContentPlanner`, a queued job) drafts the
   month from confirmed events, `BrandKnowledge`, pillars and posts per week
-  (brand settings), the last 90 days of posts with metrics and the team's focus.
+  (brand settings), the last 90 days of posts with metrics and the team's
+  instructions (strategy, must-have posts, days off; below).
   It asks the AI one week per call (`PlannerOptions::weeks()`: calendar weeks
   from the requester's first day of the week, a piece under 3 days at either
   end joined to its neighbour; days already gone get no call), each told how
@@ -528,11 +529,12 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   certain is repaired (a channel key with a typo, or the channel's name or
   network, or the only channel that takes the format; a format of another
   network becomes the same kind here; what to make follows the format; an
-  event named instead of keyed; a pillar's case; a day that is taken, too far
-  from its event or switched off in the channel's posting times moves to the
-  nearest free day of the same calendar week), the rest is refused with a
-  reason (outside the days, past, unknown or paused channel, unconfirmed or
-  unknown event, duplicate title, over the week's posts, no free day). A week
+  event named instead of keyed; a pillar's case; a day that is taken, one of
+  the run's days off, too far from its event or switched off in the channel's
+  posting times moves to the nearest free day of the same calendar week), the
+  rest is refused with a reason (outside the days, past, unknown or paused
+  channel, unconfirmed or unknown event, duplicate title, over the week's
+  posts, a day off or another day with no free day left). A week
   with room left after that gets one more call with the refused items and
   their reasons; a failed call is tried once more. Each week is saved when
   checked, replacing only its own days' untouched suggestions, so a week that
@@ -540,19 +542,58 @@ date) follows TryPost's `approvePosts`, so it matches who approves posts.
   the others go on (the run fails only when no week was drafted). No call
   starts after 9 minutes (`BUDGET_SECONDS`, job timeout 15). How each week
   went is kept on the plan (`generation_weeks`: proposed, added, refused,
-  repaired, calls). Suggestions show, dashed, to accept or drop; the panel says
-  how many were added, the main reason for the rest, and the weeks not
-  drafted. "Approve plan" waits until no
+  repaired, must-haves the app added, filled by must-haves, calls).
+  Suggestions show, dashed, to accept or drop; the panel says how many were
+  added, how many must-haves the app added itself, the main reason for the
+  rest, the weeks must-haves filled and the weeks not drafted. "Approve plan" waits until no
   suggestion on a coming day is open (one on a day already gone can't be
   accepted, alone or by "Accept all"; move it or drop it); any change sends
-  an approved plan back to review. The dialog plans a week by default.
+  an approved plan back to review. The dialog plans a week by default; it is
+  about 672 px wide (full width on phones) and its body scrolls when tall.
   The dialog's options (`PlannerOptions`, saved on the plan as
   `generation_options`; the switches remembered per brand in the profile's
   `planner_options`): the days to plan, any range inside the plan's month (a
   plan stays one month, so items never leave it; suggestions outside the range
   are kept), old calendars and recent posts on or off (left out of the prompt
-  when off), and events only for the audience's countries (`country_code` in
-  them, or null for international days).
+  when off), events only for the audience's countries (`country_code` in
+  them, or null for international days), and **Instructions for the AI**
+  (owner feedback 2026-11-26, mockup `generate-plan.html`):
+  - **Strategy for this plan** (stored as the plan's `goals`, the prompt's
+    `strategy`): the AI plans every week it drafts around it.
+  - **Must-have posts** (`Plan\MustHave`, up to 10): a coming day inside the
+    days to plan, Any or one of the brand's active channels (not set to 0
+    posts a week), Any or a format that channel takes (for Any, one an active
+    channel takes), and what it must be about (up to 300 characters); anything
+    else is a validation error. The app guarantees them, not the AI
+    (`SuggestionChecks`): each must-have of a week that no kept item covers
+    yet counts toward that week's posts first, on its channel (for Any, the
+    active channel with the most room that week that takes its format, else
+    the first active one), so `posts_to_plan` and `free_days` leave room for
+    it. The AI is told the week's must-haves with ids (`must_haves`) and covers
+    each with one item that names it (`must_have`, `""` when none). That item
+    goes on the must-have's day, and on its channel and in its format where
+    the team set them (what to make follows the format, an event the day can't
+    have is left off, a missing or repeated title becomes the focus); a claim
+    on an id that isn't open, or a second claim, is dropped and the item is
+    checked like any other. A must-have still uncovered is added by the app
+    itself, as a suggestion: on its day and channel, in its format (the
+    channel's usual one for Any), with its focus as title and objective; so is
+    one in a week the AI couldn't draft. Must-have items carry the
+    must-have's key (`shq_plan_items.must_have`, a hash of day, channel,
+    format and focus), so one someone accepted is never added again, and show
+    "Must-have" on cards, the list, the side sheet and the item page. A week
+    its must-haves fill gets no AI call (`filled`, said in the panel).
+    Must-haves win over days off. They are dated, so they stay with the plan
+    (`generation_options`) and the month's dialog shows those not past again.
+  - **Days off** (weekday chips in the user's week order): no suggestion on
+    them, for every channel. `free_days` leave them out, the prompt names them
+    (`days_off`), and a suggestion on one moves to the nearest free day of its
+    calendar week, else it is refused (`plan_day_off`, "On one of your days
+    off").
+  - **Keep these instructions for next month** (on by default): the strategy
+    and the days off are remembered next to the switches in `planner_options`,
+    and next month's dialog opens with them (a plan's own strategy and its
+    last run's days off win for that month); off clears them.
 - **Audience** (Brand knowledge, "Where your audience is"; admins edit,
   members read). Up to 10 places on the brand profile (`audience_locations`:
   country, city or none, IANA zone prefilled from the country's main zone,

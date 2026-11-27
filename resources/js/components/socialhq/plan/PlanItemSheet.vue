@@ -9,6 +9,7 @@ import { toast } from 'vue-sonner';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import { channelLabel } from '@/components/socialhq/channelLabel';
 import { localizedDay } from '@/components/socialhq/localizedDay';
+import MustHaveBadge from '@/components/socialhq/plan/MustHaveBadge.vue';
 import {
     offerToMovePosts,
     toastFirstError,
@@ -520,6 +521,10 @@ const askDelete = async (): Promise<void> => {
                         >
                             {{ $t(`socialhq_plan.item_status.${item.status}`) }}
                         </Badge>
+                        <MustHaveBadge
+                            v-if="item?.must_have"
+                            data-testid="plan-item-sheet-must-have"
+                        />
                     </div>
                     <SheetDescription>
                         {{

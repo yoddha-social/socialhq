@@ -7,15 +7,18 @@ namespace App\SocialHq\Knowledge\Website;
 use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Knowledge\BrandProfile;
+use App\SocialHq\Knowledge\Documents\DocumentPreview;
 use App\SocialHq\Knowledge\Documents\DocumentSource;
 use App\SocialHq\Knowledge\Documents\DocumentStatus;
 use App\SocialHq\Knowledge\Documents\DocumentStorage;
 use App\SocialHq\Knowledge\Documents\DocumentType;
 use App\SocialHq\Knowledge\Documents\ExtractKnowledgeDocument;
 use App\SocialHq\Knowledge\Documents\KnowledgeDocument;
+use App\SocialHq\Knowledge\Keywords\BrandKeywords;
 use App\SocialHq\Knowledge\KnowledgeEntry;
 use App\SocialHq\Knowledge\KnowledgeKind;
 use App\SocialHq\Knowledge\Look\BrandLook;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Uri;
@@ -26,8 +29,10 @@ use Symfony\Component\HttpFoundation\Response;
  * Accept (as suggested, or edited) or Skip one website suggestion. Accepting
  * is the only way a suggestion reaches brand knowledge: a profile field is
  * replaced, an entry added, a colour added to the brand look, a font or the
- * style notes set, or the website's text kept as the "Website" document.
- * Each suggestion is decided once; the row is locked while deciding.
+ * style notes set, the website's text kept as the "Website" document, or an
+ * SEO keyword added to the catalogue with its tags.
+ * Each suggestion is decided once; the row is locked while deciding. The
+ * "Website text" suggestion can be previewed first (preview()).
  */
 final class WebsiteReview
 {
@@ -143,9 +148,49 @@ final class WebsiteReview
                 self::keepDocument($workspace, $crawl, $user);
 
                 return $suggestion;
+
+            case 'keyword':
+                return self::addKeyword($workspace, $suggestion, $pick('text'));
         }
 
         abort(Response::HTTP_NOT_FOUND);
+    }
+
+    /**
+     * Adds the keyword to the catalogue with its tags: main when it was
+     * suggested as main and a main slot is still free, else to the library.
+     * Never in place of a keyword the brand has.
+     *
+     * @param  array<string, mixed>  $suggestion
+     * @return array<string, mixed>
+     */
+    private static function addKeyword(Workspace $workspace, array $suggestion, string $text): array
+    {
+        $text = BrandKeywords::clean(self::required($text, 'text'));
+
+        if (mb_strlen($text) < BrandKeywords::MIN_LENGTH || mb_strlen($text) > BrandKeywords::MAX_LENGTH) {
+            throw ValidationException::withMessages(['text' => __('socialhq_knowledge.website.errors.keyword_length', ['min' => BrandKeywords::MIN_LENGTH, 'max' => BrandKeywords::MAX_LENGTH])]);
+        }
+
+        $catalogue = BrandKeywords::catalogue($workspace);
+
+        if (collect($catalogue)->contains(fn (array $keyword): bool => BrandKeywords::sameKey($keyword['text']) === BrandKeywords::sameKey($text))) {
+            throw ValidationException::withMessages(['text' => __('socialhq_knowledge.website.errors.keyword_exists', ['keyword' => $text])]);
+        }
+
+        $mains = count(array_filter($catalogue, fn (array $keyword): bool => $keyword['main']));
+        $main = data_get($suggestion, 'main') === true && $mains < BrandKeywords::maxMain();
+
+        if (! $main && count($catalogue) - $mains >= BrandKeywords::maxSupporting()) {
+            throw ValidationException::withMessages(['suggestion' => __('socialhq_knowledge.website.errors.library_full', ['max' => BrandKeywords::maxSupporting()])]);
+        }
+
+        BrandKeywords::save($workspace, [
+            ...array_map(fn (array $keyword): array => Arr::only($keyword, ['text', 'main', 'tags']), $catalogue),
+            ['text' => $text, 'main' => $main, 'tags' => (array) data_get($suggestion, 'tags', [])],
+        ]);
+
+        return [...$suggestion, 'text' => $text, 'main' => $main];
     }
 
     private static function required(string $value, string $field): string
@@ -171,10 +216,29 @@ final class WebsiteReview
     }
 
     /**
-     * The website's pages as one document ("Website"), for search: created,
-     * or its text replaced. It doesn't count toward the documents limit.
+     * What the Preview of a "Website text" suggestion shows: the pages
+     * Accept would keep, from the text the read already stored. Nothing is
+     * fetched. Not found for another suggestion type or another brand's run.
+     *
+     * @return array<string, mixed>
      */
-    private static function keepDocument(Workspace $workspace, WebsiteCrawl $crawl, User $user): void
+    public static function preview(Workspace $workspace, int $crawlId, string $key): array
+    {
+        $crawl = WebsiteCrawl::query()->where('workspace_id', $workspace->id)->findOrFail($crawlId);
+        $suggestion = collect((array) $crawl->suggestions)->firstWhere('key', $key);
+
+        abort_unless($crawl->status->hasSuggestions() && data_get($suggestion, 'type') === 'document', Response::HTTP_NOT_FOUND);
+
+        return DocumentPreview::pages(self::documentPages($workspace));
+    }
+
+    /**
+     * The brand's pages from its latest read, in reading order, without the
+     * lines and pages repeated across them: what the "Website" document keeps.
+     *
+     * @return list<array{url: string, title: string, text: string}>
+     */
+    public static function documentPages(Workspace $workspace): array
     {
         $pages = CrawledPage::query()
             ->where('workspace_id', $workspace->id)
@@ -182,7 +246,17 @@ final class WebsiteReview
             ->get(['url', 'title', 'text'])
             ->map(fn (CrawledPage $page): array => ['url' => (string) $page->url, 'title' => (string) $page->title, 'text' => (string) $page->text])
             ->all();
-        $text = WebsiteText::document(WebsiteText::deduplicate($pages));
+
+        return WebsiteText::deduplicate($pages);
+    }
+
+    /**
+     * The website's pages as one document ("Website"), for search: created,
+     * or its text replaced. It doesn't count toward the documents limit.
+     */
+    private static function keepDocument(Workspace $workspace, WebsiteCrawl $crawl, User $user): void
+    {
+        $text = WebsiteText::document(self::documentPages($workspace));
 
         if ($text === '') {
             throw ValidationException::withMessages(['suggestion' => __('socialhq_knowledge.website.errors.pages_gone')]);

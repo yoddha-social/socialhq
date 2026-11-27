@@ -17,6 +17,8 @@ use App\SocialHq\Knowledge\Documents\KnowledgeChunk;
 use App\SocialHq\Knowledge\Documents\KnowledgeDocument;
 use App\SocialHq\Knowledge\Keywords\BrandKeywords;
 use App\SocialHq\Knowledge\Keywords\KeywordCheck;
+use App\SocialHq\Knowledge\Keywords\KeywordPicker;
+use App\SocialHq\Knowledge\Keywords\PostContext;
 use App\SocialHq\Knowledge\KnowledgeEntry;
 use App\SocialHq\Plan\Ai\CopyWriter;
 use App\SocialHq\Plan\ContentPlan;
@@ -36,16 +38,15 @@ beforeEach(function () {
 });
 
 /**
- * @param  list<array{0: string, 1: bool}|string>  $keywords  [text, main] pairs, or texts (supporting)
+ * @param  list<array{0: string, 1: bool, 2?: list<array<string, mixed>>}|string>  $keywords  [text, main, tags], or texts (library, untagged)
  */
 function brandWithKeywords(Workspace $workspace, array $keywords, array $profile = []): BrandProfile
 {
-    return BrandProfile::query()->updateOrCreate(['workspace_id' => $workspace->id], [
-        'keywords' => array_map(fn (array|string $keyword): array => is_string($keyword)
-            ? ['text' => $keyword, 'main' => false]
-            : ['text' => $keyword[0], 'main' => $keyword[1]], $keywords),
-        ...$profile,
-    ]);
+    BrandKeywords::save($workspace, array_map(fn (array|string $keyword): array => is_string($keyword)
+        ? ['text' => $keyword, 'main' => false]
+        : ['text' => $keyword[0], 'main' => $keyword[1], 'tags' => $keyword[2] ?? []], $keywords));
+
+    return BrandProfile::query()->updateOrCreate(['workspace_id' => $workspace->id], $profile);
 }
 
 function keywordEntry(Workspace $workspace, string $title, string $body): KnowledgeEntry
@@ -99,7 +100,7 @@ test('an admin saves the keywords: cleaned, duplicates dropped, in their order',
     $this->actingAs($this->owner)->get(route('socialhq.brand.index'))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('keywords.items.0.text', 'cold brew')
-            ->where('keywords.limits', ['main' => 5, 'supporting' => 25, 'prompt' => 8])
+            ->where('keywords.limits', ['main' => 5, 'supporting' => 75, 'tags' => 8, 'per_post' => 3])
             ->missing('keywordCheck')
             ->loadDeferredProps(fn (AssertableInertia $reload) => $reload
                 ->has('keywordCheck.keywords', 3)
@@ -123,7 +124,7 @@ test('members read the keywords but cannot change them', function () {
     expect(BrandKeywords::forWorkspace($this->workspace))->toHaveCount(1);
 });
 
-test('the lists stop at 5 main and 30 in all, and a keyword is 2 to 60 characters', function (array $keywords, string $error) {
+test('the lists stop at 5 main and 80 in all, and a keyword is 2 to 60 characters', function (array $keywords, string $error) {
     $this->actingAs($this->owner)
         ->from(route('socialhq.brand.index'))
         ->put(route('socialhq.brand.keywords.update'), ['keywords' => $keywords])
@@ -132,7 +133,7 @@ test('the lists stop at 5 main and 30 in all, and a keyword is 2 to 60 character
     expect(BrandKeywords::forWorkspace($this->workspace))->toBe([]);
 })->with([
     'six main' => [array_map(fn (int $i): array => ['text' => "main keyword {$i}", 'main' => true], range(1, 6)), 'keywords'],
-    'thirty-one' => [array_map(fn (int $i): array => ['text' => "keyword {$i}", 'main' => false], range(1, 31)), 'keywords'],
+    'eighty-one' => [array_map(fn (int $i): array => ['text' => "keyword {$i}", 'main' => false], range(1, 81)), 'keywords'],
     'too short' => [[['text' => 'x', 'main' => false]], 'keywords.0.text'],
     'too long' => [[['text' => str_repeat('a', 61), 'main' => false]], 'keywords.0.text'],
 ]);
@@ -154,7 +155,7 @@ test('a word to avoid in a keyword is a conflict, and the keyword still goes to 
 
     expect($row['verdict'])->toBe('conflict')
         ->and($row['reason'])->toContain('“cheap” is in your words to avoid')
-        ->and(BrandKeywords::forPrompt($this->workspace))->toBe([['text' => 'cheap coffee', 'main' => true]])
+        ->and(array_column(KeywordPicker::pick($this->workspace, PostContext::forTopic()), 'text'))->toBe(['cheap coffee'])
         ->and(KeywordCheck::page($this->workspace)['verdict'])->toBe('needs_look');
 });
 
@@ -299,27 +300,14 @@ test('a file\'s keywords are checked before import, against the saved ones too',
     expect(BrandKeywords::forWorkspace($this->workspace))->toHaveCount(1);
 });
 
-test('a prompt gets the main keywords first, then the supporting ones that match the topic, 8 at most', function () {
-    $keywords = [
-        ['text' => 'specialty coffee', 'main' => true],
-        ...array_map(fn (int $i): array => ['text' => "supporting {$i}", 'main' => false], range(1, 8)),
-        ['text' => 'cold brew bottles', 'main' => false],
-        ['text' => 'nepali coffee', 'main' => true],
-    ];
-
-    expect(array_column(BrandKeywords::pick($keywords), 'text'))
-        ->toBe(['specialty coffee', 'nepali coffee', 'supporting 1', 'supporting 2', 'supporting 3', 'supporting 4', 'supporting 5', 'supporting 6'])
-        ->and(array_column(BrandKeywords::pick($keywords, 'A post about our cold brew bottles'), 'text'))
-        ->toBe(['specialty coffee', 'nepali coffee', 'cold brew bottles', 'supporting 1', 'supporting 2', 'supporting 3', 'supporting 4', 'supporting 5']);
-});
-
 test('"Check what the AI reads" lists the keywords a topic gets', function () {
     brandWithKeywords($this->workspace, [['specialty coffee', true], 'cold brew']);
 
     $this->actingAs($this->owner)
         ->postJson(route('socialhq.brand.search'), ['focus' => 'cold brew in summer'])
         ->assertOk()
-        ->assertJsonPath('keywords', [['text' => 'specialty coffee', 'main' => true], ['text' => 'cold brew', 'main' => false]]);
+        ->assertJsonPath('keywords.*.text', ['specialty coffee', 'cold brew'])
+        ->assertJsonPath('keywords.0.main', true);
 });
 
 test('the caption assistant gets the keywords and the rules for new text, and only "keep them" for a rewrite', function () {
@@ -327,15 +315,18 @@ test('the caption assistant gets the keywords and the rules for new text, and on
     $this->actingAs($this->owner);
 
     $generate = (new PostWritingAssistant(PostAssistantMode::Generate, '', Locale::DEFAULT))->instructions();
-    $rephrase = (new PostWritingAssistant(PostAssistantMode::Rephrase, 'Our coffee.', Locale::DEFAULT))->instructions();
+    // A rewrite is told to keep the keywords the caption already says.
+    $rephrase = (new PostWritingAssistant(PostAssistantMode::Rephrase, 'Specialty coffee in Kathmandu.', Locale::DEFAULT))->instructions();
+    $rephraseWithout = (new PostWritingAssistant(PostAssistantMode::Rephrase, 'Our coffee.', Locale::DEFAULT))->instructions();
     $ideas = (new IdeaGenerator(Locale::DEFAULT, 'A café', 'Students'))->instructions();
 
     expect($generate)->toContain('- specialty coffee kathmandu (main)')->toContain('A keyword is a search phrase, not a fact')
         ->and($rephrase)->toContain('- specialty coffee kathmandu (main)')->toContain('Keep any of these keywords the existing text already has')
         ->not->toContain('A keyword is a search phrase')
+        ->and($rephraseWithout)->not->toContain("The brand's SEO keywords")
         ->and($ideas)->toContain('- specialty coffee kathmandu (main)');
 
-    BrandProfile::query()->update(['keywords' => null]);
+    BrandKeywords::save($this->workspace, []);
 
     expect((new PostWritingAssistant(PostAssistantMode::Generate, '', Locale::DEFAULT))->instructions())->not->toContain("The brand's SEO keywords");
 });

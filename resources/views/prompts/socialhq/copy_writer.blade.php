@@ -30,7 +30,7 @@ The brand's visual style, so the caption sits well with the creative. Reference 
 Rules:
 - Open the caption with a hook in its first line: the line people see before "more" must make them stop scrolling.
 @if (filled($seo_keywords ?? null))
-- SEO keywords: when a main keyword fits the post, put it in the caption's first line. Prefer hashtags built from the keywords (#coldbrewkathmandu).
+- SEO keywords: when a main keyword fits the post, put it in the caption's first line. Use one to three of the keywords in all, only where they read naturally. Prefer hashtags built from the keywords (#coldbrewkathmandu).
 @if ($is_video)
 - Say one SEO keyword in the script's opening lines.
 @endif

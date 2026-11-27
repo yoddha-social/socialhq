@@ -1,17 +1,29 @@
 <script setup lang="ts">
 import { router, useForm } from '@inertiajs/vue3';
+import { IconEye } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
 import type { WebsiteSuggestion } from '@/components/socialhq/brandSources';
+import KeywordTagChip from '@/components/socialhq/keywords/KeywordTagChip.vue';
+import KeywordVerdictPill from '@/components/socialhq/keywords/KeywordVerdictPill.vue';
+import KnowledgePreviewDialog from '@/components/socialhq/KnowledgePreviewDialog.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { accept, skip } from '@/routes/socialhq/brand/website';
+import { formatFullNumber } from '@/lib/utils';
+import {
+    accept,
+    preview as previewRoute,
+    skip,
+} from '@/routes/socialhq/brand/website';
 
 /**
  * One suggestion from "Read our website": Accept as it is, Edit then
- * accept, or Skip. Nothing is saved until it is accepted.
+ * accept, or Skip. Nothing is saved until it is accepted. The "Website
+ * text" suggestion is previewed first (the pages' text, as Accept keeps
+ * it), with Accept and Skip in the preview too. An SEO keyword shows its
+ * tags, its check, the pages that say it and a caption line.
  */
 const props = defineProps<{
     crawlId: number;
@@ -20,6 +32,7 @@ const props = defineProps<{
 
 const isEditing = ref(false);
 const isSkipping = ref(false);
+const isPreviewOpen = ref(false);
 
 const form = useForm<{
     value: string;
@@ -27,7 +40,8 @@ const form = useForm<{
     body: string;
     name: string;
     hex: string;
-}>({ value: '', title: '', body: '', name: '', hex: '' });
+    text: string;
+}>({ value: '', title: '', body: '', name: '', hex: '', text: '' });
 
 /** A refused accept's messages, only while the suggestion is still open. */
 const errors = computed(() =>
@@ -37,6 +51,11 @@ const errors = computed(() =>
 );
 const isOpen = computed(() => props.suggestion.status === 'open');
 const canEdit = computed(() => props.suggestion.type !== 'document');
+const canPreview = computed(() => props.suggestion.type === 'document');
+/** The pages a "Website text" suggestion keeps. */
+const keptPages = computed(() =>
+    props.suggestion.type === 'document' ? props.suggestion.pages : 0,
+);
 const target = computed(() => ({
     crawl: props.crawlId,
     suggestion: props.suggestion.key,
@@ -51,6 +70,8 @@ const editedFields = (): Record<string, string> => {
             return { name: form.name, hex: form.hex };
         case 'document':
             return {};
+        case 'keyword':
+            return { text: form.text };
         default:
             return { value: form.value };
     }
@@ -64,7 +85,16 @@ const startEdit = (): void => {
     form.body = suggestion.type === 'entry' ? suggestion.body : '';
     form.name = suggestion.type === 'colour' ? suggestion.name : '';
     form.hex = suggestion.type === 'colour' ? suggestion.hex : '';
+    form.text = suggestion.type === 'keyword' ? suggestion.text : '';
     isEditing.value = true;
+};
+
+const openPreview = (): void => {
+    isPreviewOpen.value = true;
+};
+
+const closePreview = (): void => {
+    isPreviewOpen.value = false;
 };
 
 const cancelEdit = (): void => {
@@ -79,6 +109,7 @@ const acceptSuggestion = (): void => {
             preserveScroll: true,
             onSuccess: () => {
                 isEditing.value = false;
+                closePreview();
             },
         },
     );
@@ -99,6 +130,7 @@ const skipSuggestion = (): void => {
             onSuccess: () => {
                 form.clearErrors();
                 isEditing.value = false;
+                closePreview();
             },
         },
     );
@@ -137,6 +169,16 @@ const skipSuggestion = (): void => {
             >
                 {{ $t(`socialhq.brand.entries.kinds.${suggestion.kind}`) }}
             </span>
+            <template v-else-if="suggestion.type === 'keyword'">
+                <Badge
+                    v-if="suggestion.main"
+                    variant="outline"
+                    :data-testid="`socialhq-website-suggestion-main-${suggestion.key}`"
+                >
+                    {{ $t('socialhq_knowledge.website.review.keywords.main') }}
+                </Badge>
+                <KeywordVerdictPill :verdict="suggestion.verdict" />
+            </template>
             <Badge
                 v-if="suggestion.status === 'accepted'"
                 variant="success"
@@ -184,6 +226,69 @@ const skipSuggestion = (): void => {
             >
                 {{ $t('socialhq_knowledge.website.review.document') }}
             </p>
+            <div
+                v-else-if="suggestion.type === 'keyword'"
+                class="flex flex-col gap-1.5"
+            >
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <span
+                        class="text-sm font-medium text-foreground"
+                        :data-testid="`socialhq-website-suggestion-text-${suggestion.key}`"
+                    >
+                        {{ suggestion.text }}
+                    </span>
+                    <KeywordTagChip
+                        v-for="(tag, index) in suggestion.tags"
+                        :key="index"
+                        :kind="tag.kind"
+                        :label="tag.label"
+                    />
+                </div>
+                <p
+                    class="text-xs text-muted-foreground"
+                    :data-testid="`socialhq-website-suggestion-why-${suggestion.key}`"
+                >
+                    {{
+                        $tChoice(
+                            'socialhq_knowledge.website.review.keywords.why',
+                            suggestion.pages,
+                            {
+                                count: String(suggestion.pages),
+                                pages: suggestion.page_titles.join(', '),
+                            },
+                        )
+                    }}
+                </p>
+                <p
+                    v-if="suggestion.sample"
+                    class="text-sm text-muted-foreground italic"
+                >
+                    {{
+                        $t(
+                            'socialhq_knowledge.website.review.keywords.sample',
+                            {
+                                line: suggestion.sample,
+                            },
+                        )
+                    }}
+                </p>
+                <p
+                    v-if="suggestion.verdict !== 'good' && suggestion.reason"
+                    class="text-xs text-muted-foreground"
+                >
+                    {{ suggestion.reason }}
+                </p>
+                <p
+                    v-if="isOpen && suggestion.main_full"
+                    class="text-xs text-muted-foreground"
+                >
+                    {{
+                        $t(
+                            'socialhq_knowledge.website.review.keywords.main_full',
+                        )
+                    }}
+                </p>
+            </div>
             <p v-else class="text-sm whitespace-pre-line text-foreground">
                 {{ suggestion.value }}
             </p>
@@ -227,6 +332,14 @@ const skipSuggestion = (): void => {
                 v-else-if="suggestion.type === 'font'"
                 v-model="form.value"
                 :aria-label="$t(`socialhq_knowledge.look.${suggestion.field}`)"
+            />
+            <Input
+                v-else-if="suggestion.type === 'keyword'"
+                v-model="form.text"
+                :aria-label="
+                    $t('socialhq_knowledge.website.review.keywords.label')
+                "
+                :data-testid="`socialhq-website-suggestion-keyword-${suggestion.key}`"
             />
             <Textarea
                 v-else
@@ -284,6 +397,16 @@ const skipSuggestion = (): void => {
                     {{ $t('socialhq_knowledge.website.review.edit') }}
                 </Button>
                 <Button
+                    v-if="canPreview"
+                    type="button"
+                    variant="outline"
+                    :data-testid="`socialhq-website-suggestion-preview-${suggestion.key}`"
+                    @click="openPreview"
+                >
+                    <IconEye class="size-4" />
+                    {{ $t('socialhq_knowledge.preview.action') }}
+                </Button>
+                <Button
                     type="button"
                     :loading="form.processing"
                     :data-testid="`socialhq-website-suggestion-accept-${suggestion.key}`"
@@ -293,5 +416,60 @@ const skipSuggestion = (): void => {
                 </Button>
             </template>
         </div>
+
+        <KnowledgePreviewDialog
+            v-if="canPreview"
+            v-model:open="isPreviewOpen"
+            :url="previewRoute.url(target)"
+            :title="$t('socialhq_knowledge.website.review.types.document')"
+            :description="
+                $tChoice(
+                    'socialhq_knowledge.preview.website_description',
+                    keptPages,
+                    { count: formatFullNumber(keptPages) },
+                )
+            "
+        >
+            <template #messages>
+                <p
+                    v-for="(message, field) in errors"
+                    :key="field"
+                    role="alert"
+                    class="text-sm text-destructive-text"
+                    data-testid="socialhq-preview-error"
+                >
+                    {{ message }}
+                </p>
+            </template>
+            <template #actions>
+                <template v-if="isOpen">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        :loading="isSkipping"
+                        data-testid="socialhq-preview-skip"
+                        @click="skipSuggestion"
+                    >
+                        {{ $t('socialhq_knowledge.website.review.skip') }}
+                    </Button>
+                    <Button
+                        type="button"
+                        :loading="form.processing"
+                        data-testid="socialhq-preview-accept"
+                        @click="acceptSuggestion"
+                    >
+                        {{ $t('socialhq_knowledge.website.review.accept') }}
+                    </Button>
+                </template>
+                <Button
+                    v-else
+                    type="button"
+                    variant="ghost"
+                    @click="closePreview"
+                >
+                    {{ $t('socialhq_knowledge.preview.close') }}
+                </Button>
+            </template>
+        </KnowledgePreviewDialog>
     </li>
 </template>

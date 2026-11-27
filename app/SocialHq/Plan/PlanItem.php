@@ -51,6 +51,8 @@ class PlanItem extends Model
             'post_created_at' => 'immutable_datetime',
             'creative_waived_at' => 'immutable_datetime',
             'unsupported_details' => 'array',
+            // The SEO keywords a person chose for this post; null: the app picks (Keywords\KeywordPicker).
+            'seo_keywords' => 'array',
         ];
     }
 

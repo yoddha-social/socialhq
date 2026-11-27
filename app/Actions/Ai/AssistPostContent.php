@@ -24,11 +24,12 @@ final class AssistPostContent
         ?string $previousContent,
         ?Platform $platform,
         ?SocialAccount $account = null,
+        ?array $seoKeywords = null,
     ): string {
         $platform = $account->platform ?? $platform;
         $limit = $account?->maxContentLength() ?? $platform?->maxContentLength();
 
-        $response = (new PostWritingAssistant($mode, $currentContent, $user->locale, $platform, $previousContent, $limit))
+        $response = (new PostWritingAssistant($mode, $currentContent, $user->locale, $platform, $previousContent, $limit, $seoKeywords))
             ->prompt($mode->requiresPrompt() ? trim((string) $prompt) : 'Revise the existing caption as instructed.');
 
         $text = trim((string) $response);

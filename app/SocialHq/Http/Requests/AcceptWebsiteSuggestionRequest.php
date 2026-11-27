@@ -41,6 +41,8 @@ class AcceptWebsiteSuggestionRequest extends FormRequest
             'body' => ['sometimes', 'required', 'string', 'max:4000'],
             'name' => ['sometimes', 'nullable', 'string', 'max:40'],
             'hex' => ['sometimes', 'required', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            // An SEO keyword; WebsiteReview cleans it and holds it to the keyword's length.
+            'text' => ['sometimes', 'required', 'string', 'max:120'],
         ];
     }
 
@@ -54,6 +56,7 @@ class AcceptWebsiteSuggestionRequest extends FormRequest
             'value.required' => __('socialhq_knowledge.website.errors.empty'),
             'title.required' => __('socialhq_knowledge.website.errors.empty'),
             'body.required' => __('socialhq_knowledge.website.errors.empty'),
+            'text.required' => __('socialhq_knowledge.website.errors.empty'),
         ];
     }
 }

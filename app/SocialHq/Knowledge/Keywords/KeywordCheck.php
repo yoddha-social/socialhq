@@ -50,7 +50,7 @@ final class KeywordCheck
     private const int POSTS_LIMIT = 1000;
 
     /** Part of the cache key: raise it when the rules change, so cached verdicts are read again. */
-    private const int RULES_VERSION = 4;
+    private const int RULES_VERSION = 5;
 
     /**
      * @param  list<array{kind: 'profile'|'entry'|'document', id: int|string, document_id: int|null, title: string, label: string, terms: array<string, mixed>, text: string|null}>  $places
@@ -59,7 +59,8 @@ final class KeywordCheck
      * @param  list<string>  $claimWords
      * @param  array<string, true>  $claimTokens
      * @param  array<string, true>  $audiencePlaces  Each audience place's words, joined by a space
-     * @param  list<list<string>>  $posts  Each recent post's words
+     * @param  list<list<string>>  $posts  Each recent post's words (recent_days)
+     * @param  list<list<string>>  $postsLately  Each post's words of the last health_days
      */
     private function __construct(
         private readonly array $places,
@@ -69,6 +70,7 @@ final class KeywordCheck
         private readonly array $claimTokens,
         private readonly array $audiencePlaces,
         private readonly array $posts,
+        private readonly array $postsLately,
         public readonly int $entryCount,
         public readonly int $documentCount,
     ) {}
@@ -76,24 +78,27 @@ final class KeywordCheck
     /**
      * The check of the workspace's saved keywords, for the Strategy tab:
      * each keyword's verdict, the counts, the brand verdict, what was read
-     * and what a post with no topic gets. Cached until the keywords or the
-     * brand knowledge change (recent posts may lag up to an hour). Each fix
-     * is the one for the viewer: $canEdit false gets the one that says who
-     * can act.
+     * which keywords no post has said lately (`stale`), and what a post
+     * going out today with no pillar, product or event gets (`prompt`).
+     * Cached until the keywords, the brand knowledge or the day change
+     * (recent posts may lag up to an hour). Each fix is the one for the
+     * viewer: $canEdit false gets the one that says who can act.
      *
-     * @return array{keywords: list<array<string, mixed>>, counts: array<string, int>, verdict: string|null, checked: array<string, int>, prompt: list<array{text: string, main: bool}>}
+     * @return array{keywords: list<array<string, mixed>>, counts: array<string, int>, verdict: string|null, checked: array<string, int>, stale: array{count: int, days: int}, prompt: list<array<string, mixed>>}
      */
     public static function page(Workspace $workspace, bool $canEdit = true): array
     {
         $profile = BrandProfile::query()->where('workspace_id', $workspace->id)->first();
-        $keywords = BrandKeywords::of($profile);
+        $catalogue = BrandKeywords::catalogue($workspace);
+        $keywords = array_map(fn (array $keyword): array => ['text' => $keyword['text'], 'main' => $keyword['main']], $catalogue);
 
         if ($keywords === []) {
-            return ['keywords' => [], 'counts' => self::emptyCounts(), 'verdict' => null, 'checked' => ['entries' => 0, 'documents' => 0, 'posts' => 0, 'days' => self::recentDays()], 'prompt' => []];
+            return ['keywords' => [], 'counts' => self::emptyCounts(), 'verdict' => null, 'checked' => ['entries' => 0, 'documents' => 0, 'posts' => 0, 'days' => self::recentDays()], 'stale' => ['count' => 0, 'days' => self::healthDays()], 'prompt' => []];
         }
 
         $key = 'socialhq:keyword-check:'.self::RULES_VERSION.":{$workspace->id}:".md5((string) json_encode([
-            $keywords,
+            array_map(fn (array $keyword): array => [...$keyword, 'added_at' => $keyword['added_at']->toDateString()], $catalogue),
+            now()->toDateString(),
             $profile?->updated_at?->getTimestamp(),
             KnowledgeEntry::query()->where('workspace_id', $workspace->id)->count(),
             KnowledgeEntry::query()->where('workspace_id', $workspace->id)->max('updated_at'),
@@ -102,9 +107,14 @@ final class KeywordCheck
             app()->getLocale(),
         ]));
 
-        $page = Cache::remember($key, now()->addHour(), function () use ($workspace, $profile, $keywords): array {
+        $page = Cache::remember($key, now()->addHour(), function () use ($workspace, $profile, $keywords, $catalogue): array {
             $check = self::build($workspace, $profile);
-            $rows = array_map(fn (array $keyword): array => $check->check($keyword['text'], $keyword['main'], $keywords), $keywords);
+            $healthSince = now()->subDays(self::healthDays());
+            $rows = array_map(fn (array $keyword): array => [
+                ...$check->check($keyword['text'], $keyword['main'], $keywords),
+                // Not used lately: on the list for longer than health_days, and no post of those days says it.
+                'stale' => $keyword['added_at']->lessThan($healthSince) && ! $check->usedLately($keyword['text']),
+            ], $catalogue);
             $counts = self::emptyCounts();
 
             foreach ($rows as $row) {
@@ -120,7 +130,9 @@ final class KeywordCheck
                     default => 'on_brand',
                 },
                 'checked' => ['entries' => $check->entryCount, 'documents' => $check->documentCount, 'posts' => count($check->posts), 'days' => self::recentDays()],
-                'prompt' => BrandKeywords::pick($keywords),
+                'stale' => ['count' => count(array_filter($rows, fn (array $row): bool => $row['stale'])), 'days' => self::healthDays()],
+                // What a post going out today gets when it has no pillar, product or event of its own.
+                'prompt' => KeywordPicker::pick($workspace, PostContext::forTopic()),
             ];
         });
 
@@ -139,7 +151,7 @@ final class KeywordCheck
     public static function preview(Workspace $workspace, array $texts): array
     {
         $profile = BrandProfile::query()->where('workspace_id', $workspace->id)->first();
-        $all = [...BrandKeywords::of($profile), ...array_map(fn (string $text): array => ['text' => $text, 'main' => false], $texts)];
+        $all = [...BrandKeywords::forWorkspace($workspace), ...array_map(fn (string $text): array => ['text' => $text, 'main' => false], $texts)];
         $check = self::build($workspace, $profile);
 
         return array_map(fn (string $text): array => self::forViewer($check->check($text, false, $all), true), $texts);
@@ -204,6 +216,9 @@ final class KeywordCheck
         }
 
         $claimWords = array_values(array_map(fn (mixed $word): string => mb_strtolower(trim((string) $word)), (array) config('socialhq.knowledge.keywords.claim_words', [])));
+        $posts = self::recentPosts($workspace);
+        $recentSince = now()->subDays(self::recentDays())->getTimestamp();
+        $healthSince = now()->subDays(self::healthDays())->getTimestamp();
 
         return new self(
             places: $places,
@@ -212,7 +227,8 @@ final class KeywordCheck
             claimWords: $claimWords,
             claimTokens: array_fill_keys(self::tokens(implode(' ', $claimWords)), true),
             audiencePlaces: self::audiencePlaces($profile),
-            posts: self::recentPosts($workspace),
+            posts: array_column(array_filter($posts, fn (array $post): bool => $post['at'] >= $recentSince), 'words'),
+            postsLately: array_column(array_filter($posts, fn (array $post): bool => $post['at'] >= $healthSince), 'words'),
             entryCount: $entries->count(),
             documentCount: $documents->count(),
         );
@@ -737,13 +753,14 @@ final class KeywordCheck
 
     /**
      * The words of the workspace's posts scheduled or published in the last
-     * recent_days, newest first.
+     * recent_days or health_days (the longer), newest first, each with when
+     * it went or goes out.
      *
-     * @return list<list<string>>
+     * @return list<array{words: list<string>, at: int}>
      */
     private static function recentPosts(Workspace $workspace): array
     {
-        $since = now()->subDays(self::recentDays());
+        $since = now()->subDays(max(self::recentDays(), self::healthDays()));
 
         return Post::query()
             ->where('workspace_id', $workspace->id)
@@ -751,10 +768,32 @@ final class KeywordCheck
             ->where(fn (Builder $query) => $query->where('published_at', '>=', $since)->orWhere('scheduled_at', '>=', $since))
             ->latest('id')
             ->limit(self::POSTS_LIMIT)
-            ->pluck('content')
-            ->map(fn (mixed $content): array => KeywordMatcher::words(html_entity_decode(strip_tags(str_replace(['</p>', '<br>', '<br/>', '<br />'], "\n", (string) $content)))))
+            ->get(['content', 'published_at', 'scheduled_at'])
+            ->map(fn (Post $post): array => [
+                'words' => KeywordMatcher::words(html_entity_decode(strip_tags(str_replace(['</p>', '<br>', '<br/>', '<br />'], "\n", (string) $post->content)))),
+                'at' => max($post->published_at?->getTimestamp() ?? 0, $post->scheduled_at?->getTimestamp() ?? 0),
+            ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Whether a post of the last health_days says the keyword.
+     */
+    public function usedLately(string $text): bool
+    {
+        foreach ($this->postsLately as $post) {
+            if (KeywordMatcher::saysWords($post, $text)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function healthDays(): int
+    {
+        return max(1, (int) config('socialhq.knowledge.keywords.health_days', 60));
     }
 
     private static function recentDays(): int

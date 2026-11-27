@@ -19,6 +19,15 @@ Route::post('brand/documents', [KnowledgeDocumentController::class, 'store'])
     ->middleware('throttle:socialhq-knowledge-uploads')
     ->name('brand.documents.store');
 Route::get('brand/documents/{document}', [KnowledgeDocumentController::class, 'show'])->whereNumber('document')->name('brand.documents.show');
+// Preview: what the dialog shows, and a PDF inline for its frame.
+Route::get('brand/documents/{document}/preview', [KnowledgeDocumentController::class, 'preview'])
+    ->whereNumber('document')
+    ->middleware('throttle:socialhq-knowledge-previews')
+    ->name('brand.documents.preview');
+Route::get('brand/documents/{document}/view', [KnowledgeDocumentController::class, 'view'])
+    ->whereNumber('document')
+    ->middleware('throttle:socialhq-knowledge-previews')
+    ->name('brand.documents.view');
 Route::put('brand/documents/{document}', [KnowledgeDocumentController::class, 'update'])->whereNumber('document')->name('brand.documents.update');
 Route::delete('brand/documents/{document}', [KnowledgeDocumentController::class, 'destroy'])->whereNumber('document')->name('brand.documents.destroy');
 
@@ -26,11 +35,16 @@ Route::post('brand/search', BrandKnowledgeSearchController::class)
     ->middleware('throttle:socialhq-knowledge-search')
     ->name('brand.search');
 
-// SEO keywords: the whole list on every change, and the check of a file's keywords before import.
+// SEO keywords: the whole catalogue on every change, the check of a file's keywords before import,
+// and what one post gets.
 Route::put('brand/keywords', [BrandKeywordsController::class, 'update'])->name('brand.keywords.update');
 Route::post('brand/keywords/check', [BrandKeywordsController::class, 'check'])
     ->middleware('throttle:socialhq-knowledge-search')
     ->name('brand.keywords.check');
+// "Keywords for this post" in the composer.
+Route::get('brand/keywords/for-post', [BrandKeywordsController::class, 'forPost'])
+    ->middleware('throttle:socialhq-knowledge-search')
+    ->name('brand.keywords.for-post');
 
 // Brand look: logo, colours, fonts and visual style.
 Route::put('brand/look', [BrandLookController::class, 'update'])->name('brand.look.update');
@@ -57,6 +71,11 @@ Route::post('brand/website/{crawl}/suggestions/{suggestion}/accept', [WebsiteCra
     ->whereNumber('crawl')
     ->where('suggestion', '[a-z0-9_-]{1,40}')
     ->name('brand.website.accept');
+Route::get('brand/website/{crawl}/suggestions/{suggestion}/preview', [WebsiteCrawlController::class, 'preview'])
+    ->whereNumber('crawl')
+    ->where('suggestion', '[a-z0-9_-]{1,40}')
+    ->middleware('throttle:socialhq-knowledge-previews')
+    ->name('brand.website.preview');
 Route::post('brand/website/{crawl}/suggestions/{suggestion}/skip', [WebsiteCrawlController::class, 'skip'])
     ->whereNumber('crawl')
     ->where('suggestion', '[a-z0-9_-]{1,40}')

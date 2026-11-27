@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Knowledge\BrandProfile;
+use App\SocialHq\Knowledge\Keywords\BrandKeywords;
 use App\SocialHq\Mcp\Tools\Plan\GetBrandKnowledgeTool;
 use App\SocialHq\Mcp\Tools\Plan\GetContentPlanTool;
 use App\SocialHq\Mcp\Tools\Plan\GetPlanItemTool;
@@ -130,20 +131,22 @@ test('get-brand-knowledge-tool returns what the AI writers read', function () {
 });
 
 test('get-brand-knowledge-tool returns the SEO keywords a topic gets, as the AI writers get them', function () {
-    BrandProfile::query()->create(['workspace_id' => $this->workspace->id, 'about' => 'A momo shop in Kathmandu.', 'keywords' => [
+    BrandProfile::query()->create(['workspace_id' => $this->workspace->id, 'about' => 'A momo shop in Kathmandu.', 'pillars' => ['Menu']]);
+    BrandKeywords::save($this->workspace, [
         ['text' => 'momo kathmandu', 'main' => true],
         ['text' => 'buff momo', 'main' => false],
         ['text' => 'dashain offer', 'main' => false],
-    ]]);
+        ['text' => 'momo menu', 'main' => false, 'tags' => [['kind' => 'pillar', 'value' => 'Menu']]],
+    ]);
 
-    // Main first, then the supporting ones that match the topic.
+    // The main one, then general ones that share most words with the topic; one tagged for a pillar stays out.
     TryPostServer::actingAs($this->owner)->tool(GetBrandKnowledgeTool::class, ['topic' => 'Dashain offer on momos'])
         ->assertHasNoErrors()
         ->assertStructuredContent(fn (AssertableJson $json) => $json
             ->where('keywords', [
-                ['text' => 'momo kathmandu', 'main' => true],
-                ['text' => 'dashain offer', 'main' => false],
-                ['text' => 'buff momo', 'main' => false],
+                ['text' => 'momo kathmandu', 'main' => true, 'tags' => []],
+                ['text' => 'dashain offer', 'main' => false, 'tags' => []],
+                ['text' => 'buff momo', 'main' => false, 'tags' => []],
             ])
             ->etc());
 });

@@ -10,6 +10,7 @@ use App\Models\User;
 use App\SocialHq\Ai\AiTenant;
 use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\Keywords\BrandKeywords;
+use App\SocialHq\Knowledge\Keywords\KeywordPicker;
 use App\SocialHq\Knowledge\Look\BrandLook;
 use App\SocialHq\Plan\CreativeKind;
 use App\SocialHq\Plan\ItemCopy;
@@ -46,7 +47,8 @@ final class WriteItemCopy
         $context = self::context($item);
         $brandKnowledge = '';
         $focus = trim(self::focus($item)."\n{$instruction}");
-        $keywords = BrandKeywords::forPrompt($item->workspace, $focus);
+        // Only the keywords picked for this post (or chosen by a person) go to the writer.
+        $keywords = KeywordPicker::forItem($item);
 
         // The item's workspace decides whose AI it uses, whatever workspace the user has open.
         // The brand knowledge is read there too: its search may use the company's AI one day.

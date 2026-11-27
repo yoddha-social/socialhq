@@ -23,9 +23,12 @@ use Throwable;
 /**
  * "Read our website": crawls the site (WebsiteCrawler), keeps only text
  * that is new across pages and cuts it to the AI budget, then asks
- * WebsiteReader once for suggestions. Only the cleaned, deduplicated, cut
- * text goes to the AI, and not at all when it is the same as the last
- * run's (the last suggestions carry over).
+ * WebsiteReader once for suggestions, and WebsiteKeywordReader once for SEO
+ * keywords from what the same pages stress (WebsiteKeywordSignals, no
+ * more crawling). Only the cleaned, deduplicated, cut text goes to the AI,
+ * and not at all when it is the same as the last run's (the last
+ * suggestions carry over; a run from before keyword suggestions gets them
+ * once). A keyword step that fails leaves the other suggestions.
  */
 class ReadWebsite implements ShouldQueue
 {
@@ -98,7 +101,14 @@ class ReadWebsite implements ShouldQueue
             ->first();
 
         if ($previous !== null && $previous->input_hash === $inputHash) {
-            $crawl->update(['status' => CrawlStatus::Unchanged, 'suggestions' => $previous->suggestions, 'finished_at' => now()]);
+            $carried = array_values((array) $previous->suggestions);
+            $hasKeywords = collect($carried)->contains(fn (mixed $suggestion): bool => data_get($suggestion, 'type') === 'keyword');
+
+            $crawl->update([
+                'status' => CrawlStatus::Unchanged,
+                'suggestions' => $hasKeywords ? $carried : [...$carried, ...self::keywordSuggestions($workspace, $user, $pages, $crawl->url)],
+                'finished_at' => now(),
+            ]);
 
             return;
         }
@@ -127,7 +137,10 @@ class ReadWebsite implements ShouldQueue
 
         $crawl->update([
             'status' => CrawlStatus::Ready,
-            'suggestions' => WebsiteSuggestions::build($response, $workspace, $result->colours, count($pages)),
+            'suggestions' => [
+                ...WebsiteSuggestions::build($response, $workspace, $result->colours, count($pages)),
+                ...self::keywordSuggestions($workspace, $user, $pages, $crawl->url),
+            ],
             'provider' => $response->meta->provider ?? null,
             'model' => isset($response->meta->model) ? Str::limit((string) $response->meta->model, 160, '') : null,
             'finished_at' => now(),
@@ -141,6 +154,39 @@ class ReadWebsite implements ShouldQueue
         if ($crawl !== null && $crawl->status->isRunning()) {
             $this->markFailed($crawl, $crawl->status === CrawlStatus::Drafting ? CrawlFailure::AiFailed : CrawlFailure::Unreachable);
         }
+    }
+
+    /**
+     * SEO keyword suggestions from what the pages stress: one more AI call
+     * on what was already read. Its failure is reported (unless no AI is set
+     * up) and leaves no keyword suggestions, never a failed run.
+     *
+     * @param  list<array{url: string, title: string, text: string}>  $pages
+     * @return list<array<string, mixed>>
+     */
+    private static function keywordSuggestions(Workspace $workspace, User $user, array $pages, string $url): array
+    {
+        try {
+            $mainSlots = WebsiteKeywordSuggestions::mainSlots($workspace);
+            $brandNames = WebsiteKeywordSuggestions::brandNames($workspace, $url);
+            $prompt = [
+                'brand' => ['name' => (string) $workspace->name, 'site' => $url],
+                ...WebsiteKeywordSignals::of($pages, $brandNames),
+                'team_has' => WebsiteKeywordSuggestions::teamHas($workspace),
+            ];
+            $response = AiTenant::run($workspace, fn () => (new WebsiteKeywordReader(($user->locale ?? Locale::DEFAULT)->promptLanguage(), $mainSlots))
+                ->prompt((string) json_encode($prompt, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)));
+
+            return WebsiteKeywordSuggestions::build($response, $workspace, $pages, $url);
+        } catch (AiUnavailableException $exception) {
+            if (! $exception->isConfigurationState()) {
+                report($exception);
+            }
+        } catch (Throwable $exception) {
+            report($exception);
+        }
+
+        return [];
     }
 
     /**

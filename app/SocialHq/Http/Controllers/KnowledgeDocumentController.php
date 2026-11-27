@@ -8,11 +8,14 @@ use App\Http\Controllers\Controller;
 use App\SocialHq\Http\Controllers\Concerns\WorksOnBrandKnowledge;
 use App\SocialHq\Http\Requests\StoreKnowledgeDocumentRequest;
 use App\SocialHq\Http\Requests\UpdateKnowledgeDocumentRequest;
+use App\SocialHq\Knowledge\Documents\DocumentPreview;
 use App\SocialHq\Knowledge\Documents\DocumentsPage;
 use App\SocialHq\Knowledge\Documents\DocumentStatus;
 use App\SocialHq\Knowledge\Documents\DocumentStorage;
+use App\SocialHq\Knowledge\Documents\DocumentType;
 use App\SocialHq\Knowledge\Documents\ExtractKnowledgeDocument;
 use App\SocialHq\Knowledge\Documents\KnowledgeDocument;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -24,7 +27,7 @@ use Throwable;
 /**
  * Brand knowledge documents of the current workspace: workspace admins
  * upload, rename, switch off and delete them; everyone who reads brand
- * knowledge may download them. The text is read by a queued job.
+ * knowledge may preview and download them. The text is read by a queued job.
  */
 class KnowledgeDocumentController extends Controller
 {
@@ -82,6 +85,38 @@ class KnowledgeDocumentController extends Controller
 
         return DocumentStorage::disk()->download($found->path, DocumentStorage::downloadName($found->file_name), [
             'Content-Type' => $found->mime,
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store',
+        ]);
+    }
+
+    /**
+     * What the Preview dialog shows for a document (DocumentPreview).
+     */
+    public function preview(Request $request, int $document): JsonResponse
+    {
+        $workspace = $this->workspace($request, edit: false);
+        $found = KnowledgeDocument::query()->where('workspace_id', $workspace->id)->findOrFail($document);
+
+        return response()->json(DocumentPreview::of($found), headers: ['Cache-Control' => 'private, no-store']);
+    }
+
+    /**
+     * A PDF shown in the browser's own viewer, inside the preview's frame
+     * (same origin, which X-Frame-Options SAMEORIGIN allows). PDFs only, sent
+     * as application/pdf with nosniff, so no stored file is ever shown as a
+     * page the browser could run. No sandbox policy: Chrome refuses to show
+     * a PDF in a sandboxed document.
+     */
+    public function view(Request $request, int $document): StreamedResponse
+    {
+        $workspace = $this->workspace($request, edit: false);
+        $found = KnowledgeDocument::query()->where('workspace_id', $workspace->id)->findOrFail($document);
+
+        abort_unless($found->type() === DocumentType::Pdf && filled($found->path) && DocumentStorage::disk()->exists($found->path), Response::HTTP_NOT_FOUND);
+
+        return DocumentStorage::disk()->response($found->path, DocumentStorage::downloadName($found->file_name), [
+            'Content-Type' => DocumentType::Pdf->mime(),
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, no-store',
         ]);

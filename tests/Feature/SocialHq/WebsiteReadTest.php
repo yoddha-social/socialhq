@@ -6,17 +6,20 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Http\HostResolver;
 use App\SocialHq\Companies\Company;
+use App\SocialHq\Events\CalendarEvent;
 use App\SocialHq\Knowledge\BrandProfile;
 use App\SocialHq\Knowledge\Documents\DocumentSource;
 use App\SocialHq\Knowledge\Documents\DocumentStatus;
 use App\SocialHq\Knowledge\Documents\DocumentStorage;
 use App\SocialHq\Knowledge\Documents\KnowledgeDocument;
+use App\SocialHq\Knowledge\Keywords\BrandKeywords;
 use App\SocialHq\Knowledge\KnowledgeEntry;
 use App\SocialHq\Knowledge\Look\BrandLook;
 use App\SocialHq\Knowledge\Website\CrawledPage;
 use App\SocialHq\Knowledge\Website\CrawlFailure;
 use App\SocialHq\Knowledge\Website\CrawlStatus;
 use App\SocialHq\Knowledge\Website\WebsiteCrawl;
+use App\SocialHq\Knowledge\Website\WebsiteKeywordReader;
 use App\SocialHq\Knowledge\Website\WebsiteReader;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -44,6 +47,9 @@ beforeEach(function () {
     $this->workspace->members()->attach($this->owner->id, membershipPivot('admin'));
     $this->owner->update(['current_workspace_id' => $this->workspace->id]);
     $this->owner = $this->owner->fresh();
+
+    // The keyword step suggests nothing unless a test says otherwise.
+    WebsiteKeywordReader::fake(fn (): array => ['keywords' => []]);
 });
 
 /**
@@ -359,3 +365,152 @@ test('addresses that aren\'t a public website are refused before anything is rea
     'a port' => ['https://acme.example:8080'],
     'credentials' => ['https://me:secret@acme.example'],
 ]);
+
+/**
+ * One keyword of WebsiteKeywordReader's answer.
+ *
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function websiteKeyword(string $text, array $overrides = []): array
+{
+    return ['text' => $text, 'main' => false, 'group' => 'features', 'source' => '', 'pillar' => '', 'product' => '', 'occasion' => '', 'months_from' => 0, 'months_to' => 0, 'sample' => '', ...$overrides];
+}
+
+/**
+ * @return list<array<string, mixed>>
+ */
+function keywordSuggestions(WebsiteCrawl $crawl): array
+{
+    return array_values(array_filter((array) $crawl->fresh()->suggestions, fn (array $suggestion): bool => $suggestion['type'] === 'keyword'));
+}
+
+test('reading the website also suggests SEO keywords from what its pages stress, checked and pre-tagged', function () {
+    $this->workspace->update(['name' => 'Acme Bags']);
+    BrandProfile::query()->create(['workspace_id' => $this->workspace->id, 'pillars' => ['Gear guides']]);
+    KnowledgeEntry::query()->create(['workspace_id' => $this->workspace->id, 'kind' => 'product', 'title' => 'Trailblazer 40', 'body' => 'A waterproof trekking bag.', 'use_in_ai' => true]);
+    CalendarEvent::factory()->create(['account_id' => $this->workspace->account_id, 'name' => 'Dashain', 'key' => 'dashain', 'starts_on' => now()->addDays(20)->toDateString(), 'ends_on' => now()->addDays(20)->toDateString()]);
+    // Four main keywords already: one main slot is free.
+    BrandKeywords::save($this->workspace, array_map(fn (string $text): array => ['text' => $text, 'main' => true], ['trekking bags kathmandu', 'hiking backpacks', 'guide packs', 'travel duffels']));
+
+    fakeAcmeSite();
+    WebsiteReader::fake([websiteSuggestionAnswer()]);
+    WebsiteKeywordReader::fake([['keywords' => [
+        websiteKeyword('Waterproof Trekking Bag', ['main' => true, 'source' => 'waterproof trekking bag', 'product' => 'trailblazer 40', 'pillar' => 'gear guides', 'sample' => 'A waterproof trekking bag for the monsoon trail.']),
+        // Main is full by now: it is offered for the library.
+        websiteKeyword('hand stitched bags', ['main' => true, 'source' => 'hand-stitched trekking bags', 'group' => 'audience', 'sample' => 'Our bags are sewn by hand.']),
+        websiteKeyword('trekking gear nepal', ['group' => 'seasonal', 'occasion' => 'Dashain', 'months_from' => 10, 'months_to' => 11, 'pillar' => 'Not a pillar']),
+        // The brand's name, a claim, a price, one the catalogue has, one no page says, and a sentence.
+        websiteKeyword('acme bags thamel'),
+        websiteKeyword('best trekking bag'),
+        websiteKeyword('trailblazer rs 7500'),
+        websiteKeyword('Trekking Bags in Kathmandu'),
+        websiteKeyword('everest base camp gear'),
+        websiteKeyword('where can i buy a trekking bag'),
+    ]]]);
+
+    readWebsite($this->owner)->assertSessionHasNoErrors();
+    $crawl = WebsiteCrawl::query()->sole();
+    $keywords = keywordSuggestions($crawl);
+
+    expect($crawl->status)->toBe(CrawlStatus::Ready)
+        ->and(array_column($keywords, 'key'))->toBe(['keyword-1', 'keyword-2', 'keyword-3'])
+        ->and(array_column($keywords, 'text'))->toBe(['waterproof trekking bag', 'hand stitched bags', 'trekking gear nepal'])
+        ->and(array_column($keywords, 'main'))->toBe([true, false, false])
+        ->and(array_column($keywords, 'main_full'))->toBe([false, true, false])
+        ->and(array_column($keywords, 'group'))->toBe(['features', 'audience', 'seasonal'])
+        ->and(collect($keywords[0]['tags'])->map(fn (array $tag): array => [$tag['kind'], $tag['label']])->all())->toBe([['pillar', 'Gear guides'], ['product', 'Trailblazer 40']])
+        // An unknown pillar is dropped; the occasion is found by its name.
+        ->and(collect($keywords[2]['tags'])->map(fn (array $tag): string => "{$tag['kind']}:{$tag['label']}")->all())->toBe(['event:Dashain', 'months:October to November'])
+        ->and($keywords[0]['pages'])->toBe(1)
+        ->and($keywords[0]['page_titles'])->toBe(['Products'])
+        ->and($keywords[1]['page_titles'])->toBe(['About Acme'])
+        ->and($keywords[0]['sample'])->toBe('A waterproof trekking bag for the monsoon trail.')
+        // A caption line that doesn't say the keyword is left out.
+        ->and($keywords[1]['sample'])->toBe('')
+        ->and($keywords[0]['verdict'])->toBeIn(['good', 'check', 'weak', 'conflict'])
+        ->and(BrandKeywords::forWorkspace($this->workspace))->toHaveCount(4);
+
+    WebsiteKeywordReader::assertPrompted(function (AgentPrompt $prompt): bool {
+        $sent = json_decode($prompt->prompt, true);
+
+        return $sent['brand']['name'] === 'Acme Bags'
+            && collect($sent['pages'])->pluck('title')->contains('Products')
+            && collect($sent['pages'])->flatMap(fn (array $page): array => $page['headings'])->contains('About us')
+            && in_array('trekking bags kathmandu', $sent['team_has']['keywords'], true)
+            && $sent['team_has']['products'] === ['Trailblazer 40']
+            && $sent['team_has']['occasions'][0]['key'] === 'dashain'
+            && str_contains($prompt->agent->instructions(), 'main: true for at most 1 ');
+    });
+});
+
+test('accepting a keyword suggestion adds it to the catalogue with its tags; main never takes another\'s place', function () {
+    BrandProfile::query()->create(['workspace_id' => $this->workspace->id, 'pillars' => ['Gear guides']]);
+    fakeAcmeSite();
+    WebsiteReader::fake([websiteSuggestionAnswer()]);
+    WebsiteKeywordReader::fake([['keywords' => [
+        websiteKeyword('waterproof trekking bag', ['main' => true, 'pillar' => 'Gear guides']),
+        websiteKeyword('hand made trekking gear', ['main' => true, 'source' => 'hand-made trekking gear']),
+        websiteKeyword('trekking gear nepal', ['months_from' => 10, 'months_to' => 11]),
+    ]]]);
+    readWebsite($this->owner);
+    $crawl = WebsiteCrawl::query()->sole();
+    $accept = fn (string $key, array $data = []): TestResponse => $this->post(route('socialhq.brand.website.accept', [$crawl->id, $key]), $data);
+
+    $accept('keyword-1')->assertSessionHasNoErrors();
+    // Main filled up after the read: the second goes to the library, edited.
+    BrandKeywords::save($this->workspace, [
+        ...BrandKeywords::catalogue($this->workspace),
+        ...array_map(fn (string $text): array => ['text' => $text, 'main' => true], ['one main', 'two main', 'three main', 'four main']),
+    ]);
+    $accept('keyword-2', ['text' => 'Hand-made Trekking Gear Nepal'])->assertSessionHasNoErrors();
+    $this->post(route('socialhq.brand.website.skip', [$crawl->id, 'keyword-3']))->assertSessionHasNoErrors();
+
+    $catalogue = collect(BrandKeywords::catalogue($this->workspace))->keyBy('text');
+
+    expect($catalogue['waterproof trekking bag']['main'])->toBeTrue()
+        ->and(collect($catalogue['waterproof trekking bag']['tags'])->pluck('value')->all())->toBe(['Gear guides'])
+        ->and($catalogue['hand-made trekking gear nepal']['main'])->toBeFalse()
+        ->and($catalogue)->not->toHaveKey('trekking gear nepal')
+        ->and(suggestionByKey($crawl, 'keyword-2')['status'])->toBe('accepted')
+        ->and(suggestionByKey($crawl, 'keyword-2')['text'])->toBe('hand-made trekking gear nepal')
+        ->and(suggestionByKey($crawl, 'keyword-3')['status'])->toBe('skipped')
+        ->and(collect(BrandKeywords::forWorkspace($this->workspace))->where('main', true)->count())->toBe(5);
+});
+
+test('a keyword that is already in the catalogue is not added twice', function () {
+    fakeAcmeSite();
+    WebsiteReader::fake([websiteSuggestionAnswer()]);
+    WebsiteKeywordReader::fake([['keywords' => [websiteKeyword('waterproof trekking bag')]]]);
+    readWebsite($this->owner);
+    $crawl = WebsiteCrawl::query()->sole();
+    BrandKeywords::save($this->workspace, [['text' => 'Waterproof trekking bag', 'main' => false]]);
+
+    $this->post(route('socialhq.brand.website.accept', [$crawl->id, 'keyword-1']))
+        ->assertSessionHasErrors('text');
+
+    expect(BrandKeywords::forWorkspace($this->workspace))->toHaveCount(1)
+        ->and(suggestionByKey($crawl, 'keyword-1')['status'])->toBe('open');
+});
+
+test('a keyword step that fails leaves the other suggestions, and an unchanged site gets keywords once', function () {
+    fakeAcmeSite();
+    WebsiteReader::fake([websiteSuggestionAnswer()]);
+    WebsiteKeywordReader::fake(fn (): never => throw new RuntimeException('The keyword step failed.'));
+
+    readWebsite($this->owner);
+    $first = WebsiteCrawl::query()->sole();
+
+    expect($first->status)->toBe(CrawlStatus::Ready)
+        ->and(keywordSuggestions($first))->toBe([])
+        ->and(collect($first->suggestions)->pluck('key'))->toContain('profile-about', 'document');
+
+    // The same text again: no new read of the site's text, but the keyword step it missed runs.
+    WebsiteKeywordReader::fake([['keywords' => [websiteKeyword('waterproof trekking bag')]]]);
+    readWebsite($this->owner);
+    $second = WebsiteCrawl::query()->latest('id')->first();
+
+    expect($second->status)->toBe(CrawlStatus::Unchanged)
+        ->and(array_column(keywordSuggestions($second), 'text'))->toBe(['waterproof trekking bag']);
+    WebsiteReader::assertPrompted(fn (): bool => true);
+});

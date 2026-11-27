@@ -6,15 +6,18 @@ namespace App\SocialHq\Http\Requests;
 
 use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\Keywords\BrandKeywords;
+use App\SocialHq\Knowledge\Keywords\KeywordTagKind;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 /**
  * The brand's whole SEO keyword list, as the Strategy tab sends it after
- * every change (add, import, make main or supporting, remove). Each keyword
+ * every change (add, import, tags, main or library, remove). Each keyword
  * is cleaned first (BrandKeywords::clean()); duplicates are dropped when it
- * is saved.
+ * is saved. Each tag says its kind and what it needs: a pillar's name, a
+ * product's entry, an event's key (and name), or two months.
  */
 class UpdateBrandKeywordsRequest extends FormRequest
 {
@@ -44,9 +47,17 @@ class UpdateBrandKeywordsRequest extends FormRequest
     {
         return [
             'keywords' => ['present', 'array', 'list', 'max:'.BrandKeywords::maxTotal()],
-            'keywords.*' => ['array:text,main'],
+            'keywords.*' => ['array:text,main,tags'],
             'keywords.*.text' => ['required', 'string', 'min:'.BrandKeywords::MIN_LENGTH, 'max:'.BrandKeywords::MAX_LENGTH],
             'keywords.*.main' => ['required', 'boolean'],
+            'keywords.*.tags' => ['sometimes', 'array', 'list', 'max:'.BrandKeywords::MAX_TAGS],
+            'keywords.*.tags.*' => ['array:kind,value,entry_id,from,to,label'],
+            'keywords.*.tags.*.kind' => ['required', Rule::enum(KeywordTagKind::class)],
+            'keywords.*.tags.*.value' => ['nullable', 'required_if:keywords.*.tags.*.kind,pillar,event', 'string', 'max:160'],
+            'keywords.*.tags.*.entry_id' => ['nullable', 'required_if:keywords.*.tags.*.kind,product', 'integer'],
+            'keywords.*.tags.*.from' => ['nullable', 'required_if:keywords.*.tags.*.kind,months', 'integer', 'between:1,12'],
+            'keywords.*.tags.*.to' => ['nullable', 'required_if:keywords.*.tags.*.kind,months', 'integer', 'between:1,12'],
+            'keywords.*.tags.*.label' => ['nullable', 'string', 'max:160'],
         ];
     }
 

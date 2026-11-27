@@ -463,14 +463,28 @@ return [
         'search' => [
             'min_relevance' => (float) env('SOCIALHQ_KNOWLEDGE_MIN_RELEVANCE', 0.25),
         ],
-        // SEO keywords (Strategy tab): up to max_main main and max_supporting supporting ones;
-        // a prompt gets at most `prompt` of them, outside prompt_characters. The check reads the
-        // brand's posts of the last recent_days, flags the claim_words, and never calls a word of
-        // not_places a place (time zone names that are everyday words).
+        // SEO keywords (Strategy tab): up to max_main main ones and a library of max_supporting
+        // more, tagged with pillars, products and occasions (Keywords\KeywordPicker). Each post
+        // gets one main keyword and per_post.library library ones that fit it (general ones fill
+        // in up to per_post.min_library); a person may choose up to per_post.max for a post. An
+        // event tag is in season from occasion.days_before its first day to days_after its last.
+        // A keyword added more than health_days ago that no post of those days says is "not used
+        // lately". The check reads the brand's posts of the last recent_days, flags the
+        // claim_words, and never calls a word of not_places a place (time zone names that are
+        // everyday words).
         'keywords' => [
             'max_main' => 5,
-            'max_supporting' => 25,
-            'prompt' => 8,
+            'max_supporting' => (int) env('SOCIALHQ_KEYWORDS_MAX_LIBRARY', 75),
+            'per_post' => [
+                'library' => 3,
+                'min_library' => 2,
+                'max' => 4,
+            ],
+            'occasion' => [
+                'days_before' => (int) env('SOCIALHQ_KEYWORDS_OCCASION_DAYS_BEFORE', 14),
+                'days_after' => (int) env('SOCIALHQ_KEYWORDS_OCCASION_DAYS_AFTER', 2),
+            ],
+            'health_days' => 60,
             'recent_days' => 90,
             'claim_words' => ['best', 'top', 'cheapest', 'leading', 'guaranteed', 'number one', 'no 1', '#1', 'finest', 'greatest'],
             'not_places' => ['christmas', 'easter', 'wake', 'midway', 'troll', 'casey', 'davis', 'palmer', 'vostok', 'mawson', 'syowa', 'macquarie', 'rothera', 'mcmurdo', 'currie', 'hope', 'universal', 'factory', 'zulu', 'greenwich'],
@@ -485,6 +499,8 @@ return [
             'max_expanded_bytes' => 100 * 1024 * 1024,
             'max_part_bytes' => 20 * 1024 * 1024,
             'pdf_decode_bytes' => 32 * 1024 * 1024,
+            // Preview: at most this much text is shown (a PDF is shown whole, in the browser's viewer).
+            'preview_kilobytes' => 100,
         ],
         // Old calendars (CSV or XLSX) imported as past posts for the AI planner.
         // An upload never confirmed is deleted after a day.

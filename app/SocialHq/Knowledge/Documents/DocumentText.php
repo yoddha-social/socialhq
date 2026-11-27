@@ -291,8 +291,15 @@ final class DocumentText
 
     private static function plain(string $path): string
     {
-        $raw = (string) file_get_contents($path);
+        return self::utf8((string) file_get_contents($path));
+    }
 
+    /**
+     * A text file's bytes as UTF-8: a byte-order mark says UTF-8 or UTF-16,
+     * valid UTF-8 stays, anything else is read as Windows-1252.
+     */
+    public static function utf8(string $raw): string
+    {
         return match (true) {
             str_starts_with($raw, "\xEF\xBB\xBF") => substr($raw, 3),
             str_starts_with($raw, "\xFF\xFE") => (string) mb_convert_encoding(substr($raw, 2), 'UTF-8', 'UTF-16LE'),

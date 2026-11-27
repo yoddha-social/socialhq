@@ -38,7 +38,7 @@ use App\SocialHq\Knowledge\BrandKnowledge;
 use App\SocialHq\Knowledge\Calendars\CalendarStorage;
 use App\SocialHq\Knowledge\Calendars\PruneCalendarUploadsCommand;
 use App\SocialHq\Knowledge\Documents\DocumentStorage;
-use App\SocialHq\Knowledge\Keywords\BrandKeywords;
+use App\SocialHq\Knowledge\Keywords\TryPostPromptKeywords;
 use App\SocialHq\Knowledge\Look\LogoStorage;
 use App\SocialHq\Knowledge\Search\KnowledgeSearch;
 use App\SocialHq\Knowledge\Search\LexicalKnowledgeSearch;
@@ -214,9 +214,9 @@ class SocialHqServiceProvider extends ServiceProvider
             $focus = TryPostPromptFocus::of($view->getData());
 
             $view->with('brand_knowledge', $workspace === null ? '' : BrandKnowledge::forPrompt($workspace, $focus));
-            // The SEO keywords, outside the knowledge budget. A rewrite of the person's caption
-            // (shorten, rephrase, tone) only keeps the ones it has; new text gets the rules.
-            $view->with('seo_keywords', $workspace === null ? [] : BrandKeywords::forPrompt($workspace, $focus));
+            // The SEO keywords picked for this post, outside the knowledge budget. A rewrite of the
+            // person's caption (shorten, rephrase, tone) only keeps the ones it has; new text gets the rules.
+            $view->with('seo_keywords', $workspace === null ? [] : TryPostPromptKeywords::of($workspace, $view->getData(), $focus));
             $view->with('seo_keywords_keep_only', data_get($view->getData(), 'writes_new_text') === false);
         });
 
@@ -237,6 +237,8 @@ class SocialHqServiceProvider extends ServiceProvider
         // Old calendars: an upload and its confirmation each count, 30 imports an hour per person.
         RateLimiter::for('socialhq-calendar-imports', fn (Request $request): Limit => Limit::perHour(60)->by((string) $request->user()?->id));
         RateLimiter::for('socialhq-knowledge-search', fn (Request $request): Limit => Limit::perMinute(30)->by((string) $request->user()?->id));
+        // Document previews: reading a Word or PowerPoint file's text is real work, 60 a minute per person.
+        RateLimiter::for('socialhq-knowledge-previews', fn (Request $request): Limit => Limit::perMinute(60)->by((string) $request->user()?->id));
         // "Read our website": 5 runs an hour per person (each reads up to 25 pages and makes one AI call).
         RateLimiter::for('socialhq-website-reads', fn (Request $request): Limit => Limit::perHour(5)->by((string) $request->user()?->id));
 

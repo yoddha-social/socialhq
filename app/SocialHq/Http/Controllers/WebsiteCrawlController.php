@@ -15,6 +15,7 @@ use App\SocialHq\Knowledge\Website\CrawlStatus;
 use App\SocialHq\Knowledge\Website\ReadWebsite;
 use App\SocialHq\Knowledge\Website\WebsiteCrawl;
 use App\SocialHq\Knowledge\Website\WebsiteReview;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -22,8 +23,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * "Read our website" on Brand knowledge: a workspace admin starts a run
- * (ReadWebsite, queued) and decides on each suggestion. Nothing reaches
- * brand knowledge until it is accepted.
+ * (ReadWebsite, queued), previews the "Website text" suggestion and decides
+ * on each suggestion. Nothing reaches brand knowledge until it is accepted.
  */
 class WebsiteCrawlController extends Controller
 {
@@ -61,6 +62,14 @@ class WebsiteCrawlController extends Controller
         WebsiteReview::accept($this->workspace($request), $crawl, $suggestion, $request->validated(), $request->user());
 
         return back();
+    }
+
+    /**
+     * The "Website text" suggestion's pages, from the text the read stored.
+     */
+    public function preview(Request $request, int $crawl, string $suggestion): JsonResponse
+    {
+        return response()->json(WebsiteReview::preview($this->workspace($request), $crawl, $suggestion), headers: ['Cache-Control' => 'private, no-store']);
     }
 
     public function skip(Request $request, int $crawl, string $suggestion): RedirectResponse

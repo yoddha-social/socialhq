@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { router, useHttp } from '@inertiajs/vue3';
-import { IconFileUpload, IconListCheck, IconTag } from '@tabler/icons-vue';
+import {
+    IconClockPause,
+    IconFileUpload,
+    IconListCheck,
+    IconTag,
+} from '@tabler/icons-vue';
 import { trans, transChoice } from 'laravel-vue-i18n';
 import { computed, nextTick, ref } from 'vue';
 import { toast } from 'vue-sonner';
@@ -17,14 +22,18 @@ import {
     sameKey,
     SAMPLE_FILE,
     splitList,
+    tagKey,
     VERDICTS,
     type ImportRow,
     type Keyword,
     type KeywordCheckProp,
     type KeywordCheckRow,
     type KeywordsProp,
+    type KeywordTag,
     type KeywordVerdict,
 } from '@/components/socialhq/keywords/keywords';
+import KeywordTagChip from '@/components/socialhq/keywords/KeywordTagChip.vue';
+import KeywordTagsDialog from '@/components/socialhq/keywords/KeywordTagsDialog.vue';
 import { useDropZone } from '@/components/socialhq/useDropZone';
 import TransSlots from '@/components/TransSlots.vue';
 import { Button } from '@/components/ui/button';
@@ -41,15 +50,21 @@ import {
 } from '@/routes/socialhq/brand/keywords';
 
 /**
- * SEO keywords (Brand knowledge, Strategy tab): add them, paste a list or
- * import a CSV or text file, and see the keyword check. Every change saves
- * the whole list at once; the check comes back with it.
+ * The SEO keyword catalogue (Brand knowledge, Strategy tab): add keywords,
+ * paste a list or import a CSV or text file, tag them with pillars,
+ * products and occasions, filter by tag, and see the keyword check and
+ * which keywords no post said lately. Every change saves the whole list at
+ * once; the check comes back with it.
  */
 const props = defineProps<{
     keywords: KeywordsProp;
     /** The keyword check; undefined while the deferred prop loads. */
     check: KeywordCheckProp | undefined;
     canEdit: boolean;
+    /** The brand's content pillars, to tag keywords with. */
+    pillars: string[];
+    /** The brand's products and services (knowledge entries of that kind). */
+    products: { id: number; title: string }[];
 }>();
 
 const emit = defineEmits<{
@@ -64,10 +79,13 @@ const limits = computed(() => props.keywords.limits);
 const maxTotal = computed(() => limits.value.main + limits.value.supporting);
 const mainCount = (list: Keyword[]): number =>
     list.filter((keyword) => keyword.main).length;
-const mainItems = computed(() => items.value.filter((keyword) => keyword.main));
-const supportingItems = computed(() =>
-    items.value.filter((keyword) => !keyword.main),
+const mainItems = computed(() =>
+    items.value.filter((keyword) => keyword.main && shows(keyword)),
 );
+const supportingItems = computed(() =>
+    items.value.filter((keyword) => !keyword.main && shows(keyword)),
+);
+const allMainCount = computed(() => mainCount(items.value));
 const hasKeywords = computed(() => items.value.length > 0);
 
 /** The check of the saved list: a row per keyword, by its text. */
@@ -98,12 +116,21 @@ const save = (
             keywords: next.map((keyword) => ({
                 text: keyword.text,
                 main: keyword.main,
+                tags: keyword.tags.map((tag) => ({
+                    kind: tag.kind,
+                    value: tag.value,
+                    entry_id: tag.entry_id,
+                    from: tag.from,
+                    to: tag.to,
+                    label: tag.label,
+                })),
             })),
         },
         {
             preserveScroll: true,
             preserveState: true,
             only: ['keywords', 'keywordCheck'],
+            // Tags are only in this card: other cards' state stays.
             onStart: () => {
                 saving.value = true;
             },
@@ -219,7 +246,11 @@ const addFromField = (): void => {
             break;
         }
 
-        next.push({ text, main });
+        next.push({
+            text,
+            main,
+            tags: filterTag.value ? [filterTag.value] : [],
+        });
         seen.add(key);
         added.push(text);
     }
@@ -353,6 +384,112 @@ const addEntry = (keyword: Keyword): void => {
     emit('addEntry', keyword.text);
 };
 
+// ----- Tags
+
+const tagging = ref<Keyword | null>(null);
+const tagsOpen = ref(false);
+
+const editTags = (keyword: Keyword): void => {
+    tagging.value = keyword;
+    tagsOpen.value = true;
+};
+
+const saveTags = (tags: KeywordTag[]): void => {
+    const keyword = tagging.value;
+
+    if (!keyword || saving.value) {
+        return;
+    }
+
+    save(
+        items.value.map((item) =>
+            item.text === keyword.text ? { ...item, tags } : item,
+        ),
+        () => {
+            tagsOpen.value = false;
+            toast.success(
+                trans('socialhq.keywords.toasts.tags_saved', {
+                    keyword: keyword.text,
+                }),
+            );
+        },
+    );
+};
+
+// ----- Filter by tag
+
+/** 'all', 'general', 'stale' or a tag's key (tagKey()). */
+const filter = ref('all');
+
+/** Every tag in use, once, with how many keywords carry it. */
+const tagFilters = computed(() => {
+    const found = new Map<string, { tag: KeywordTag; count: number }>();
+
+    for (const keyword of items.value) {
+        for (const tag of keyword.tags) {
+            const key = tagKey(tag);
+            const known = found.get(key);
+
+            found.set(key, { tag, count: (known?.count ?? 0) + 1 });
+        }
+    }
+
+    return [...found.entries()].map(([key, { tag, count }]) => ({
+        key,
+        tag,
+        count,
+    }));
+});
+
+const staleTexts = computed(
+    () =>
+        new Set(
+            (props.check?.keywords ?? [])
+                .filter((row) => row.stale)
+                .map((row) => row.text),
+        ),
+);
+
+const generalCount = computed(
+    () =>
+        items.value.filter(
+            (keyword) => !keyword.main && keyword.tags.length === 0,
+        ).length,
+);
+
+/** The tag new keywords get: the one the filter shows. */
+const filterTag = computed<KeywordTag | null>(
+    () =>
+        tagFilters.value.find((option) => option.key === filter.value)?.tag ??
+        null,
+);
+
+const shows = (keyword: Keyword): boolean => {
+    switch (filter.value) {
+        case 'all':
+            return true;
+        case 'general':
+            return !keyword.main && keyword.tags.length === 0;
+        case 'stale':
+            return staleTexts.value.has(keyword.text);
+        default:
+            return keyword.tags.some((tag) => tagKey(tag) === filter.value);
+    }
+};
+
+const setFilter = (value: string): void => {
+    filter.value = value;
+};
+
+const showStale = (): void => {
+    setFilter('stale');
+    void nextTick(() => {
+        document
+            .getElementById('socialhq-keywords-filters')
+            ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
+};
+
 // ----- Import a CSV or text file (read here, checked, then saved like any change)
 
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -471,7 +608,7 @@ const confirmImport = (): void => {
 
     const added = importing.value.rows
         .filter((row) => row.add)
-        .map((row) => ({ text: clean(row.text), main: row.main }));
+        .map((row) => ({ text: clean(row.text), main: row.main, tags: [] }));
     const warned = added.filter(
         (keyword) =>
             importVerdicts.value[keyword.text] !== undefined &&
@@ -539,17 +676,6 @@ const summaryParts = computed(() =>
             count: props.check?.counts[verdict] ?? 0,
         }))
         .filter((part) => part.count > 0),
-);
-
-const promptTexts = computed(
-    () => new Set((props.check?.prompt ?? []).map((keyword) => keyword.text)),
-);
-const notThisTime = computed(() =>
-    props.check && items.value.length > limits.value.prompt
-        ? items.value
-              .filter((keyword) => !promptTexts.value.has(keyword.text))
-              .map((keyword) => keyword.text)
-        : [],
 );
 </script>
 
@@ -658,6 +784,17 @@ const notThisTime = computed(() =>
                         ? $t('socialhq.keywords.field.hint_drop')
                         : $t('socialhq.keywords.field.hint')
                 }}
+                <span
+                    v-if="filterTag"
+                    class="font-medium text-foreground"
+                    data-testid="socialhq-keywords-hint-tag"
+                >
+                    {{
+                        $t('socialhq.keywords.field.hint_tag', {
+                            tag: filterTag.label,
+                        })
+                    }}
+                </span>
             </p>
             <KeywordImportPanel
                 v-if="importing"
@@ -920,6 +1057,34 @@ const notThisTime = computed(() =>
                             })
                         }}
                     </p>
+                    <p
+                        v-if="check.stale.count > 0"
+                        class="mt-2 text-xs text-amber-700 dark:text-amber-400"
+                        data-testid="socialhq-keywords-stale-summary"
+                    >
+                        <IconClockPause
+                            class="inline size-3.5 align-[-2px]"
+                            aria-hidden="true"
+                        />
+                        {{
+                            $tChoice(
+                                'socialhq.keywords.check.stale',
+                                check.stale.count,
+                                {
+                                    count: formatFullNumber(check.stale.count),
+                                    days: String(check.stale.days),
+                                },
+                            )
+                        }}
+                        <button
+                            type="button"
+                            class="ms-1 font-medium text-primary-text hover:underline"
+                            data-testid="socialhq-keywords-stale-show"
+                            @click="showStale"
+                        >
+                            {{ $t('socialhq.keywords.check.stale_show') }}
+                        </button>
+                    </p>
                 </template>
                 <div
                     v-else
@@ -931,6 +1096,86 @@ const notThisTime = computed(() =>
                     <Skeleton class="h-5 w-64" />
                     <Skeleton class="h-4 w-full max-w-md" />
                 </div>
+            </div>
+
+            <div
+                id="socialhq-keywords-filters"
+                class="mt-5 flex scroll-mt-4 flex-wrap items-center gap-1.5"
+                role="group"
+                :aria-label="$t('socialhq.keywords.filter.label')"
+                data-testid="socialhq-keywords-filters"
+            >
+                <span class="me-1 text-xs font-medium text-muted-foreground">
+                    {{ $t('socialhq.keywords.filter.label') }}
+                </span>
+                <button
+                    v-for="option in [
+                        {
+                            key: 'all',
+                            label: $t('socialhq.keywords.filter.all'),
+                            count: items.length,
+                        },
+                        {
+                            key: 'general',
+                            label: $t('socialhq.keywords.filter.general'),
+                            count: generalCount,
+                        },
+                    ]"
+                    :key="option.key"
+                    type="button"
+                    class="inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs font-medium transition-colors"
+                    :class="
+                        filter === option.key
+                            ? 'border-primary-strong bg-primary-subtle text-primary-text'
+                            : 'border-border bg-card text-muted-foreground hover:bg-accent'
+                    "
+                    :aria-pressed="filter === option.key"
+                    :data-testid="`socialhq-keywords-filter-${option.key}`"
+                    @click="setFilter(option.key)"
+                >
+                    {{ option.label }}
+                    <span class="tabular-nums opacity-70">{{
+                        formatFullNumber(option.count)
+                    }}</span>
+                </button>
+                <button
+                    v-for="(option, index) in tagFilters"
+                    :key="option.key"
+                    type="button"
+                    class="rounded-full ring-offset-1 transition-shadow"
+                    :class="
+                        filter === option.key
+                            ? 'ring-2 ring-primary-strong'
+                            : 'hover:ring-1 hover:ring-border-strong'
+                    "
+                    :aria-pressed="filter === option.key"
+                    :data-testid="`socialhq-keywords-filter-tag-${index}`"
+                    @click="setFilter(option.key)"
+                >
+                    <KeywordTagChip
+                        :kind="option.tag.kind"
+                        :label="`${option.tag.label} · ${formatFullNumber(option.count)}`"
+                    />
+                </button>
+                <button
+                    v-if="(check?.stale.count ?? 0) > 0"
+                    type="button"
+                    class="inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs font-medium transition-colors"
+                    :class="
+                        filter === 'stale'
+                            ? 'border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400'
+                            : 'border-border bg-card text-muted-foreground hover:bg-accent'
+                    "
+                    :aria-pressed="filter === 'stale'"
+                    data-testid="socialhq-keywords-filter-stale"
+                    @click="setFilter('stale')"
+                >
+                    <IconClockPause class="size-3.5" aria-hidden="true" />
+                    {{ $t('socialhq.keywords.filter.stale') }}
+                    <span class="tabular-nums opacity-70">{{
+                        formatFullNumber(check?.stale.count ?? 0)
+                    }}</span>
+                </button>
             </div>
 
             <div
@@ -955,8 +1200,9 @@ const notThisTime = computed(() =>
                             {{
                                 $t('socialhq.keywords.count', {
                                     count: formatFullNumber(
-                                        (main ? mainItems : supportingItems)
-                                            .length,
+                                        main
+                                            ? allMainCount
+                                            : items.length - allMainCount,
                                     ),
                                     max: formatFullNumber(
                                         main ? limits.main : limits.supporting,
@@ -969,7 +1215,10 @@ const notThisTime = computed(() =>
                         {{
                             main
                                 ? $t('socialhq.keywords.groups.main_hint')
-                                : $t('socialhq.keywords.groups.supporting_hint')
+                                : $t(
+                                      'socialhq.keywords.groups.supporting_hint',
+                                      { count: String(limits.per_post) },
+                                  )
                         }}
                     </p>
                 </div>
@@ -981,9 +1230,11 @@ const notThisTime = computed(() =>
                         :keyword="keyword"
                         :row="rowFor(keyword)"
                         :checked="check?.checked ?? null"
+                        :stale-days="check?.stale.days ?? null"
                         :open="open.has(keyword.text)"
                         :can-edit="canEdit"
                         @toggle="toggle(keyword)"
+                        @edit-tags="editTags(keyword)"
                         @make-main="makeMain(keyword)"
                         @make-supporting="makeSupporting(keyword)"
                         @remove="remove(keyword)"
@@ -993,7 +1244,11 @@ const notThisTime = computed(() =>
                         v-if="(main ? mainItems : supportingItems).length === 0"
                         class="px-3 py-3 text-[13px] text-muted-foreground"
                     >
-                        {{ $t('socialhq.keywords.groups.none') }}
+                        {{
+                            filter === 'all'
+                                ? $t('socialhq.keywords.groups.none')
+                                : $t('socialhq.keywords.groups.none_filtered')
+                        }}
                     </li>
                 </ul>
             </div>
@@ -1008,15 +1263,24 @@ const notThisTime = computed(() =>
                 <p class="mt-1 text-xs text-muted-foreground">
                     {{
                         $t('socialhq.keywords.preview.description', {
-                            max: formatFullNumber(limits.prompt),
+                            count: String(limits.per_post),
                         })
                     }}
                 </p>
-                <div v-if="check" class="mt-3 flex flex-wrap gap-1.5">
+                <div
+                    v-if="check && check.prompt.length > 0"
+                    class="mt-3 flex flex-wrap gap-1.5"
+                >
                     <span
                         v-for="keyword in check.prompt"
                         :key="keyword.text"
                         class="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-xs text-foreground"
+                        :title="
+                            keyword.matched
+                                .map((tag) => tag.label)
+                                .join(', ') || undefined
+                        "
+                        data-testid="socialhq-keywords-preview-keyword"
                     >
                         <span
                             v-if="keyword.main"
@@ -1027,22 +1291,27 @@ const notThisTime = computed(() =>
                         {{ keyword.text }}
                     </span>
                 </div>
+                <p v-else-if="check" class="mt-3 text-xs text-muted-foreground">
+                    {{ $t('socialhq.keywords.preview.none') }}
+                </p>
                 <div v-else class="mt-3 flex gap-1.5">
                     <Skeleton class="h-6 w-28 rounded-full" />
                     <Skeleton class="h-6 w-24 rounded-full" />
                 </div>
-                <p
-                    v-if="notThisTime.length > 0"
-                    class="mt-1.5 text-xs text-muted-foreground"
-                >
-                    {{
-                        $t('socialhq.keywords.preview.not_this_time', {
-                            max: formatFullNumber(limits.prompt),
-                            keywords: notThisTime.join(', '),
-                        })
-                    }}
-                </p>
             </div>
         </template>
+
+        <KeywordTagsDialog
+            v-if="canEdit"
+            v-model:open="tagsOpen"
+            :keyword="tagging"
+            :pillars="pillars"
+            :products="products"
+            :occasions="keywords.occasions"
+            :occasion-days="keywords.occasion_days"
+            :max-tags="limits.tags"
+            :saving="saving"
+            @save="saveTags"
+        />
     </section>
 </template>
